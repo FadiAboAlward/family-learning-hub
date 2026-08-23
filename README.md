@@ -1,6 +1,6 @@
 # Family Learning Hub
 
-A scalable learning platform for multiple learners, curricula, subjects, books, units, lessons, quizzes, adaptive practice, and parent reporting.
+A scalable learning platform for multiple learners, curricula, subjects, books, units, lessons, quizzes, adaptive practice, curriculum transition, and parent reporting.
 
 ## Architecture principles
 
@@ -12,6 +12,7 @@ A scalable learning platform for multiple learners, curricula, subjects, books, 
 - Progressive hints and attempt-level telemetry.
 - Supportive, age-appropriate, misconception-aware feedback.
 - Multimodal explanations using text, images, math, steps, examples, diagrams, audio, video, or interactive blocks as appropriate.
+- Curriculum-aware terminology: concept, source term, target term, question language, and explanation language are separate.
 - Parent reporting that distinguishes first-try mastery from assisted success.
 - Security by default with Supabase Row Level Security (RLS).
 
@@ -34,11 +35,16 @@ New quiz behavior is configurable in Supabase (`workspace_settings`, key `quiz.a
 - Remediation stays on the same concept and difficulty by default.
 - Prefer pre-generated question variants; live generation is disabled initially.
 
+## Curriculum transition
+
+The platform supports learners moving between curricula and languages without treating the change as literal translation. Turkish MEB terminology can remain visible while Syrian Arabic terminology is introduced progressively, then become secondary after the transition.
+
 ## Main documentation
 
 - `docs/architecture.md`
 - `docs/adaptive-learning.md`
 - `docs/pedagogy-engine.md`
+- `docs/curriculum-transition.md`
 - `supabase/migrations/`
 
 ## Change policy
