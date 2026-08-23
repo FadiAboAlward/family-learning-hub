@@ -22,7 +22,33 @@
 
   function renderUnit(root,b,u,d,p){const qs=u.quizzes||[];root.innerHTML=`${crumb([{label:'مكتبتي',nav:'home'},...(p?[{label:p.title,nav:'program'}]:[]),{label:b.title,nav:'book'},{label:u.title,nav:'current'}])}<div class="flh-page-title"><span>📗</span><div><b>${safe(u.title)}</b><small>${safe(b.title)}</small></div></div>${qs.length?qs.map(q=>`<div class="flh-activity-card"><b>${safe(q.title)}</b>${q.description?`<div class="muted">${safe(q.description)}</div>`:''}<div class="flh-mode-question">كيف بدك تشتغل على هالوحدة؟</div>${modeButtons(q)}</div>`).join(''):'<div class="empty">ما في تدريب منشور لهذه الوحدة بعد.</div>'}`;bindNav(root,{home:()=>renderHome(root,d),program:()=>renderProgram(root,p,d),book:()=>renderBook(root,b,d,p)});bindModes(root);}
 
-  async function install(){if(location.hash!=='#student'||!token())return;const hero=document.querySelector('.hero h1');if(!hero||(hero.textContent||'').trim().indexOf('أهلًا')!==0)return;hideLegacy();let root=document.querySelector('[data-student-library]');if(!root){root=document.createElement('section');root.className='panel flh-student-library';root.dataset.studentLibrary='1';const progress=document.querySelector('#app .hero + .panel');if(progress)progress.insertAdjacentElement('afterend',root);else document.querySelector('#app .panel')?.insertAdjacentElement('beforebegin',root);}if(!root||loading)return;if(cache){renderHome(root,cache);return;}loading=true;root.innerHTML='<div class="loading-card">جارِ ترتيب مكتبتك…</div>';try{cache=await load();renderHome(root,cache);}catch{root.innerHTML='<div class="error">تعذر تحميل مكتبتك. جرّب تحديث الصفحة.</div>';}finally{loading=false;}}
+  async function install(){
+    if(location.hash!=='#student'||!token())return;
+    const hero=document.querySelector('.hero h1');
+    if(!hero||(hero.textContent||'').trim().indexOf('أهلًا')!==0)return;
+    hideLegacy();
+    let root=document.querySelector('[data-student-library]');
+    if(root?.dataset.libraryReady==='1')return;
+    if(!root){
+      root=document.createElement('section');
+      root.className='panel flh-student-library';
+      root.dataset.studentLibrary='1';
+      const progress=document.querySelector('#app .hero + .panel');
+      if(progress)progress.insertAdjacentElement('afterend',root);
+      else document.querySelector('#app .panel')?.insertAdjacentElement('beforebegin',root);
+    }
+    if(!root||loading)return;
+    if(cache){renderHome(root,cache);root.dataset.libraryReady='1';return;}
+    loading=true;
+    root.innerHTML='<div class="loading-card">جارِ ترتيب مكتبتك…</div>';
+    try{cache=await load();renderHome(root,cache);root.dataset.libraryReady='1';}
+    catch{root.innerHTML='<div class="error">تعذر تحميل مكتبتك. جرّب تحديث الصفحة.</div>';}
+    finally{loading=false;}
+  }
   function reset(){cache=null;setTimeout(install,30)}
-  const observer=new MutationObserver(()=>{hideLegacy();install();});observer.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('hashchange',reset);document.addEventListener('DOMContentLoaded',install);install();
+  const observer=new MutationObserver(()=>{hideLegacy();install();});
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  window.addEventListener('hashchange',reset);
+  document.addEventListener('DOMContentLoaded',install);
+  install();
 })();
