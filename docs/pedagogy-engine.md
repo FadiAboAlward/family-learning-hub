@@ -17,13 +17,20 @@ The platform does not treat feedback as a fixed message after a right or wrong a
    - Attempt 3: stronger guidance, worked sub-step, or example.
    - Attempt 4: near-solution explanation and then remediation with a new question from the same concept/difficulty when needed.
 
-3. **Misconception-aware feedback**
+3. **Structured hint presentation**
+   - A normal hint should be presented as **3 short, numbered steps** whenever the concept can reasonably be decomposed that way.
+   - The learner may press **Explain this hint more** to expand the same hint into **6 numbered steps**.
+   - The expanded version must stay at the **same disclosure level** as the original hint. It gives more explanation and smaller sub-steps, but must not secretly reveal more of the answer.
+   - Use light, meaningful emoji in hints when it improves scanability or motivation.
+   - Prefer numbered steps over dense paragraphs for primary-school learners.
+
+4. **Misconception-aware feedback**
    - Multiple-choice distractors can be mapped to known misconceptions.
    - Typed/numeric responses may be classified when possible.
    - Prefer a misconception-specific explanation over generic retry feedback.
    - Fall back to attempt-level explanation when the misconception cannot be classified confidently.
 
-4. **Multimodal explanations**
+5. **Multimodal explanations**
    Explanations are composed from ordered blocks. Supported block types:
    - text
    - image
@@ -37,11 +44,17 @@ The platform does not treat feedback as a fixed message after a right or wrong a
 
    A single explanation may combine several blocks. Example: a short sentence + a crop from the book + a worked example + a visual diagram.
 
-5. **Source fidelity**
+6. **Mathematical notation fidelity**
+   - Mathematical fractions shown to the learner should use normal stacked fraction notation: numerator above a horizontal bar and denominator below it.
+   - Do not use slash notation such as `3/8` in the learner-facing UI when proper mathematical rendering is available.
+   - The same applies inside questions, answer choices, hints, explanations, and parent attempt details.
+   - Prefer semantic HTML/CSS for simple fractions and LaTeX/KaTeX or equivalent rendering when expressions become more complex.
+
+7. **Source fidelity**
    - When an explanation depends on a book figure, diagram, fraction model, geometry drawing, table, or other visual, use the original source image/crop whenever available.
    - For mathematics, visually authoritative source pages remain the reference for symbols, fractions, angles, layouts, and diagrams.
 
-6. **Do not overwhelm the learner**
+8. **Do not overwhelm the learner**
    Multimodal does not mean "show everything at once". The engine should choose the smallest useful combination first, then add stronger or more visual support after repeated errors.
 
 ## Personalization inputs
@@ -97,6 +110,7 @@ Behavior is stored in Supabase settings rather than hard-coded where practical. 
 - `pedagogy.feedback_policy`
 - `pedagogy.explanation_modalities`
 - `pedagogy.misconception_policy`
+- `pedagogy.hint_presentation`
 - `quiz.adaptive_defaults`
 
-This allows future changes to tone, hint depth, explanation strategy, scoring, or remediation without destructive schema rewrites.
+This allows future changes to tone, hint depth, explanation strategy, scoring, notation rendering, or remediation without destructive schema rewrites.
