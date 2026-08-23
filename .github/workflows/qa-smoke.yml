@@ -9,6 +9,14 @@ on:
       - '**/*.css'
       - 'tests/**'
       - '.github/workflows/qa-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.html'
+      - '**/*.js'
+      - '**/*.css'
+      - 'tests/**'
+      - '.github/workflows/qa-smoke.yml'
   workflow_dispatch:
 
 jobs:
@@ -22,13 +30,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright
+      - name: Install browser QA tools
         run: |
-          npm install --no-save playwright@1.55.0
+          npm install --no-save playwright@1.55.0 http-server@14.1.1
           npx playwright install --with-deps chromium
-      - name: Wait for GitHub Pages deployment
-        run: sleep 20
+      - name: Start local app server
+        run: |
+          npx http-server . -p 4173 -c-1 > /tmp/family-learning-hub-server.log 2>&1 &
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/family-learning-hub-server.log
+          exit 1
       - name: Run browser smoke test
         env:
-          APP_URL: https://fadiaboalward.github.io/family-learning-hub/
+          APP_URL: http://127.0.0.1:4173/
         run: node tests/smoke.mjs
