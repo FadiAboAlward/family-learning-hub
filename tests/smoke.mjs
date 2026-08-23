@@ -35,16 +35,43 @@ await page.route('**/functions/v1/activity-api', route => route.fulfill({ status
 await page.route('**/functions/v1/exam-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 
 const questionLabel = '.exam-status .topline > b:first-child';
+const gridColumns = async () => page.locator('#examAnswers').evaluate(el => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length);
 const url = `${BASE_URL}?qa=${Date.now()}#student`;
 await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 await page.locator('#fractionExam').waitFor({ state: 'visible', timeout: 10000 });
 await page.locator('#fractionExam').click();
 await page.locator('.exam-status').waitFor({ state: 'visible', timeout: 5000 });
 await page.locator('#examQuestionNavigator').waitFor({ state: 'visible', timeout: 5000 });
+await page.waitForFunction(() => document.querySelector('#examAnswers')?.classList.contains('answer-layout-v8'), null, {timeout:5000});
 
 const navBox = await page.locator('#examQuestionNavigator').boundingBox();
 if (!navBox || navBox.height > 70) throw new Error(`Navigator too tall: ${navBox?.height}`);
 
+// Numbering must be visible and stable.
+const numberLabels = await page.locator('#examAnswers .answer-number').allTextContents();
+if (numberLabels.length !== 5 || numberLabels[0] !== '١' || numberLabels[4] !== '٥') throw new Error(`Unexpected answer numbering: ${numberLabels.join(',')}`);
+
+// Short options: two columns on desktop and tablet, one on mobile.
+if (!(await page.locator('#examAnswers').evaluate(el => el.classList.contains('answer-layout-short')))) throw new Error('Q1 should be classified as short answers');
+if ((await gridColumns()) !== 2) throw new Error(`Desktop short answers should use 2 columns`);
+await page.setViewportSize({width:768,height:1024});
+await page.waitForTimeout(60);
+if ((await gridColumns()) !== 2) throw new Error(`Tablet short answers should use 2 columns`);
+await page.setViewportSize({width:390,height:844});
+await page.waitForTimeout(60);
+if ((await gridColumns()) !== 1) throw new Error(`Mobile answers should use 1 column`);
+await page.setViewportSize({width:1280,height:900});
+await page.waitForTimeout(60);
+
+// Long answer text must stay single-column even on desktop.
+await page.locator('#examQuestionNavigator .exam-nav-btn').nth(3).click();
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 4 من 10'), questionLabel, { timeout: 5000 });
+await page.waitForFunction(() => document.querySelector('#examAnswers')?.classList.contains('answer-layout-long'), null, {timeout:5000});
+if ((await gridColumns()) !== 1) throw new Error('Long answers should remain single-column');
+
+// Continue existing exam QA flow.
+await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examAnswers .answer').first().click();
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(2).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 5000 });
@@ -82,5 +109,5 @@ if (resultNavCount !== 10) throw new Error(`Expected 10 result navigator chips, 
 if (await page.locator('.exam-result-summary-v7').count() !== 1) throw new Error('Result summary v7 not applied');
 
 if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-console.log('QA PASS: exam entry -> compact navigator -> answer state -> refresh persistence -> result accordions/grid');
+console.log('QA PASS: responsive numbered answers + exam persistence + result UX');
 await browser.close();
