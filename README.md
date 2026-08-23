@@ -10,6 +10,8 @@ A scalable learning platform for multiple learners, curricula, subjects, books, 
 - Configuration over hard-coded behavior.
 - Concept-based adaptive learning rather than score-only quizzes.
 - Progressive hints and attempt-level telemetry.
+- Supportive, age-appropriate, misconception-aware feedback.
+- Multimodal explanations using text, images, math, steps, examples, diagrams, audio, video, or interactive blocks as appropriate.
 - Parent reporting that distinguishes first-try mastery from assisted success.
 - Security by default with Supabase Row Level Security (RLS).
 
@@ -36,6 +38,7 @@ New quiz behavior is configurable in Supabase (`workspace_settings`, key `quiz.a
 
 - `docs/architecture.md`
 - `docs/adaptive-learning.md`
+- `docs/pedagogy-engine.md`
 - `supabase/migrations/`
 
 ## Change policy
