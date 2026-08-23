@@ -3,125 +3,130 @@ import { chromium } from 'playwright';
 const BASE_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-
 const errors = [];
 page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
 page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
 
-await page.addInitScript(() => {
-  localStorage.setItem('learner_session', 'qa-test-session');
-  sessionStorage.removeItem('learner_session');
-});
-
-const fakeProfile = {
-  learner: { id: 'qa-learner', display_name: 'اختبار QA', slug: 'test', grade_level: 5, is_test: true, avatar_emoji: '🧪' },
-  gamification: {
-    xp: 0, reward_points: 0, current_level: 1, current_streak: 0, longest_streak: 0,
-    last_learning_date: null,
-    current_level_info: { level_no: 1, name: 'مستكشف', min_xp: 0, icon: '🌱' },
-    next_level_info: { level_no: 2, name: 'متعلم نشيط', min_xp: 250, icon: '⭐' },
-    xp_to_next: 250, badges: [], rewards: []
-  }
+let profileMode = 'aya';
+const gamification = {
+  xp: 0, reward_points: 0, current_level: 1, current_streak: 0, longest_streak: 0,
+  last_learning_date: null,
+  current_level_info: { level_no: 1, name: 'مستكشف', min_xp: 0, icon: '🌱' },
+  next_level_info: { level_no: 2, name: 'متعلم نشيط', min_xp: 250, icon: '⭐' },
+  xp_to_next: 250, badges: [], rewards: []
+};
+const profiles = {
+  aya: { learner: { id: 'aya-id', display_name: 'آية', slug: 'aya', grade_level: 5, is_test: false, avatar_emoji: '🌷' }, gamification },
+  mohammad: { learner: { id: 'moh-id', display_name: 'محمد', slug: 'mohammad', grade_level: 7, is_test: false, avatar_emoji: '🚀' }, gamification }
+};
+const program = {
+  enrollment_id: 'enr-aya', is_primary: true, slug: 'syrian-g5-2025-2026', code: 'SY-G5-2025-2026',
+  title: 'المنهاج السوري — الصف الخامس — 2025–2026', program_type: 'curriculum', grade_level: 5, school_year: '2025-2026', status: 'active',
+  quizzes: [
+    { slug: 'fractions-pages-54-57', title: 'الكسور (1)', description: 'تدريب الكسور', quiz_kind: 'practice', status: 'active' },
+    { slug: 'math-g5-unit1', title: 'الوحدة الأولى — تدريب شامل', description: 'رياضيات', quiz_kind: 'unit', status: 'active' },
+    { slug: 'arabic-g5-unit1', title: 'المواطنة والانتماء — تدريب شامل', description: 'لغة عربية', quiz_kind: 'unit', status: 'active' }
+  ]
 };
 
 await page.route('**/functions/v1/family-api', async route => {
-  let body = {};
-  try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
-  if (body.action === 'learner_choices') return route.fulfill({
-    status: 200, contentType: 'application/json',
-    body: JSON.stringify({ learners: [
-      { display_name: 'آية', slug: 'aya', avatar_emoji: '🌷', is_test: false },
-      { display_name: 'محمد', slug: 'mohammad', avatar_emoji: '🚀', is_test: false },
-      { display_name: 'اختبار', slug: 'test', avatar_emoji: '🧪', is_test: true },
-      { display_name: 'عبد القادر', slug: 'abdul-qader', avatar_emoji: '🧑‍🎓', is_test: false }
-    ] })
-  });
-  if (body.action === 'student_profile') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fakeProfile) });
-  if (body.action === 'complete_quiz') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ already_awarded: false, award: { xp: 0, reward_points: 0, badges: [] }, profile: fakeProfile }) });
-  return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ...fakeProfile }) });
+  let body = {}; try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'learner_choices') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[
+    {display_name:'آية',slug:'aya',avatar_emoji:'🌷',is_test:false},
+    {display_name:'محمد',slug:'mohammad',avatar_emoji:'🚀',is_test:false},
+    {display_name:'اختبار',slug:'test',avatar_emoji:'🧪',is_test:true},
+    {display_name:'عبد القادر',slug:'abdul-qader',avatar_emoji:'🧑‍🎓',is_test:false}
+  ]})});
+  if (body.action === 'student_profile') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(profiles[profileMode])});
+  if (body.action === 'parent_dashboard') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+    parent:{id:'p1',email:'parent@example.test',relation:'father',role:'owner'},
+    learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],
+    states:[],attempts:[],reward_claims:[]
+  })});
+  return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});
 });
+
 await page.route('**/functions/v1/learning-api', async route => {
-  let body = {};
-  try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
-  if (body.action === 'catalog') return route.fulfill({
-    status: 200, contentType: 'application/json',
-    body: JSON.stringify({ programs: [{
-      enrollment_id: 'qa-enrollment', is_primary: false, slug: 'qa-syrian-g5', code: 'QA-G5',
-      title: 'المنهاج السوري — الصف الخامس — QA', program_type: 'curriculum', grade_level: 5, school_year: '2025-2026', status: 'active',
-      quizzes: [
-        { slug: 'fractions-pages-54-57', title: 'الكسور (1)', description: 'تدريب', quiz_kind: 'practice', status: 'active' },
-        { slug: 'math-g5-unit1', title: 'الوحدة الأولى — تدريب شامل', description: 'رياضيات', quiz_kind: 'unit', status: 'active' },
-        { slug: 'arabic-g5-unit1', title: 'المواطنة والانتماء — تدريب شامل', description: 'لغة عربية', quiz_kind: 'unit', status: 'active' }
-      ]
-    }] })
-  });
-  return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'QA_NOT_IMPLEMENTED' }) });
+  let body = {}; try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'catalog') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({programs:profileMode==='aya'?[program]:[]})});
+  return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'QA_NOT_IMPLEMENTED'})});
 });
-await page.route('**/functions/v1/activity-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
-await page.route('**/functions/v1/exam-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 
-const questionLabel = '.exam-status .topline > b:first-child';
-const gridColumns = async () => page.locator('#examAnswers').evaluate(el => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length);
-const url = `${BASE_URL}?qa=${Date.now()}#student`;
-await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+await page.route('**/functions/v1/exam-v2-api', async route => {
+  let body = {}; try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'start_exam') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+    attempt_id:'exam-attempt-1',started_at:new Date().toISOString(),quiz:{slug:body.quiz_slug,title:'امتحان QA'},questions:[
+      {sequence_no:1,question_id:'q1',status:'active',saved_response:null,question:{id:'q1',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}]}},
+      {sequence_no:2,question_id:'q2',status:'pending',saved_response:null,question:{id:'q2',prompt:'3 + 1 = ؟',options:[{position:1,content:'4'},{position:2,content:'6'}]}}
+    ]
+  })});
+  if (body.action === 'save_answer') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});
+  if (body.action === 'submit_exam') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+    ok:true,attempt_id:'exam-attempt-1',quiz:{slug:'fractions-pages-54-57',title:'امتحان QA'},score_points:2,max_points:2,percentage:100,
+    review:[{question_id:'q1',prompt:'2 + 2 = ؟',is_correct:true,explanation:'4 هي الإجابة الصحيحة.'},{question_id:'q2',prompt:'3 + 1 = ؟',is_correct:true,explanation:'4 هي الإجابة الصحيحة.'}]
+  })});
+  return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'QA_NOT_IMPLEMENTED'})});
+});
 
-// New architecture smoke: program content must come from the backend catalog.
-await page.locator('[data-program="qa-syrian-g5"]').waitFor({ state: 'visible', timeout: 10000 });
-const dynamicQuizCount = await page.locator('.dynamic-program-quiz').count();
-if (dynamicQuizCount !== 3) throw new Error(`Expected 3 backend-driven quiz cards, got ${dynamicQuizCount}`);
-if (await page.locator('#fractionQuiz').isVisible()) throw new Error('Legacy learning card should be hidden when program catalog loads');
-if (await page.locator('[data-dynamic-test-banner]').count() !== 1) throw new Error('Test learner banner should come from learner metadata');
+await page.route('**/functions/v1/parent-program-api', async route => {
+  let body = {}; try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'catalog') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+    learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],
+    programs:[{id:'prog-g5',slug:'syrian-g5-2025-2026',title:'المنهاج السوري — الصف الخامس — 2025–2026',program_type:'curriculum',grade_level:5,school_year:'2025-2026',status:'active'}],
+    enrollments:[{id:'enr-aya',learner_id:'aya-id',program_id:'prog-g5',status:'active',is_primary:true}]
+  })});
+  return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});
+});
+await page.route('**/functions/v1/activity-api', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})}));
 
-// Legacy exam compatibility remains available while exam delivery is migrated server-side.
-await page.locator('#fractionExam').waitFor({ state: 'visible', timeout: 10000 });
-await page.locator('#fractionExam').click();
-await page.locator('.exam-status').waitFor({ state: 'visible', timeout: 5000 });
-await page.locator('#examQuestionNavigator').waitFor({ state: 'visible', timeout: 5000 });
-await page.waitForFunction(() => document.querySelector('#examAnswers')?.classList.contains('answer-layout-v8'), null, {timeout:5000});
+// 1) Logged-out learner list must be backend-driven; adding a learner requires no frontend edit.
+await page.goto(`${BASE_URL}?qa=learners-${Date.now()}#student`, {waitUntil:'networkidle',timeout:30000});
+await page.locator('[data-dynamic-learner="abdul-qader"]').waitFor({state:'visible',timeout:10000});
+if (await page.locator('[data-dynamic-learner]').count() !== 4) throw new Error('Expected 4 backend-driven learner cards');
 
-const navBox = await page.locator('#examQuestionNavigator').boundingBox();
-if (!navBox || navBox.height > 70) throw new Error(`Navigator too tall: ${navBox?.height}`);
-const numberLabels = await page.locator('#examAnswers .answer-number').allTextContents();
-if (numberLabels.length !== 5 || numberLabels[0] !== '١' || numberLabels[4] !== '٥') throw new Error(`Unexpected answer numbering: ${numberLabels.join(',')}`);
-if (!(await page.locator('#examAnswers').evaluate(el => el.classList.contains('answer-layout-short')))) throw new Error('Q1 should be classified as short answers');
-if ((await gridColumns()) !== 2) throw new Error('Desktop short answers should use 2 columns');
-await page.setViewportSize({width:768,height:1024});await page.waitForTimeout(60);if((await gridColumns())!==2)throw new Error('Tablet short answers should use 2 columns');
-await page.setViewportSize({width:390,height:844});await page.waitForTimeout(60);if((await gridColumns())!==1)throw new Error('Mobile answers should use 1 column');
-await page.setViewportSize({width:1280,height:900});await page.waitForTimeout(60);
-await page.locator('#examQuestionNavigator .exam-nav-btn').nth(3).click();
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 4 من 10'), questionLabel, { timeout: 5000 });
-await page.waitForFunction(() => document.querySelector('#examAnswers')?.classList.contains('answer-layout-long'), null, {timeout:5000});
-if ((await gridColumns()) !== 1) throw new Error('Long answers should remain single-column');
-await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
-await page.locator('#examAnswers .answer').first().click();
-await page.locator('#examQuestionNavigator .exam-nav-btn').nth(2).click();
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 5000 });
-await page.locator('#examAnswers .answer').nth(1).click();
-await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 10000 });
-const restoredQ3 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');if(restoredQ3!=='1')throw new Error(`Q3 answer not restored; got ${restoredQ3}`);
-await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
-const restoredQ1 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');if(restoredQ1!=='0')throw new Error(`Q1 answer not restored; got ${restoredQ1}`);
-for(let q=1;q<=10;q++){const current=Number((await page.locator(questionLabel).innerText()).match(/السؤال\s+(\d+)/)?.[1]||0);if(current!==q){await page.locator('#examQuestionNavigator .exam-nav-btn').nth(q-1).click();await page.waitForFunction(({sel,n})=>document.querySelector(sel)?.textContent?.includes(`السؤال ${n} من 10`),{sel:questionLabel,n:q},{timeout:5000});}if(await page.locator('#examAnswers .answer.selected').count()===0)await page.locator('#examAnswers .answer').first().click();}
-await page.locator('#examQuestionNavigator .exam-nav-btn').nth(9).click();
-await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 10 من 10'), questionLabel, { timeout: 5000 });
-await page.locator('#examSubmit').click();
-await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 8000 });
-await page.waitForTimeout(250);
-const reviewCount=await page.locator('.exam-review').count();if(reviewCount!==10)throw new Error(`Expected 10 result accordions, got ${reviewCount}`);
-if(await page.locator('.exam-review[open]').count())throw new Error('Expected result accordions collapsed');
-if(await page.locator('#examResultNavigator .result-nav-chip').count()!==10)throw new Error('Expected 10 result navigator chips');
-if(await page.locator('.exam-result-summary-v7').count()!==1)throw new Error('Result summary v7 not applied');
+// 2) Aya gets only her program catalog, plus Exam V2. Legacy cards must never be active.
+await page.evaluate(() => localStorage.setItem('learner_session','qa-learner-token'));
+profileMode='aya';
+await page.reload({waitUntil:'networkidle',timeout:30000});
+await page.locator('[data-program="syrian-g5-2025-2026"]').waitFor({state:'visible',timeout:10000});
+if (await page.locator('.dynamic-program-quiz').count() !== 3) throw new Error('Aya should have 3 program quiz cards');
+await page.waitForFunction(() => document.querySelectorAll('.exam-v2-card').length === 3, null, {timeout:5000});
+if (await page.locator('#fractionExam').count() !== 0) throw new Error('Legacy #fractionExam must not exist');
+if (await page.locator('#fractionQuiz').count() && await page.locator('#fractionQuiz').isVisible()) throw new Error('Legacy #fractionQuiz must stay hidden');
 
-// New learner smoke: adding a learner in backend choices must create a login card with no frontend code change.
-await page.evaluate(() => { localStorage.removeItem('learner_session'); sessionStorage.removeItem('learner_session'); });
-await page.goto(`${BASE_URL}?qa=learners-${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
-await page.locator('[data-dynamic-learner="abdul-qader"]').waitFor({ state: 'visible', timeout: 10000 });
-const learnerCards = await page.locator('[data-dynamic-learner]').count();
-if (learnerCards !== 4) throw new Error(`Expected 4 backend-driven learner cards, got ${learnerCards}`);
+// 3) New server exam path: no feedback during solving; result appears only after submit.
+await page.locator('.exam-v2-card').first().click();
+await page.locator('#examV2Answers').waitFor({state:'visible',timeout:5000});
+await page.locator('.exam-v2-answer').first().click();
+await page.locator('#examV2Next').click();
+await page.locator('.exam-v2-answer').first().click();
+await page.locator('#examV2Submit').waitFor({state:'visible',timeout:5000});
+if (await page.locator('#examV2Submit').isDisabled()) throw new Error('Exam submit should enable after all answers are saved');
+await page.locator('#examV2Submit').click();
+await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
+if (await page.locator('.exam-review').count() !== 2) throw new Error('Exam V2 review should contain 2 questions');
+
+// 4) Mohammed has Grade 7 but no program: absolutely no Aya quiz/exam may appear.
+profileMode='mohammad';
+await page.reload({waitUntil:'networkidle',timeout:30000});
+await page.getByText('ما في برنامج تعليمي مربوط بهذا الحساب بعد.').waitFor({state:'visible',timeout:10000});
+if (await page.locator('.dynamic-program-quiz').count() !== 0) throw new Error('Mohammad must have zero program quiz cards');
+if (await page.locator('.exam-v2-card').count() !== 0) throw new Error('Mohammad must have zero exam cards');
+if (await page.locator('#fractionExam').count() !== 0) throw new Error('Legacy exam leaked into Mohammad account');
+if (await page.locator('#fractionQuiz').count() && await page.locator('#fractionQuiz').isVisible()) throw new Error('Legacy learning quiz leaked into Mohammad account');
+
+// 5) Parent dashboard exposes grade/program controls for real learners.
+await page.evaluate(() => {
+  localStorage.removeItem('learner_session'); sessionStorage.removeItem('learner_session');
+  localStorage.setItem('parent_session', JSON.stringify({access_token:'qa-parent-token',refresh_token:'qa-refresh'}));
+});
+await page.goto(`${BASE_URL}?qa=parent-${Date.now()}#parents`, {waitUntil:'networkidle',timeout:30000});
+await page.locator('[data-parent-program-admin]').waitFor({state:'visible',timeout:10000});
+if (await page.locator('.parent-program-learner').count() !== 2) throw new Error('Parent program manager should list 2 real learners');
+const mohCard=page.locator('.parent-program-learner').filter({hasText:'محمد'}).first();
+if ((await mohCard.locator('.parent-grade-select').inputValue()) !== '7') throw new Error('Mohammad grade should be 7 in parent controls');
+if (await mohCard.locator('.parent-program-row').count() !== 1) throw new Error('Parent should see available programs for Mohammad');
 
 if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-console.log('QA PASS: dynamic learners/programs + test isolation UI + legacy exam compatibility');
+console.log('QA PASS: dynamic learners + strict program isolation + Exam V2 + parent program controls');
 await browser.close();
