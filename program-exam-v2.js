@@ -45,35 +45,45 @@
     const questions=session.questions||[];
     const answers=new Map(questions.filter(x=>x.saved_response?.option_position!=null).map(x=>[x.question_id,Number(x.saved_response.option_position)]));
     let index=0;
+    let saving=false;
 
     function allAnswered(){ return questions.length>0 && questions.every(x=>answers.has(x.question_id)); }
     function render(){
       if(!questions.length){ shell('لا توجد أسئلة','هذا الامتحان لا يحتوي أسئلة منشورة.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="examV2Back">رجوع</button></div></section>'); document.getElementById('examV2Back')?.addEventListener('click',()=>renderStudentHome(state.learnerProfile)); return; }
       const row=questions[index], q=row.question, selected=answers.get(row.question_id);
-      const opts=(q.options||[]).map(o=>`<button class="answer exam-v2-answer ${Number(o.position)===selected?'selected':''}" data-pos="${Number(o.position)}"><span class="answer-number">${Number(o.position)}</span><span>${renderMath(o.content)}</span></button>`).join('');
-      const nav=questions.map((x,i)=>`<button class="btn btn-soft exam-v2-nav" data-i="${i}">${answers.has(x.question_id)?'✓ ':''}${i+1}</button>`).join('');
+      const opts=(q.options||[]).map(o=>`<button class="answer exam-v2-answer ${Number(o.position)===selected?'selected':''}" data-pos="${Number(o.position)}" ${saving?'disabled':''}><span class="answer-number">${Number(o.position)}</span><span>${renderMath(o.content)}</span></button>`).join('');
+      const nav=questions.map((x,i)=>`<button class="btn btn-soft exam-v2-nav" data-i="${i}" ${saving?'disabled':''}>${answers.has(x.question_id)?'✓ ':''}${i+1}</button>`).join('');
       shell(`📝 ${safe(session.quiz.title)}`,`السؤال ${index+1} من ${questions.length} — لا يظهر التصحيح إلا بعد التسليم.`,`<section class="panel">
         <div class="exam-status"><div class="topline"><b>السؤال ${index+1} من ${questions.length}</b><span>${answers.size}/${questions.length} مجاب</span></div></div>
         <div class="question"><b>${renderMath(q.prompt)}</b></div>
         <div id="examV2Answers" class="answers answer-layout-v8">${opts}</div>
-        <div class="actions"><button class="btn btn-soft" id="examV2Prev" ${index===0?'disabled':''}>السابق</button><button class="btn btn-soft" id="examV2Next" ${index===questions.length-1?'disabled':''}>التالي</button></div>
+        <div id="examV2SaveStatus" class="muted">${saving?'جارِ حفظ الإجابة…':'كل إجابة تُحفظ تلقائيًا.'}</div>
+        <div class="actions"><button class="btn btn-soft" id="examV2Prev" ${(index===0||saving)?'disabled':''}>السابق</button><button class="btn btn-soft" id="examV2Next" ${(index===questions.length-1||saving)?'disabled':''}>التالي</button></div>
         <div class="section-title">الأسئلة</div><div id="examV2Navigator" class="actions">${nav}</div>
-        <div class="actions"><button class="btn btn-primary" id="examV2Submit" ${allAnswered()?'':'disabled'}>تسليم الامتحان</button><button class="btn btn-soft" id="examV2Exit">رجوع لصفحتي</button></div>
+        <div class="actions"><button class="btn btn-primary" id="examV2Submit" ${(allAnswered()&&!saving)?'':'disabled'}>تسليم الامتحان</button><button class="btn btn-soft" id="examV2Exit" ${saving?'disabled':''}>رجوع لصفحتي</button></div>
       </section>`);
       document.querySelectorAll('.exam-v2-answer').forEach(btn=>btn.addEventListener('click',async()=>{
-        const pos=Number(btn.getAttribute('data-pos')); document.querySelectorAll('.exam-v2-answer').forEach(x=>x.disabled=true);
-        try{ await examApi('save_answer',{attempt_id:session.attempt_id,question_id:row.question_id,option_position:pos}); answers.set(row.question_id,pos); render(); }
-        catch{ document.querySelectorAll('.exam-v2-answer').forEach(x=>x.disabled=false); }
+        if(saving) return;
+        const pos=Number(btn.getAttribute('data-pos'));
+        saving=true;
+        render();
+        try{
+          await examApi('save_answer',{attempt_id:session.attempt_id,question_id:row.question_id,option_position:pos});
+          answers.set(row.question_id,pos);
+        } finally {
+          saving=false;
+          render();
+        }
       }));
-      document.querySelectorAll('.exam-v2-nav').forEach(btn=>btn.addEventListener('click',()=>{index=Number(btn.getAttribute('data-i'));render();}));
-      document.getElementById('examV2Prev')?.addEventListener('click',()=>{index=Math.max(0,index-1);render();});
-      document.getElementById('examV2Next')?.addEventListener('click',()=>{index=Math.min(questions.length-1,index+1);render();});
-      document.getElementById('examV2Exit')?.addEventListener('click',()=>renderStudentHome(state.learnerProfile));
+      document.querySelectorAll('.exam-v2-nav').forEach(btn=>btn.addEventListener('click',()=>{if(saving)return;index=Number(btn.getAttribute('data-i'));render();}));
+      document.getElementById('examV2Prev')?.addEventListener('click',()=>{if(saving)return;index=Math.max(0,index-1);render();});
+      document.getElementById('examV2Next')?.addEventListener('click',()=>{if(saving)return;index=Math.min(questions.length-1,index+1);render();});
+      document.getElementById('examV2Exit')?.addEventListener('click',()=>{if(!saving)renderStudentHome(state.learnerProfile);});
       document.getElementById('examV2Submit')?.addEventListener('click',submit);
     }
 
     async function submit(){
-      if(!allAnswered()) return;
+      if(saving||!allAnswered()) return;
       shell('📊 عم نصحح الامتحان','التصحيح يتم على السيرفر.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
       try{
         const d=await examApi('submit_exam',{attempt_id:session.attempt_id});
