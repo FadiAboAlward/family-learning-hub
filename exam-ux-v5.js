@@ -61,33 +61,59 @@
     const status=document.querySelector('.exam-status');
     const idx=currentIndex();
     if(!status||!idx) return;
+
     const answered=loadAnswered();
-    if(document.querySelector('#examAnswers .answer.selected')){ answered[idx-1]=true; saveAnswered(answered); }
+    if(document.querySelector('#examAnswers .answer.selected')){
+      answered[idx-1]=true;
+      saveAnswered(answered);
+    }
 
     let nav=document.getElementById('examQuestionNavigator');
     if(!nav){
-      nav=document.createElement('div'); nav.id='examQuestionNavigator'; nav.className='exam-question-navigator';
-      const progress=status.querySelector('.progress'); status.insertBefore(nav,progress||null);
+      nav=document.createElement('div');
+      nav.id='examQuestionNavigator';
+      nav.className='exam-question-navigator';
+      const progress=status.querySelector('.progress');
+      status.insertBefore(nav,progress||null);
     }
-    nav.innerHTML=`<div class="exam-nav-title">🗺️ الأسئلة</div><div class="exam-nav-buttons">${Array.from({length:TOTAL},(_,i)=>{const n=i+1;const cls=n===idx?'current':answered[i]?'answered':'unanswered';const icon=answered[i]?'✓':'•';return `<button type="button" class="exam-nav-btn ${cls}" data-q="${n}" aria-label="السؤال ${n} ${answered[i]?'مجاب':'غير مجاب'}"><span>${n}</span><small>${icon}</small></button>`}).join('')}</div><div class="exam-nav-legend"><span>✅ مجاب</span><span>○ غير مجاب</span><span>🟣 الحالي</span></div>`;
-    nav.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>jumpTo(Number(b.dataset.q)));
+
+    const signature=`${idx}:${answered.map(x=>x?'1':'0').join('')}`;
+    if(nav.dataset.signature!==signature){
+      nav.dataset.signature=signature;
+      nav.innerHTML=`<div class="exam-nav-title">🗺️ الأسئلة</div><div class="exam-nav-buttons">${Array.from({length:TOTAL},(_,i)=>{const n=i+1;const cls=n===idx?'current':answered[i]?'answered':'unanswered';const icon=answered[i]?'✓':'•';return `<button type="button" class="exam-nav-btn ${cls}" data-q="${n}" aria-label="السؤال ${n} ${answered[i]?'مجاب':'غير مجاب'}"><span>${n}</span><small>${icon}</small></button>`}).join('')}</div><div class="exam-nav-legend"><span>✅ مجاب</span><span>○ غير مجاب</span><span>🟣 الحالي</span></div>`;
+      nav.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>jumpTo(Number(b.dataset.q)));
+    }
 
     let funEl=document.getElementById('examFunLine');
-    if(!funEl){ funEl=document.createElement('div'); funEl.id='examFunLine'; funEl.className='exam-fun-line'; nav.insertAdjacentElement('afterend',funEl); }
-    funEl.textContent=fun[idx-1]||'🙂 خذ وقتك وفكّر بهدوء.';
+    if(!funEl){
+      funEl=document.createElement('div');
+      funEl.id='examFunLine';
+      funEl.className='exam-fun-line';
+      nav.insertAdjacentElement('afterend',funEl);
+    }
+    const funText=fun[idx-1]||'🙂 خذ وقتك وفكّر بهدوء.';
+    if(funEl.textContent!==funText) funEl.textContent=funText;
   }
 
   function markAnswerClick(e){
-    const b=e.target.closest?.('#examAnswers .answer'); if(!b) return;
-    const idx=currentIndex(); if(!idx) return;
-    const answered=loadAnswered(); answered[idx-1]=true; saveAnswered(answered); setTimeout(injectNavigator,0);
+    const b=e.target.closest?.('#examAnswers .answer');
+    if(!b) return;
+    const idx=currentIndex();
+    if(!idx) return;
+    const answered=loadAnswered();
+    answered[idx-1]=true;
+    saveAnswered(answered);
+    setTimeout(injectNavigator,0);
   }
 
   function enhanceResults(){
     const reviews=[...document.querySelectorAll('.exam-review')];
     if(!reviews.length) return;
     reviews.forEach((d,i)=>{
-      if(!d.dataset.accordionInit){ d.removeAttribute('open'); d.dataset.accordionInit='1'; }
+      if(!d.dataset.accordionInit){
+        d.removeAttribute('open');
+        d.dataset.accordionInit='1';
+      }
       const summary=d.querySelector('summary');
       if(summary&&!summary.dataset.statusStyled){
         const good=d.classList.contains('review-good');
@@ -96,14 +122,16 @@
       }
       if(!d.classList.contains('review-bad')||d.dataset.simpleExplained) return;
       const box=d.querySelector('.review-explanation');
-      const cfg=simple[i+1]; if(!box||!cfg) return;
+      const cfg=simple[i+1];
+      if(!box||!cfg) return;
       d.dataset.simpleExplained='1';
       box.innerHTML=`<b>🙂 خلينا نفكها ببساطة — 3 خطوات:</b>${renderSteps(cfg.s)}<button type="button" class="btn btn-warning simple-more-btn">🔍 بدي شرح أوضح شوي</button><div class="simple-more-area"></div>`;
       const btn=box.querySelector('.simple-more-btn');
       btn.onclick=()=>{
         const area=box.querySelector('.simple-more-area');
         area.innerHTML=`<div class="simple-expanded"><b>🧠 نفس الفكرة، بس على 6 خطوات:</b>${renderSteps(cfg.l)}</div>`;
-        btn.disabled=true; btn.textContent='✅ فتحنا الشرح الأوسع';
+        btn.disabled=true;
+        btn.textContent='✅ فتحنا الشرح الأوسع';
       };
     });
   }
@@ -113,8 +141,21 @@
     markAnswerClick(e);
   },true);
 
-  function sync(){ injectNavigator(); enhanceResults(); }
-  function schedule(){ if(queued)return; queued=true; queueMicrotask(()=>{queued=false;sync();}); }
+  function sync(){
+    injectNavigator();
+    enhanceResults();
+  }
+
+  function schedule(){
+    if(queued) return;
+    queued=true;
+    requestAnimationFrame(()=>{
+      queued=false;
+      sync();
+    });
+  }
+
   new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});
-  document.addEventListener('DOMContentLoaded',schedule); schedule();
+  document.addEventListener('DOMContentLoaded',schedule);
+  schedule();
 })();
