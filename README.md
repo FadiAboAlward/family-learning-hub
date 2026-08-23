@@ -2,6 +2,10 @@
 
 A scalable learning platform for multiple learners, curricula, subjects, books, units, lessons, quizzes, adaptive practice, curriculum transition, gamification, real-world rewards, and parent reporting.
 
+## Live site
+
+- GitHub Pages: `https://fadiaboalward.github.io/family-learning-hub/`
+
 ## Architecture principles
 
 - Multi-learner and multi-curriculum from day one.
@@ -22,8 +26,8 @@ A scalable learning platform for multiple learners, curricula, subjects, books, 
 
 - **Database / Auth / API:** Supabase
 - **Source control:** GitHub
-- **Frontend:** planned as a static web application that can be hosted without a dedicated server.
-- **Repository visibility:** Private
+- **Frontend / hosting:** Static web application on GitHub Pages.
+- **Repository visibility:** Public
 
 ## Adaptive quiz defaults
 
