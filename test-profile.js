@@ -64,9 +64,40 @@
     grid.appendChild(btn);
   }
 
-  const observer = new MutationObserver(() => installTestCard());
+  function installTestBanner() {
+    if (document.querySelector('[data-test-banner]')) return;
+    const heroTitle = document.querySelector('.hero h1');
+    if (!heroTitle || !heroTitle.textContent.includes('اختبار')) return;
+    const hero = heroTitle.closest('.hero');
+    if (!hero) return;
+    const banner = document.createElement('section');
+    banner.className = 'panel';
+    banner.setAttribute('data-test-banner', 'true');
+    banner.innerHTML = '<b>🧪 وضع الاختبار</b><div class="muted">أي محاولات أو XP أو نقاط هنا خاصة بالاختبار فقط، ولا تغيّر سجل آية أو محمد.</div>';
+    hero.insertAdjacentElement('afterend', banner);
+  }
+
+  function cleanParentDashboard() {
+    if (location.hash !== '#parents') return;
+    document.querySelectorAll('.card').forEach(card => {
+      const name = card.querySelector('.topline b')?.textContent?.trim();
+      if (name === 'اختبار') card.remove();
+    });
+    document.querySelectorAll('.parent-table tbody tr').forEach(row => {
+      const name = row.querySelector('td')?.textContent?.trim();
+      if (name === 'اختبار') row.remove();
+    });
+  }
+
+  function syncUi() {
+    installTestCard();
+    installTestBanner();
+    cleanParentDashboard();
+  }
+
+  const observer = new MutationObserver(syncUi);
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('hashchange', () => setTimeout(installTestCard, 0));
-  document.addEventListener('DOMContentLoaded', installTestCard);
-  installTestCard();
+  window.addEventListener('hashchange', () => setTimeout(syncUi, 0));
+  document.addEventListener('DOMContentLoaded', syncUi);
+  syncUi();
 })();
