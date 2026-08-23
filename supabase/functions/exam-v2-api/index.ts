@@ -15,13 +15,26 @@ async function learner(req:Request){const auth=req.headers.get("authorization")|
 async function accessibleQuiz(learnerId:string,slug:string){
   const {data:quiz}=await admin.from("quizzes").select("id,slug,title,description,quiz_kind,delivery_config,status").eq("workspace_id",WORKSPACE_ID).eq("slug",slug).eq("status","active").maybeSingle();
   if(!quiz)throw new Error("QUIZ_NOT_FOUND");
-  const {data:enr}=await admin.from("learner_program_enrollments").select("program_id").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active");
-  const ids=(enr||[]).map((x:any)=>x.program_id);
-  if(!ids.length)throw new Error("QUIZ_NOT_AVAILABLE");
-  const {data:pq}=await admin.from("program_quizzes").select("id").eq("workspace_id",WORKSPACE_ID).eq("quiz_id",quiz.id).eq("availability","available").in("program_id",ids).limit(1);
-  if(!pq?.length)throw new Error("QUIZ_NOT_AVAILABLE");
+
   const {data:versions}=await admin.from("quiz_versions").select("id,version_no,settings").eq("workspace_id",WORKSPACE_ID).eq("quiz_id",quiz.id).eq("state","published").order("version_no",{ascending:false}).limit(1);
-  const version=versions?.[0];if(!version)throw new Error("VERSION_NOT_FOUND");
+  const version=versions?.[0];
+  if(!version)throw new Error("VERSION_NOT_FOUND");
+
+  const {data:enr}=await admin.from("learner_program_enrollments").select("program_id").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active");
+  const programIds=(enr||[]).map((x:any)=>x.program_id);
+  let viaProgram=false;
+  if(programIds.length){
+    const {data:pq}=await admin.from("program_quizzes").select("id").eq("workspace_id",WORKSPACE_ID).eq("quiz_id",quiz.id).eq("availability","available").in("program_id",programIds).limit(1);
+    viaProgram=Boolean(pq?.length);
+  }
+
+  const {data:assignment}=await admin.from("quiz_assignments").select("id,status,available_at,due_at").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("quiz_version_id",version.id).eq("status","assigned").order("created_at",{ascending:false}).limit(1).maybeSingle();
+  let viaAssignment=false;
+  if(assignment){
+    const now=Date.now();
+    viaAssignment=(!assignment.available_at||new Date(assignment.available_at).getTime()<=now)&&(!assignment.due_at||new Date(assignment.due_at).getTime()>=now);
+  }
+  if(!viaProgram&&!viaAssignment)throw new Error("QUIZ_NOT_AVAILABLE");
   return {quiz,version};
 }
 
