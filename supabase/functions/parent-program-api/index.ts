@@ -1,0 +1,108 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
+const WORKSPACE_ID = "55f9224c-8ba7-4cbc-9f88-713e6a6b41df";
+
+function cors(origin: string | null) {
+  const allowed = new Set(["https://fadiaboalward.github.io","http://localhost:5173","http://localhost:4173"]);
+  return {
+    "Access-Control-Allow-Origin": origin && allowed.has(origin) ? origin : "https://fadiaboalward.github.io",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json; charset=utf-8",
+    "Vary": "Origin",
+  };
+}
+function json(data: unknown, status=200, origin: string|null=null){ return new Response(JSON.stringify(data),{status,headers:cors(origin)}); }
+
+async function parent(req: Request){
+  const auth=req.headers.get("authorization")||"";
+  if(!auth.startsWith("Bearer ")) throw new Error("AUTH_REQUIRED");
+  const jwt=auth.slice(7).trim();
+  const {data,error}=await admin.auth.getUser(jwt);
+  if(error||!data.user) throw new Error("INVALID_PARENT_SESSION");
+  const {data:member}=await admin.from("workspace_members").select("role").eq("workspace_id",WORKSPACE_ID).eq("user_id",data.user.id).maybeSingle();
+  if(!member||!["owner","admin"].includes(member.role)) throw new Error("PARENT_MANAGE_FORBIDDEN");
+  return {user:data.user,role:member.role};
+}
+
+async function realLearner(learnerId:string){
+  const {data}=await admin.from("learners").select("id,display_name,slug,grade_level,metadata").eq("workspace_id",WORKSPACE_ID).eq("id",learnerId).eq("is_active",true).maybeSingle();
+  if(!data||Boolean((data.metadata||{}).is_test)) throw new Error("LEARNER_NOT_FOUND");
+  return data;
+}
+
+async function catalog(){
+  const [{data:learners0},{data:programs},{data:enrollments}] = await Promise.all([
+    admin.from("learners").select("id,display_name,slug,grade_level,metadata").eq("workspace_id",WORKSPACE_ID).eq("is_active",true).order("created_at"),
+    admin.from("learning_programs").select("id,slug,code,title,description,program_type,grade_level,school_year,primary_language,status,curriculum_id").eq("workspace_id",WORKSPACE_ID).eq("status","active").order("grade_level",{ascending:true,nullsFirst:false}).order("title"),
+    admin.from("learner_program_enrollments").select("id,learner_id,program_id,status,is_primary,started_at,ended_at").eq("workspace_id",WORKSPACE_ID).in("status",["active","paused"])
+  ]);
+  const learners=(learners0||[]).filter((l:any)=>!Boolean((l.metadata||{}).is_test)).map((l:any)=>({id:l.id,display_name:l.display_name,slug:l.slug,grade_level:l.grade_level}));
+  return {learners,programs:programs||[],enrollments:enrollments||[]};
+}
+
+async function setGrade(body:any){
+  const learnerId=String(body.learner_id||"");
+  const raw=body.grade_level;
+  const grade=raw===null||raw===""?null:Number(raw);
+  if(grade!==null&&(!Number.isInteger(grade)||grade<1||grade>12)) throw new Error("INVALID_GRADE");
+  await realLearner(learnerId);
+  const {error}=await admin.from("learners").update({grade_level:grade,updated_at:new Date().toISOString()}).eq("workspace_id",WORKSPACE_ID).eq("id",learnerId);
+  if(error) throw new Error("GRADE_UPDATE_FAILED");
+  return {ok:true,learner_id:learnerId,grade_level:grade};
+}
+
+async function setProgram(body:any){
+  const learnerId=String(body.learner_id||"");
+  const programId=String(body.program_id||"");
+  const mode=String(body.mode||"enroll");
+  const isPrimary=Boolean(body.is_primary);
+  const learner=await realLearner(learnerId);
+  const {data:program}=await admin.from("learning_programs").select("id,curriculum_id,grade_level,school_year,status,slug").eq("workspace_id",WORKSPACE_ID).eq("id",programId).maybeSingle();
+  if(!program||program.status!=="active") throw new Error("PROGRAM_NOT_FOUND");
+
+  if(mode==="remove"){
+    await admin.from("learner_program_enrollments").update({status:"withdrawn",is_primary:false,ended_at:new Date().toISOString().slice(0,10),updated_at:new Date().toISOString()}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("program_id",programId);
+    if(program.curriculum_id&&program.school_year){
+      await admin.from("learner_enrollments").update({status:"withdrawn",ended_at:new Date().toISOString().slice(0,10),updated_at:new Date().toISOString()}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("curriculum_id",program.curriculum_id).eq("school_year",program.school_year);
+    }
+    return {ok:true,mode:"remove"};
+  }
+  if(mode!=="enroll") throw new Error("INVALID_MODE");
+
+  if(isPrimary){
+    await admin.from("learner_program_enrollments").update({is_primary:false,updated_at:new Date().toISOString()}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active");
+  }
+  const {error}=await admin.from("learner_program_enrollments").upsert({workspace_id:WORKSPACE_ID,learner_id:learnerId,program_id:programId,status:"active",is_primary:isPrimary,started_at:new Date().toISOString().slice(0,10),ended_at:null,metadata:{managed_by_parent_dashboard:true}}, {onConflict:"learner_id,program_id"});
+  if(error) throw new Error("PROGRAM_ENROLL_FAILED");
+
+  if(program.curriculum_id&&program.school_year&&program.grade_level){
+    await admin.from("learner_enrollments").upsert({workspace_id:WORKSPACE_ID,learner_id:learnerId,curriculum_id:program.curriculum_id,school_year:program.school_year,grade_level:program.grade_level,status:"active",started_at:new Date().toISOString().slice(0,10),ended_at:null,metadata:{canonical_program_slug:program.slug,managed_by_parent_dashboard:true}}, {onConflict:"learner_id,curriculum_id,school_year"});
+  }
+  if(isPrimary&&program.grade_level&&learner.grade_level!==program.grade_level){
+    await admin.from("learners").update({grade_level:program.grade_level,updated_at:new Date().toISOString()}).eq("id",learnerId).eq("workspace_id",WORKSPACE_ID);
+  }
+  return {ok:true,mode:"enroll",is_primary:isPrimary};
+}
+
+Deno.serve(async(req:Request)=>{
+  const origin=req.headers.get("origin");
+  if(req.method==="OPTIONS") return new Response(null,{status:204,headers:cors(origin)});
+  if(req.method!=="POST") return json({error:"METHOD_NOT_ALLOWED"},405,origin);
+  try{
+    await parent(req);
+    const body=await req.json().catch(()=>({}));
+    const action=String(body.action||"");
+    if(action==="catalog") return json(await catalog(),200,origin);
+    if(action==="set_grade") return json(await setGrade(body),200,origin);
+    if(action==="set_program") return json(await setProgram(body),200,origin);
+    return json({error:"UNKNOWN_ACTION"},400,origin);
+  }catch(e){
+    const msg=e instanceof Error?e.message:"SERVER_ERROR";
+    const status=["AUTH_REQUIRED","INVALID_PARENT_SESSION"].includes(msg)?401:msg==="PARENT_MANAGE_FORBIDDEN"?403:["INVALID_GRADE","INVALID_MODE"].includes(msg)?400:["LEARNER_NOT_FOUND","PROGRAM_NOT_FOUND"].includes(msg)?404:500;
+    return json({error:msg},status,origin);
+  }
+});
