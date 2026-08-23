@@ -14,7 +14,7 @@ await page.addInitScript(() => {
 });
 
 const fakeProfile = {
-  learner: { id: 'qa-learner', display_name: 'اختبار QA', slug: 'test', grade_level: 5 },
+  learner: { id: 'qa-learner', display_name: 'اختبار QA', slug: 'test', grade_level: 5, is_test: true, avatar_emoji: '🧪' },
   gamification: {
     xp: 0, reward_points: 0, current_level: 1, current_streak: 0, longest_streak: 0,
     last_learning_date: null,
@@ -27,9 +27,35 @@ const fakeProfile = {
 await page.route('**/functions/v1/family-api', async route => {
   let body = {};
   try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'learner_choices') return route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ learners: [
+      { display_name: 'آية', slug: 'aya', avatar_emoji: '🌷', is_test: false },
+      { display_name: 'محمد', slug: 'mohammad', avatar_emoji: '🚀', is_test: false },
+      { display_name: 'اختبار', slug: 'test', avatar_emoji: '🧪', is_test: true },
+      { display_name: 'عبد القادر', slug: 'abdul-qader', avatar_emoji: '🧑‍🎓', is_test: false }
+    ] })
+  });
   if (body.action === 'student_profile') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fakeProfile) });
   if (body.action === 'complete_quiz') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ already_awarded: false, award: { xp: 0, reward_points: 0, badges: [] }, profile: fakeProfile }) });
   return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, ...fakeProfile }) });
+});
+await page.route('**/functions/v1/learning-api', async route => {
+  let body = {};
+  try { body = JSON.parse(route.request().postData() || '{}'); } catch {}
+  if (body.action === 'catalog') return route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ programs: [{
+      enrollment_id: 'qa-enrollment', is_primary: false, slug: 'qa-syrian-g5', code: 'QA-G5',
+      title: 'المنهاج السوري — الصف الخامس — QA', program_type: 'curriculum', grade_level: 5, school_year: '2025-2026', status: 'active',
+      quizzes: [
+        { slug: 'fractions-pages-54-57', title: 'الكسور (1)', description: 'تدريب', quiz_kind: 'practice', status: 'active' },
+        { slug: 'math-g5-unit1', title: 'الوحدة الأولى — تدريب شامل', description: 'رياضيات', quiz_kind: 'unit', status: 'active' },
+        { slug: 'arabic-g5-unit1', title: 'المواطنة والانتماء — تدريب شامل', description: 'لغة عربية', quiz_kind: 'unit', status: 'active' }
+      ]
+    }] })
+  });
+  return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'QA_NOT_IMPLEMENTED' }) });
 });
 await page.route('**/functions/v1/activity-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 await page.route('**/functions/v1/exam-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
@@ -38,6 +64,15 @@ const questionLabel = '.exam-status .topline > b:first-child';
 const gridColumns = async () => page.locator('#examAnswers').evaluate(el => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length);
 const url = `${BASE_URL}?qa=${Date.now()}#student`;
 await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+
+// New architecture smoke: program content must come from the backend catalog.
+await page.locator('[data-program="qa-syrian-g5"]').waitFor({ state: 'visible', timeout: 10000 });
+const dynamicQuizCount = await page.locator('.dynamic-program-quiz').count();
+if (dynamicQuizCount !== 3) throw new Error(`Expected 3 backend-driven quiz cards, got ${dynamicQuizCount}`);
+if (await page.locator('#fractionQuiz').isVisible()) throw new Error('Legacy learning card should be hidden when program catalog loads');
+if (await page.locator('[data-dynamic-test-banner]').count() !== 1) throw new Error('Test learner banner should come from learner metadata');
+
+// Legacy exam compatibility remains available while exam delivery is migrated server-side.
 await page.locator('#fractionExam').waitFor({ state: 'visible', timeout: 10000 });
 await page.locator('#fractionExam').click();
 await page.locator('.exam-status').waitFor({ state: 'visible', timeout: 5000 });
@@ -46,68 +81,47 @@ await page.waitForFunction(() => document.querySelector('#examAnswers')?.classLi
 
 const navBox = await page.locator('#examQuestionNavigator').boundingBox();
 if (!navBox || navBox.height > 70) throw new Error(`Navigator too tall: ${navBox?.height}`);
-
-// Numbering must be visible and stable.
 const numberLabels = await page.locator('#examAnswers .answer-number').allTextContents();
 if (numberLabels.length !== 5 || numberLabels[0] !== '١' || numberLabels[4] !== '٥') throw new Error(`Unexpected answer numbering: ${numberLabels.join(',')}`);
-
-// Short options: two columns on desktop and tablet, one on mobile.
 if (!(await page.locator('#examAnswers').evaluate(el => el.classList.contains('answer-layout-short')))) throw new Error('Q1 should be classified as short answers');
-if ((await gridColumns()) !== 2) throw new Error(`Desktop short answers should use 2 columns`);
-await page.setViewportSize({width:768,height:1024});
-await page.waitForTimeout(60);
-if ((await gridColumns()) !== 2) throw new Error(`Tablet short answers should use 2 columns`);
-await page.setViewportSize({width:390,height:844});
-await page.waitForTimeout(60);
-if ((await gridColumns()) !== 1) throw new Error(`Mobile answers should use 1 column`);
-await page.setViewportSize({width:1280,height:900});
-await page.waitForTimeout(60);
-
-// Long answer text must stay single-column even on desktop.
+if ((await gridColumns()) !== 2) throw new Error('Desktop short answers should use 2 columns');
+await page.setViewportSize({width:768,height:1024});await page.waitForTimeout(60);if((await gridColumns())!==2)throw new Error('Tablet short answers should use 2 columns');
+await page.setViewportSize({width:390,height:844});await page.waitForTimeout(60);if((await gridColumns())!==1)throw new Error('Mobile answers should use 1 column');
+await page.setViewportSize({width:1280,height:900});await page.waitForTimeout(60);
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(3).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 4 من 10'), questionLabel, { timeout: 5000 });
 await page.waitForFunction(() => document.querySelector('#examAnswers')?.classList.contains('answer-layout-long'), null, {timeout:5000});
 if ((await gridColumns()) !== 1) throw new Error('Long answers should remain single-column');
-
-// Continue existing exam QA flow.
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examAnswers .answer').first().click();
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(2).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examAnswers .answer').nth(1).click();
-
 await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 10000 });
-const restoredQ3 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');
-if (restoredQ3 !== '1') throw new Error(`Q3 answer not restored; got ${restoredQ3}`);
+const restoredQ3 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');if(restoredQ3!=='1')throw new Error(`Q3 answer not restored; got ${restoredQ3}`);
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
-const restoredQ1 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');
-if (restoredQ1 !== '0') throw new Error(`Q1 answer not restored; got ${restoredQ1}`);
-
-for (let q = 1; q <= 10; q++) {
-  const current = Number((await page.locator(questionLabel).innerText()).match(/السؤال\s+(\d+)/)?.[1] || 0);
-  if (current !== q) {
-    await page.locator('#examQuestionNavigator .exam-nav-btn').nth(q-1).click();
-    await page.waitForFunction(({sel,n}) => document.querySelector(sel)?.textContent?.includes(`السؤال ${n} من 10`), {sel:questionLabel,n:q}, { timeout: 5000 });
-  }
-  if (await page.locator('#examAnswers .answer.selected').count() === 0) await page.locator('#examAnswers .answer').first().click();
-}
+const restoredQ1 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');if(restoredQ1!=='0')throw new Error(`Q1 answer not restored; got ${restoredQ1}`);
+for(let q=1;q<=10;q++){const current=Number((await page.locator(questionLabel).innerText()).match(/السؤال\s+(\d+)/)?.[1]||0);if(current!==q){await page.locator('#examQuestionNavigator .exam-nav-btn').nth(q-1).click();await page.waitForFunction(({sel,n})=>document.querySelector(sel)?.textContent?.includes(`السؤال ${n} من 10`),{sel:questionLabel,n:q},{timeout:5000});}if(await page.locator('#examAnswers .answer.selected').count()===0)await page.locator('#examAnswers .answer').first().click();}
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(9).click();
 await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 10 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examSubmit').click();
 await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 8000 });
 await page.waitForTimeout(250);
+const reviewCount=await page.locator('.exam-review').count();if(reviewCount!==10)throw new Error(`Expected 10 result accordions, got ${reviewCount}`);
+if(await page.locator('.exam-review[open]').count())throw new Error('Expected result accordions collapsed');
+if(await page.locator('#examResultNavigator .result-nav-chip').count()!==10)throw new Error('Expected 10 result navigator chips');
+if(await page.locator('.exam-result-summary-v7').count()!==1)throw new Error('Result summary v7 not applied');
 
-const reviewCount = await page.locator('.exam-review').count();
-if (reviewCount !== 10) throw new Error(`Expected 10 result accordions, got ${reviewCount}`);
-const openCount = await page.locator('.exam-review[open]').count();
-if (openCount !== 0) throw new Error(`Expected result accordions collapsed, got ${openCount} open`);
-const resultNavCount = await page.locator('#examResultNavigator .result-nav-chip').count();
-if (resultNavCount !== 10) throw new Error(`Expected 10 result navigator chips, got ${resultNavCount}`);
-if (await page.locator('.exam-result-summary-v7').count() !== 1) throw new Error('Result summary v7 not applied');
+// New learner smoke: adding a learner in backend choices must create a login card with no frontend code change.
+await page.evaluate(() => { localStorage.removeItem('learner_session'); sessionStorage.removeItem('learner_session'); });
+await page.goto(`${BASE_URL}?qa=learners-${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
+await page.locator('[data-dynamic-learner="abdul-qader"]').waitFor({ state: 'visible', timeout: 10000 });
+const learnerCards = await page.locator('[data-dynamic-learner]').count();
+if (learnerCards !== 4) throw new Error(`Expected 4 backend-driven learner cards, got ${learnerCards}`);
 
 if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-console.log('QA PASS: responsive numbered answers + exam persistence + result UX');
+console.log('QA PASS: dynamic learners/programs + test isolation UI + legacy exam compatibility');
 await browser.close();
