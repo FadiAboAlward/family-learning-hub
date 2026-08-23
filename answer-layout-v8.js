@@ -42,7 +42,9 @@
 
     const max = Math.max(...lengths);
     const avg = lengths.reduce((a,b)=>a+b,0) / lengths.length;
-    const shortEnough = max <= 28 && avg <= 22;
+    // Two columns are only for genuinely compact choices. Longer text and
+    // multi-part mathematical relations keep the full row for readability.
+    const shortEnough = max <= 18 && avg <= 16;
     group.classList.toggle('answer-layout-short', shortEnough);
     group.classList.toggle('answer-layout-long', !shortEnough);
   }
