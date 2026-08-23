@@ -1,0 +1,43 @@
+# Family Learning Hub
+
+A scalable learning platform for multiple learners, curricula, subjects, books, units, lessons, quizzes, adaptive practice, and parent reporting.
+
+## Architecture principles
+
+- Multi-learner and multi-curriculum from day one.
+- Migration-first database changes.
+- Versioned quiz content so historical attempts remain reproducible.
+- Configuration over hard-coded behavior.
+- Concept-based adaptive learning rather than score-only quizzes.
+- Progressive hints and attempt-level telemetry.
+- Parent reporting that distinguishes first-try mastery from assisted success.
+- Security by default with Supabase Row Level Security (RLS).
+
+## Current infrastructure
+
+- **Database / Auth / API:** Supabase
+- **Source control:** GitHub
+- **Frontend:** planned as a static web application that can be hosted without a dedicated server.
+- **Repository visibility:** Private
+
+## Adaptive quiz defaults
+
+New quiz behavior is configurable in Supabase (`workspace_settings`, key `quiz.adaptive_defaults`). Current defaults:
+
+- 5 options for new multiple-choice questions.
+- 4 attempts per question.
+- Up to 4 progressive hint levels.
+- Attempt score weights: 100%, 75%, 50%, 25%.
+- Remediation trigger after 3 unsuccessful attempts.
+- Remediation stays on the same concept and difficulty by default.
+- Prefer pre-generated question variants; live generation is disabled initially.
+
+## Main documentation
+
+- `docs/architecture.md`
+- `docs/adaptive-learning.md`
+- `supabase/migrations/`
+
+## Change policy
+
+Every schema change must be a Supabase migration and committed to this repository. Every meaningful behavior change should be configurable or documented so the platform can evolve without destructive rewrites.
