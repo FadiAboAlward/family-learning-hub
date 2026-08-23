@@ -94,19 +94,21 @@ await page.waitForFunction(() => document.querySelectorAll('.exam-v2-card').leng
 if (await page.locator('#fractionExam').count() !== 0) throw new Error('Legacy #fractionExam must not exist');
 if (await page.locator('#fractionQuiz').count() && await page.locator('#fractionQuiz').isVisible()) throw new Error('Legacy #fractionQuiz must stay hidden');
 
-// 3) New server exam path: no feedback during solving; result appears only after submit.
+// 3) New server exam path: answers must finish saving before navigation/submit.
 await page.locator('.exam-v2-card').first().click();
 await page.locator('#examV2Answers').waitFor({state:'visible',timeout:5000});
 await page.locator('.exam-v2-answer').first().click();
+await page.getByText('1/2 مجاب').waitFor({state:'visible',timeout:5000});
 await page.locator('#examV2Next').click();
 await page.locator('.exam-v2-answer').first().click();
+await page.getByText('2/2 مجاب').waitFor({state:'visible',timeout:5000});
 await page.locator('#examV2Submit').waitFor({state:'visible',timeout:5000});
-if (await page.locator('#examV2Submit').isDisabled()) throw new Error('Exam submit should enable after all answers are saved');
+if (await page.locator('#examV2Submit').isDisabled()) throw new Error('Exam submit should enable after all answers are persisted');
 await page.locator('#examV2Submit').click();
 await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
 if (await page.locator('.exam-review').count() !== 2) throw new Error('Exam V2 review should contain 2 questions');
 
-// 4) Mohammed has Grade 7 but no program: absolutely no Aya quiz/exam may appear.
+// 4) Mohammad has Grade 7 but no program: absolutely no Aya quiz/exam may appear.
 profileMode='mohammad';
 await page.reload({waitUntil:'networkidle',timeout:30000});
 await page.getByText('ما في برنامج تعليمي مربوط بهذا الحساب بعد.').waitFor({state:'visible',timeout:10000});
