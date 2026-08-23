@@ -2,7 +2,7 @@
   const SUPABASE_URL='https://gkpoylfozvuwuwqeoduc.supabase.co';
   const PUBLISHABLE_KEY='sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
   const EXAM_API=`${SUPABASE_URL}/functions/v1/exam-v2-api`;
-  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const renderMath=(s='')=>typeof math==='function'?math(safe(s)):safe(s);
   const learnerToken=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
 
@@ -17,7 +17,7 @@
     const oldLearn=document.getElementById('fractionQuiz'); if(oldLearn) oldLearn.style.display='none';
     document.getElementById('fractionExam')?.remove();
     document.querySelectorAll('[data-program-error]').forEach(el=>{
-      if((el.textContent||'').includes('التدريب القديم')) el.textContent='تعذر تحميل البرامج من قاعدة البيانات. لم نعرض أي محتوى احتياطي حتى لا يظهر تدريب لطالب غير مخصص له.';
+      if((el.textContent||'').includes('التدريب القديم')) el.textContent='تعذر تحميل مكتبتك من قاعدة البيانات. لم نعرض أي محتوى احتياطي حتى لا يظهر تدريب غير مخصص لك.';
     });
   }
 
@@ -37,7 +37,7 @@
 
   async function startExam(slug){
     if(typeof shell!=='function') return;
-    shell('📝 جاري تجهيز الامتحان','الأسئلة تُحمّل من البرنامج المرتبط بهذا الحساب.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
+    shell('📝 جاري تجهيز الامتحان','الأسئلة تُحمّل من المحتوى المخصص لهذا الحساب.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
     let session;
     try{ session=await examApi('start_exam',{quiz_slug:slug}); }
     catch{ shell('تعذر فتح الامتحان','هذا الامتحان غير متاح لهذا الطالب.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="examV2Back">رجوع</button></div></section>'); document.getElementById('examV2Back')?.addEventListener('click',()=>renderStudentHome(state.learnerProfile)); return; }
@@ -94,6 +94,9 @@
     }
     render();
   }
+
+  window.FLH=window.FLH||{};
+  window.FLH.startExamQuiz=startExam;
 
   const observer=new MutationObserver(()=>{disableLegacy();installExamButtons();});
   observer.observe(document.documentElement,{childList:true,subtree:true});
