@@ -34,6 +34,7 @@ await page.route('**/functions/v1/family-api', async route => {
 await page.route('**/functions/v1/activity-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 await page.route('**/functions/v1/exam-api', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 
+const questionLabel = '.exam-status .topline > b:first-child';
 const url = `${BASE_URL}?qa=${Date.now()}#student`;
 await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 await page.locator('#fractionExam').waitFor({ state: 'visible', timeout: 10000 });
@@ -41,37 +42,33 @@ await page.locator('#fractionExam').click();
 await page.locator('.exam-status').waitFor({ state: 'visible', timeout: 5000 });
 await page.locator('#examQuestionNavigator').waitFor({ state: 'visible', timeout: 5000 });
 
-// Navigator must stay compact.
 const navBox = await page.locator('#examQuestionNavigator').boundingBox();
 if (!navBox || navBox.height > 70) throw new Error(`Navigator too tall: ${navBox?.height}`);
 
-// Answer Q1, jump to Q3 and answer it.
 await page.locator('#examAnswers .answer').first().click();
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(2).click();
-await page.waitForFunction(() => document.querySelector('.exam-status .topline b')?.textContent?.includes('السؤال 3 من 10'), null, { timeout: 5000 });
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examAnswers .answer').nth(1).click();
 
-// Refresh must restore same exam, same current question and saved answers.
 await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
-await page.waitForFunction(() => document.querySelector('.exam-status .topline b')?.textContent?.includes('السؤال 3 من 10'), null, { timeout: 10000 });
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 3 من 10'), questionLabel, { timeout: 10000 });
 const restoredQ3 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');
 if (restoredQ3 !== '1') throw new Error(`Q3 answer not restored; got ${restoredQ3}`);
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(0).click();
-await page.waitForFunction(() => document.querySelector('.exam-status .topline b')?.textContent?.includes('السؤال 1 من 10'), null, { timeout: 5000 });
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 1 من 10'), questionLabel, { timeout: 5000 });
 const restoredQ1 = await page.locator('#examAnswers .answer.selected').getAttribute('data-n');
 if (restoredQ1 !== '0') throw new Error(`Q1 answer not restored; got ${restoredQ1}`);
 
-// Fill remaining questions and submit to inspect result UX.
 for (let q = 1; q <= 10; q++) {
-  const current = Number((await page.locator('.exam-status .topline b').innerText()).match(/السؤال\s+(\d+)/)?.[1] || 0);
+  const current = Number((await page.locator(questionLabel).innerText()).match(/السؤال\s+(\d+)/)?.[1] || 0);
   if (current !== q) {
     await page.locator('#examQuestionNavigator .exam-nav-btn').nth(q-1).click();
-    await page.waitForFunction(n => document.querySelector('.exam-status .topline b')?.textContent?.includes(`السؤال ${n} من 10`), q, { timeout: 5000 });
+    await page.waitForFunction(({sel,n}) => document.querySelector(sel)?.textContent?.includes(`السؤال ${n} من 10`), {sel:questionLabel,n:q}, { timeout: 5000 });
   }
   if (await page.locator('#examAnswers .answer.selected').count() === 0) await page.locator('#examAnswers .answer').first().click();
 }
 await page.locator('#examQuestionNavigator .exam-nav-btn').nth(9).click();
-await page.waitForFunction(() => document.querySelector('.exam-status .topline b')?.textContent?.includes('السؤال 10 من 10'), null, { timeout: 5000 });
+await page.waitForFunction(sel => document.querySelector(sel)?.textContent?.includes('السؤال 10 من 10'), questionLabel, { timeout: 5000 });
 await page.locator('#examSubmit').click();
 await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 8000 });
 await page.waitForTimeout(250);
