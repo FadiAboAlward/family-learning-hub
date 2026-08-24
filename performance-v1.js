@@ -1,17 +1,22 @@
 (() => {
   const nativeFetch = window.fetch.bind(window);
   const SUPABASE_ORIGIN = 'https://gkpoylfozvuwuwqeoduc.supabase.co';
+  const LIVE_ORIGIN = 'https://fadiaboalward.github.io';
   const DB_REGION = 'ap-southeast-1';
   const responseCache = new Map();
   const inflight = new Map();
   const deferredDrafts = new Map();
+
+  function shouldForceRegion() {
+    return location.origin === LIVE_ORIGIN;
+  }
 
   function regionalUrl(input) {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input?.url;
     if (!raw) return null;
     try {
       const u = new URL(raw, location.href);
-      if (u.origin === SUPABASE_ORIGIN && u.pathname.startsWith('/functions/v1/')) {
+      if (shouldForceRegion() && u.origin === SUPABASE_ORIGIN && u.pathname.startsWith('/functions/v1/')) {
         u.searchParams.set('forceFunctionRegion', DB_REGION);
       }
       return u.toString();
@@ -90,7 +95,8 @@
     const cached = responseCache.get(key);
     if (cached && cached.expiresAt > Date.now()) return;
     if (inflight.has(key)) return;
-    const url = `${SUPABASE_ORIGIN}/functions/v1/student-library-api?forceFunctionRegion=${DB_REGION}`;
+    const base = `${SUPABASE_ORIGIN}/functions/v1/student-library-api`;
+    const url = shouldForceRegion() ? `${base}?forceFunctionRegion=${DB_REGION}` : base;
     const h = new Headers(headers);
     h.set('content-type', 'application/json');
     const p = fetchSnapshot(url, { method: 'POST', headers: h, body: JSON.stringify({ action: 'catalog' }) })
