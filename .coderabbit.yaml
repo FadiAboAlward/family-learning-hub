@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/*.min.js"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.jpeg"
+    - "!**/*.webp"
+
+  path_instructions:
+    - path: "**/*.{js,html,css}"
+      instructions: |
+        Review this as a child-facing, mobile-first Arabic/RTL learning application.
+        - Prioritize regressions in student navigation, learning mode, exam mode, parent access, and content isolation between learners.
+        - Flag hard-coded learner names, grades, books, quizzes, or curriculum access when the behavior should be data-driven.
+        - Preserve the hierarchy: program or standalone book -> book -> unit -> learning/exam mode.
+        - Learning mode may provide hints and feedback; exam mode must not reveal correctness before final submission.
+        - Treat server-authoritative grading and saved state as security/integrity requirements. Flag any client-trusted score or grading path.
+        - Check mobile touch usability, accidental double actions, loading states, resume behavior, and RTL layout.
+        - Flag visible English UI copy that should be Arabic, Arabic spelling/copy regressions, and reversed school-year strings.
+        - Do not recommend reviving legacy quiz/exam runtime files that the active index no longer loads.
+
+    - path: "tests/**"
+      instructions: |
+        Treat QA tests as merge-safety infrastructure.
+        - Flag changes that weaken assertions only to make a failing test pass.
+        - Require coverage for the user behavior changed by the PR, especially mobile interactions and learner-content isolation.
+        - Keep deterministic checks for Arabic copy, runtime file references, and legacy-engine guards.
+        - Prefer mocked external APIs in browser smoke tests so CI remains stable and reproducible.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Protect the QA Gate.
+        - QA must run on every pull request targeting main, regardless of changed file type.
+        - Static quality must run before browser QA.
+        - Do not add paths filters that would allow a PR to bypass QA.
+        - Flag permissions broader than required and avoid exposing secrets to untrusted pull requests.
+
+    - path: "docs/**"
+      instructions: |
+        Check architecture and QA documentation for consistency with the live system.
+        Flag claims that a feature is enforced when it is only advisory or not actually configured.
+
+chat:
+  auto_reply: true
