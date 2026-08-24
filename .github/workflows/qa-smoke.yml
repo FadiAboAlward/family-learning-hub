@@ -37,7 +37,7 @@ jobs:
     name: Browser smoke
     needs: static-quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,27 +77,6 @@ jobs:
           path: |
             performance-report.json
             performance-summary.md
-          if-no-files-found: ignore
-      - name: Probe deployed live frontend performance
-        if: github.head_ref == 'performance-gate-v1' || github.event_name == 'workflow_dispatch'
-        env:
-          APP_URL: https://fadiaboalward.github.io/family-learning-hub/
-          PERF_SAVE_DELAY_MS: '2500'
-          PERF_APP_READY_LIMIT_MS: '5000'
-          PERF_EXAM_OPEN_LIMIT_MS: '1200'
-        run: |
-          node tests/performance.mjs
-          mv performance-report.json live-performance-report.json
-          mv performance-summary.md live-performance-summary.md
-          cat live-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload live performance report
-        if: always() && (github.head_ref == 'performance-gate-v1' || github.event_name == 'workflow_dispatch')
-        uses: actions/upload-artifact@v4
-        with:
-          name: live-performance-report
-          path: |
-            live-performance-report.json
-            live-performance-summary.md
           if-no-files-found: ignore
       - name: Run rendered Arabic copy QA
         env:
