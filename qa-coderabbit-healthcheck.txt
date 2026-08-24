@@ -1,0 +1,1 @@
+Temporary integration healthcheck for GitHub Ruleset, QA Gate, and CodeRabbit auto-review. Safe to close without merging.
