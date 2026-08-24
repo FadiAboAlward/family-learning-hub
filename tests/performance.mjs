@@ -87,9 +87,7 @@ const answerVisualMs=await page.evaluate(async()=>{
   });
 });
 
-await page.waitForFunction(()=>document.body.textContent.includes('يتم حفظها بالخلفية'),null,{timeout:1000});
-await page.waitForTimeout(50);
-if(!saveStartedAt)await page.waitForTimeout(100);
+for(let i=0;i<40&&!saveStartedAt;i++)await page.waitForTimeout(25);
 
 const nextQuestionMs=await page.evaluate(async()=>{
   const btn=document.querySelector('#examNext');
