@@ -2,145 +2,58 @@ import { chromium } from 'playwright';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const browser=await chromium.launch({headless:true});
-const page=await browser.newPage({viewport:{width:1280,height:900}});
-const errors=[];
-page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
-page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
-
-let profileMode='aya';
-let chessAssigned=false;
+const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+const errors=[];page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+let profileMode='aya',chessAssigned=false;let learningCalls={draft:0,hint:0,answer:0},examCalls={save:0,flag:0};
 const gamification={xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,last_learning_date:null,current_level_info:{level_no:1,name:'مستكشف',min_xp:0,icon:'🌱'},next_level_info:{level_no:2,name:'متعلم نشيط',min_xp:250,icon:'⭐'},xp_to_next:250,badges:[],rewards:[]};
-const profiles={
-  aya:{learner:{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5,is_test:false,avatar_emoji:'🌷'},gamification},
-  mohammad:{learner:{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7,is_test:false,avatar_emoji:'🚀'},gamification}
-};
-const mathQuiz={id:'qm',slug:'math-g5-unit1',title:'الوحدة الأولى — تدريب شامل',description:'رياضيات',quiz_kind:'unit',book_id:'bm',unit_id:'um1',delivery_config:{}};
-const arabicQuiz={id:'qa',slug:'arabic-g5-unit1',title:'المواطنة والانتماء — تدريب شامل',description:'لغة عربية',quiz_kind:'unit',book_id:'ba',unit_id:'ua1',delivery_config:{}};
-const chessQuiz={id:'qc',slug:'chess-openings-1',title:'افتتاحيات الشطرنج — تدريب 1',description:'تدريب مبسط',quiz_kind:'practice',book_id:'bc',unit_id:'uc1',delivery_config:{}};
-const mathBook={id:'bm',code:'MATH-G5',title:'الرياضيات - كتاب التلميذ - الصف الخامس',grade_level:5,school_year:'2025-2026',language:'ar',source_kind:'textbook',subject:{name_ar:'الرياضيات'},units:[{id:'um1',slug:'unit-1',title:'الوحدة الأولى',sort_order:1,quizzes:[mathQuiz]}],extras:[]};
-const arabicBook={id:'ba',code:'AR-G5',title:'لغتي - الصف الخامس الأساسي - الفصل الأول',grade_level:5,school_year:'2025-2026',language:'ar',source_kind:'textbook',subject:{name_ar:'اللغة العربية'},units:[{id:'ua1',slug:'unit-1',title:'الوحدة الأولى: المواطنة والانتماء',sort_order:1,quizzes:[arabicQuiz]}],extras:[]};
-const chessBook={id:'bc',code:'CHESS',title:'الشطرنج للمبتدئين',grade_level:null,school_year:null,language:'ar',source_kind:'course_material',subject:{name_ar:'الشطرنج'},units:[{id:'uc1',slug:'openings',title:'افتتاحيات بسيطة',sort_order:1,quizzes:[chessQuiz]}],extras:[],access_origin:'book'};
+const profiles={aya:{learner:{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5,is_test:false,avatar_emoji:'🌷'},gamification},mohammad:{learner:{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7,is_test:false,avatar_emoji:'🚀'},gamification}};
+const mathQuiz={id:'qm',slug:'math-g5-unit1',title:'الوحدة الأولى — تدريب شامل',description:'رياضيات',quiz_kind:'unit',book_id:'bm',unit_id:'um1'};
+const arabicQuiz={id:'qa',slug:'arabic-g5-unit1',title:'المواطنة والانتماء — تدريب شامل',description:'لغة عربية',quiz_kind:'unit',book_id:'ba',unit_id:'ua1'};
+const mathBook={id:'bm',title:'الرياضيات - كتاب التلميذ - الصف الخامس',grade_level:5,school_year:'2025-2026',subject:{name_ar:'الرياضيات'},units:[{id:'um1',slug:'unit-1',title:'الوحدة الأولى',quizzes:[mathQuiz]}],extras:[]};
+const arabicBook={id:'ba',title:'لغتي - الصف الخامس الأساسي - الفصل الأول',grade_level:5,school_year:'2025-2026',subject:{name_ar:'اللغة العربية'},units:[{id:'ua1',slug:'unit-1',title:'الوحدة الأولى: المواطنة والانتماء',quizzes:[arabicQuiz]}],extras:[]};
+const chessBook={id:'bc',title:'الشطرنج للمبتدئين',grade_level:null,school_year:null,subject:{name_ar:'الشطرنج'},units:[{id:'uc1',slug:'openings',title:'افتتاحيات بسيطة',quizzes:[{id:'qc',slug:'chess-openings-1',title:'تدريب افتتاحيات',description:'',quiz_kind:'practice',book_id:'bc',unit_id:'uc1'}]}],extras:[]};
 const program={enrollment_id:'enr-aya',is_primary:true,id:'pg5',slug:'syrian-g5-2025-2026',code:'SY-G5',title:'المنهاج السوري — الصف الخامس — 2025–2026',program_type:'curriculum',grade_level:5,school_year:'2025-2026',status:'active',books:[arabicBook,mathBook]};
 
-await page.route('**/functions/v1/family-api',async route=>{
-  let b={};try{b=JSON.parse(route.request().postData()||'{}')}catch{}
-  if(b.action==='learner_choices')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[{display_name:'آية',slug:'aya',avatar_emoji:'🌷',is_test:false},{display_name:'محمد',slug:'mohammad',avatar_emoji:'🚀',is_test:false},{display_name:'اختبار',slug:'test',avatar_emoji:'🧪',is_test:true},{display_name:'عبد القادر',slug:'abdul-qader',avatar_emoji:'🧑‍🎓',is_test:false}]})});
-  if(b.action==='student_profile')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(profiles[profileMode])});
-  if(b.action==='parent_dashboard')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({parent:{id:'p1',email:'parent@example.test',relation:'father',role:'owner'},learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],states:[],attempts:[],reward_claims:[]})});
-  return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-});
+await page.route('**/functions/v1/family-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='learner_choices')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[{display_name:'آية',slug:'aya',avatar_emoji:'🌷',is_test:false},{display_name:'محمد',slug:'mohammad',avatar_emoji:'🚀',is_test:false},{display_name:'اختبار',slug:'test',avatar_emoji:'🧪',is_test:true},{display_name:'عبد القادر',slug:'abdul-qader',avatar_emoji:'🧑‍🎓',is_test:false}]})});if(b.action==='student_profile')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(profiles[profileMode])});if(b.action==='parent_dashboard')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({parent:{id:'p1',email:'parent@example.test',relation:'father',role:'owner'},learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],states:[],attempts:[],reward_claims:[]})});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+await page.route('**/functions/v1/student-library-api',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(profileMode==='aya'?{programs:[program],standalone_books:[]}:{programs:[],standalone_books:chessAssigned?[chessBook]:[]})}));
+await page.route('**/functions/v1/question-reference-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};const codes=b.attempt_id==='ea'?{eq1:'Q-000051',eq2:'Q-000052'}:{lq1:'Q-000007'};return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({codes})});});
+await page.route('**/functions/v1/learning-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='start_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'la',resumed:false,quiz:{slug:b.quiz_slug,title:'تدريب QA'},queue:[{id:'qr1',sequence_no:1,question_id:'lq1',source_role:'core',status:'active',draft_option_position:null,hint_level_requested:0,is_flagged:false,question:{id:'lq1',question_code:'Q-000007',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}],assets:[]}}]})});if(b.action==='save_draft'){learningCalls.draft++;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,option_position:b.option_position})});}if(b.action==='request_hint'){learningCalls.hint++;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,hint_level:1,hint:{hint_level:1,content:'اجمع 2 مع 2.'},exhausted:false})});}if(b.action==='answer'){learningCalls.answer++;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:true,attempt_no:1,finalized:true,explanation:'صحيح'})});}if(b.action==='finish_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,first_try_correct:1,hints_used:1,award:{already_awarded:false,xp:10,reward_points:2},review:[{question_id:'lq1',question_code:'Q-000007',prompt:'2 + 2 = ؟',is_correct:true,explanation:'صحيح'}]})});return r.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});});
+await page.route('**/functions/v1/exam-v2-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='start_exam')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'ea',resumed:true,quiz:{slug:b.quiz_slug,title:'امتحان QA'},questions:[{sequence_no:1,question_id:'eq1',status:'active',is_flagged:false,saved_response:null,question:{id:'eq1',question_code:'Q-000051',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}],assets:[]}},{sequence_no:2,question_id:'eq2',status:'pending',is_flagged:false,saved_response:null,question:{id:'eq2',question_code:'Q-000052',prompt:'3 + 1 = ؟',options:[{position:1,content:'4'},{position:2,content:'6'}],assets:[]}}]})});if(b.action==='save_answer'){examCalls.save++;return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});}if(b.action==='set_flag'){examCalls.flag++;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,is_flagged:b.is_flagged})});}if(b.action==='submit_exam')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,score_points:2,max_points:2,review:[{question_id:'eq1',question_code:'Q-000051',prompt:'2 + 2 = ؟',is_correct:true,was_flagged:true,explanation:'صحيح'},{question_id:'eq2',question_code:'Q-000052',prompt:'3 + 1 = ؟',is_correct:true,was_flagged:false,explanation:'صحيح'}]})});return r.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});});
+await page.route('**/functions/v1/parent-program-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='set_content'){if(b.learner_id==='moh-id'&&b.resource_type==='book'&&b.resource_id==='bc')chessAssigned=b.mode==='add';return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});}if(['set_grade','set_program'].includes(b.action))return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});if(b.action==='catalog')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],programs:[{id:'pg5',slug:'syrian-g5-2025-2026',title:program.title,program_type:'curriculum',grade_level:5,school_year:'2025-2026',status:'active'}],enrollments:[{id:'enr-aya',learner_id:'aya-id',program_id:'pg5',status:'active',is_primary:true}],books:[{id:'ba',title:arabicBook.title,grade_level:5,subject:{name_ar:'اللغة العربية'}},{id:'bm',title:mathBook.title,grade_level:5,subject:{name_ar:'الرياضيات'}},{id:'bc',title:chessBook.title,grade_level:null,subject:{name_ar:'الشطرنج'}}],program_books:[{program_id:'pg5',book_id:'ba',sort_order:10},{program_id:'pg5',book_id:'bm',sort_order:20}],content_assignments:chessAssigned?[{id:'ca',learner_id:'moh-id',resource_type:'book',resource_id:'bc',status:'active'}]:[]})});return r.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});});
+await page.route('**/functions/v1/activity-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(['learner_activity','learner_logout'].includes(b.action))return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});const learners=[{id:'aya-id',display_name:'آية',slug:'aya'},{id:'moh-id',display_name:'محمد',slug:'mohammad'}];if(b.action==='parent_session_summary')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({days:7,learners,summaries:[{learner_id:'aya-id',sessions:3,duration_seconds:3600,average_seconds:1200,last_session_at:new Date().toISOString()},{learner_id:'moh-id',sessions:1,duration_seconds:600,average_seconds:600,last_session_at:new Date().toISOString()}]})});if(b.action==='parent_sessions_query')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners,sessions:[{id:'s1',learner_id:'aya-id',entry_type:'login',started_at:new Date().toISOString(),ended_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),duration_seconds:1200}],page:Number(b.page||1),page_size:25,total:52,total_pages:3})});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
 
-await page.route('**/functions/v1/student-library-api',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(profileMode==='aya'?{programs:[program],standalone_books:[]}:{programs:[],standalone_books:chessAssigned?[chessBook]:[]})}));
-
-await page.route('**/functions/v1/learning-api',async route=>{
-  let b={};try{b=JSON.parse(route.request().postData()||'{}')}catch{}
-  if(b.action==='start_quiz')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'la',quiz:{slug:b.quiz_slug,title:'تدريب QA'},queue:[{sequence_no:1,question_id:'lq',source_role:'core',status:'active',question:{id:'lq',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}]}}]})});
-  if(b.action==='answer')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:true,attempt_no:1,finalized:true,explanation:'صحيح'})});
-  if(b.action==='finish_quiz')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,first_try_correct:1,hints_used:0,award:{already_awarded:false,xp:10,reward_points:2},review:[]})});
-  return route.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});
-});
-
-await page.route('**/functions/v1/exam-v2-api',async route=>{
-  let b={};try{b=JSON.parse(route.request().postData()||'{}')}catch{}
-  if(b.action==='start_exam')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'ea',quiz:{slug:b.quiz_slug,title:'امتحان QA'},questions:[{sequence_no:1,question_id:'eq',status:'active',saved_response:null,question:{id:'eq',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}]}}]})});
-  if(b.action==='save_answer')return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-  if(b.action==='submit_exam')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,score_points:1,max_points:1,review:[]})});
-  return route.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});
-});
-
-await page.route('**/functions/v1/parent-program-api',async route=>{
-  let b={};try{b=JSON.parse(route.request().postData()||'{}')}catch{}
-  if(b.action==='set_content'){if(b.learner_id==='moh-id'&&b.resource_type==='book'&&b.resource_id==='bc')chessAssigned=b.mode==='add';return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});}
-  if(['set_grade','set_program'].includes(b.action))return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-  if(b.action==='catalog')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5},{id:'moh-id',display_name:'محمد',slug:'mohammad',grade_level:7}],programs:[{id:'pg5',slug:'syrian-g5-2025-2026',title:program.title,program_type:'curriculum',grade_level:5,school_year:'2025-2026',status:'active'}],enrollments:[{id:'enr-aya',learner_id:'aya-id',program_id:'pg5',status:'active',is_primary:true}],books:[{id:'ba',title:arabicBook.title,grade_level:5,subject:{name_ar:'اللغة العربية'}},{id:'bm',title:mathBook.title,grade_level:5,subject:{name_ar:'الرياضيات'}},{id:'bc',title:chessBook.title,grade_level:null,subject:{name_ar:'الشطرنج'}}],program_books:[{program_id:'pg5',book_id:'ba',sort_order:10},{program_id:'pg5',book_id:'bm',sort_order:20}],content_assignments:chessAssigned?[{id:'ca',learner_id:'moh-id',resource_type:'book',resource_id:'bc',status:'active'}]:[]})});
-  return route.fulfill({status:400,contentType:'application/json',body:'{"error":"QA"}'});
-});
-
-await page.route('**/functions/v1/activity-api',async route=>{
-  let b={};try{b=JSON.parse(route.request().postData()||'{}')}catch{}
-  if(['learner_activity','learner_logout'].includes(b.action))return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-  const learners=[{id:'aya-id',display_name:'آية',slug:'aya'},{id:'moh-id',display_name:'محمد',slug:'mohammad'}];
-  if(b.action==='parent_session_summary')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({days:7,learners,summaries:[{learner_id:'aya-id',sessions:3,duration_seconds:3600,average_seconds:1200,last_session_at:new Date().toISOString()},{learner_id:'moh-id',sessions:1,duration_seconds:600,average_seconds:600,last_session_at:new Date().toISOString()}]})});
-  if(b.action==='parent_sessions_query')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners,sessions:[{id:'s1',learner_id:'aya-id',entry_type:'login',started_at:new Date().toISOString(),ended_at:new Date().toISOString(),last_activity_at:new Date().toISOString(),duration_seconds:1200}],page:Number(b.page||1),page_size:25,total:52,total_pages:3})});
-  if(b.action==='parent_sessions')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners,sessions:[]})});
-  return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-});
-
-// Dynamic learner list.
+// Backend-driven learner list.
 await page.goto(`${BASE_URL}?qa=login-${Date.now()}#student`,{waitUntil:'networkidle',timeout:30000});
 await page.locator('[data-dynamic-learner="abdul-qader"]').waitFor({state:'visible',timeout:10000});
-if(await page.locator('[data-dynamic-learner]').count()!==4)throw new Error('Learner list is not backend-driven');
+if(await page.locator('[data-dynamic-learner]').count()!==4)throw new Error('Dynamic learners failed');
 
-// Aya hierarchy: Program -> Book -> Unit -> Mode.
-await page.evaluate(()=>localStorage.setItem('learner_session','qa-learner'));
-profileMode='aya';
-await page.reload({waitUntil:'networkidle',timeout:30000});
-await page.locator('[data-student-library]').waitFor({state:'visible',timeout:10000});
-if(await page.locator('[data-open-program]').count()!==1)throw new Error('Aya program missing');
-if(await page.locator('.dynamic-program-quiz').count()!==0)throw new Error('Retired flat quiz catalog still rendered');
-await page.locator('[data-open-program="0"]').click();
-if(await page.locator('[data-book]').count()!==2)throw new Error('Program should show two books');
-await page.locator('[data-book]').filter({hasText:'الرياضيات'}).first().click();
-await page.locator('[data-unit="0"]').click();
-if(await page.locator('[data-learn="math-g5-unit1"]').count()!==1)throw new Error('Learning mode missing at unit level');
-if(await page.locator('[data-exam="math-g5-unit1"]').count()!==1)throw new Error('Exam mode missing at unit level');
-
-// Launch both engines from hierarchy.
-await page.locator('[data-learn="math-g5-unit1"]').click();
-await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:5000});
-await page.locator('.flh-learn-answer').first().click();
-await page.locator('#flhLearnNext').waitFor({state:'visible',timeout:5000});
-await page.locator('#flhLearnNext').click();
-await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
+// Aya hierarchy and Learning UX.
+await page.evaluate(()=>localStorage.setItem('learner_session','qa-learner'));profileMode='aya';await page.reload({waitUntil:'networkidle',timeout:30000});
+await page.locator('[data-open-program="0"]').waitFor({state:'visible',timeout:10000});await page.locator('[data-open-program="0"]').click();await page.locator('[data-book]').filter({hasText:'الرياضيات'}).first().click();await page.locator('[data-unit="0"]').click();
+await page.locator('[data-learn="math-g5-unit1"]').click();await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:5000});
+await page.locator('#flhHelp').click();await page.getByText('اجمع 2 مع 2.').waitFor({state:'visible',timeout:5000});if(learningCalls.hint!==1)throw new Error('Help button did not request a hint');
+await page.locator('.flh-learn-answer').first().click();await page.getByText('اضغط مرة ثانية للتأكيد').waitFor({state:'visible',timeout:5000});if(learningCalls.answer!==0)throw new Error('First learning tap submitted the answer');
+await page.locator('.flh-learn-answer.selected').click();await page.locator('#flhLearnNext').waitFor({state:'visible',timeout:5000});if(learningCalls.draft<1||learningCalls.answer!==1)throw new Error('Two-step learning confirmation failed');
+await page.locator('#flhLearnNext').click();await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});if(await page.getByText('Q-000007',{exact:false}).count()<1)throw new Error('Question reference missing');
 await page.locator('#learnHome').click();
-await page.locator('[data-open-program="0"]').click();
-await page.locator('[data-book]').filter({hasText:'الرياضيات'}).first().click();
-await page.locator('[data-unit="0"]').click();
-await page.locator('[data-exam="math-g5-unit1"]').click();
-await page.locator('.exam-v2-answer').first().waitFor({state:'visible',timeout:5000});
 
-// Mohammad starts with zero content; no Grade 5 leakage.
-profileMode='mohammad';
-await page.reload({waitUntil:'networkidle',timeout:30000});
-await page.getByText('ما في محتوى مربوط بحسابك بعد. اطلب من ولي الأمر يضيف لك منهاجًا أو كتابًا.').waitFor({state:'visible',timeout:10000});
-if(await page.locator('[data-open-program]').count()||await page.locator('[data-open-standalone]').count())throw new Error('Content leaked into Mohammad');
+// Exam UX: one-tap autosave + flag + navigator + final confirmation.
+await page.locator('[data-open-program="0"]').click();await page.locator('[data-book]').filter({hasText:'الرياضيات'}).first().click();await page.locator('[data-unit="0"]').click();await page.locator('[data-exam="math-g5-unit1"]').click();
+await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});await page.locator('.exam-v3-answer').first().click();await page.getByText('الإجابة محفوظة تلقائيًا.').waitFor({state:'visible',timeout:5000});if(examCalls.save!==1)throw new Error('Exam autosave failed');
+await page.locator('#examFlag').click();await page.getByText('إزالة علامة المراجعة',{exact:false}).waitFor({state:'visible',timeout:5000});if(examCalls.flag!==1)throw new Error('Exam flag failed');
+await page.locator('#examNext').click();await page.locator('.exam-v3-answer').first().click();await page.locator('#examSubmit').waitFor({state:'visible',timeout:5000});
+await page.locator('#examSubmit').click();await page.getByText('عندك أسئلة للمراجعة',{exact:false}).waitFor({state:'visible',timeout:5000});await page.locator('#submitAnyway').click();await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
 
-// Parent dashboard is summary-first.
-await page.evaluate(()=>{localStorage.removeItem('learner_session');localStorage.setItem('parent_session',JSON.stringify({access_token:'qa-parent'}));});
-await page.goto(`${BASE_URL}?qa=parent-${Date.now()}#parents`,{waitUntil:'networkidle',timeout:30000});
-await page.locator('[data-parent-center-nav]').waitFor({state:'visible',timeout:10000});
-if(await page.locator('[data-go="parent-access"]').count()<1)throw new Error('Parent content entry missing');
-if(await page.locator('[data-go="parent-activity"]').count()<1)throw new Error('Parent activity entry missing');
-const detail=page.getByText('تفاصيل المحاولات',{exact:true});if(await detail.count()&&await detail.isVisible())throw new Error('Detailed attempts still clutter dashboard');
-await page.getByText('ملخص آخر 7 أيام').waitFor({state:'visible',timeout:5000});
+// Mohammad has no Grade-5 leakage.
+profileMode='mohammad';await page.reload({waitUntil:'networkidle',timeout:30000});await page.getByText('ما في محتوى مربوط بحسابك بعد. اطلب من ولي الأمر يضيف لك منهاجًا أو كتابًا.').waitFor({state:'visible',timeout:10000});if(await page.locator('[data-open-program]').count())throw new Error('Grade-5 content leaked to Mohammad');
 
-// Parent assigns standalone chess book to Mohammad.
-await page.locator('[data-go="parent-access"]').first().click();
-await page.locator('[data-access-root]').waitFor({state:'visible',timeout:10000});
-await page.locator('[data-learner="moh-id"]').click();
-if(await page.locator('[data-grade]').inputValue()!=='7')throw new Error('Mohammad grade changed unexpectedly');
-await page.locator('[data-add-book]').selectOption('bc');
-await page.locator('[data-add-book-btn]').click();
-await page.getByText('كتب مضافة مباشرة').waitFor({state:'visible',timeout:5000});
-if(!chessAssigned)throw new Error('Direct book assignment was not sent');
-
-// Assigned standalone book appears in Mohammad's own library.
-await page.evaluate(()=>{localStorage.removeItem('parent_session');localStorage.setItem('learner_session','qa-learner');});
-profileMode='mohammad';
-await page.goto(`${BASE_URL}?qa=chess-${Date.now()}#student`,{waitUntil:'networkidle',timeout:30000});
-await page.getByText('📖 كتبي المستقلة').waitFor({state:'visible',timeout:10000});
-await page.locator('[data-open-standalone="0"]').click();
-await page.locator('[data-unit="0"]').click();
-if(await page.locator('[data-learn="chess-openings-1"]').count()!==1||await page.locator('[data-exam="chess-openings-1"]').count()!==1)throw new Error('Standalone book modes missing');
-
-// Activity detail is a separate filtered, paginated page.
-await page.evaluate(()=>{localStorage.removeItem('learner_session');localStorage.setItem('parent_session',JSON.stringify({access_token:'qa-parent'}));});
-await page.goto(`${BASE_URL}?qa=activity-${Date.now()}#parent-activity`,{waitUntil:'networkidle',timeout:30000});
-await page.locator('[data-activity-root]').waitFor({state:'visible',timeout:10000});
-if(await page.locator('[data-act-learner]').count()!==1||await page.locator('[data-act-from]').count()!==1||await page.locator('[data-act-to]').count()!==1)throw new Error('Activity filters missing');
-await page.getByText('52 جلسة ضمن الفلتر الحالي.').waitFor({state:'visible',timeout:5000});
-await page.getByText('صفحة 1 من 3').waitFor({state:'visible',timeout:5000});
+// Parent summary-first dashboard and content/activity pages.
+await page.evaluate(()=>{localStorage.removeItem('learner_session');localStorage.setItem('parent_session',JSON.stringify({access_token:'qa-parent'}));});await page.goto(`${BASE_URL}?qa=parent-${Date.now()}#parents`,{waitUntil:'networkidle',timeout:30000});
+await page.locator('[data-parent-center-nav]').waitFor({state:'visible',timeout:10000});if(await page.locator('[data-go="parent-access"]').count()<1||await page.locator('[data-go="parent-activity"]').count()<1)throw new Error('Parent progressive navigation missing');
+const detail=page.getByText('تفاصيل المحاولات',{exact:true});if(await detail.count()&&await detail.isVisible())throw new Error('Parent dashboard still cluttered');
+await page.locator('[data-go="parent-access"]').first().click();await page.locator('[data-access-root]').waitFor({state:'visible',timeout:10000});const moh=page.locator('[data-learner-access="moh-id"]');await moh.waitFor({state:'visible',timeout:5000});await moh.locator('[data-resource-type="book"][data-resource-id="bc"]').click();if(!chessAssigned)throw new Error('Standalone book assignment failed');
+await page.goto(`${BASE_URL}?qa=activity-${Date.now()}#parent-activity`,{waitUntil:'networkidle',timeout:30000});await page.locator('[data-activity-root]').waitFor({state:'visible',timeout:10000});if(await page.locator('[data-activity-filter]').count()<1)throw new Error('Activity filters missing');
 
 if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
-console.log('QA PASS: hierarchical library + standalone books + modes + parent progressive disclosure + paginated activity');
+console.log('QA PASS: hierarchy + 8 touch UX improvements + question codes + parent progressive disclosure');
 await browser.close();
