@@ -62,3 +62,7 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/smoke.mjs
+      - name: Run rendered Arabic copy QA
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/copy-smoke.mjs
