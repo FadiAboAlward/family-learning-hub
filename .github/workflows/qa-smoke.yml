@@ -37,7 +37,7 @@ jobs:
     name: Browser smoke
     needs: static-quality
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,6 +62,22 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/smoke.mjs
+      - name: Run performance regression smoke
+        env:
+          APP_URL: http://127.0.0.1:4173/
+          PERF_SAVE_DELAY_MS: '2500'
+        run: |
+          node tests/performance.mjs
+          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report
+          path: |
+            performance-report.json
+            performance-summary.md
+          if-no-files-found: ignore
       - name: Run rendered Arabic copy QA
         env:
           APP_URL: http://127.0.0.1:4173/
