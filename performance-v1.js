@@ -96,12 +96,14 @@
   function storageKey(key) { return `${STORAGE_PREFIX}${key}`; }
 
   function savePersistent(key, snapshot) {
+    if (!isLiveApp()) return;
     try {
       localStorage.setItem(storageKey(key), JSON.stringify({ savedAt: Date.now(), snapshot }));
     } catch {}
   }
 
   function loadPersistent(key, maxStale) {
+    if (!isLiveApp()) return null;
     try {
       const raw = localStorage.getItem(storageKey(key));
       if (!raw) return null;
