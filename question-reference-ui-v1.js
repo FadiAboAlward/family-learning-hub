@@ -13,8 +13,18 @@
     return{url,body};
   }
 
+  function mergeEmbeddedCodes(rows=[]){
+    for(const row of rows){
+      const qid=row?.question_id||row?.id;
+      const code=row?.question_code||row?.question?.question_code;
+      if(qid&&code)stateRef.codes[qid]=code;
+    }
+  }
+
+  function hasAllCodes(){return stateRef.questionIds.length>0&&stateRef.questionIds.every(id=>stateRef.codes[id]);}
+
   async function refreshCodes(){
-    if(!stateRef.attemptId||!learnerToken())return;
+    if(!stateRef.attemptId||!learnerToken()||hasAllCodes())return;
     try{
       const r=await previousFetch(REF_API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${learnerToken()}`},body:JSON.stringify({action:'codes',attempt_id:stateRef.attemptId})});
       const d=await r.json().catch(()=>({}));
@@ -32,15 +42,17 @@
     try{
       const d=await response.clone().json();
       if(learning&&info.body.action==='start_quiz'){
-        stateRef.attemptId=d.attempt_id||'';stateRef.mode='learning';stateRef.questionIds=(d.queue||[]).map(x=>x.question_id);stateRef.reviewIds=[];stateRef.codes={};refreshCodes();
+        const rows=d.queue||[];
+        stateRef.attemptId=d.attempt_id||'';stateRef.mode='learning';stateRef.questionIds=rows.map(x=>x.question_id);stateRef.reviewIds=[];stateRef.codes={};mergeEmbeddedCodes(rows);syncUi();refreshCodes();
       }else if(exam&&info.body.action==='start_exam'){
-        stateRef.attemptId=d.attempt_id||'';stateRef.mode='exam';stateRef.questionIds=(d.questions||[]).map(x=>x.question_id);stateRef.reviewIds=[];stateRef.codes={};refreshCodes();
+        const rows=d.questions||[];
+        stateRef.attemptId=d.attempt_id||'';stateRef.mode='exam';stateRef.questionIds=rows.map(x=>x.question_id);stateRef.reviewIds=[];stateRef.codes={};mergeEmbeddedCodes(rows);syncUi();refreshCodes();
       }else if(learning&&info.body.action==='answer'&&d.remediation_added?.question_id){
-        if(!stateRef.questionIds.includes(d.remediation_added.question_id))stateRef.questionIds.push(d.remediation_added.question_id);refreshCodes();
+        if(!stateRef.questionIds.includes(d.remediation_added.question_id))stateRef.questionIds.push(d.remediation_added.question_id);mergeEmbeddedCodes([d.remediation_added]);syncUi();refreshCodes();
       }else if(learning&&info.body.action==='finish_quiz'){
-        stateRef.reviewIds=(d.review||[]).map(x=>x.question_id);syncUi();
+        const rows=d.review||[];stateRef.reviewIds=rows.map(x=>x.question_id);mergeEmbeddedCodes(rows);syncUi();refreshCodes();
       }else if(exam&&info.body.action==='submit_exam'){
-        stateRef.reviewIds=(d.review||[]).map(x=>x.question_id);syncUi();
+        const rows=d.review||[];stateRef.reviewIds=rows.map(x=>x.question_id);mergeEmbeddedCodes(rows);syncUi();refreshCodes();
       }
     }catch{}
     return response;
