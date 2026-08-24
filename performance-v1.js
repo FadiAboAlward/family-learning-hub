@@ -2,27 +2,18 @@
   const nativeFetch = window.fetch.bind(window);
   const SUPABASE_ORIGIN = 'https://gkpoylfozvuwuwqeoduc.supabase.co';
   const LIVE_ORIGIN = 'https://fadiaboalward.github.io';
-  const DB_REGION = 'ap-southeast-1';
+  const STORAGE_PREFIX = 'flh_perf_cache_v2|';
   const responseCache = new Map();
   const inflight = new Map();
   const deferredDrafts = new Map();
 
-  function isLiveApp() {
-    return location.origin === LIVE_ORIGIN;
-  }
+  const isLiveApp = () => location.origin === LIVE_ORIGIN;
 
-  function regionalUrl(input) {
+  function normalizedUrl(input) {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input?.url;
     if (!raw) return null;
-    try {
-      const u = new URL(raw, location.href);
-      if (isLiveApp() && u.origin === SUPABASE_ORIGIN && u.pathname.startsWith('/functions/v1/')) {
-        u.searchParams.set('forceFunctionRegion', DB_REGION);
-      }
-      return u.toString();
-    } catch {
-      return raw;
-    }
+    try { return new URL(raw, location.href).toString(); }
+    catch { return raw; }
   }
 
   function buildInput(input, url) {
@@ -43,14 +34,17 @@
     try { return JSON.parse(init.body); } catch { return null; }
   }
 
-  function tokenFingerprint(headers) {
-    const value = headers.get('authorization') || '';
+  function fingerprintToken(value = '') {
     let hash = 2166136261;
     for (let i = 0; i < value.length; i++) {
       hash ^= value.charCodeAt(i);
       hash = Math.imul(hash, 16777619);
     }
     return (hash >>> 0).toString(36);
+  }
+
+  function tokenFingerprint(headers) {
+    return fingerprintToken(headers.get('authorization') || '');
   }
 
   function apiSlug(url) {
@@ -83,34 +77,98 @@
     };
   }
 
-  function invalidateProfile(headers) {
-    const fp = tokenFingerprint(headers);
-    for (const key of responseCache.keys()) {
-      if (key.includes('|student_profile|') && key.endsWith(`|${fp}`)) responseCache.delete(key);
-    }
+  function configFor(slug, action) {
+    if (slug === 'family-api' && action === 'student_profile') return { memoryTtl: 30_000, maxStale: 6 * 60 * 60_000 };
+    if (slug === 'student-library-api' && action === 'catalog') return { memoryTtl: 60_000, maxStale: 24 * 60 * 60_000 };
+    if (slug === 'family-api' && action === 'learner_choices') return { memoryTtl: 5 * 60_000, maxStale: 7 * 24 * 60 * 60_000 };
+    return null;
   }
 
-  function prefetchCatalog(headers) {
-    const key = `student-library-api|catalog|${tokenFingerprint(headers)}`;
-    const cached = responseCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return;
-    if (inflight.has(key)) return;
-    const base = `${SUPABASE_ORIGIN}/functions/v1/student-library-api`;
-    const url = isLiveApp() ? `${base}?forceFunctionRegion=${DB_REGION}` : base;
-    const h = new Headers(headers);
-    h.set('content-type', 'application/json');
-    const p = fetchSnapshot(url, { method: 'POST', headers: h, body: JSON.stringify({ action: 'catalog' }) })
+  function storageKey(key) { return `${STORAGE_PREFIX}${key}`; }
+
+  function savePersistent(key, snapshot) {
+    try {
+      localStorage.setItem(storageKey(key), JSON.stringify({ savedAt: Date.now(), snapshot }));
+    } catch {}
+  }
+
+  function loadPersistent(key, maxStale) {
+    try {
+      const raw = localStorage.getItem(storageKey(key));
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data?.snapshot || !data.savedAt || Date.now() - Number(data.savedAt) > maxStale) {
+        localStorage.removeItem(storageKey(key));
+        return null;
+      }
+      return data.snapshot;
+    } catch { return null; }
+  }
+
+  function storeSnapshot(key, snapshot, cfg) {
+    if (!snapshot?.ok) return;
+    responseCache.set(key, { snapshot, expiresAt: Date.now() + cfg.memoryTtl });
+    savePersistent(key, snapshot);
+  }
+
+  function refreshCache(key, input, init, cfg) {
+    if (inflight.has(key)) return inflight.get(key);
+    const p = fetchSnapshot(input, init)
       .then(snapshot => {
-        if (snapshot.ok) responseCache.set(key, { snapshot, expiresAt: Date.now() + 60_000 });
+        storeSnapshot(key, snapshot, cfg);
         return snapshot;
       })
       .catch(() => null)
       .finally(() => inflight.delete(key));
     inflight.set(key, p);
+    return p;
+  }
+
+  function learnerHeadersFrom(headers, session) {
+    const h = new Headers(headers);
+    h.set('authorization', `Bearer ${session}`);
+    h.set('content-type', 'application/json');
+    return h;
+  }
+
+  function prefetchCatalog(headers) {
+    const url = `${SUPABASE_ORIGIN}/functions/v1/student-library-api`;
+    const key = `student-library-api|catalog|${tokenFingerprint(headers)}`;
+    const cfg = configFor('student-library-api', 'catalog');
+    const memory = responseCache.get(key);
+    if (memory && memory.expiresAt > Date.now()) return;
+    if (loadPersistent(key, cfg.maxStale)) {
+      refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'catalog' }) }, cfg);
+      return;
+    }
+    refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'catalog' }) }, cfg);
+  }
+
+  function prefetchProfile(headers) {
+    const url = `${SUPABASE_ORIGIN}/functions/v1/family-api`;
+    const key = `family-api|student_profile|${tokenFingerprint(headers)}`;
+    const cfg = configFor('family-api', 'student_profile');
+    refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'student_profile' }) }, cfg);
+  }
+
+  function primeProfile(session, profile, requestHeaders) {
+    if (!session || !profile) return;
+    const h = learnerHeadersFrom(requestHeaders, session);
+    const key = `family-api|student_profile|${tokenFingerprint(h)}`;
+    const cfg = configFor('family-api', 'student_profile');
+    const snapshot = {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      contentType: 'application/json; charset=utf-8',
+      text: JSON.stringify(profile)
+    };
+    storeSnapshot(key, snapshot, cfg);
+    prefetchCatalog(h);
   }
 
   window.fetch = async function optimizedFetch(input, init = {}) {
-    const url = regionalUrl(input);
+    const url = normalizedUrl(input);
     const nextInput = buildInput(input, url);
     const headers = headersFor(input, init);
     const body = bodyJson(init);
@@ -147,37 +205,54 @@
       });
     }
 
-    if (action === 'finish_quiz' || action === 'submit_exam') invalidateProfile(headers);
-
-    const ttl = slug === 'family-api' && action === 'student_profile' ? 30_000
-      : slug === 'student-library-api' && action === 'catalog' ? 60_000
-      : 0;
-
-    if (ttl > 0) {
-      const key = cacheKey(url || '', action, headers);
-      const cached = responseCache.get(key);
-      if (cached && cached.expiresAt > Date.now()) return responseFrom(cached.snapshot);
-      if (cached) responseCache.delete(key);
-
-      if (inflight.has(key)) {
-        const snapshot = await inflight.get(key);
-        if (snapshot) return responseFrom(snapshot);
+    if (slug === 'family-api' && action === 'student_login') {
+      const snapshot = await fetchSnapshot(nextInput, init);
+      if (snapshot.ok) {
+        try {
+          const d = JSON.parse(snapshot.text);
+          primeProfile(d.session, d.profile, headers);
+        } catch {}
       }
-
-      const p = fetchSnapshot(nextInput, init)
-        .then(snapshot => {
-          if (snapshot.ok) responseCache.set(key, { snapshot, expiresAt: Date.now() + ttl });
-          return snapshot;
-        })
-        .finally(() => inflight.delete(key));
-      inflight.set(key, p);
-
-      if (slug === 'family-api' && action === 'student_profile') prefetchCatalog(headers);
-
-      const snapshot = await p;
       return responseFrom(snapshot);
     }
 
-    return nativeFetch(nextInput, init);
+    const cfg = configFor(slug, action);
+    if (cfg) {
+      const key = cacheKey(url || '', action, headers);
+      const memory = responseCache.get(key);
+      if (memory && memory.expiresAt > Date.now()) return responseFrom(memory.snapshot);
+
+      const persisted = loadPersistent(key, cfg.maxStale);
+      if (persisted) {
+        responseCache.set(key, { snapshot: persisted, expiresAt: Date.now() + cfg.memoryTtl });
+        refreshCache(key, nextInput, init, cfg);
+        if (slug === 'family-api' && action === 'student_profile') prefetchCatalog(headers);
+        return responseFrom(persisted);
+      }
+
+      const pending = refreshCache(key, nextInput, init, cfg);
+      const snapshot = await pending;
+      if (!snapshot) return nativeFetch(nextInput, init);
+      if (slug === 'family-api' && action === 'student_profile') prefetchCatalog(headers);
+      return responseFrom(snapshot);
+    }
+
+    const response = await nativeFetch(nextInput, init);
+    if (response.ok && (action === 'finish_quiz' || action === 'submit_exam')) {
+      setTimeout(() => prefetchProfile(headers), 0);
+    }
+    return response;
+  };
+
+  window.FLHPerformance = {
+    clear() {
+      responseCache.clear();
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(k);
+        }
+      } catch {}
+    }
   };
 })();
