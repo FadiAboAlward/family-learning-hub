@@ -7,6 +7,7 @@ const warn=[];
 const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
+const mergeMarkerRe=new RegExp(`${'<'.repeat(7)}|${'='.repeat(7)}|${'>'.repeat(7)}`);
 
 const index=read('index.html');
 
@@ -28,7 +29,7 @@ for(const f of requiredRuntime){if(!loadedScripts.includes(f))fail(`Required run
 for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs'])){
   if(!exists(file))continue;
   const s=read(file);
-  if(/<<<<<<<|=======|>>>>>>>/.test(s))fail(`Unresolved merge marker found in ${file}.`);
+  if(mergeMarkerRe.test(s))fail(`Unresolved merge marker found in ${file}.`);
   if(/2026[-–]2025/.test(s))fail(`Reversed school-year text found in ${file}.`);
 }
 
