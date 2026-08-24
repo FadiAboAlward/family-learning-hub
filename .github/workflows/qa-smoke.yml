@@ -1,26 +1,41 @@
-name: QA Smoke
+name: QA Gate
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '**/*.html'
-      - '**/*.js'
-      - '**/*.css'
-      - 'tests/**'
-      - '.github/workflows/qa-smoke.yml'
   pull_request:
     branches: [main]
-    paths:
-      - '**/*.html'
-      - '**/*.js'
-      - '**/*.css'
-      - 'tests/**'
-      - '.github/workflows/qa-smoke.yml'
+  push:
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  static-quality:
+    name: Static quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax checks
+        run: |
+          find . -maxdepth 1 -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          find tests -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Static product QA
+        run: node tests/static-qa.mjs
+
   browser-smoke:
+    name: Browser smoke
+    needs: static-quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -43,7 +58,7 @@ jobs:
           done
           cat /tmp/family-learning-hub-server.log
           exit 1
-      - name: Run browser smoke test
+      - name: Run mobile browser smoke test
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/smoke.mjs
