@@ -7,6 +7,7 @@
   const responseCache = new Map();
   const inflight = new Map();
   const deferredDrafts = new Map();
+  const examSaveQueue = new Map();
   let deferredActivity = null;
 
   const isLiveApp = () => location.origin === LIVE_ORIGIN;
@@ -71,6 +72,13 @@
   function okResponse(extra = {}) {
     return new Response(JSON.stringify({ ok: true, ...extra }), {
       status: 200,
+      headers: { 'content-type': 'application/json; charset=utf-8' }
+    });
+  }
+
+  function errorResponse(code, status = 503) {
+    return new Response(JSON.stringify({ error: code }), {
+      status,
       headers: { 'content-type': 'application/json; charset=utf-8' }
     });
   }
@@ -185,6 +193,36 @@
     return true;
   }
 
+  function enqueueExamAnswerSave(nextInput, init, body) {
+    const key = `${body.attempt_id}|${body.question_id}`;
+    const previous = examSaveQueue.get(key)?.promise || Promise.resolve();
+    const requestInit = { ...init, keepalive: true };
+    const item = { input: nextInput, init: requestInit, promise: null };
+    const promise = previous.catch(() => {}).then(async () => {
+      const r = await nativeFetch(nextInput, requestInit);
+      if (!r.ok) throw new Error(`EXAM_SAVE_${r.status}`);
+      return true;
+    });
+    item.promise = promise;
+    examSaveQueue.set(key, item);
+    promise.then(
+      () => { if (examSaveQueue.get(key)?.promise === promise) examSaveQueue.delete(key); },
+      () => {}
+    );
+    return promise;
+  }
+
+  async function flushExamAnswerSaves() {
+    const current = [...examSaveQueue.values()];
+    if (current.length) await Promise.allSettled(current.map(x => x.promise));
+    const failed = [...examSaveQueue.entries()];
+    for (const [key, item] of failed) {
+      const r = await nativeFetch(item.input, item.init);
+      if (!r.ok) throw new Error('EXAM_SAVE_FAILED');
+      if (examSaveQueue.get(key) === item) examSaveQueue.delete(key);
+    }
+  }
+
   window.fetch = async function optimizedFetch(input, init = {}) {
     const url = normalizedUrl(input);
     const nextInput = buildInput(input, url);
@@ -195,6 +233,16 @@
 
     if (slug === 'activity-api' && action === 'learner_activity' && deferStartupActivity(nextInput, init)) {
       return okResponse({ deferred: true });
+    }
+
+    if (isLiveApp() && slug === 'exam-v2-api' && action === 'save_answer' && body?.attempt_id && body?.question_id) {
+      enqueueExamAnswerSave(nextInput, init, body);
+      return okResponse({ queued: true });
+    }
+
+    if (isLiveApp() && slug === 'exam-v2-api' && action === 'submit_exam') {
+      try { await flushExamAnswerSaves(); }
+      catch { return errorResponse('EXAM_SAVE_FAILED'); }
     }
 
     if (action === 'answer' && body?.attempt_id && body?.question_id) {
@@ -266,6 +314,7 @@
   window.FLHPerformance = {
     clear() {
       responseCache.clear();
+      examSaveQueue.clear();
       try {
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
