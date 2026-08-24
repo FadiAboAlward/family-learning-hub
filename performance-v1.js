@@ -3,9 +3,11 @@
   const SUPABASE_ORIGIN = 'https://gkpoylfozvuwuwqeoduc.supabase.co';
   const LIVE_ORIGIN = 'https://fadiaboalward.github.io';
   const STORAGE_PREFIX = 'flh_perf_cache_v2|';
+  const pageStartedAt = Date.now();
   const responseCache = new Map();
   const inflight = new Map();
   const deferredDrafts = new Map();
+  let deferredActivity = null;
 
   const isLiveApp = () => location.origin === LIVE_ORIGIN;
 
@@ -63,6 +65,13 @@
       status: snapshot.status,
       statusText: snapshot.statusText,
       headers: { 'content-type': snapshot.contentType || 'application/json; charset=utf-8' }
+    });
+  }
+
+  function okResponse(extra = {}) {
+    return new Response(JSON.stringify({ ok: true, ...extra }), {
+      status: 200,
+      headers: { 'content-type': 'application/json; charset=utf-8' }
     });
   }
 
@@ -137,10 +146,6 @@
     const cfg = configFor('student-library-api', 'catalog');
     const memory = responseCache.get(key);
     if (memory && memory.expiresAt > Date.now()) return;
-    if (loadPersistent(key, cfg.maxStale)) {
-      refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'catalog' }) }, cfg);
-      return;
-    }
     refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'catalog' }) }, cfg);
   }
 
@@ -167,6 +172,17 @@
     prefetchCatalog(h);
   }
 
+  function deferStartupActivity(nextInput, init) {
+    const elapsed = Date.now() - pageStartedAt;
+    if (!isLiveApp() || elapsed >= 5000) return false;
+    if (deferredActivity) clearTimeout(deferredActivity);
+    deferredActivity = setTimeout(() => {
+      deferredActivity = null;
+      nativeFetch(nextInput, init).catch(() => {});
+    }, Math.max(250, 5000 - elapsed));
+    return true;
+  }
+
   window.fetch = async function optimizedFetch(input, init = {}) {
     const url = normalizedUrl(input);
     const nextInput = buildInput(input, url);
@@ -174,6 +190,10 @@
     const body = bodyJson(init);
     const action = body?.action || '';
     const slug = apiSlug(url || '');
+
+    if (slug === 'activity-api' && action === 'learner_activity' && deferStartupActivity(nextInput, init)) {
+      return okResponse({ deferred: true });
+    }
 
     if (action === 'answer' && body?.attempt_id && body?.question_id) {
       const draftKey = `${body.attempt_id}|${body.question_id}`;
@@ -199,10 +219,7 @@
           .finally(() => deferredDrafts.delete(draftKey));
       }, 600);
       deferredDrafts.set(draftKey, { timer, controller });
-      return new Response(JSON.stringify({ ok: true, deferred: true }), {
-        status: 200,
-        headers: { 'content-type': 'application/json; charset=utf-8' }
-      });
+      return okResponse({ deferred: true });
     }
 
     if (slug === 'family-api' && action === 'student_login') {
