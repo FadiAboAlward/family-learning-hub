@@ -7,7 +7,7 @@
   const inflight = new Map();
   const deferredDrafts = new Map();
 
-  function shouldForceRegion() {
+  function isLiveApp() {
     return location.origin === LIVE_ORIGIN;
   }
 
@@ -16,7 +16,7 @@
     if (!raw) return null;
     try {
       const u = new URL(raw, location.href);
-      if (shouldForceRegion() && u.origin === SUPABASE_ORIGIN && u.pathname.startsWith('/functions/v1/')) {
+      if (isLiveApp() && u.origin === SUPABASE_ORIGIN && u.pathname.startsWith('/functions/v1/')) {
         u.searchParams.set('forceFunctionRegion', DB_REGION);
       }
       return u.toString();
@@ -96,7 +96,7 @@
     if (cached && cached.expiresAt > Date.now()) return;
     if (inflight.has(key)) return;
     const base = `${SUPABASE_ORIGIN}/functions/v1/student-library-api`;
-    const url = shouldForceRegion() ? `${base}?forceFunctionRegion=${DB_REGION}` : base;
+    const url = isLiveApp() ? `${base}?forceFunctionRegion=${DB_REGION}` : base;
     const h = new Headers(headers);
     h.set('content-type', 'application/json');
     const p = fetchSnapshot(url, { method: 'POST', headers: h, body: JSON.stringify({ action: 'catalog' }) })
@@ -127,7 +127,7 @@
       }
     }
 
-    if (slug === 'learning-api' && action === 'save_draft' && body?.attempt_id && body?.question_id) {
+    if (isLiveApp() && slug === 'learning-api' && action === 'save_draft' && body?.attempt_id && body?.question_id) {
       const draftKey = `${body.attempt_id}|${body.question_id}`;
       const old = deferredDrafts.get(draftKey);
       if (old) {
