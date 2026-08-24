@@ -1,0 +1,54 @@
+name: Live Frontend Performance
+
+on:
+  workflow_run:
+    workflows: ["Deploy to GitHub Pages"]
+    types: [completed]
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-frontend-performance
+  cancel-in-progress: true
+
+jobs:
+  live-performance:
+    name: Live frontend performance
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser performance tools
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run deployed frontend performance test
+        env:
+          APP_URL: https://fadiaboalward.github.io/family-learning-hub/
+          PERF_SAVE_DELAY_MS: '2500'
+          PERF_APP_READY_LIMIT_MS: '5000'
+          PERF_EXAM_OPEN_LIMIT_MS: '1200'
+        run: |
+          node tests/performance.mjs
+          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload live performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-performance-report
+          path: |
+            performance-report.json
+            performance-summary.md
+          if-no-files-found: ignore
