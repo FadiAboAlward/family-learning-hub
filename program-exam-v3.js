@@ -2,13 +2,22 @@
   const SUPABASE_URL='https://gkpoylfozvuwuwqeoduc.supabase.co';
   const PUBLISHABLE_KEY='sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
   const EXAM_API=`${SUPABASE_URL}/functions/v1/exam-v2-api`;
-  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const renderMath=(s='')=>typeof math==='function'?math(safe(s)):safe(s);
   const learnerToken=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   async function examApi(action,payload={}){const t=learnerToken();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(EXAM_API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
   const home=()=>{if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile)};
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
+  let warmPromise=null,warmAt=0;
+  function warmExamApi(){
+    if(!learnerToken())return Promise.resolve(false);
+    if(warmPromise)return warmPromise;
+    if(Date.now()-warmAt<90_000)return Promise.resolve(true);
+    warmAt=Date.now();
+    warmPromise=examApi('warmup').then(()=>true).catch(()=>false).finally(()=>{warmPromise=null});
+    return warmPromise;
+  }
 
   async function startExam(slug){
     if(typeof shell!=='function')return;
@@ -16,6 +25,8 @@
     let session;try{session=await examApi('start_exam',{quiz_slug:slug});}catch{shell('تعذر فتح الامتحان','هذا الامتحان غير متاح لهذا الطالب.','<section class="panel"><button class="btn btn-primary" id="examBack">رجوع</button></section>');document.getElementById('examBack')?.addEventListener('click',home);return;}
 
     const questions=session.questions||[];
+    const questionById=new Map(questions.map(x=>[x.question_id,x.question]));
+    const optionText=(qid,pos)=>{const q=questionById.get(qid),o=(q?.options||[]).find(x=>Number(x.position)===Number(pos));return o?.content||''};
     const answers=new Map(questions.filter(x=>x.saved_response?.option_position!=null).map(x=>[x.question_id,Number(x.saved_response.option_position)]));
     const flagged=new Set(questions.filter(x=>x.is_flagged).map(x=>x.question_id));
     const answerSaveChains=new Map();
@@ -62,15 +73,7 @@
       answerSaveErrors.delete(qid);
       render();
       const prior=answerSaveChains.get(qid)||Promise.resolve();
-      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos})).then(()=>{
-        answerSaveErrors.delete(qid);
-      }).catch(()=>{
-        answerSaveErrors.add(qid);
-        if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}
-      }).finally(()=>{
-        if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);
-        if(questions[index]?.question_id===qid)render();
-      });
+      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos})).then(()=>{answerSaveErrors.delete(qid);}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(questions[index]?.question_id===qid)render();});
       answerSaveChains.set(qid,chain);
     }
 
@@ -93,12 +96,25 @@
       if(answerSaveErrors.size)throw new Error('ANSWER_SAVE_FAILED');
     }
 
+    function reviewHtml(rows){
+      return rows.map((r,i)=>{
+        const wrong=!r.is_correct,selected=optionText(r.question_id,r.response?.option_position),correct=optionText(r.question_id,r.correct_answer?.option_position),hints=(r.hints||[]).filter(h=>h?.content),hasHelp=wrong&&(hints.length||r.explanation);
+        const help=hasHelp?`<button class="btn btn-soft exam-review-help" data-help="${i}">💡 اشرح لي أكثر</button><div id="examHelp${i}" hidden><div class="flh-explanation">${hints.length?`<b>تلميحات تساعدك تفهم الفكرة</b>${hints.map(h=>`<div class="flh-hint-card"><b>💡 تلميح ${Number(h.hint_level||1)}</b><div>${renderMath(h.content)}</div></div>`).join('')}`:''}${r.explanation?`<b>الشرح</b><div>${renderMath(r.explanation)}</div>`:''}</div></div>`:'';
+        return`<details class="exam-review ${wrong?'exam-review-wrong':''}" ${wrong?'open':''}><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}${r.was_flagged?' 🚩':''}${r.question_code?` · ${safe(r.question_code)}`:''}</summary><div class="question"><b>${renderMath(r.prompt||'')}</b></div>${wrong?`<div class="muted">إجابتك: <b>${renderMath(selected||String(r.response?.option_position||''))}</b></div><div class="muted">الإجابة الصحيحة: <b>${renderMath(correct||String(r.correct_answer?.option_position||''))}</b></div>`:''}${help}</details>`;
+      }).join('');
+    }
+
+    function bindReviewHelp(){
+      document.querySelectorAll('.exam-review-help').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const i=btn.getAttribute('data-help'),box=document.getElementById(`examHelp${i}`);if(!box)return;box.hidden=!box.hidden;btn.textContent=box.hidden?'💡 اشرح لي أكثر':'إخفاء الشرح';}));
+    }
+
     async function submit(){
       if(submitting||saving||!allAnswered())return;submitting=true;shell('📊 عم نثبت إجاباتك','نتأكد أن كل الإجابات محفوظة قبل التصحيح.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
-      try{await flushAnswerSaves();const d=await examApi('submit_exam',{attempt_id:session.attempt_id});localStorage.removeItem(storageKey);const review=(d.review||[]).map((r,i)=>`<details class="exam-review"><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}${r.was_flagged?' 🚩':''}${r.question_code?` · ${safe(r.question_code)}`:''}</summary><div>${renderMath(r.prompt||'')}</div>${r.explanation?`<div class="muted">${renderMath(r.explanation)}</div>`:''}</details>`).join('');shell('📊 نتيجة الامتحان',`${Number(d.percentage||0)}%`,`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">النقاط<b>${Number(d.score_points||0)}/${Number(d.max_points||0)}</b></div></div><div class="section-title">المراجعة</div>${review}<div class="flh-sticky-action"><button class="btn btn-primary" id="examHome">رجوع لصفحتي</button></div></section>`);document.getElementById('examHome')?.addEventListener('click',home);}
+      try{await flushAnswerSaves();const d=await examApi('submit_exam',{attempt_id:session.attempt_id});localStorage.removeItem(storageKey);const review=reviewHtml(d.review||[]);shell('📊 نتيجة الامتحان',`${Number(d.percentage||0)}%`,`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">النقاط<b>${Number(d.score_points||0)}/${Number(d.max_points||0)}</b></div></div><div class="section-title">المراجعة</div>${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="flh-sticky-action"><button class="btn btn-primary" id="examHome">رجوع لصفحتي</button></div></section>`);bindReviewHelp();document.getElementById('examHome')?.addEventListener('click',home);}
       catch{submitting=false;shell('تعذر تسليم الامتحان','في إجابة ما اكتمل حفظها. ارجع للامتحان وحاول مرة ثانية.','<section class="panel"><button class="btn btn-primary" id="examRetry">رجوع للامتحان</button></section>');document.getElementById('examRetry')?.addEventListener('click',render);}
     }
     render();
   }
-  window.FLH=window.FLH||{};window.FLH.startExamQuiz=startExam;
+  window.FLH=window.FLH||{};window.FLH.startExamQuiz=startExam;window.FLH.warmExamApi=warmExamApi;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(warmExamApi,0));else setTimeout(warmExamApi,0);
 })();
