@@ -12,11 +12,12 @@
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   let warmPromise=null,warmAt=0;
   function warmExamApi(){
-    if(location.origin!==LIVE_ORIGIN||!learnerToken())return Promise.resolve(false);
+    if(location.origin!==LIVE_ORIGIN)return Promise.resolve(false);
     if(warmPromise)return warmPromise;
     if(Date.now()-warmAt<90_000)return Promise.resolve(true);
     warmAt=Date.now();
-    warmPromise=examApi('warmup').then(()=>true).catch(()=>false).finally(()=>{warmPromise=null});
+    warmPromise=fetch(EXAM_API,{method:'POST',headers:{'content-type':'text/plain;charset=UTF-8'},body:JSON.stringify({action:'warmup'}),keepalive:true})
+      .then(r=>r.ok).catch(()=>false).finally(()=>{warmPromise=null});
     return warmPromise;
   }
 
@@ -97,16 +98,29 @@
       if(answerSaveErrors.size)throw new Error('ANSWER_SAVE_FAILED');
     }
 
+    function uniqueSteps(items){const out=[];for(const item of items){const text=String(item||'').trim();if(text&&!out.includes(text))out.push(text);}return out;}
+    function explanationSteps(r,correct){
+      const hints=(r.hints||[]).filter(h=>h?.content).sort((a,b)=>Number(a.hint_level||0)-Number(b.hint_level||0)).map(h=>h.content);
+      const answerLine=correct?`النتيجة الصحيحة هي: ${correct}.`:'';
+      const basic=uniqueSteps([hints[1],hints[2],r.explanation,hints[0],answerLine]).slice(0,3);
+      const expanded=uniqueSteps([hints[0],hints[1],hints[2],hints[3],r.explanation,answerLine]).slice(0,6);
+      if(!basic.length&&answerLine)basic.push(answerLine);
+      if(!expanded.length)expanded.push(...basic);
+      return{basic,expanded};
+    }
+    function stepsHtml(steps){return`<ol class="exam-explanation-steps">${steps.map(s=>`<li>${renderMath(s)}</li>`).join('')}</ol>`;}
+
     function reviewHtml(rows){
       return rows.map((r,i)=>{
-        const wrong=!r.is_correct,selected=optionText(r.question_id,r.response?.option_position),correct=optionText(r.question_id,r.correct_answer?.option_position),hints=(r.hints||[]).filter(h=>h?.content),hasHelp=wrong&&(hints.length||r.explanation);
-        const help=hasHelp?`<button class="btn btn-soft exam-review-help" data-help="${i}">💡 اشرح لي أكثر</button><div id="examHelp${i}" hidden><div class="flh-explanation">${hints.length?`<b>تلميحات تساعدك تفهم الفكرة</b>${hints.map(h=>`<div class="flh-hint-card"><b>💡 تلميح ${Number(h.hint_level||1)}</b><div>${renderMath(h.content)}</div></div>`).join('')}`:''}${r.explanation?`<b>الشرح</b><div>${renderMath(r.explanation)}</div>`:''}</div></div>`:'';
+        const wrong=!r.is_correct,selected=optionText(r.question_id,r.response?.option_position),correct=optionText(r.question_id,r.correct_answer?.option_position),plan=explanationSteps(r,correct),hasHelp=wrong&&(plan.basic.length||plan.expanded.length);
+        const help=hasHelp?`<button class="btn btn-soft exam-review-explain" data-help="${i}">📘 الشرح</button><div id="examExplain${i}" hidden><div class="flh-explanation"><b>الشرح</b>${stepsHtml(plan.basic)}${plan.expanded.length>plan.basic.length?`<button class="btn btn-soft exam-review-expand" data-expand="${i}">➕ شرح موسّع</button><div id="examExpanded${i}" hidden><b>شرح موسّع</b>${stepsHtml(plan.expanded)}</div>`:''}</div></div>`:'';
         return`<details class="exam-review ${wrong?'exam-review-wrong':''}" ${wrong?'open':''}><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}${r.was_flagged?' 🚩':''}${r.question_code?` · ${safe(r.question_code)}`:''}</summary><div class="question"><b>${renderMath(r.prompt||'')}</b></div>${wrong?`<div class="muted">إجابتك: <b>${renderMath(selected||String(r.response?.option_position||''))}</b></div><div class="muted">الإجابة الصحيحة: <b>${renderMath(correct||String(r.correct_answer?.option_position||''))}</b></div>`:''}${help}</details>`;
       }).join('');
     }
 
     function bindReviewHelp(){
-      document.querySelectorAll('.exam-review-help').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const i=btn.getAttribute('data-help'),box=document.getElementById(`examHelp${i}`);if(!box)return;box.hidden=!box.hidden;btn.textContent=box.hidden?'💡 اشرح لي أكثر':'إخفاء الشرح';}));
+      document.querySelectorAll('.exam-review-explain').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const i=btn.getAttribute('data-help'),box=document.getElementById(`examExplain${i}`),expanded=document.getElementById(`examExpanded${i}`),expandBtn=document.querySelector(`.exam-review-expand[data-expand="${i}"]`);if(!box)return;box.hidden=!box.hidden;btn.textContent=box.hidden?'📘 الشرح':'إخفاء الشرح';if(box.hidden&&expanded){expanded.hidden=true;if(expandBtn)expandBtn.textContent='➕ شرح موسّع';}}));
+      document.querySelectorAll('.exam-review-expand').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const i=btn.getAttribute('data-expand'),box=document.getElementById(`examExpanded${i}`);if(!box)return;box.hidden=!box.hidden;btn.textContent=box.hidden?'➕ شرح موسّع':'إخفاء الشرح الموسّع';}));
     }
 
     async function submit(){
@@ -117,5 +131,5 @@
     render();
   }
   window.FLH=window.FLH||{};window.FLH.startExamQuiz=startExam;window.FLH.warmExamApi=warmExamApi;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(warmExamApi,0));else setTimeout(warmExamApi,0);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(warmExamApi,250));else setTimeout(warmExamApi,250);
 })();

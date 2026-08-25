@@ -47,7 +47,12 @@ await page.route('**/functions/v1/**',async route=>{
   if(slug==='exam-v2-api'&&body.action==='submit_exam'){
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
       percentage:50,score_points:1,max_points:2,review:[
-        {question_id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',response:{option_position:1},is_correct:false,was_flagged:false,correct_answer:{option_position:2},hints:[{hint_level:1,content:'فكّر بإضافة اثنين إلى اثنين.'},{hint_level:2,content:'ابدأ من 2 وتقدّم خطوتين.'}],explanation:'عندما نضيف 2 إلى 2 تكون النتيجة 4.'},
+        {question_id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',response:{option_position:1},is_correct:false,was_flagged:false,correct_answer:{option_position:2},hints:[
+          {hint_level:1,content:'حدّد العملية المطلوبة أولًا.'},
+          {hint_level:2,content:'قاعدة الجمع هنا: نضيف الكمية الثانية إلى الأولى.'},
+          {hint_level:3,content:'ابدأ من 2 وأضف وحدتين خطوة خطوة.'},
+          {hint_level:4,content:'بعد الإضافة تصل إلى العدد 4.'}
+        ],explanation:'عندما نضيف 2 إلى 2 تكون النتيجة 4.'},
         {question_id:'perf-q2',question_code:'PERF-2',prompt:'3 + 1 = ؟',response:{option_position:1},is_correct:true,was_flagged:false,correct_answer:{option_position:1},hints:[],explanation:'3 زائد 1 يساوي 4.'}
       ]
     })});
@@ -116,18 +121,30 @@ const resultStart=Date.now();
 await page.locator('#examSubmit').click();
 await page.getByText('نتيجة الامتحان',{exact:false}).waitFor({state:'visible',timeout:5000});
 const resultUiMs=Date.now()-resultStart;
-const helpButton=page.getByRole('button',{name:'💡 اشرح لي أكثر'}).first();
-await helpButton.waitFor({state:'visible',timeout:2000});
-await helpButton.click();
-await page.getByText('فكّر بإضافة اثنين إلى اثنين.',{exact:false}).waitFor({state:'visible',timeout:2000});
-await page.getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
-const reviewHelpPresent=true;
+const wrongReview=page.locator('.exam-review-wrong').first();
+await wrongReview.waitFor({state:'visible',timeout:2000});
+const wrongReviewBefore=(await wrongReview.textContent())||'';
+if(wrongReviewBefore.includes('تلميح'))throw new Error('EXAM_REVIEW_MUST_NOT_USE_HINT_LABEL');
+const explainButton=page.getByRole('button',{name:'📘 الشرح'}).first();
+await explainButton.waitFor({state:'visible',timeout:2000});
+await explainButton.click();
+const basicList=page.locator('#examExplain0 > .flh-explanation > .exam-explanation-steps').first();
+await basicList.getByText('قاعدة الجمع هنا:',{exact:false}).waitFor({state:'visible',timeout:2000});
+const basicSteps=await basicList.locator('li').count();
+if(basicSteps!==3)throw new Error(`EXPECTED_3_BASIC_EXPLANATION_STEPS_GOT_${basicSteps}`);
+const expandButton=page.getByRole('button',{name:'➕ شرح موسّع'}).first();
+await expandButton.click();
+await page.locator('#examExpanded0').waitFor({state:'visible',timeout:2000});
+const expandedSteps=await page.locator('#examExpanded0 .exam-explanation-steps').locator('li').count();
+if(expandedSteps!==6)throw new Error(`EXPECTED_6_EXPANDED_EXPLANATION_STEPS_GOT_${expandedSteps}`);
+await page.locator('#examExpanded0').getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
+const reviewExplanationPresent=true;
 
 const report={
   generated_at:new Date().toISOString(),base_url:BASE_URL,injected_save_delay_ms:SAVE_DELAY_MS,
   measurements:{app_ready_ms:appReadyMs,exam_open_ui_ms:examOpenUiMs,answer_visual_ms:Math.round(answerVisualMs*10)/10,next_question_ms:Math.round(nextQuestionMs*10)/10,result_ui_ms:resultUiMs},
   limits:{app_ready_ms:LIMITS.appReadyMs,exam_open_ui_ms:LIMITS.examOpenUiMs,answer_visual_ms:LIMITS.answerVisualMs,next_question_ms:LIMITS.nextQuestionMs,result_ui_ms:LIMITS.resultUiMs},
-  save_calls:saveCalls,save_was_still_pending_during_navigation:saveWasStillPendingDuringNavigation,review_help_present:reviewHelpPresent,browser_errors:errors,
+  save_calls:saveCalls,save_was_still_pending_during_navigation:saveWasStillPendingDuringNavigation,review_explanation_present:reviewExplanationPresent,basic_explanation_steps:basicSteps,expanded_explanation_steps:expandedSteps,browser_errors:errors,
 };
 fs.writeFileSync('performance-report.json',JSON.stringify(report,null,2));
 
@@ -139,7 +156,9 @@ if(nextQuestionMs>LIMITS.nextQuestionMs)failures.push(`next question ${nextQuest
 if(resultUiMs>LIMITS.resultUiMs)failures.push(`result UI ${resultUiMs}ms > ${LIMITS.resultUiMs}ms`);
 if(!saveWasStillPendingDuringNavigation)failures.push('navigation was not tested while save_answer was still pending');
 if(saveCalls<2)failures.push('expected two save_answer calls');
-if(!reviewHelpPresent)failures.push('wrong-answer review help is missing');
+if(!reviewExplanationPresent)failures.push('wrong-answer explanation flow is missing');
+if(basicSteps!==3)failures.push(`basic explanation has ${basicSteps} steps instead of 3`);
+if(expandedSteps!==6)failures.push(`expanded explanation has ${expandedSteps} steps instead of 6`);
 if(errors.length)failures.push(...errors);
 
 const markdown=[
@@ -152,7 +171,7 @@ const markdown=[
   `| Result UI after response | ${resultUiMs} ms | ${LIMITS.resultUiMs} ms |`,'',
   `Injected backend save delay: **${SAVE_DELAY_MS} ms**`,
   `Navigation while save pending: **${saveWasStillPendingDuringNavigation?'PASS':'FAIL'}**`,
-  `Wrong-answer hints + explanation: **${reviewHelpPresent?'PASS':'FAIL'}**`,
+  `Exam review explanation (3 steps → 6 steps): **${reviewExplanationPresent&&basicSteps===3&&expandedSteps===6?'PASS':'FAIL'}**`,
   failures.length?`\n❌ ${failures.join('; ')}`:'\n✅ Performance smoke passed.'
 ].join('\n');
 fs.writeFileSync('performance-summary.md',markdown);console.log(markdown);
