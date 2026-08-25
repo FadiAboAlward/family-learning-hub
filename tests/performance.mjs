@@ -8,6 +8,7 @@ const LIMITS={
   examOpenUiMs:Number(process.env.PERF_EXAM_OPEN_LIMIT_MS||800),
   answerVisualMs:Number(process.env.PERF_ANSWER_VISUAL_LIMIT_MS||250),
   nextQuestionMs:Number(process.env.PERF_NEXT_QUESTION_LIMIT_MS||250),
+  resultUiMs:Number(process.env.PERF_RESULT_UI_LIMIT_MS||800),
 };
 
 const browser=await chromium.launch({headless:true});
@@ -25,10 +26,13 @@ await page.route('**/functions/v1/**',async route=>{
   const url=new URL(req.url());
   const slug=url.pathname.split('/').pop();
 
+  if(slug==='exam-v2-api'&&body.action==='warmup'){
+    return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"warm":true}'});
+  }
   if(slug==='exam-v2-api'&&body.action==='start_exam'){
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
       attempt_id:'perf-attempt',resumed:false,quiz:{slug:'perf-exam',title:'امتحان الأداء'},questions:[
-        {sequence_no:1,question_id:'perf-q1',status:'active',is_flagged:false,saved_response:null,question:{id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',options:[{position:1,content:'4'},{position:2,content:'5'}],assets:[]}},
+        {sequence_no:1,question_id:'perf-q1',status:'active',is_flagged:false,saved_response:null,question:{id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',options:[{position:1,content:'3'},{position:2,content:'4'}],assets:[]}},
         {sequence_no:2,question_id:'perf-q2',status:'pending',is_flagged:false,saved_response:null,question:{id:'perf-q2',question_code:'PERF-2',prompt:'3 + 1 = ؟',options:[{position:1,content:'4'},{position:2,content:'6'}],assets:[]}}
       ]
     })});
@@ -41,7 +45,12 @@ await page.route('**/functions/v1/**',async route=>{
     return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
   }
   if(slug==='exam-v2-api'&&body.action==='submit_exam'){
-    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,score_points:2,max_points:2,review:[]})});
+    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+      percentage:50,score_points:1,max_points:2,review:[
+        {question_id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',response:{option_position:1},is_correct:false,was_flagged:false,correct_answer:{option_position:2},hints:[{hint_level:1,content:'فكّر بإضافة اثنين إلى اثنين.'},{hint_level:2,content:'ابدأ من 2 وتقدّم خطوتين.'}],explanation:'عندما نضيف 2 إلى 2 تكون النتيجة 4.'},
+        {question_id:'perf-q2',question_code:'PERF-2',prompt:'3 + 1 = ؟',response:{option_position:1},is_correct:true,was_flagged:false,correct_answer:{option_position:1},hints:[],explanation:'3 زائد 1 يساوي 4.'}
+      ]
+    })});
   }
   if(slug==='exam-v2-api'&&body.action==='set_flag'){
     return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"is_flagged":true}'});
@@ -52,12 +61,8 @@ await page.route('**/functions/v1/**',async route=>{
   if(slug==='family-api'&&body.action==='learner_choices'){
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[]})});
   }
-  if(slug==='student-library-api'){
-    return route.fulfill({status:200,contentType:'application/json',body:'{"programs":[],"standalone_books":[]}'});
-  }
-  if(slug==='activity-api'){
-    return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-  }
+  if(slug==='student-library-api')return route.fulfill({status:200,contentType:'application/json',body:'{"programs":[],"standalone_books":[]}'});
+  if(slug==='activity-api')return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
   return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
 });
 
@@ -88,34 +93,41 @@ const answerVisualMs=await page.evaluate(async()=>{
 });
 
 for(let i=0;i<40&&!saveStartedAt;i++)await page.waitForTimeout(25);
-
 const nextQuestionMs=await page.evaluate(async()=>{
   const btn=document.querySelector('#examNext');
   if(!btn)throw new Error('NO_NEXT_BUTTON');
-  const start=performance.now();
-  btn.click();
+  const start=performance.now();btn.click();
   return await new Promise((resolve,reject)=>{
     const tick=()=>{
       if(document.body.textContent.includes('السؤال 2 من 2'))return resolve(performance.now()-start);
       if(performance.now()-start>1200)return reject(new Error('NEXT_QUESTION_TIMEOUT'));
       requestAnimationFrame(tick);
-    };
-    tick();
+    };tick();
   });
 });
-
 const saveWasStillPendingDuringNavigation=Boolean(saveStartedAt&&!saveCompletedAt);
-await page.waitForTimeout(SAVE_DELAY_MS+150);
+await page.waitForTimeout(SAVE_DELAY_MS+100);
+
+await page.locator('.exam-v3-answer').first().click();
+await page.locator('.exam-v3-answer.selected').waitFor({state:'visible',timeout:1000});
+await page.waitForTimeout(SAVE_DELAY_MS+100);
+
+const resultStart=Date.now();
+await page.locator('#examSubmit').click();
+await page.getByText('نتيجة الامتحان',{exact:false}).waitFor({state:'visible',timeout:5000});
+const resultUiMs=Date.now()-resultStart;
+const helpButton=page.getByRole('button',{name:'💡 اشرح لي أكثر'}).first();
+await helpButton.waitFor({state:'visible',timeout:2000});
+await helpButton.click();
+await page.getByText('فكّر بإضافة اثنين إلى اثنين.',{exact:false}).waitFor({state:'visible',timeout:2000});
+await page.getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
+const reviewHelpPresent=true;
 
 const report={
-  generated_at:new Date().toISOString(),
-  base_url:BASE_URL,
-  injected_save_delay_ms:SAVE_DELAY_MS,
-  measurements:{app_ready_ms:appReadyMs,exam_open_ui_ms:examOpenUiMs,answer_visual_ms:Math.round(answerVisualMs*10)/10,next_question_ms:Math.round(nextQuestionMs*10)/10},
-  limits:{app_ready_ms:LIMITS.appReadyMs,exam_open_ui_ms:LIMITS.examOpenUiMs,answer_visual_ms:LIMITS.answerVisualMs,next_question_ms:LIMITS.nextQuestionMs},
-  save_calls:saveCalls,
-  save_was_still_pending_during_navigation:saveWasStillPendingDuringNavigation,
-  browser_errors:errors,
+  generated_at:new Date().toISOString(),base_url:BASE_URL,injected_save_delay_ms:SAVE_DELAY_MS,
+  measurements:{app_ready_ms:appReadyMs,exam_open_ui_ms:examOpenUiMs,answer_visual_ms:Math.round(answerVisualMs*10)/10,next_question_ms:Math.round(nextQuestionMs*10)/10,result_ui_ms:resultUiMs},
+  limits:{app_ready_ms:LIMITS.appReadyMs,exam_open_ui_ms:LIMITS.examOpenUiMs,answer_visual_ms:LIMITS.answerVisualMs,next_question_ms:LIMITS.nextQuestionMs,result_ui_ms:LIMITS.resultUiMs},
+  save_calls:saveCalls,save_was_still_pending_during_navigation:saveWasStillPendingDuringNavigation,review_help_present:reviewHelpPresent,browser_errors:errors,
 };
 fs.writeFileSync('performance-report.json',JSON.stringify(report,null,2));
 
@@ -124,26 +136,25 @@ if(appReadyMs>LIMITS.appReadyMs)failures.push(`app ready ${appReadyMs}ms > ${LIM
 if(examOpenUiMs>LIMITS.examOpenUiMs)failures.push(`exam UI ${examOpenUiMs}ms > ${LIMITS.examOpenUiMs}ms`);
 if(answerVisualMs>LIMITS.answerVisualMs)failures.push(`answer visual ${answerVisualMs.toFixed(1)}ms > ${LIMITS.answerVisualMs}ms`);
 if(nextQuestionMs>LIMITS.nextQuestionMs)failures.push(`next question ${nextQuestionMs.toFixed(1)}ms > ${LIMITS.nextQuestionMs}ms`);
+if(resultUiMs>LIMITS.resultUiMs)failures.push(`result UI ${resultUiMs}ms > ${LIMITS.resultUiMs}ms`);
 if(!saveWasStillPendingDuringNavigation)failures.push('navigation was not tested while save_answer was still pending');
-if(saveCalls<1)failures.push('save_answer was never called');
+if(saveCalls<2)failures.push('expected two save_answer calls');
+if(!reviewHelpPresent)failures.push('wrong-answer review help is missing');
 if(errors.length)failures.push(...errors);
 
 const markdown=[
-  '## Family Learning Hub performance smoke',
-  '',
-  '| Metric | Result | Limit |',
-  '|---|---:|---:|',
+  '## Family Learning Hub performance smoke','',
+  '| Metric | Result | Limit |','|---|---:|---:|',
   `| App ready | ${appReadyMs} ms | ${LIMITS.appReadyMs} ms |`,
   `| Exam UI open | ${examOpenUiMs} ms | ${LIMITS.examOpenUiMs} ms |`,
   `| Answer visual response | ${answerVisualMs.toFixed(1)} ms | ${LIMITS.answerVisualMs} ms |`,
   `| Next-question navigation | ${nextQuestionMs.toFixed(1)} ms | ${LIMITS.nextQuestionMs} ms |`,
-  '',
+  `| Result UI after response | ${resultUiMs} ms | ${LIMITS.resultUiMs} ms |`,'',
   `Injected backend save delay: **${SAVE_DELAY_MS} ms**`,
   `Navigation while save pending: **${saveWasStillPendingDuringNavigation?'PASS':'FAIL'}**`,
+  `Wrong-answer hints + explanation: **${reviewHelpPresent?'PASS':'FAIL'}**`,
   failures.length?`\n❌ ${failures.join('; ')}`:'\n✅ Performance smoke passed.'
 ].join('\n');
-fs.writeFileSync('performance-summary.md',markdown);
-console.log(markdown);
-
+fs.writeFileSync('performance-summary.md',markdown);console.log(markdown);
 await browser.close();
 if(failures.length)throw new Error(`Performance regression: ${failures.join('; ')}`);
