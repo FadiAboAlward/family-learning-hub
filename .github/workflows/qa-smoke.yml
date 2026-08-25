@@ -58,10 +58,21 @@ jobs:
           done
           cat /tmp/family-learning-hub-server.log
           exit 1
-      - name: Run mobile browser smoke test
+      - name: Capture child UX visual checkpoints
         env:
           APP_URL: http://127.0.0.1:4173/
-        run: node tests/smoke.mjs
+        run: node tests/visual-ux.mjs
+      - name: Upload child UX visual checkpoints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-ux-visual
+          path: ux-visual-artifacts
+          if-no-files-found: error
+      - name: Run child-first mobile browser smoke
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/smoke-child-first.mjs
       - name: Run performance regression smoke
         env:
           APP_URL: http://127.0.0.1:4173/
