@@ -11,7 +11,7 @@
   function contextBook(b){return [b.subject?.name_ar||'',b.grade_level?`الصف ${b.grade_level}`:'',b.school_year||''].filter(Boolean).join(' · ')}
   function crumb(items){return `<div class="flh-breadcrumb">${items.map((x,i)=>i===items.length-1?`<span>${safe(x.label)}</span>`:`<button data-nav="${safe(x.nav)}">${safe(x.label)}</button><b>‹</b>`).join('')}</div>`}
   function modeButtons(q){return `<div class="flh-mode-grid"><button class="flh-mode learn" data-learn="${safe(q.slug)}"><span>🧠</span><b>وضع التعلّم</b><small>تلميحات وشرح أثناء الحل</small></button><button class="flh-mode exam" data-exam="${safe(q.slug)}"><span>📝</span><b>وضع الامتحان</b><small>بدون تلميحات، النتيجة بعد التسليم</small></button></div>`}
-  function bindModes(root){root.querySelectorAll('[data-learn]').forEach(b=>b.addEventListener('click',()=>window.FLH?.startLearningQuiz?.(b.getAttribute('data-learn')||'')));root.querySelectorAll('[data-exam]').forEach(b=>b.addEventListener('click',()=>window.FLH?.startExamQuiz?.(b.getAttribute('data-exam')||'')));}
+  function bindModes(root){window.FLH?.warmExamApi?.();root.querySelectorAll('[data-learn]').forEach(b=>b.addEventListener('click',()=>window.FLH?.startLearningQuiz?.(b.getAttribute('data-learn')||'')));root.querySelectorAll('[data-exam]').forEach(b=>b.addEventListener('click',()=>window.FLH?.startExamQuiz?.(b.getAttribute('data-exam')||'')));}
   function bindNav(root,handlers){root.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>handlers[b.getAttribute('data-nav')]?.()));}
 
   function renderHome(root,d){const programs=d.programs||[],standalone=d.standalone_books||[];root.innerHTML=`<div class="flh-library-head"><div><b>📚 مكتبتي</b><div class="muted">اختَر المنهاج أو الكتاب، وبعدها الوحدة وطريقة الدراسة.</div></div></div>${programs.length?`<div class="flh-library-title">🎓 مناهجي وكورساتي</div><div class="flh-card-grid">${programs.map((p,i)=>`<button class="flh-library-card" data-open-program="${i}"><span class="flh-card-icon">${p.program_type==='curriculum'?'🏫':'🎯'}</span><b>${safe(p.title)}</b><small>${[p.grade_level?`الصف ${p.grade_level}`:'',p.school_year||'',`${(p.books||[]).length} كتاب`].filter(Boolean).join(' · ')}</small>${p.is_primary?'<em>البرنامج الأساسي</em>':''}</button>`).join('')}</div>`:''}${standalone.length?`<div class="flh-library-title">📖 كتبي المستقلة</div><div class="flh-card-grid">${standalone.map((b,i)=>`<button class="flh-library-card" data-open-standalone="${i}"><span class="flh-card-icon">📘</span><b>${safe(b.title)}</b><small>${safe(contextBook(b)||'كتاب مستقل')}</small></button>`).join('')}</div>`:''}${!programs.length&&!standalone.length?'<div class="empty">ما في محتوى مربوط بحسابك بعد. اطلب من ولي الأمر يضيف لك منهاجًا أو كتابًا.</div>':''}`;root.querySelectorAll('[data-open-program]').forEach(b=>b.addEventListener('click',()=>renderProgram(root,programs[Number(b.getAttribute('data-open-program'))],d)));root.querySelectorAll('[data-open-standalone]').forEach(b=>b.addEventListener('click',()=>renderBook(root,standalone[Number(b.getAttribute('data-open-standalone'))],d,null)));}
@@ -29,26 +29,15 @@
     hideLegacy();
     let root=document.querySelector('[data-student-library]');
     if(root?.dataset.libraryReady==='1')return;
-    if(!root){
-      root=document.createElement('section');
-      root.className='panel flh-student-library';
-      root.dataset.studentLibrary='1';
-      const progress=document.querySelector('#app .hero + .panel');
-      if(progress)progress.insertAdjacentElement('afterend',root);
-      else document.querySelector('#app .panel')?.insertAdjacentElement('beforebegin',root);
-    }
+    if(!root){root=document.createElement('section');root.className='panel flh-student-library';root.dataset.studentLibrary='1';const progress=document.querySelector('#app .hero + .panel');if(progress)progress.insertAdjacentElement('afterend',root);else document.querySelector('#app .panel')?.insertAdjacentElement('beforebegin',root);}
     if(!root||loading)return;
     if(cache){renderHome(root,cache);root.dataset.libraryReady='1';return;}
-    loading=true;
-    root.innerHTML='<div class="loading-card">جارِ ترتيب مكتبتك…</div>';
+    loading=true;root.innerHTML='<div class="loading-card">جارِ ترتيب مكتبتك…</div>';
     try{cache=await load();renderHome(root,cache);root.dataset.libraryReady='1';}
     catch{root.innerHTML='<div class="error">تعذر تحميل مكتبتك. جرّب تحديث الصفحة.</div>';}
     finally{loading=false;}
   }
   function reset(){cache=null;setTimeout(install,30)}
-  const observer=new MutationObserver(()=>{hideLegacy();install();});
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener('hashchange',reset);
-  document.addEventListener('DOMContentLoaded',install);
-  install();
+  const observer=new MutationObserver(()=>{hideLegacy();install();});observer.observe(document.documentElement,{childList:true,subtree:true});
+  window.addEventListener('hashchange',reset);document.addEventListener('DOMContentLoaded',install);install();
 })();
