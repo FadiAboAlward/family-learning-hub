@@ -128,15 +128,16 @@ if(wrongReviewBefore.includes('تلميح'))throw new Error('EXAM_REVIEW_MUST_NO
 const explainButton=page.getByRole('button',{name:'📘 الشرح'}).first();
 await explainButton.waitFor({state:'visible',timeout:2000});
 await explainButton.click();
-await page.getByText('قاعدة الجمع هنا:',{exact:false}).waitFor({state:'visible',timeout:2000});
-const basicSteps=await page.locator('#examExplain0 > .flh-explanation > .exam-explanation-steps').first().locator('li').count();
+const basicList=page.locator('#examExplain0 > .flh-explanation > .exam-explanation-steps').first();
+await basicList.getByText('قاعدة الجمع هنا:',{exact:false}).waitFor({state:'visible',timeout:2000});
+const basicSteps=await basicList.locator('li').count();
 if(basicSteps!==3)throw new Error(`EXPECTED_3_BASIC_EXPLANATION_STEPS_GOT_${basicSteps}`);
 const expandButton=page.getByRole('button',{name:'➕ شرح موسّع'}).first();
 await expandButton.click();
 await page.locator('#examExpanded0').waitFor({state:'visible',timeout:2000});
 const expandedSteps=await page.locator('#examExpanded0 .exam-explanation-steps').locator('li').count();
 if(expandedSteps!==6)throw new Error(`EXPECTED_6_EXPANDED_EXPLANATION_STEPS_GOT_${expandedSteps}`);
-await page.getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
+await page.locator('#examExpanded0').getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
 const reviewExplanationPresent=true;
 
 const report={
