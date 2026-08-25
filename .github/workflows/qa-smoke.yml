@@ -82,3 +82,14 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/copy-smoke.mjs
+      - name: Capture child UX visual checkpoints
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/visual-ux.mjs
+      - name: Upload child UX visual checkpoints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-ux-visual
+          path: ux-visual-artifacts
+          if-no-files-found: error
