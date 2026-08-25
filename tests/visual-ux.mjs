@@ -54,13 +54,17 @@ await page.locator('[data-unit="0"]').click();
 await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:10000});
 await page.screenshot({path:`${OUT}/03-learning-mobile.png`,fullPage:true});
 
+await page.locator('.flh-learn-answer').filter({hasText:'38'}).click();
+await page.getByText('تمام، جاهز للتأكيد.').waitFor({state:'visible',timeout:5000});
+await page.screenshot({path:`${OUT}/04-learning-selected-mobile.png`,fullPage:true});
+
 await page.locator('#flhLearnExit').click();
 await page.locator('[data-continue]').waitFor({state:'visible',timeout:10000});
-await page.screenshot({path:`${OUT}/04-home-with-continue-mobile.png`,fullPage:true});
+await page.screenshot({path:`${OUT}/05-home-with-continue-mobile.png`,fullPage:true});
 
 await page.locator('[data-achievements]').click();
 await page.getByText('إنجازاتي',{exact:true}).first().waitFor({state:'visible'});
-await page.screenshot({path:`${OUT}/05-achievements-mobile.png`,fullPage:true});
+await page.screenshot({path:`${OUT}/06-achievements-mobile.png`,fullPage:true});
 
 await browser.close();
 console.log(`Visual UX screenshots saved to ${OUT}`);
