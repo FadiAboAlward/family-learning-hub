@@ -2,7 +2,8 @@
   const SUPABASE_URL='https://gkpoylfozvuwuwqeoduc.supabase.co';
   const PUBLISHABLE_KEY='sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
   const EXAM_API=`${SUPABASE_URL}/functions/v1/exam-v2-api`;
-  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const LIVE_ORIGIN='https://fadiaboalward.github.io';
+  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const renderMath=(s='')=>typeof math==='function'?math(safe(s)):safe(s);
   const learnerToken=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   async function examApi(action,payload={}){const t=learnerToken();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(EXAM_API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
@@ -11,7 +12,7 @@
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   let warmPromise=null,warmAt=0;
   function warmExamApi(){
-    if(!learnerToken())return Promise.resolve(false);
+    if(location.origin!==LIVE_ORIGIN||!learnerToken())return Promise.resolve(false);
     if(warmPromise)return warmPromise;
     if(Date.now()-warmAt<90_000)return Promise.resolve(true);
     warmAt=Date.now();
