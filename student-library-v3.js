@@ -2,7 +2,7 @@
   const SUPABASE_URL='https://gkpoylfozvuwuwqeoduc.supabase.co';
   const PUBLISHABLE_KEY='sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
   const API=`${SUPABASE_URL}/functions/v1/student-library-api`;
-  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   let loading=false,cache=null;
 
@@ -35,7 +35,8 @@
     if(!onStudentHome())return;
     const hero=document.querySelector('.hero');
     const p=hero?.querySelector('p');
-    if(p)p.textContent='جاهز نكمّل؟ اختر نشاطك وابدأ.';
+    const copy='جاهز نكمّل؟ اختر نشاطك وابدأ.';
+    if(p&&p.textContent!==copy)p.textContent=copy;
     document.querySelectorAll('#app > .panel:not(.flh-student-library)').forEach(panel=>{
       if(panel.querySelector('.stats,.badge-row,.reward-card')||[...panel.querySelectorAll('.section-title')].some(x=>/(أوسمتك|المكافآت|كويزاتك)/.test(x.textContent||''))){
         panel.classList.add('flh-legacy-student-panel');
