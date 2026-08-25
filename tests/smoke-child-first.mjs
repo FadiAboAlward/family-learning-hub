@@ -85,12 +85,10 @@ await page.route('**/functions/v1/activity-api',async r=>{
 async function waitHome(){await page.locator('[data-student-library]').waitFor({state:'visible',timeout:10000});}
 async function openMath(){await page.locator('[data-primary-book]').filter({hasText:'الرياضيات'}).first().click();await page.locator('[data-unit="0"]').waitFor({state:'visible',timeout:5000});}
 
-// Dynamic learner chooser stays generic and scalable.
 await page.goto(`${BASE_URL}?qa=login-${Date.now()}#student`,{waitUntil:'domcontentloaded',timeout:30000});
 await page.locator('[data-dynamic-learner="abdul-qader"]').waitFor({state:'visible',timeout:10000});
 if(await page.locator('[data-dynamic-learner]').count()!==4)throw new Error('Dynamic learners failed');
 
-// Primary child path: Home -> Subject -> Unit -> Learning.
 await page.evaluate(()=>localStorage.setItem('learner_session','qa-learner'));
 profileMode='aya';
 await page.reload({waitUntil:'domcontentloaded',timeout:30000});
@@ -115,7 +113,6 @@ await page.getByText('تمام، جاهز للتأكيد.').waitFor({state:'visi
 if(learningCalls.draft!==1||learningCalls.answer!==0)throw new Error('Answer choice must save draft without submitting');
 if(await page.locator('#flhConfirmAnswer').isDisabled())throw new Error('Explicit confirm did not enable');
 
-// Exit and one-tap Continue must restore the exact draft.
 await page.locator('#flhLearnExit').click();
 await page.locator('[data-continue]').waitFor({state:'visible',timeout:10000});
 await page.locator('[data-continue]').click();
@@ -129,7 +126,6 @@ await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
 await page.locator('#learnHome').click();
 await page.locator('[data-primary-book]').first().waitFor({state:'visible',timeout:10000});
 
-// Exam remains available but secondary.
 await openMath();
 await page.locator('[data-unit-exam="0"]').click();
 await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
@@ -149,13 +145,11 @@ await page.getByRole('heading',{name:/عندك أسئلة للمراجعة/}).wa
 await page.locator('#submitAnyway').click();
 await page.getByText('100%').first().waitFor({state:'visible',timeout:5000});
 
-// Content isolation by learner remains mandatory.
 profileMode='mohammad';
 await page.reload({waitUntil:'domcontentloaded',timeout:30000});
 await page.getByText('ما في محتوى مربوط بحسابك بعد. اطلب من ولي الأمر يضيف لك منهاجًا أو كتابًا.').waitFor({state:'visible',timeout:10000});
 if(await page.locator('[data-primary-book]').count())throw new Error('Aya content leaked to Mohammad');
 
-// Parent progressive disclosure and direct assignment still work.
 await page.evaluate(()=>{localStorage.removeItem('learner_session');sessionStorage.removeItem('learner_session');localStorage.setItem('parent_session',JSON.stringify({access_token:'qa-parent'}));});
 await page.goto(`${BASE_URL}?qa=parent-${Date.now()}#parents`,{waitUntil:'domcontentloaded',timeout:30000});
 await page.locator('[data-parent-center-nav]').waitFor({state:'visible',timeout:10000});
@@ -172,7 +166,7 @@ if(!chessAssigned)throw new Error('Standalone book assignment failed');
 await page.evaluate(()=>{localStorage.removeItem('parent_session');localStorage.setItem('learner_session','qa-learner');});
 profileMode='mohammad';
 await page.goto(`${BASE_URL}?qa=moh-book-${Date.now()}#student`,{waitUntil:'domcontentloaded',timeout:30000});
-await page.getByText('الشطرنج').waitFor({state:'visible',timeout:10000});
+await page.locator('[data-open-standalone]').filter({hasText:'الشطرنج'}).first().waitFor({state:'visible',timeout:10000});
 if(await page.locator('[data-primary-book]').count())throw new Error('Primary Aya program appeared for Mohammad');
 
 if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
