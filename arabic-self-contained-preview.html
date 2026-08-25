@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#5c3864">
+  <title>Preview — كويز عربي مكتفٍ بذاته</title>
+  <link rel="stylesheet" href="./question-material-v1.css">
+</head>
+<body style="margin:0;background:linear-gradient(180deg,#f8f5f9,#f4f0f6);font-family:Tahoma,Arial,sans-serif;color:#251f28">
+  <main class="self-contained-demo">
+    <section class="demo-hero">
+      <h1>📖 تجربة: الكويز المكتفي بذاته</h1>
+      <p>الطالب لا يحتاج الكتاب بجانبه. أي نص لازم للحل يظهر داخل الكويز، ويقدر يرجع له بأي وقت.</p>
+    </section>
+
+    <div id="intro"></div>
+
+    <section id="quiz" hidden>
+      <div id="materialToggle"></div>
+      <article class="demo-question-card">
+        <div class="demo-meta"><span>لغتي — الصف الخامس</span><span>سؤال مكيّف من درس «السمكة الذهبية»</span></div>
+        <p class="demo-question">ما الأمنية التي كان الصياد يسعى إلى تحقيقها في بداية القصة؟</p>
+        <div class="demo-options" id="options">
+          <button class="demo-option" data-answer="0"><span class="num">١</span><span>أن يشتري بيتًا كبيرًا بعيدًا عن البحر.</span></button>
+          <button class="demo-option" data-answer="1"><span class="num">٢</span><span>أن يصطاد سمكةً ذهبيةً ليشتري بثمنها زورقًا للصيد.</span></button>
+          <button class="demo-option" data-answer="0"><span class="num">٣</span><span>أن يترك الصيد ويعمل في التجارة.</span></button>
+          <button class="demo-option" data-answer="0"><span class="num">٤</span><span>أن يسافر ويعيش في مدينة أخرى.</span></button>
+        </div>
+        <div id="feedback" class="demo-feedback"></div>
+      </article>
+      <div class="question-material-preview-note">💡 هذه المعاينة تعرض الفكرة فقط: في التطبيق الحقيقي نفس مفهوم «مادة السؤال» سيخدم النصوص والصور والاستماع والجداول، ويُربط بالأسئلة من البيانات بدل افتراض أن الكتاب مفتوح.</div>
+    </section>
+  </main>
+
+  <script src="./question-material-v1.js"></script>
+  <script>
+    const material = {
+      id: 'golden-fish-reading-p5',
+      type: 'text',
+      title: 'اقرأ المقطع القصير من «السمكة الذهبية»',
+      text: 'على الشاطئ يعيشُ صيّادٌ فقيرٌ، يذهبُ كلَّ يومٍ إلى البحرِ ويصطادُ بضعَ سمكاتٍ، ثمَّ يبيعُها بليراتٍ قليلةٍ. ولكنّه ما زالَ يحلمُ باصطيادِ سمكةٍ ذهبيّةٍ ليشتريَ بثمنِها زورقًا للصيدِ.',
+      sourceLabel: 'من كتاب «لغتي - الصف الخامس الأساسي - الفصل الأول» — صفحة PDF 5.'
+    };
+
+    const intro = document.getElementById('intro');
+    const quiz = document.getElementById('quiz');
+    FamilyLearningQuestionMaterial.mountIntro(intro, material, {
+      startLabel: 'جاهز، ابدأ السؤال 🚀',
+      onStart() {
+        intro.hidden = true;
+        quiz.hidden = false;
+        FamilyLearningQuestionMaterial.mountToggle('#materialToggle', material, '📖 عرض النص مرة ثانية');
+        window.scrollTo({top:0,behavior:'smooth'});
+      }
+    });
+
+    document.getElementById('options').addEventListener('click', e => {
+      const option = e.target.closest('.demo-option');
+      if (!option) return;
+      document.querySelectorAll('.demo-option').forEach(x => x.classList.remove('selected'));
+      option.classList.add('selected');
+      const feedback = document.getElementById('feedback');
+      const good = option.dataset.answer === '1';
+      feedback.className = `demo-feedback show ${good ? 'good' : 'bad'}`;
+      feedback.innerHTML = good
+        ? '🌟 ممتاز! النص قال إن الصياد كان يحلم بسمكة ذهبية ليشتري بثمنها زورقًا للصيد.'
+        : '🙂 مو هي. افتح «عرض النص مرة ثانية» ودوّر على الجملة التي تبدأ بـ «ولكنّه ما زال يحلم…».';
+    });
+  </script>
+</body>
+</html>
