@@ -43,24 +43,24 @@ await page.route('**/functions/v1/**',async route=>{
 
 await page.addInitScript(()=>localStorage.setItem('learner_session','visual-learner-token'));
 await page.goto(`${BASE_URL}?visual=${Date.now()}#student`,{waitUntil:'networkidle',timeout:30000});
-await page.locator('[data-open-program="0"]').waitFor({state:'visible',timeout:10000});
+await page.locator('[data-primary-book]').first().waitFor({state:'visible',timeout:10000});
 await page.screenshot({path:`${OUT}/01-student-home-mobile.png`,fullPage:true});
 
-await page.locator('[data-open-program="0"]').click();
-await page.locator('[data-book]').first().waitFor({state:'visible'});
-await page.screenshot({path:`${OUT}/02-program-mobile.png`,fullPage:true});
-
-await page.locator('[data-book]').filter({hasText:'الرياضيات'}).first().click();
+await page.locator('[data-primary-book]').filter({hasText:'الرياضيات'}).first().click();
 await page.locator('[data-unit="0"]').waitFor({state:'visible'});
-await page.screenshot({path:`${OUT}/03-book-mobile.png`,fullPage:true});
+await page.screenshot({path:`${OUT}/02-book-mobile.png`,fullPage:true});
 
 await page.locator('[data-unit="0"]').click();
-await page.locator('[data-learn="math-g5-unit1"]').waitFor({state:'visible'});
-await page.screenshot({path:`${OUT}/04-unit-mobile.png`,fullPage:true});
-
-await page.locator('[data-learn="math-g5-unit1"]').click();
 await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:10000});
-await page.screenshot({path:`${OUT}/05-learning-mobile.png`,fullPage:true});
+await page.screenshot({path:`${OUT}/03-learning-mobile.png`,fullPage:true});
+
+await page.locator('#flhLearnExit').click();
+await page.locator('[data-continue]').waitFor({state:'visible',timeout:10000});
+await page.screenshot({path:`${OUT}/04-home-with-continue-mobile.png`,fullPage:true});
+
+await page.locator('[data-achievements]').click();
+await page.getByText('إنجازاتي',{exact:true}).first().waitFor({state:'visible'});
+await page.screenshot({path:`${OUT}/05-achievements-mobile.png`,fullPage:true});
 
 await browser.close();
 console.log(`Visual UX screenshots saved to ${OUT}`);
