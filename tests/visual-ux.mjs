@@ -37,7 +37,17 @@ await page.route('**/functions/v1/**',async route=>{
     if(body.action==='answer')return json({is_correct:true,attempt_no:1,finalized:true,explanation:'38 يقع بين 35 و40.'});
     if(body.action==='finish_quiz')return json({percentage:100,first_try_correct:1,hints_used:0,award:{already_awarded:false,xp:10,reward_points:2},review:[]});
   }
-  if(url.includes('/question-reference-api'))return json({codes:{lq1:'Q-000007'}});
+  if(url.includes('/exam-v2-api')){
+    if(body.action==='start_exam')return json({attempt_id:'visual-exam',resumed:false,quiz:{slug:body.quiz_slug,title:'اختبار الوحدة الأولى'},questions:[
+      {sequence_no:1,question_id:'eq1',status:'active',is_flagged:false,saved_response:null,question:{id:'eq1',question_code:'Q-000051',prompt:'أي عدد أكبر من 35 وأصغر من 40؟',options:[{position:1,content:'34'},{position:2,content:'38'},{position:3,content:'41'}],assets:[]}},
+      {sequence_no:2,question_id:'eq2',status:'pending',is_flagged:false,saved_response:null,question:{id:'eq2',question_code:'Q-000052',prompt:'ما ناتج 6 + 3؟',options:[{position:1,content:'8'},{position:2,content:'9'},{position:3,content:'10'}],assets:[]}},
+      {sequence_no:3,question_id:'eq3',status:'pending',is_flagged:false,saved_response:null,question:{id:'eq3',question_code:'Q-000053',prompt:'اختر العدد الأصغر.',options:[{position:1,content:'12'},{position:2,content:'7'},{position:3,content:'15'}],assets:[]}}
+    ]});
+    if(body.action==='save_answer')return json({ok:true});
+    if(body.action==='set_flag')return json({ok:true,is_flagged:body.is_flagged});
+    if(body.action==='submit_exam')return json({percentage:100,score_points:3,max_points:3,review:[]});
+  }
+  if(url.includes('/question-reference-api'))return json({codes:body.attempt_id==='visual-exam'?{eq1:'Q-000051',eq2:'Q-000052',eq3:'Q-000053'}:{lq1:'Q-000007'}});
   return json({ok:true});
 });
 
@@ -65,6 +75,16 @@ await page.screenshot({path:`${OUT}/05-home-with-continue-mobile.png`,fullPage:t
 await page.locator('[data-achievements]').click();
 await page.getByText('إنجازاتي',{exact:true}).first().waitFor({state:'visible'});
 await page.screenshot({path:`${OUT}/06-achievements-mobile.png`,fullPage:true});
+
+await page.locator('[data-nav="back"]').click();
+await page.locator('[data-primary-book]').filter({hasText:'الرياضيات'}).first().click();
+await page.locator('[data-unit-exam="0"]').click();
+await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:10000});
+await page.screenshot({path:`${OUT}/07-exam-mobile.png`,fullPage:true});
+
+await page.locator('.exam-v3-answer').filter({hasText:'38'}).click();
+await page.getByText('الإجابة محفوظة تلقائيًا.').waitFor({state:'visible',timeout:5000});
+await page.screenshot({path:`${OUT}/08-exam-selected-mobile.png`,fullPage:true});
 
 await browser.close();
 console.log(`Visual UX screenshots saved to ${OUT}`);
