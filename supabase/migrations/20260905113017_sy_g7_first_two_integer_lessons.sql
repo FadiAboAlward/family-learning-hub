@@ -146,29 +146,39 @@ begin
   ]'::jsonb;
 
   for v_item in select value from jsonb_array_elements(v_items) loop
-    insert into public.quiz_questions(workspace_id,quiz_version_id,position,question_type,prompt,origin,source_page_start,source_page_end,source_metadata,points,difficulty_level,max_attempts,remediation_after_attempt,adaptive_enabled,delivery_role,prompt_language,terminology_display_mode,question_code)
-    values(v_workspace,v_version,(v_item->>'pos')::int,'single_choice',v_item->>'prompt','generated',5,9,
-      jsonb_build_object('source_type','GENERATED_SIMILAR','book_code','AR-MATH-G7-2025-2026','lesson_code','1-2','visual_pages_verified',true),
-      1,case when (v_item->>'role')='exam_pool' then 2 else 1 end,4,3,true,v_item->>'role','ar','source_only',v_item->>'code')
-    returning id into v_question;
-    v_i := 0;
-    for v_option in select value from jsonb_array_elements_text(v_item->'opts') loop
-      v_i := v_i + 1;
-      insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
-      values(v_workspace,v_question,v_i,chr(64+v_i),v_option);
-    end loop;
-    insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation)
-    values(v_question,v_workspace,jsonb_build_object('option_position',(v_item->>'correct')::int),v_item->>'explain',v_item->>'explain',v_item->>'explain');
-    if v_item ? 'hints' then
+    v_question := null;
+    select id into v_question
+    from public.quiz_questions
+    where workspace_id=v_workspace
+      and quiz_version_id=v_version
+      and question_code=v_item->>'code'
+    limit 1;
+
+    if v_question is null then
+      insert into public.quiz_questions(workspace_id,quiz_version_id,position,question_type,prompt,origin,source_page_start,source_page_end,source_metadata,points,difficulty_level,max_attempts,remediation_after_attempt,adaptive_enabled,delivery_role,prompt_language,terminology_display_mode,question_code)
+      values(v_workspace,v_version,(v_item->>'pos')::int,'single_choice',v_item->>'prompt','generated',5,9,
+        jsonb_build_object('source_type','GENERATED_SIMILAR','book_code','AR-MATH-G7-2025-2026','lesson_code','1-2','visual_pages_verified',true),
+        1,case when (v_item->>'role')='exam_pool' then 2 else 1 end,4,3,true,v_item->>'role','ar','source_only',v_item->>'code')
+      returning id into v_question;
       v_i := 0;
-      for v_hint in select value from jsonb_array_elements_text(v_item->'hints') loop
+      for v_option in select value from jsonb_array_elements_text(v_item->'opts') loop
         v_i := v_i + 1;
-        insert into public.quiz_question_hints(workspace_id,question_id,hint_level,pedagogical_role,content,language,terminology_display_mode)
-        values(v_workspace,v_question,v_i,case v_i when 1 then 'nudge' when 2 then 'guide' when 3 then 'strong_guide' else 'near_solution' end,v_hint,'ar','source_only');
+        insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
+        values(v_workspace,v_question,v_i,chr(64+v_i),v_option);
       end loop;
+      insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation)
+      values(v_question,v_workspace,jsonb_build_object('option_position',(v_item->>'correct')::int),v_item->>'explain',v_item->>'explain',v_item->>'explain');
+      if v_item ? 'hints' then
+        v_i := 0;
+        for v_hint in select value from jsonb_array_elements_text(v_item->'hints') loop
+          v_i := v_i + 1;
+          insert into public.quiz_question_hints(workspace_id,question_id,hint_level,pedagogical_role,content,language,terminology_display_mode)
+          values(v_workspace,v_question,v_i,case v_i when 1 then 'nudge' when 2 then 'guide' when 3 then 'strong_guide' else 'near_solution' end,v_hint,'ar','source_only');
+        end loop;
+      end if;
+      insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
+      values(v_workspace,v_question,v_concept_add,true,1);
     end if;
-    insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
-    values(v_workspace,v_question,v_concept_add,true,1);
   end loop;
 
   insert into public.quizzes(workspace_id,subject_id,book_id,lesson_id,slug,title,description,status,curriculum_id,unit_id,quiz_kind,delivery_config)
@@ -212,28 +222,38 @@ begin
   ]'::jsonb;
 
   for v_item in select value from jsonb_array_elements(v_items) loop
-    insert into public.quiz_questions(workspace_id,quiz_version_id,position,question_type,prompt,origin,source_page_start,source_page_end,source_metadata,points,difficulty_level,max_attempts,remediation_after_attempt,adaptive_enabled,delivery_role,prompt_language,terminology_display_mode,question_code)
-    values(v_workspace,v_version,(v_item->>'pos')::int,'single_choice',v_item->>'prompt','generated',10,12,
-      jsonb_build_object('source_type','GENERATED_SIMILAR','book_code','AR-MATH-G7-2025-2026','lesson_code','1-3','visual_pages_verified',true),
-      1,case when (v_item->>'role')='exam_pool' then 2 else 1 end,4,3,true,v_item->>'role','ar','source_only',v_item->>'code')
-    returning id into v_question;
-    v_i := 0;
-    for v_option in select value from jsonb_array_elements_text(v_item->'opts') loop
-      v_i := v_i + 1;
-      insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
-      values(v_workspace,v_question,v_i,chr(64+v_i),v_option);
-    end loop;
-    insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation)
-    values(v_question,v_workspace,jsonb_build_object('option_position',(v_item->>'correct')::int),v_item->>'explain',v_item->>'explain',v_item->>'explain');
-    if v_item ? 'hints' then
+    v_question := null;
+    select id into v_question
+    from public.quiz_questions
+    where workspace_id=v_workspace
+      and quiz_version_id=v_version
+      and question_code=v_item->>'code'
+    limit 1;
+
+    if v_question is null then
+      insert into public.quiz_questions(workspace_id,quiz_version_id,position,question_type,prompt,origin,source_page_start,source_page_end,source_metadata,points,difficulty_level,max_attempts,remediation_after_attempt,adaptive_enabled,delivery_role,prompt_language,terminology_display_mode,question_code)
+      values(v_workspace,v_version,(v_item->>'pos')::int,'single_choice',v_item->>'prompt','generated',10,12,
+        jsonb_build_object('source_type','GENERATED_SIMILAR','book_code','AR-MATH-G7-2025-2026','lesson_code','1-3','visual_pages_verified',true),
+        1,case when (v_item->>'role')='exam_pool' then 2 else 1 end,4,3,true,v_item->>'role','ar','source_only',v_item->>'code')
+      returning id into v_question;
       v_i := 0;
-      for v_hint in select value from jsonb_array_elements_text(v_item->'hints') loop
+      for v_option in select value from jsonb_array_elements_text(v_item->'opts') loop
         v_i := v_i + 1;
-        insert into public.quiz_question_hints(workspace_id,question_id,hint_level,pedagogical_role,content,language,terminology_display_mode)
-        values(v_workspace,v_question,v_i,case v_i when 1 then 'nudge' when 2 then 'guide' when 3 then 'strong_guide' else 'near_solution' end,v_hint,'ar','source_only');
+        insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
+        values(v_workspace,v_question,v_i,chr(64+v_i),v_option);
       end loop;
+      insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation)
+      values(v_question,v_workspace,jsonb_build_object('option_position',(v_item->>'correct')::int),v_item->>'explain',v_item->>'explain',v_item->>'explain');
+      if v_item ? 'hints' then
+        v_i := 0;
+        for v_hint in select value from jsonb_array_elements_text(v_item->'hints') loop
+          v_i := v_i + 1;
+          insert into public.quiz_question_hints(workspace_id,question_id,hint_level,pedagogical_role,content,language,terminology_display_mode)
+          values(v_workspace,v_question,v_i,case v_i when 1 then 'nudge' when 2 then 'guide' when 3 then 'strong_guide' else 'near_solution' end,v_hint,'ar','source_only');
+        end loop;
+      end if;
+      insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
+      values(v_workspace,v_question,v_concept_mul,true,1);
     end if;
-    insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
-    values(v_workspace,v_question,v_concept_mul,true,1);
   end loop;
 end $$;
