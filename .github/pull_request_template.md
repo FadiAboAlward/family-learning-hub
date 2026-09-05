@@ -8,7 +8,8 @@ Describe what changed and why.
 - Parent flow affected: yes / no
 - Data/access rules affected: yes / no
 - Learning or exam behavior affected: yes / no
-- Production deploy/migration required: yes / no
+- Production deployment required: yes / no
+- Database migration required: yes / no
 - Security/authorization boundary affected: yes / no
 
 ## QA checklist
@@ -21,22 +22,45 @@ Describe what changed and why.
 - [ ] Arabic/RTL copy was checked; no unintended English UI labels or reversed school-year text were introduced. (Or N/A with reason.)
 - [ ] Mobile interaction and touch targets were considered. (Or N/A with reason.)
 - [ ] Tests were added or updated for behavior changed by this PR, or the PR explains why no test change is needed.
-- [ ] QA Gate / Static quality passes on the latest relevant head.
-- [ ] QA Gate / Browser smoke passes on the latest relevant head.
-- [ ] CodeRabbit review completed on the current reviewed head; all actionable findings are fixed or explicitly resolved with a verified architectural reason.
-- [ ] If meaningful fixes were made after review, QA and CodeRabbit were rerun/re-reviewed as appropriate.
-- [ ] Deployment/migration steps are documented below, or explicitly marked N/A.
-- [ ] Production verification steps are documented below, or explicitly marked N/A.
+- Validated PR-head SHA for every required pre-merge gate: `<sha>`
+- [ ] QA Gate / Static quality passed for the exact PR-head SHA recorded above.
+- [ ] QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
+- [ ] CodeRabbit review completed for the exact same PR-head SHA; all actionable findings are fixed or explicitly resolved with a verified architectural reason.
+- [ ] If the PR-head SHA changed after any required result, Static quality, Browser smoke, and CodeRabbit review were all rerun/re-reviewed for the new SHA and the recorded SHA above was updated.
+- [ ] Production deployment steps are documented below, or explicitly marked N/A.
+- [ ] Database migration steps and reconciliation requirements are documented below, or explicitly marked N/A.
+- [ ] Production verification plan is documented below, or explicitly marked N/A.
 
-## Deployment / migration
+## Production deployment
 
 - Required: yes / no
+- Deployment target / identifier:
 - Steps or N/A reason:
+
+## Database migration
+
+- Required: yes / no
+- Migration identity / filename, or N/A reason:
+- Existing-production vs fresh-database state checked: yes / no / N/A
+- `supabase_migrations.schema_migrations` reconciled when applicable: yes / no / N/A
+- If production drift exists, new forward reconciliation migration used: yes / no / N/A
+- Apply/rollback notes:
 
 ## Production verification
 
 - Required: yes / no
 - Exact production checks to perform after merge, or N/A reason:
+
+### Post-merge completion record
+
+Do not describe delivery as complete until this record is filled when production verification is required.
+
+- Status: pending / completed / N/A
+- Result:
+- Timestamp (UTC):
+- Verifier:
+- Deployment / migration identifier:
+- Evidence link or exact evidence reference:
 
 ## Notes for reviewer
 
