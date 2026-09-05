@@ -1,14 +1,95 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!,SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const admin=createClient(SUPABASE_URL,SERVICE_ROLE,{auth:{persistSession:false,autoRefreshToken:false}}),WORKSPACE_ID="55f9224c-8ba7-4cbc-9f88-713e6a6b41df";
-function cors(o:string|null){const a=new Set(["https://fadiaboalward.github.io","http://localhost:5173","http://localhost:4173"]);return{"Access-Control-Allow-Origin":o&&a.has(o)?o:"https://fadiaboalward.github.io","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Max-Age":"86400","Content-Type":"application/json; charset=utf-8","Vary":"Origin"};}
-function json(d:unknown,s=200,o:string|null=null){return new Response(JSON.stringify(d),{status:s,headers:cors(o)});}
-function fb(s:string){const n=s.replaceAll("-","+").replaceAll("_","/")+"===".slice((s.length+3)%4),r=atob(n);return new Uint8Array([...r].map(c=>c.charCodeAt(0)));}
-function tb(b:Uint8Array){let s="";for(const x of b)s+=String.fromCharCode(x);return btoa(s).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");}
-async function hm(d:string){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(SERVICE_ROLE),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return tb(new Uint8Array(await crypto.subtle.sign("HMAC",k,new TextEncoder().encode(d))));}
-async function learner(req:Request){const a=req.headers.get("authorization")||"";if(!a.startsWith("Bearer "))throw new Error("AUTH_REQUIRED");const[b,s]=a.slice(7).trim().split(".");if(!b||!s||await hm(b)!==s)throw new Error("INVALID_SESSION");let p:any;try{p=JSON.parse(new TextDecoder().decode(fb(b)));}catch{throw new Error("INVALID_SESSION");}if(p.typ!=="learner"||p.workspace_id!==WORKSPACE_ID||!p.learner_id)throw new Error("INVALID_SESSION");if(!p.exp||p.exp<Math.floor(Date.now()/1000))throw new Error("SESSION_EXPIRED");return String(p.learner_id);}
-async function startExam(lid:string,slug:string){const{data,error}=await admin.rpc("flh_exam_start",{p_workspace_id:WORKSPACE_ID,p_learner_id:lid,p_quiz_slug:slug});if(error)throw new Error("EXAM_START_FAILED");if((data as any)?.error)throw new Error(String((data as any).error));return data;}
-async function saveAnswer(lid:string,b:any){const aid=String(b.attempt_id||""),qid=String(b.question_id||""),pos=Number(b.option_position);if(!aid||!qid||!Number.isInteger(pos))throw new Error("INVALID_ANSWER");const{data,error}=await admin.rpc("flh_exam_save_answer",{p_workspace_id:WORKSPACE_ID,p_learner_id:lid,p_attempt_id:aid,p_question_id:qid,p_option_position:pos});if(error)throw new Error("ANSWER_SAVE_FAILED");if((data as any)?.error)throw new Error(String((data as any).error));return data;}
-async function setFlag(lid:string,b:any){const aid=String(b.attempt_id||""),qid=String(b.question_id||"");if(!aid||!qid||typeof b.is_flagged!=="boolean")throw new Error("INVALID_FLAG");const flag=b.is_flagged;const{data:a}=await admin.from("quiz_attempts").select("id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",aid).eq("learner_id",lid).maybeSingle();if(!a||a.status!=="in_progress"||a.delivery_mode!=="exam")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:q}=await admin.from("quiz_attempt_question_queue").select("id").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",aid).eq("question_id",qid).maybeSingle();if(!q)throw new Error("QUESTION_NOT_IN_EXAM");const{error:flagError}=await admin.from("quiz_attempt_question_queue").update({is_flagged:flag}).eq("id",q.id);if(flagError)throw new Error("FLAG_UPDATE_FAILED");return{ok:true,is_flagged:flag};}
-async function submitExam(lid:string,b:any){const aid=String(b.attempt_id||"");if(!aid)throw new Error("ATTEMPT_NOT_ACTIVE");const{data,error}=await admin.rpc("flh_exam_submit",{p_workspace_id:WORKSPACE_ID,p_learner_id:lid,p_attempt_id:aid});if(error)throw new Error("EXAM_SUBMIT_FAILED");if((data as any)?.error)throw new Error(String((data as any).error));return data;}
-Deno.serve(async(req:Request)=>{const o=req.headers.get("origin");if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors(o)});if(req.method!=="POST")return json({error:"METHOD_NOT_ALLOWED"},405,o);const started=performance.now();let action="";try{const parsed=await req.json().catch(()=>({}));const b:any=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{};action=String(b.action||"");if(action==="warmup"){console.log(JSON.stringify({event:"exam_action_timing",action,ms:Math.round(performance.now()-started)}));return json({ok:true,warm:true},200,o);}const allowedActions=new Set(["start_exam","save_answer","set_flag","submit_exam"]);if(!allowedActions.has(action))return json({error:"UNKNOWN_ACTION"},400,o);const lid=await learner(req);let out:unknown;if(action==="start_exam")out=await startExam(lid,String(b.quiz_slug||""));else if(action==="save_answer")out=await saveAnswer(lid,b);else if(action==="set_flag")out=await setFlag(lid,b);else out=await submitExam(lid,b);console.log(JSON.stringify({event:"exam_action_timing",action,ms:Math.round(performance.now()-started)}));return json(out,200,o);}catch(e){const m=e instanceof Error?e.message:"SERVER_ERROR";console.log(JSON.stringify({event:"exam_action_error",action,error:m,ms:Math.round(performance.now()-started)}));const au=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","NO_EXAM_QUESTIONS"],bad=["INVALID_ANSWER","INVALID_FLAG","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_IN_EXAM","ATTEMPT_OR_QUESTION_NOT_ACTIVE","EXAM_NOT_COMPLETE"];return json({error:m},au.includes(m)?401:nf.includes(m)?404:bad.includes(m)?400:500,o);}});
+import { authenticateLearner, dispatchExamAction, parseRequest, setFlag } from "./logic.mjs";
+
+const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const WORKSPACE_ID="55f9224c-8ba7-4cbc-9f88-713e6a6b41df";
+const admin=createClient(SUPABASE_URL,SERVICE_ROLE,{auth:{persistSession:false,autoRefreshToken:false}});
+
+/** Build CORS headers for the approved production and local origins. */
+function cors(origin:string|null){
+  const allowed=new Set(["https://fadiaboalward.github.io","http://localhost:5173","http://localhost:4173"]);
+  return{
+    "Access-Control-Allow-Origin":origin&&allowed.has(origin)?origin:"https://fadiaboalward.github.io",
+    "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods":"POST, OPTIONS",
+    "Access-Control-Max-Age":"86400",
+    "Content-Type":"application/json; charset=utf-8",
+    "Vary":"Origin"
+  };
+}
+
+/** Return a JSON response with the function's standard CORS headers. */
+function json(data:unknown,status=200,origin:string|null=null){
+  return new Response(JSON.stringify(data),{status,headers:cors(origin)});
+}
+
+/** Start one server-authoritative Exam Mode attempt. */
+async function startExam(learnerId:string,slug:string){
+  const{data,error}=await admin.rpc("flh_exam_start",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_quiz_slug:slug});
+  if(error)throw new Error("EXAM_START_FAILED");
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
+/** Save one answer for the authenticated learner's active attempt. */
+async function saveAnswer(learnerId:string,body:any){
+  const attemptId=String(body.attempt_id||"");
+  const questionId=String(body.question_id||"");
+  const optionPosition=Number(body.option_position);
+  if(!attemptId||!questionId||!Number.isInteger(optionPosition))throw new Error("INVALID_ANSWER");
+  const{data,error}=await admin.rpc("flh_exam_save_answer",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_option_position:optionPosition});
+  if(error)throw new Error("ANSWER_SAVE_FAILED");
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
+/** Submit the authenticated learner's Exam Mode attempt for grading. */
+async function submitExam(learnerId:string,body:any){
+  const attemptId=String(body.attempt_id||"");
+  if(!attemptId)throw new Error("ATTEMPT_NOT_ACTIVE");
+  const{data,error}=await admin.rpc("flh_exam_submit",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId});
+  if(error)throw new Error("EXAM_SUBMIT_FAILED");
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
+Deno.serve(async(req:Request)=>{
+  const origin=req.headers.get("origin");
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors(origin)});
+  if(req.method!=="POST")return json({error:"METHOD_NOT_ALLOWED"},405,origin);
+
+  const started=performance.now();
+  let action="";
+  try{
+    const parsed=await parseRequest(req);
+    const body=parsed.body;
+    action=parsed.action;
+
+    if(action==="warmup"){
+      console.log(JSON.stringify({event:"exam_action_timing",action,ms:Math.round(performance.now()-started)}));
+      return json({ok:true,warm:true},200,origin);
+    }
+
+    const allowedActions=new Set(["start_exam","save_answer","set_flag","submit_exam"]);
+    if(!allowedActions.has(action))return json({error:"UNKNOWN_ACTION"},400,origin);
+
+    const learnerId=await authenticateLearner(req,{serviceRole:SERVICE_ROLE,workspaceId:WORKSPACE_ID});
+    const output=await dispatchExamAction(action,learnerId,body,{
+      startExam,
+      saveAnswer,
+      setFlag:(lid:string,b:any)=>setFlag(admin,lid,b,WORKSPACE_ID),
+      submitExam
+    });
+
+    console.log(JSON.stringify({event:"exam_action_timing",action,ms:Math.round(performance.now()-started)}));
+    return json(output,200,origin);
+  }catch(error){
+    const message=error instanceof Error?error.message:"SERVER_ERROR";
+    console.log(JSON.stringify({event:"exam_action_error",action,error:message,ms:Math.round(performance.now()-started)}));
+    const authErrors=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED"];
+    const notFoundErrors=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","NO_EXAM_QUESTIONS"];
+    const badRequestErrors=["INVALID_ANSWER","INVALID_FLAG","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_IN_EXAM","ATTEMPT_OR_QUESTION_NOT_ACTIVE","EXAM_NOT_COMPLETE","UNKNOWN_ACTION"];
+    return json({error:message},authErrors.includes(message)?401:notFoundErrors.includes(message)?404:badRequestErrors.includes(message)?400:500,origin);
+  }
+});
