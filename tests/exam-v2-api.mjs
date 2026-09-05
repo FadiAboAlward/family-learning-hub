@@ -21,7 +21,7 @@ function makeRequest({authorization,raw='{}'}={}){
   return new Request('http://localhost/exam',{method:'POST',headers,body:raw});
 }
 
-function makeAdmin({attemptLearnerId='learner-a',questionExists=true,attemptError=null,questionError=null,updateError=null,updateData={id:'queue-1'}}={}){
+function makeAdmin({attemptLearnerId='learner-a',attemptWorkspaceId=WORKSPACE_ID,attemptId='attempt-1',questionWorkspaceId=WORKSPACE_ID,questionAttemptId='attempt-1',questionId='q1',questionExists=true,attemptError=null,questionError=null,updateError=null,updateData={id:'queue-1'}}={}){
   const state={updateCalls:0,lastUpdate:null,lastUpdateFilters:null};
   const admin={
     from(table){
@@ -33,12 +33,14 @@ function makeAdmin({attemptLearnerId='learner-a',questionExists=true,attemptErro
         async maybeSingle(){
           if(table==='quiz_attempts'){
             if(attemptError)return{data:null,error:attemptError};
-            if(context.filters.learner_id!==attemptLearnerId)return{data:null,error:null};
-            return{data:{id:'attempt-1',status:'in_progress',delivery_mode:'exam'},error:null};
+            const matches=context.filters.workspace_id===attemptWorkspaceId&&context.filters.id===attemptId&&context.filters.learner_id===attemptLearnerId;
+            if(!matches)return{data:null,error:null};
+            return{data:{id:attemptId,status:'in_progress',delivery_mode:'exam'},error:null};
           }
           if(table==='quiz_attempt_question_queue'){
             if(questionError)return{data:null,error:questionError};
-            return{data:questionExists?{id:'queue-1'}:null,error:null};
+            const matches=context.filters.workspace_id===questionWorkspaceId&&context.filters.quiz_attempt_id===questionAttemptId&&context.filters.question_id===questionId;
+            return{data:questionExists&&matches?{id:'queue-1'}:null,error:null};
           }
           throw new Error(`Unexpected table ${table}`);
         },
@@ -46,6 +48,8 @@ function makeAdmin({attemptLearnerId='learner-a',questionExists=true,attemptErro
           state.updateCalls+=1;
           state.lastUpdate=context.updatePayload;
           state.lastUpdateFilters={...context.filters};
+          const targetsExpectedRow=table==='quiz_attempt_question_queue'&&context.filters.id==='queue-1';
+          if(!targetsExpectedRow)return{data:null,error:null};
           return{data:updateData,error:updateError};
         }
       };
@@ -115,6 +119,12 @@ test('array attempt_id is rejected as INVALID_FLAG',async()=>{
 test('learner-content isolation blocks another learner attempt',async()=>{
   const{admin,state}=makeAdmin({attemptLearnerId:'learner-a'});
   await assert.rejects(()=>setFlag(admin,'learner-b',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/ATTEMPT_NOT_ACTIVE/);
+  assert.equal(state.updateCalls,0);
+});
+
+test('mismatched queue workspace is treated as outside the exam scope',async()=>{
+  const{admin,state}=makeAdmin({questionWorkspaceId:'other-workspace'});
+  await assert.rejects(()=>setFlag(admin,'learner-a',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/QUESTION_NOT_IN_EXAM/);
   assert.equal(state.updateCalls,0);
 });
 
