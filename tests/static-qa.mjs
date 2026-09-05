@@ -26,11 +26,11 @@ for(const f of forbiddenLegacy){if(loadedScripts.includes(f))fail(`Legacy runtim
 const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
 for(const f of requiredRuntime){if(!loadedScripts.includes(f))fail(`Required runtime script is not loaded: ${f}`);}
 
-for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs'])){
+for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs','tests/exam-v2-api.mjs','supabase/functions/exam-v2-api/index.ts','supabase/functions/exam-v2-api/logic.mjs'])){
   if(!exists(file))continue;
-  const s=read(file);
-  if(mergeMarkerRe.test(s))fail(`Unresolved merge marker found in ${file}.`);
-  if(/2026[-–]2025/.test(s))fail(`Reversed school-year text found in ${file}.`);
+  const source=read(file);
+  if(mergeMarkerRe.test(source))fail(`Unresolved merge marker found in ${file}.`);
+  if(/2026[-–]2025/.test(source))fail(`Reversed school-year text found in ${file}.`);
 }
 
 const localizer=read('ui-localization-v1.js');
@@ -38,17 +38,57 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
   if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
 }
 
+const examIndex=read('supabase/functions/exam-v2-api/index.ts');
+const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
+const examTests=read('tests/exam-v2-api.mjs');
+const qaWorkflow=read('.github/workflows/qa-smoke.yml');
+
+if(!examIndex.includes('authenticateLearner')||!examIndex.includes('parseRequest')||!examIndex.includes('dispatchExamAction'))fail('exam-v2-api index must use the shared validated request/auth/dispatch core.');
+if(!examLogic.includes('payload===null||typeof payload!=="object"||Array.isArray(payload)'))fail('exam-v2-api must reject null, array, and non-object signed learner payloads.');
+if(!examLogic.includes('typeof body.action==="string"?body.action:""'))fail('exam-v2-api must reject non-string action values instead of coercing them.');
+if(!examLogic.includes('typeof body.attempt_id==="string"?body.attempt_id:""')||!examLogic.includes('typeof body.question_id==="string"?body.question_id:""'))fail('exam-v2-api must reject non-string flag identifiers instead of coercing them.');
+if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('exam-v2-api must reject non-boolean is_flagged values.');
+if(!examLogic.includes('.update({is_flagged:flag}).eq("id",queueRow.id).select("id").single()'))fail('exam-v2-api must require exactly one persisted flag update row.');
+if(!examLogic.includes('if(updateError||!updated)throw new Error("FLAG_UPDATE_FAILED")'))fail('exam-v2-api must reject failed or zero-row flag persistence.');
+if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('exam-v2-api flag lookup must remain scoped to the authenticated learner.');
+
+for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','attempt lookup database error','question lookup database error','zero-row flag update','valid boolean flag persists']){
+  if(!examTests.includes(requiredTest))fail(`Executable Exam API regression coverage missing: ${requiredTest}.`);
+}
+if(!examTests.includes("assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'})"))fail('Exam API regression tests must assert the flag update targets only the resolved queue row id.');
+if(!qaWorkflow.includes('run: node tests/exam-v2-api.mjs'))fail('QA Gate must execute Exam API unit tests.');
+if(!qaWorkflow.includes('esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts'))fail('QA Gate must syntax-parse the TypeScript Exam API entrypoint.');
+
+function workflowJobBlock(name,nextName){
+  const start=qaWorkflow.indexOf(`  ${name}:`);
+  if(start<0)return'';
+  const end=nextName?qaWorkflow.indexOf(`  ${nextName}:`,start+1):-1;
+  return qaWorkflow.slice(start,end<0?qaWorkflow.length:end);
+}
+const headRef='ref: ${{ github.event_name == \'pull_request\' && github.event.pull_request.head.sha || github.sha }}';
+const shaAssert='run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"';
+const staticJob=workflowJobBlock('static-quality','browser-smoke');
+const browserJob=workflowJobBlock('browser-smoke');
+for(const [name,job] of [['static-quality',staticJob],['browser-smoke',browserJob]]){
+  if(!job)fail(`QA workflow is missing ${name} job.`);
+  else{
+    if(!job.includes(headRef))fail(`${name} must checkout the exact PR-head SHA for pull_request runs.`);
+    if(!job.includes('persist-credentials: false'))fail(`${name} must disable persisted checkout credentials.`);
+    if(!job.includes(shaAssert))fail(`${name} must assert the checked-out SHA before QA evidence is accepted.`);
+  }
+}
+
 const activeCopyFiles=['index.html','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','dynamic-login-v3.js'];
 for(const file of activeCopyFiles){
   if(!exists(file))continue;
-  const s=read(file);
-  if(/\b(?:TODO|FIXME)\b/.test(s))warn.push(`${file}: TODO/FIXME remains in active UI source.`);
+  const source=read(file);
+  if(/\b(?:TODO|FIXME)\b/.test(source))warn.push(`${file}: TODO/FIXME remains in active UI source.`);
 }
 
 if(failures.length){
   console.error('\nSTATIC QA FAILED');
-  for(const m of failures)console.error(`- ${m}`);
+  for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, legacy guards, copy normalization and merge-marker checks are valid.');
-for(const m of warn)console.warn(`WARN: ${m}`);
+console.log('Static QA passed: runtime references, Arabic/RTL shell, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+for(const message of warn)console.warn(`WARN: ${message}`);
