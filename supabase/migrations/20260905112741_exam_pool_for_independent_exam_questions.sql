@@ -3,7 +3,11 @@ alter table public.quiz_questions
 
 alter table public.quiz_questions
   add constraint quiz_questions_delivery_role_check
-  check (delivery_role = any (array['core'::text,'remediation_pool'::text,'challenge_pool'::text,'exam_pool'::text]));
+  check (delivery_role = any (array['core'::text,'remediation_pool'::text,'challenge_pool'::text,'exam_pool'::text]))
+  not valid;
+
+alter table public.quiz_questions
+  validate constraint quiz_questions_delivery_role_check;
 
 create or replace function public.flh_exam_start(p_workspace_id uuid, p_learner_id uuid, p_quiz_slug text)
 returns jsonb
@@ -65,6 +69,12 @@ begin
   ) into v_access;
 
   if not v_access then return jsonb_build_object('error','QUIZ_NOT_AVAILABLE'); end if;
+
+  -- Serialize exam starts for the same learner/version so retries or double taps
+  -- cannot create two simultaneous in-progress attempts.
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_workspace_id::text || ':' || p_learner_id::text || ':' || v_version.id::text, 0)
+  );
 
   select * into v_attempt
   from public.quiz_attempts
@@ -193,3 +203,10 @@ begin
   );
 end;
 $function$;
+
+-- This function is an internal service RPC. Learner identity is verified by the
+-- exam-v2-api learner session before the service-role client calls this RPC.
+-- Do not expose direct execution to browser roles.
+revoke all on function public.flh_exam_start(uuid,uuid,text) from public;
+revoke all on function public.flh_exam_start(uuid,uuid,text) from anon, authenticated;
+grant execute on function public.flh_exam_start(uuid,uuid,text) to service_role;
