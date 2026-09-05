@@ -1,4 +1,31 @@
-# Family Learning Hub — QA and Merge Policy
+# Family Learning Hub — QA, Review, Merge, and Production Verification Policy
+
+## Canonical delivery workflow
+
+For any non-trivial change that can affect learner behavior, content delivery, authentication, security, data, database schema, quizzes, exams, parent reporting, or production runtime, the default workflow is:
+
+1. Create a dedicated branch and Pull Request. Do not make the change directly on `main` unless it is a true emergency recovery action.
+2. Run the deterministic GitHub Actions `QA Gate` on the PR.
+3. Require both deterministic jobs to pass:
+   - `Static quality`
+   - `Browser smoke`
+4. Run CodeRabbit review on the current PR head.
+5. Inspect every actionable CodeRabbit comment. Do not treat a green QA Gate as proof that the change is ready if CodeRabbit has unresolved actionable findings.
+6. Fix valid findings. If a finding does not apply to the actual architecture, document the reason clearly in the review thread and resolve it only after verifying the architecture.
+7. After any meaningful fix, run QA again and allow CodeRabbit to review the updated head again when the fix changes the reviewed behavior or risk surface.
+8. Merge only when:
+   - required deterministic QA is green on the latest relevant head;
+   - all actionable CodeRabbit findings are fixed or explicitly resolved with a verified architectural reason;
+   - the PR description/checklist accurately reflects user impact, QA status, migrations, security boundaries, and deployment risks.
+9. Deploy or apply the merged production change. A merged PR alone is not proof that production is updated.
+10. Verify production directly after deployment. Check the actual production state, not only the repository state.
+11. Only then describe the work as complete.
+
+In short:
+
+`PR → QA Gate → CodeRabbit → fix findings → re-QA/re-review when needed → merge → production deploy/apply → production verification`
+
+Partial completion must be described accurately. For example, say "merged but not yet verified in production" instead of "done".
 
 ## Required deterministic QA
 
@@ -29,9 +56,9 @@ Recommended ruleset settings:
 - Block force pushes: On
 - Require branches to be up to date before merging: Off initially, to avoid unnecessary duplicate QA runs for this small repository. Revisit if concurrent development increases.
 
-## AI review layer
+## CodeRabbit review layer
 
-CodeRabbit is advisory, not the deterministic merge gate.
+CodeRabbit is an additional review gate for non-trivial changes, but it is not a replacement for deterministic QA.
 
 The repository `.coderabbit.yaml` asks CodeRabbit to review for:
 
@@ -43,8 +70,32 @@ The repository `.coderabbit.yaml` asks CodeRabbit to review for:
 - QA-test weakening
 - GitHub Actions bypasses
 - architecture/documentation drift
+- security and database integrity risks
 
-The AI reviewer may find issues deterministic tests miss, but an AI approval is not a replacement for the required GitHub Actions checks.
+Rules for CodeRabbit findings:
+
+- Never claim CodeRabbit review completed until its current review actually completed.
+- Never claim "0 issues" while a review is still processing.
+- Treat actionable findings as blockers until fixed or explicitly shown to be inapplicable to the real architecture.
+- Do not blindly apply suggested patches; verify each suggestion against the repository and production architecture.
+- If CodeRabbit is temporarily unavailable, say so explicitly. Do not relabel a manual review as a CodeRabbit review.
+
+The `family-learning-hub` repository is public. The project must not depend on paid/Advanced-only CodeRabbit features for its core safety process. Baseline public-repository review may be used, while deterministic GitHub Actions remain the durable required checks.
+
+## Production verification
+
+Repository success and production success are separate states.
+
+After merge, verify whichever production systems the change touches. Examples:
+
+- GitHub Pages: confirm the merged asset/script is actually served and the relevant UI flow works.
+- Supabase migrations: confirm the migration is recorded/applied and inspect the resulting schema/function/data state.
+- Edge Functions: confirm the deployed function matches the reviewed source behavior.
+- Authentication changes: verify the intended credential/login path succeeds and old supported paths still behave as intended.
+- Quiz/Exam changes: confirm Learning and Exam pools, question counts, isolation, saved state, grading, and retry/concurrency behavior in production.
+- Security changes: verify actual grants/roles/permissions in production rather than assuming the migration applied them.
+
+When repository migration history and production state differ because production previously applied an older migration version, do not rewrite applied history. Prefer a new forward reconciliation migration, review it through the same PR/QA/CodeRabbit process, apply it, and then verify production.
 
 ## UX research layer
 
@@ -61,3 +112,10 @@ Examples of changes that deserve UX-agent review:
 ## Pull request discipline
 
 Every PR should explain its user impact and complete the repository PR checklist. When behavior changes, update or add deterministic tests in the same PR rather than weakening existing assertions.
+
+For schema/data/runtime changes, the PR should also state:
+
+- whether a production migration/deploy step is required;
+- whether existing production state may differ from a fresh database;
+- security/authorization boundaries touched by the change;
+- the exact production verification that will be performed after merge.
