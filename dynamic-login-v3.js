@@ -1,8 +1,27 @@
 (() => {
   const originalStudentLogin=typeof renderStudentLogin==='function'?renderStudentLogin:null;
   const originalStudentHome=typeof renderStudentHome==='function'?renderStudentHome:null;
+  const originalApi=typeof api==='function'?api:null;
+  const originalShowPin=typeof showPin==='function'?showPin:null;
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const safe=(s='')=>typeof esc==='function'?esc(s):String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Learner auth remains backward-compatible with existing 8-digit PINs.
+  // A learner may also type a 10-digit family phone number; only the final
+  // 8 digits are sent to the existing PIN verifier so no phone number is
+  // hard-coded or stored in the public frontend.
+  if(originalApi) api=async function(action,payload={},authToken=''){
+    if(action==='student_login'&&payload&&/^\d{10}$/.test(String(payload.pin||'').trim())){
+      payload={...payload,pin:String(payload.pin).trim().slice(-8)};
+    }
+    return originalApi(action,payload,authToken);
+  };
+
+  if(originalShowPin) showPin=function(slug,name){
+    originalShowPin(slug,name);
+    const input=document.getElementById('studentPin');
+    if(input){input.maxLength=10;input.placeholder='8 أو 10 أرقام';}
+  };
 
   function genericCopy(){document.querySelectorAll('.role-card .muted').forEach(el=>{if((el.textContent||'').includes('متابعة آية ومحمد')||(el.textContent||'').includes('متابعة المتعلمين'))el.textContent='متابعة الأبناء والنتائج والمكافآت.';});}
   async function renderDynamicLogin(){
