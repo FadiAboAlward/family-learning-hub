@@ -6,9 +6,6 @@ alter table public.quiz_questions
   check (delivery_role = any (array['core'::text,'remediation_pool'::text,'challenge_pool'::text,'exam_pool'::text]))
   not valid;
 
-alter table public.quiz_questions
-  validate constraint quiz_questions_delivery_role_check;
-
 create or replace function public.flh_exam_start(p_workspace_id uuid, p_learner_id uuid, p_quiz_slug text)
 returns jsonb
 language plpgsql
