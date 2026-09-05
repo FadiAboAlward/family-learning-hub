@@ -45,8 +45,8 @@ export async function authenticateLearner(req,{serviceRole,workspaceId=DEFAULT_W
 
 /** Persist one Exam Mode review flag only inside the authenticated learner's active attempt. */
 export async function setFlag(admin,learnerId,body,workspaceId=DEFAULT_WORKSPACE_ID){
-  const attemptId=String(body.attempt_id||"");
-  const questionId=String(body.question_id||"");
+  const attemptId=typeof body.attempt_id==="string"?body.attempt_id:"";
+  const questionId=typeof body.question_id==="string"?body.question_id:"";
   if(!attemptId||!questionId||typeof body.is_flagged!=="boolean")throw new Error("INVALID_FLAG");
   const flag=body.is_flagged;
 
