@@ -22,7 +22,7 @@ function makeRequest({authorization,raw='{}'}={}){
 }
 
 function makeAdmin({attemptLearnerId='learner-a',questionExists=true,updateError=null,updateData={id:'queue-1'}}={}){
-  const state={updateCalls:0,lastUpdate:null};
+  const state={updateCalls:0,lastUpdate:null,lastUpdateFilters:null};
   const admin={
     from(table){
       const context={table,filters:{},updatePayload:null};
@@ -43,6 +43,7 @@ function makeAdmin({attemptLearnerId='learner-a',questionExists=true,updateError
         async single(){
           state.updateCalls+=1;
           state.lastUpdate=context.updatePayload;
+          state.lastUpdateFilters={...context.filters};
           return{data:updateData,error:updateError};
         }
       };
@@ -103,6 +104,12 @@ test('non-boolean flag is rejected',async()=>{
   await assert.rejects(()=>setFlag(admin,'learner-a',{attempt_id:'attempt-1',question_id:'q1',is_flagged:'false'},WORKSPACE_ID),/INVALID_FLAG/);
 });
 
+test('array attempt_id is rejected as INVALID_FLAG',async()=>{
+  const{admin,state}=makeAdmin();
+  await assert.rejects(()=>setFlag(admin,'learner-a',{attempt_id:['attempt-1'],question_id:'q1',is_flagged:true},WORKSPACE_ID),/INVALID_FLAG/);
+  assert.equal(state.updateCalls,0);
+});
+
 test('learner-content isolation blocks another learner attempt',async()=>{
   const{admin,state}=makeAdmin({attemptLearnerId:'learner-a'});
   await assert.rejects(()=>setFlag(admin,'learner-b',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/ATTEMPT_NOT_ACTIVE/);
@@ -125,6 +132,7 @@ test('valid boolean flag persists and returns success',async()=>{
   assert.deepEqual(result,{ok:true,is_flagged:false});
   assert.equal(state.updateCalls,1);
   assert.deepEqual(state.lastUpdate,{is_flagged:false});
+  assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'});
 });
 
 for(const{ name,fn }of tests){
