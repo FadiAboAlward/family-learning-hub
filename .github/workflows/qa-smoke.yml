@@ -38,7 +38,7 @@ jobs:
           find . -maxdepth 1 -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           find tests -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           find supabase/functions/exam-v2-api -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          npx --yes esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts --format=esm --platform=neutral --external:npm:* --outfile=/tmp/exam-v2-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts --format=esm --platform=neutral --outfile=/tmp/exam-v2-api-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
       - name: Exam API unit tests
