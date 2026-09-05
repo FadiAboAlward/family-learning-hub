@@ -52,16 +52,31 @@ if(!examLogic.includes('.update({is_flagged:flag}).eq("id",queueRow.id).select("
 if(!examLogic.includes('if(updateError||!updated)throw new Error("FLAG_UPDATE_FAILED")'))fail('exam-v2-api must reject failed or zero-row flag persistence.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('exam-v2-api flag lookup must remain scoped to the authenticated learner.');
 
-for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists']){
+for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','attempt lookup database error','question lookup database error','zero-row flag update','valid boolean flag persists']){
   if(!examTests.includes(requiredTest))fail(`Executable Exam API regression coverage missing: ${requiredTest}.`);
 }
 if(!examTests.includes("assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'})"))fail('Exam API regression tests must assert the flag update targets only the resolved queue row id.');
 if(!qaWorkflow.includes('run: node tests/exam-v2-api.mjs'))fail('QA Gate must execute Exam API unit tests.');
 if(!qaWorkflow.includes('esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts'))fail('QA Gate must syntax-parse the TypeScript Exam API entrypoint.');
+
+function workflowJobBlock(name,nextName){
+  const start=qaWorkflow.indexOf(`  ${name}:`);
+  if(start<0)return'';
+  const end=nextName?qaWorkflow.indexOf(`  ${nextName}:`,start+1):-1;
+  return qaWorkflow.slice(start,end<0?qaWorkflow.length:end);
+}
 const headRef='ref: ${{ github.event_name == \'pull_request\' && github.event.pull_request.head.sha || github.sha }}';
-if(qaWorkflow.split(headRef).length-1<2)fail('Both QA jobs must checkout the exact PR-head SHA for pull_request runs.');
-if(qaWorkflow.split('persist-credentials: false').length-1<2)fail('Both QA jobs must disable persisted checkout credentials.');
-if(qaWorkflow.split('run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"').length-1<2)fail('Both QA jobs must assert the checked-out SHA before QA evidence is accepted.');
+const shaAssert='run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"';
+const staticJob=workflowJobBlock('static-quality','browser-smoke');
+const browserJob=workflowJobBlock('browser-smoke');
+for(const [name,job] of [['static-quality',staticJob],['browser-smoke',browserJob]]){
+  if(!job)fail(`QA workflow is missing ${name} job.`);
+  else{
+    if(!job.includes(headRef))fail(`${name} must checkout the exact PR-head SHA for pull_request runs.`);
+    if(!job.includes('persist-credentials: false'))fail(`${name} must disable persisted checkout credentials.`);
+    if(!job.includes(shaAssert))fail(`${name} must assert the checked-out SHA before QA evidence is accepted.`);
+  }
+}
 
 const activeCopyFiles=['index.html','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','dynamic-login-v3.js'];
 for(const file of activeCopyFiles){
@@ -75,5 +90,5 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, executable exam API guards, TypeScript syntax coverage, exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const message of warn)console.warn(`WARN: ${message}`);
