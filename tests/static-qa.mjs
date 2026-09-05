@@ -38,6 +38,16 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
   if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
 }
 
+const examApi=read('supabase/functions/exam-v2-api/index.ts');
+if(!examApi.includes('catch{throw new Error("INVALID_SESSION");}'))fail('exam-v2-api must normalize malformed learner-token decoding/parsing failures to INVALID_SESSION.');
+if(!examApi.includes('typeof b.is_flagged!=="boolean"'))fail('exam-v2-api must reject non-boolean is_flagged values.');
+if(!examApi.includes('const{error:flagError}=await admin.from("quiz_attempt_question_queue").update({is_flagged:flag})'))fail('exam-v2-api must capture flag persistence errors.');
+if(!examApi.includes('if(flagError)throw new Error("FLAG_UPDATE_FAILED")'))fail('exam-v2-api must propagate flag persistence failures.');
+if(!examApi.includes('parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{}'))fail('exam-v2-api must normalize null/non-object JSON request bodies before action dispatch.');
+const unknownActionGuard=examApi.indexOf('if(!allowedActions.has(action))return json({error:"UNKNOWN_ACTION"},400,o);');
+const learnerCall=examApi.indexOf('const lid=await learner(req);');
+if(unknownActionGuard<0||learnerCall<0||unknownActionGuard>learnerCall)fail('exam-v2-api must reject unknown/null actions with HTTP 400 before learner authentication.');
+
 const activeCopyFiles=['index.html','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','dynamic-login-v3.js'];
 for(const file of activeCopyFiles){
   if(!exists(file))continue;
@@ -50,5 +60,5 @@ if(failures.length){
   for(const m of failures)console.error(`- ${m}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, exam API guards, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const m of warn)console.warn(`WARN: ${m}`);
