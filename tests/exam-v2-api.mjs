@@ -21,7 +21,7 @@ function makeRequest({authorization,raw='{}'}={}){
   return new Request('http://localhost/exam',{method:'POST',headers,body:raw});
 }
 
-function makeAdmin({attemptLearnerId='learner-a',questionExists=true,updateError=null,updateData={id:'queue-1'}}={}){
+function makeAdmin({attemptLearnerId='learner-a',questionExists=true,attemptError=null,questionError=null,updateError=null,updateData={id:'queue-1'}}={}){
   const state={updateCalls:0,lastUpdate:null,lastUpdateFilters:null};
   const admin={
     from(table){
@@ -32,10 +32,12 @@ function makeAdmin({attemptLearnerId='learner-a',questionExists=true,updateError
         eq(key,value){context.filters[key]=value;return query;},
         async maybeSingle(){
           if(table==='quiz_attempts'){
+            if(attemptError)return{data:null,error:attemptError};
             if(context.filters.learner_id!==attemptLearnerId)return{data:null,error:null};
             return{data:{id:'attempt-1',status:'in_progress',delivery_mode:'exam'},error:null};
           }
           if(table==='quiz_attempt_question_queue'){
+            if(questionError)return{data:null,error:questionError};
             return{data:questionExists?{id:'queue-1'}:null,error:null};
           }
           throw new Error(`Unexpected table ${table}`);
@@ -113,6 +115,18 @@ test('array attempt_id is rejected as INVALID_FLAG',async()=>{
 test('learner-content isolation blocks another learner attempt',async()=>{
   const{admin,state}=makeAdmin({attemptLearnerId:'learner-a'});
   await assert.rejects(()=>setFlag(admin,'learner-b',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/ATTEMPT_NOT_ACTIVE/);
+  assert.equal(state.updateCalls,0);
+});
+
+test('attempt lookup database error is surfaced without update',async()=>{
+  const{admin,state}=makeAdmin({attemptError:new Error('attempt lookup failed')});
+  await assert.rejects(()=>setFlag(admin,'learner-a',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/ATTEMPT_LOOKUP_FAILED/);
+  assert.equal(state.updateCalls,0);
+});
+
+test('question lookup database error is surfaced without update',async()=>{
+  const{admin,state}=makeAdmin({questionError:new Error('question lookup failed')});
+  await assert.rejects(()=>setFlag(admin,'learner-a',{attempt_id:'attempt-1',question_id:'q1',is_flagged:true},WORKSPACE_ID),/QUESTION_LOOKUP_FAILED/);
   assert.equal(state.updateCalls,0);
 });
 
