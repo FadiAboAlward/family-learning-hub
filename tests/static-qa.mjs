@@ -23,7 +23,7 @@ const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^
 const forbiddenLegacy=['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'];
 for(const f of forbiddenLegacy){if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);}
 
-const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
+const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
 for(const f of requiredRuntime){if(!loadedScripts.includes(f))fail(`Required runtime script is not loaded: ${f}`);}
 
 for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs','tests/exam-v2-api.mjs','supabase/functions/exam-v2-api/index.ts','supabase/functions/exam-v2-api/logic.mjs'])){
@@ -37,6 +37,15 @@ const localizer=read('ui-localization-v1.js');
 for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','متابعة الأبناء','تذكّرني']){
   if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
 }
+
+const answerLayout=read('answer-layout-v8.js');
+const answerLayoutCss=read('answer-layout-v8.css');
+if(!answerLayout.includes("const OPTION_PREFIX = 'الخيار';"))fail('Answer choices must visibly distinguish the option index from the answer value.');
+if(!answerLayout.includes("setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto')"))fail('Math-like answer content must be directionally isolated from RTL option labels.');
+if(!answerLayout.includes('new MutationObserver(schedule)'))fail('Answer layout must observe dynamically rendered quiz/exam choices.');
+if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}`)"))fail('Answer choice accessibility label must name the option separately from its content.');
+if(!answerLayoutCss.includes('.answer-content-v8.math-choice'))fail('Answer CSS must include a dedicated math-choice isolation rule.');
+if(!answerLayoutCss.includes('unicode-bidi:isolate'))fail('Answer choice labels/content must use Unicode bidi isolation.');
 
 const examIndex=read('supabase/functions/exam-v2-api/index.ts');
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
@@ -90,5 +99,5 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, answer-choice number/value separation, math bidi isolation, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const message of warn)console.warn(`WARN: ${message}`);
