@@ -3,24 +3,32 @@
   const OPTION_PREFIX = 'الخيار';
   let queued = false;
 
-  const choiceLabel = i => `${OPTION_PREFIX} ${AR_NUM[i] || String(i + 1)}`;
+  /** Convert any decimal digits in a value to Arabic-Indic digits for the RTL UI. */
+  const toArabicDigits = value => String(value).replace(/\d/g, digit => '٠١٢٣٤٥٦٧٨٩'[Number(digit)]);
 
+  /** Build the visible localized label for an answer option index. */
+  const choiceLabel = i => `${OPTION_PREFIX} ${AR_NUM[i] || toArabicDigits(i + 1)}`;
+
+  /** Return answer text without the generated option-label element. */
   function cleanText(answer){
     const clone = answer.cloneNode(true);
     clone.querySelectorAll('.answer-number').forEach(x => x.remove());
     return (clone.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
+  /** Detect compact numeric/symbolic choices that should be isolated as LTR math. */
   function isMathLikeText(text){
     const value = String(text || '').trim();
     if(!value || !/[0-9٠-٩]/.test(value)) return false;
     return !/[A-Za-z\u0600-\u06FF]/.test(value);
   }
 
+  /** Avoid unnecessary attribute mutations that would retrigger the observer. */
   function setAttrIfChanged(el, name, value){
     if(el.getAttribute(name) !== value) el.setAttribute(name, value);
   }
 
+  /** Normalize one rendered answer group while preserving selection and accessibility state. */
   function enhanceGroup(group){
     const answers = [...group.children].filter(x => x.classList?.contains('answer'));
     if(!answers.length) return;
@@ -30,13 +38,15 @@
 
     answers.forEach((answer, i) => {
       const label = choiceLabel(i);
+      const selected = answer.classList.contains('selected');
+      const visibleLabel = selected ? `✓ ${label}` : label;
       let number = answer.querySelector(':scope > .answer-number');
       if(!number){
         number = document.createElement('span');
         number.className = 'answer-number';
         answer.prepend(number);
       }
-      if(number.textContent !== label) number.textContent = label;
+      if(number.textContent !== visibleLabel) number.textContent = visibleLabel;
       setAttrIfChanged(number, 'aria-hidden', 'true');
       setAttrIfChanged(number, 'dir', 'rtl');
 
@@ -54,7 +64,8 @@
       const mathLike = isMathLikeText(text);
       setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto');
       content.classList.toggle('math-choice', mathLike);
-      setAttrIfChanged(answer, 'aria-label', `${label}: ${text}`);
+      setAttrIfChanged(answer, 'aria-label', `${label}: ${text}${selected ? '، محدد' : ''}`);
+      setAttrIfChanged(answer, 'aria-pressed', String(selected));
       lengths.push(text.length);
     });
 
@@ -67,11 +78,13 @@
     group.classList.toggle('answer-layout-long', !shortEnough);
   }
 
+  /** Enhance all currently rendered answer groups. */
   function enhanceAll(){
     queued = false;
     document.querySelectorAll('.answers').forEach(enhanceGroup);
   }
 
+  /** Coalesce repeated DOM mutations into one animation-frame enhancement pass. */
   function schedule(){
     if(queued) return;
     queued = true;
