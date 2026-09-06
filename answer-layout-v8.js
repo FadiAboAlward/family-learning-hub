@@ -3,32 +3,58 @@
   const OPTION_PREFIX = 'الخيار';
   let queued = false;
 
-  /** Convert any decimal digits in a value to Arabic-Indic digits for the RTL UI. */
+  /**
+   * Convert decimal digits in a value to Arabic-Indic digits for the RTL UI.
+   * @param {string|number} value Value whose decimal digits should be localized.
+   * @returns {string} Value with every decimal digit rendered as Arabic-Indic.
+   */
   const toArabicDigits = value => String(value).replace(/\d/g, digit => '٠١٢٣٤٥٦٧٨٩'[Number(digit)]);
 
-  /** Build the visible localized label for an answer option index. */
+  /**
+   * Build the visible localized label for a zero-based answer option index.
+   * @param {number} i Zero-based answer option index.
+   * @returns {string} Localized label such as "الخيار ١".
+   */
   const choiceLabel = i => `${OPTION_PREFIX} ${AR_NUM[i] || toArabicDigits(i + 1)}`;
 
-  /** Return answer text without the generated option-label element. */
+  /**
+   * Read answer text without including the generated option-label element.
+   * @param {HTMLElement} answer Answer button element.
+   * @returns {string} Normalized visible answer content.
+   */
   function cleanText(answer){
     const clone = answer.cloneNode(true);
     clone.querySelectorAll('.answer-number').forEach(x => x.remove());
     return (clone.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
-  /** Detect compact numeric/symbolic choices that should be isolated as LTR math. */
+  /**
+   * Detect compact numeric or symbolic choices that should be isolated as LTR math.
+   * @param {string} text Answer content text.
+   * @returns {boolean} True when the content contains digits but no Arabic/Latin letters.
+   */
   function isMathLikeText(text){
     const value = String(text || '').trim();
     if(!value || !/[0-9٠-٩]/.test(value)) return false;
     return !/[A-Za-z\u0600-\u06FF]/.test(value);
   }
 
-  /** Avoid unnecessary attribute mutations that would retrigger the observer. */
+  /**
+   * Set an element attribute only when the value actually changes.
+   * @param {HTMLElement} el Element to update.
+   * @param {string} name Attribute name.
+   * @param {string} value Attribute value.
+   * @returns {void}
+   */
   function setAttrIfChanged(el, name, value){
     if(el.getAttribute(name) !== value) el.setAttribute(name, value);
   }
 
-  /** Normalize one rendered answer group while preserving selection and accessibility state. */
+  /**
+   * Normalize one rendered answer group while preserving selection and accessibility state.
+   * @param {HTMLElement} group Container whose direct answer children should be enhanced.
+   * @returns {void}
+   */
   function enhanceGroup(group){
     const answers = [...group.children].filter(x => x.classList?.contains('answer'));
     if(!answers.length) return;
@@ -78,13 +104,19 @@
     group.classList.toggle('answer-layout-long', !shortEnough);
   }
 
-  /** Enhance all currently rendered answer groups. */
+  /**
+   * Enhance all answer groups currently present in the document.
+   * @returns {void}
+   */
   function enhanceAll(){
     queued = false;
     document.querySelectorAll('.answers').forEach(enhanceGroup);
   }
 
-  /** Coalesce repeated DOM mutations into one animation-frame enhancement pass. */
+  /**
+   * Coalesce repeated DOM mutations into one animation-frame enhancement pass.
+   * @returns {void}
+   */
   function schedule(){
     if(queued) return;
     queued = true;
