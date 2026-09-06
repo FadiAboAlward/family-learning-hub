@@ -41,11 +41,17 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
 const answerLayout=read('answer-layout-v8.js');
 const answerLayoutCss=read('answer-layout-v8.css');
 if(!answerLayout.includes("const OPTION_PREFIX = 'الخيار';"))fail('Answer choices must visibly distinguish the option index from the answer value.');
+if(!answerLayout.includes("const AR_NUM = ['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'];"))fail('Answer choices must preserve the deterministic Arabic-Indic option-number mapping.');
+if(!answerLayout.includes("'٠١٢٣٤٥٦٧٨٩'[Number(digit)]"))fail('Answer choice indexes beyond the fixed mapping must still use Arabic-Indic digits.');
+if(!answerLayout.includes('AR_NUM[i] || toArabicDigits(i + 1)'))fail('Answer choice labels must not fall back to Latin option digits.');
 if(!answerLayout.includes("setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto')"))fail('Math-like answer content must be directionally isolated from RTL option labels.');
 if(!answerLayout.includes('new MutationObserver(schedule)'))fail('Answer layout must observe dynamically rendered quiz/exam choices.');
-if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}`)"))fail('Answer choice accessibility label must name the option separately from its content.');
+if(!answerLayout.includes('observer.observe(document.documentElement, {childList:true, subtree:true})'))fail('Answer layout observer must watch document subtree child-list changes for dynamically rendered choices.');
+if(!answerLayout.includes('const visibleLabel = selected ? `✓ ${label}` : label;'))fail('Selected answers must retain a visible checkmark after answer-layout enhancement.');
+if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-pressed', String(selected))"))fail('Answer choices must expose their selected state through aria-pressed.');
+if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}${selected ? '، محدد' : ''}`)"))fail('Answer choice accessibility labels must keep option identity and selected state separate from content.');
 if(!answerLayoutCss.includes('.answer-content-v8.math-choice'))fail('Answer CSS must include a dedicated math-choice isolation rule.');
-if(!answerLayoutCss.includes('unicode-bidi:isolate'))fail('Answer choice labels/content must use Unicode bidi isolation.');
+if(!/\.answer-content-v8\{[^}]*unicode-bidi:isolate/.test(answerLayoutCss))fail('Answer content itself must retain unicode-bidi:isolate, not only the option label.');
 
 const examIndex=read('supabase/functions/exam-v2-api/index.ts');
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
@@ -99,5 +105,5 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, answer-choice number/value separation, math bidi isolation, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, localized option indexing, selected-state preservation, answer-choice number/value separation, math bidi isolation, dynamic observer wiring, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const message of warn)console.warn(`WARN: ${message}`);
