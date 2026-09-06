@@ -38,8 +38,13 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
   if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
 }
 
+const learningLauncher=read('learning-launcher-v2.js');
+const examRuntime=read('program-exam-v3.js');
 const answerLayout=read('answer-layout-v8.js');
 const answerLayoutCss=read('answer-layout-v8.css');
+if(!learningLauncher.includes('class="answer-grid"'))fail('Learning Mode must render a recognizable answer-grid container.');
+if(!examRuntime.includes('class="answers answer-layout-v8"'))fail('Exam Mode must render a recognizable answers container.');
+if(!answerLayout.includes("document.querySelectorAll('.answers, .answer-grid').forEach(enhanceGroup)"))fail('Answer-label normalization must cover both Exam Mode .answers and Learning Mode .answer-grid containers.');
 if(!answerLayout.includes("const OPTION_PREFIX = 'الخيار';"))fail('Answer choices must visibly distinguish the option index from the answer value.');
 if(!answerLayout.includes("const AR_NUM = ['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'];"))fail('Answer choices must preserve the deterministic Arabic-Indic option-number mapping.');
 if(!answerLayout.includes("'٠١٢٣٤٥٦٧٨٩'[Number(digit)]"))fail('Answer choice indexes beyond the fixed mapping must still use Arabic-Indic digits.');
@@ -112,5 +117,5 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, localized option indexing, selected-state preservation, answer-choice number/value separation, math bidi isolation, dynamic observer wiring, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, Learning/Exam answer-group coverage, localized option indexing, selected-state preservation, answer-choice number/value separation, math bidi isolation, dynamic observer wiring, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const message of warn)console.warn(`WARN: ${message}`);
