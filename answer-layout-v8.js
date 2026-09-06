@@ -1,31 +1,44 @@
 (() => {
   const AR_NUM = ['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'];
+  const OPTION_PREFIX = 'الخيار';
   let queued = false;
+
+  const choiceLabel = i => `${OPTION_PREFIX} ${AR_NUM[i] || String(i + 1)}`;
 
   function cleanText(answer){
     const clone = answer.cloneNode(true);
-    clone.querySelectorAll('.answer-number').forEach(x=>x.remove());
-    return (clone.textContent || '').replace(/\s+/g,' ').trim();
+    clone.querySelectorAll('.answer-number').forEach(x => x.remove());
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isMathLikeText(text){
+    const value = String(text || '').trim();
+    if(!value || !/[0-9٠-٩]/.test(value)) return false;
+    return !/[A-Za-z\u0600-\u06FF]/.test(value);
+  }
+
+  function setAttrIfChanged(el, name, value){
+    if(el.getAttribute(name) !== value) el.setAttribute(name, value);
   }
 
   function enhanceGroup(group){
-    const answers = [...group.children].filter(x=>x.classList?.contains('answer'));
+    const answers = [...group.children].filter(x => x.classList?.contains('answer'));
     if(!answers.length) return;
 
     group.classList.add('answer-layout-v8');
     const lengths = [];
 
     answers.forEach((answer, i) => {
+      const label = choiceLabel(i);
       let number = answer.querySelector(':scope > .answer-number');
       if(!number){
         number = document.createElement('span');
         number.className = 'answer-number';
-        number.setAttribute('aria-hidden','true');
-        number.textContent = AR_NUM[i] || String(i+1);
         answer.prepend(number);
-      } else if(number.textContent !== (AR_NUM[i] || String(i+1))){
-        number.textContent = AR_NUM[i] || String(i+1);
       }
+      if(number.textContent !== label) number.textContent = label;
+      setAttrIfChanged(number, 'aria-hidden', 'true');
+      setAttrIfChanged(number, 'dir', 'rtl');
 
       let content = answer.querySelector(':scope > .answer-content-v8');
       if(!content){
@@ -36,12 +49,17 @@
         });
         answer.appendChild(content);
       }
-      answer.setAttribute('aria-label', `الخيار ${i+1}: ${cleanText(answer)}`);
-      lengths.push(cleanText(answer).length);
+
+      const text = cleanText(answer);
+      const mathLike = isMathLikeText(text);
+      setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto');
+      content.classList.toggle('math-choice', mathLike);
+      setAttrIfChanged(answer, 'aria-label', `${label}: ${text}`);
+      lengths.push(text.length);
     });
 
     const max = Math.max(...lengths);
-    const avg = lengths.reduce((a,b)=>a+b,0) / lengths.length;
+    const avg = lengths.reduce((a,b) => a + b, 0) / lengths.length;
     // Two columns are only for genuinely compact choices. Longer text and
     // multi-part mathematical relations keep the full row for readability.
     const shortEnough = max <= 18 && avg <= 16;
@@ -60,6 +78,8 @@
     requestAnimationFrame(enhanceAll);
   }
 
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, {childList:true, subtree:true});
   document.addEventListener('DOMContentLoaded', schedule);
   document.addEventListener('click', () => {
     schedule();
