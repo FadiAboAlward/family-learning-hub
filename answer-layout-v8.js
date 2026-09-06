@@ -105,12 +105,12 @@
   }
 
   /**
-   * Enhance all answer groups currently present in the document.
+   * Enhance all Learning Mode and Exam Mode answer groups currently present.
    * @returns {void}
    */
   function enhanceAll(){
     queued = false;
-    document.querySelectorAll('.answers').forEach(enhanceGroup);
+    document.querySelectorAll('.answers, .answer-grid').forEach(enhanceGroup);
   }
 
   /**
