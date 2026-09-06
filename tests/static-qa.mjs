@@ -51,6 +51,7 @@ if(!answerLayout.includes('const visibleLabel = selected ? `✓ ${label}` : labe
 if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-pressed', String(selected))"))fail('Answer choices must expose their selected state through aria-pressed.');
 if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}${selected ? '، محدد' : ''}`)"))fail('Answer choice accessibility labels must keep option identity and selected state separate from content.');
 if(!answerLayoutCss.includes('.answer-content-v8.math-choice'))fail('Answer CSS must include a dedicated math-choice isolation rule.');
+if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(answerLayoutCss))fail('Math choices must retain LTR direction styling inside the math-choice selector.');
 if(!/\.answer-content-v8\{[^}]*unicode-bidi:isolate/.test(answerLayoutCss))fail('Answer content itself must retain unicode-bidi:isolate, not only the option label.');
 
 const examIndex=read('supabase/functions/exam-v2-api/index.ts');
@@ -74,6 +75,12 @@ if(!examTests.includes("assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'})
 if(!qaWorkflow.includes('run: node tests/exam-v2-api.mjs'))fail('QA Gate must execute Exam API unit tests.');
 if(!qaWorkflow.includes('esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts'))fail('QA Gate must syntax-parse the TypeScript Exam API entrypoint.');
 
+/**
+ * Extract one named workflow job block for deterministic QA configuration checks.
+ * @param {string} name Current job name.
+ * @param {string} [nextName] Next job name used as the slice boundary.
+ * @returns {string} YAML source belonging to the requested job.
+ */
 function workflowJobBlock(name,nextName){
   const start=qaWorkflow.indexOf(`  ${name}:`);
   if(start<0)return'';
