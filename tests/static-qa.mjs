@@ -23,7 +23,7 @@ const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^
 const forbiddenLegacy=['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'];
 for(const f of forbiddenLegacy){if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);}
 
-const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
+const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
 for(const f of requiredRuntime){if(!loadedScripts.includes(f))fail(`Required runtime script is not loaded: ${f}`);}
 
 for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs','tests/exam-v2-api.mjs','supabase/functions/exam-v2-api/index.ts','supabase/functions/exam-v2-api/logic.mjs'])){
@@ -37,6 +37,22 @@ const localizer=read('ui-localization-v1.js');
 for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','متابعة الأبناء','تذكّرني']){
   if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
 }
+
+const answerLayout=read('answer-layout-v8.js');
+const answerLayoutCss=read('answer-layout-v8.css');
+if(!answerLayout.includes("const OPTION_PREFIX = 'الخيار';"))fail('Answer choices must visibly distinguish the option index from the answer value.');
+if(!answerLayout.includes("const AR_NUM = ['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'];"))fail('Answer choices must preserve the deterministic Arabic-Indic option-number mapping.');
+if(!answerLayout.includes("'٠١٢٣٤٥٦٧٨٩'[Number(digit)]"))fail('Answer choice indexes beyond the fixed mapping must still use Arabic-Indic digits.');
+if(!answerLayout.includes('AR_NUM[i] || toArabicDigits(i + 1)'))fail('Answer choice labels must not fall back to Latin option digits.');
+if(!answerLayout.includes("setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto')"))fail('Math-like answer content must be directionally isolated from RTL option labels.');
+if(!answerLayout.includes('new MutationObserver(schedule)'))fail('Answer layout must observe dynamically rendered quiz/exam choices.');
+if(!answerLayout.includes('observer.observe(document.documentElement, {childList:true, subtree:true})'))fail('Answer layout observer must watch document subtree child-list changes for dynamically rendered choices.');
+if(!answerLayout.includes('const visibleLabel = selected ? `✓ ${label}` : label;'))fail('Selected answers must retain a visible checkmark after answer-layout enhancement.');
+if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-pressed', String(selected))"))fail('Answer choices must expose their selected state through aria-pressed.');
+if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}${selected ? '، محدد' : ''}`)"))fail('Answer choice accessibility labels must keep option identity and selected state separate from content.');
+if(!answerLayoutCss.includes('.answer-content-v8.math-choice'))fail('Answer CSS must include a dedicated math-choice isolation rule.');
+if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(answerLayoutCss))fail('Math choices must retain LTR direction styling inside the math-choice selector.');
+if(!/\.answer-content-v8\{[^}]*unicode-bidi:isolate/.test(answerLayoutCss))fail('Answer content itself must retain unicode-bidi:isolate, not only the option label.');
 
 const examIndex=read('supabase/functions/exam-v2-api/index.ts');
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
@@ -59,6 +75,12 @@ if(!examTests.includes("assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'})
 if(!qaWorkflow.includes('run: node tests/exam-v2-api.mjs'))fail('QA Gate must execute Exam API unit tests.');
 if(!qaWorkflow.includes('esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts'))fail('QA Gate must syntax-parse the TypeScript Exam API entrypoint.');
 
+/**
+ * Extract one named workflow job block for deterministic QA configuration checks.
+ * @param {string} name Current job name.
+ * @param {string} [nextName] Next job name used as the slice boundary.
+ * @returns {string} YAML source belonging to the requested job.
+ */
 function workflowJobBlock(name,nextName){
   const start=qaWorkflow.indexOf(`  ${name}:`);
   if(start<0)return'';
@@ -90,5 +112,5 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Static QA passed: runtime references, Arabic/RTL shell, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
+console.log('Static QA passed: runtime references, Arabic/RTL shell, localized option indexing, selected-state preservation, answer-choice number/value separation, math bidi isolation, dynamic observer wiring, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
 for(const message of warn)console.warn(`WARN: ${message}`);
