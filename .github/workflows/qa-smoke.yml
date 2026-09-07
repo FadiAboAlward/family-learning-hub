@@ -48,10 +48,22 @@ jobs:
         run: node tests/exam-v2-api.mjs
 
   database-security:
-    name: Local Supabase security
+    name: PostgreSQL RLS security
     needs: static-quality
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,27 +74,22 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-      - name: Initialize local Supabase
-        run: npx --yes supabase@2.116.0 init --force
-      - name: Start isolated Supabase stack and apply migrations
-        run: |
-          npx --yes supabase@2.116.0 start \
-            -x studio,imgproxy,realtime,storage-api,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+      - name: Build Supabase-like security fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/db-security-bootstrap.sql
+      - name: Apply proposed RLS migration
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260907172000_harden_learner_content_assignments_rls.sql
       - name: Verify database security contract
         env:
           PGPASSWORD: postgres
-        run: psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/db-security.sql
-      - name: Stop local Supabase
-        if: always()
-        run: npx --yes supabase@2.116.0 stop --no-backup || true
+        run: psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/db-security.sql
 
   browser-smoke:
     name: Browser smoke
