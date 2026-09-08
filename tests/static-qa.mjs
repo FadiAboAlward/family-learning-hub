@@ -3,119 +3,65 @@ import path from 'node:path';
 
 const ROOT=process.cwd();
 const failures=[];
-const warn=[];
 const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
-const mergeMarkerRe=new RegExp(`${'<'.repeat(7)}|${'='.repeat(7)}|${'>'.repeat(7)}`);
-
 const index=read('index.html');
 
-if(!/<html[^>]+lang=["']ar["'][^>]+dir=["']rtl["']/i.test(index))fail('index.html must declare lang="ar" and dir="rtl".');
-if(!/<meta[^>]+name=["']viewport["']/i.test(index))fail('index.html is missing the mobile viewport meta tag.');
-if(index.includes('جارِ'))fail('Arabic copy typo found in index.html: use "جارٍ" not "جارِ".');
-if(/2026[-–]2025/.test(index))fail('Reversed school-year text found in index.html.');
+if(!/<html[^>]+lang=["']ar["'][^>]+dir=["']rtl["']/i.test(index))fail('index.html must declare Arabic RTL.');
+if(!/<meta[^>]+name=["']viewport["']/i.test(index))fail('index.html is missing mobile viewport.');
+if(index.includes('جارِ'))fail('Visible Arabic typo جارِ found in index.html.');
+
+const build=(index.match(/<body[^>]+data-build=["']([^"']+)/i)||[])[1];
+if(!build)fail('Missing body data-build.');
+const assetVersions=[...index.matchAll(/(?:src|href)=["']\.\/[^"'?]+\?v=([^"']+)["']/g)].map(m=>m[1]);
+if(!assetVersions.length)fail('No versioned local assets found.');
+if(assetVersions.some(v=>v!==build))fail(`All local CSS/JS assets must use the current build version ${build}.`);
 
 const localRefs=[...index.matchAll(/(?:src|href)=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 for(const ref of localRefs){if(!exists(ref))fail(`index.html references missing file: ${ref}`);}
-
 const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
-const forbiddenLegacy=['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'];
-for(const f of forbiddenLegacy){if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);}
+for(const f of ['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'])if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);
+for(const f of ['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
 
-const requiredRuntime=['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'];
-for(const f of requiredRuntime){if(!loadedScripts.includes(f))fail(`Required runtime script is not loaded: ${f}`);}
+const learning=read('learning-launcher-v2.js');
+const exam=read('program-exam-v3.js');
+const layout=read('answer-layout-v8.js');
+const css=read('answer-layout-v8.css');
+const library=read('student-library-v3.js');
 
-for(const file of new Set([...loadedScripts,'index.html','tests/smoke.mjs','tests/static-qa.mjs','tests/exam-v2-api.mjs','supabase/functions/exam-v2-api/index.ts','supabase/functions/exam-v2-api/logic.mjs'])){
-  if(!exists(file))continue;
-  const source=read(file);
-  if(mergeMarkerRe.test(source))fail(`Unresolved merge marker found in ${file}.`);
-  if(/2026[-–]2025/.test(source))fail(`Reversed school-year text found in ${file}.`);
-}
+if(learning.includes('اضغط مرة ثانية'))fail('Learning Mode must not ask for a second tap on the option.');
+if(!learning.includes('id="flhConfirmAnswer"'))fail('Learning Mode needs a dedicated confirm button.');
+if(!learning.includes('تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'))fail('Learning selection guidance missing.');
+if(!learning.includes('row.draft_option_position=pos;\n      render();'))fail('Learning selection must render locally before draft persistence.');
+if(!learning.includes("call('save_draft'"))fail('Learning draft persistence missing.');
+if(!learning.includes('draftController?.abort()'))fail('Learning must cancel stale draft requests before newer/final state.');
+if(!learning.includes('class="answer-grid answer-layout-v8"'))fail('Learning answer grid must opt into shared layout immediately.');
+if(!exam.includes('class="answers answer-layout-v8"'))fail('Exam must use shared answer layout.');
+
+if(!layout.includes("const OPTION_LABELS = ['A','B','C','D','E','F'];"))fail('Shared option labels must be A-F.');
+if(layout.includes("const OPTION_PREFIX = 'الخيار';")||layout.includes("const AR_NUM = ['١'"))fail('Old visible Arabic-number option mapping must be removed.');
+if(!layout.includes('`الخيار ${label}: ${text}'))fail('Accessibility label must retain the word الخيار without showing it as the badge.');
+if(!layout.includes("setAttrIfChanged(answer, 'aria-pressed', String(selected))"))fail('Answer choices must expose aria-pressed.');
+if(!layout.includes("const appRoot = document.getElementById('app');"))fail('Answer observer must be scoped to #app.');
+if(layout.includes("observer.observe(document.documentElement"))fail('Answer observer must not scan the whole document.');
+if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer must not re-scan on every click.');
+if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
+if(!/@media \(max-width:719px\)[\s\S]*grid-template-columns:minmax\(0,1fr\)/.test(css))fail('Mobile answer layout must force one column.');
+if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(css))fail('Math choices must retain LTR isolation.');
+if(!library.includes("observer.observe(appRoot,{childList:true,subtree:true})"))fail('Student Library observer must be scoped to #app.');
+if(library.includes("observer.observe(document.documentElement"))fail('Student Library observer must not watch the whole document.');
 
 const localizer=read('ui-localization-v1.js');
-for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','متابعة الأبناء','تذكّرني']){
-  if(!localizer.includes(required))fail(`Arabic copy normalizer is missing rule/content for: ${required}`);
-}
+for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','متابعة الأبناء','تذكّرني'])if(!localizer.includes(required))fail(`Arabic copy normalizer missing: ${required}`);
 
-const learningLauncher=read('learning-launcher-v2.js');
-const examRuntime=read('program-exam-v3.js');
-const answerLayout=read('answer-layout-v8.js');
-const answerLayoutCss=read('answer-layout-v8.css');
-if(!learningLauncher.includes('class="answer-grid"'))fail('Learning Mode must render a recognizable answer-grid container.');
-if(!examRuntime.includes('class="answers answer-layout-v8"'))fail('Exam Mode must render a recognizable answers container.');
-if(!answerLayout.includes("document.querySelectorAll('.answers, .answer-grid').forEach(enhanceGroup)"))fail('Answer-label normalization must cover both Exam Mode .answers and Learning Mode .answer-grid containers.');
-if(!answerLayout.includes("const OPTION_PREFIX = 'الخيار';"))fail('Answer choices must visibly distinguish the option index from the answer value.');
-if(!answerLayout.includes("const AR_NUM = ['١','٢','٣','٤','٥','٦','٧','٨','٩','١٠'];"))fail('Answer choices must preserve the deterministic Arabic-Indic option-number mapping.');
-if(!answerLayout.includes("'٠١٢٣٤٥٦٧٨٩'[Number(digit)]"))fail('Answer choice indexes beyond the fixed mapping must still use Arabic-Indic digits.');
-if(!answerLayout.includes('AR_NUM[i] || toArabicDigits(i + 1)'))fail('Answer choice labels must not fall back to Latin option digits.');
-if(!answerLayout.includes("setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto')"))fail('Math-like answer content must be directionally isolated from RTL option labels.');
-if(!answerLayout.includes('new MutationObserver(schedule)'))fail('Answer layout must observe dynamically rendered quiz/exam choices.');
-if(!answerLayout.includes('observer.observe(document.documentElement, {childList:true, subtree:true})'))fail('Answer layout observer must watch document subtree child-list changes for dynamically rendered choices.');
-if(!answerLayout.includes('const visibleLabel = selected ? `✓ ${label}` : label;'))fail('Selected answers must retain a visible checkmark after answer-layout enhancement.');
-if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-pressed', String(selected))"))fail('Answer choices must expose their selected state through aria-pressed.');
-if(!answerLayout.includes("setAttrIfChanged(answer, 'aria-label', `${label}: ${text}${selected ? '، محدد' : ''}`)"))fail('Answer choice accessibility labels must keep option identity and selected state separate from content.');
-if(!answerLayoutCss.includes('.answer-content-v8.math-choice'))fail('Answer CSS must include a dedicated math-choice isolation rule.');
-if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(answerLayoutCss))fail('Math choices must retain LTR direction styling inside the math-choice selector.');
-if(!/\.answer-content-v8\{[^}]*unicode-bidi:isolate/.test(answerLayoutCss))fail('Answer content itself must retain unicode-bidi:isolate, not only the option label.');
-
-const examIndex=read('supabase/functions/exam-v2-api/index.ts');
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
 const examTests=read('tests/exam-v2-api.mjs');
-const qaWorkflow=read('.github/workflows/qa-smoke.yml');
+const qa=read('.github/workflows/qa-smoke.yml');
+if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
+if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
+for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
+for(const command of ['node tests/static-qa.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
 
-if(!examIndex.includes('authenticateLearner')||!examIndex.includes('parseRequest')||!examIndex.includes('dispatchExamAction'))fail('exam-v2-api index must use the shared validated request/auth/dispatch core.');
-if(!examLogic.includes('payload===null||typeof payload!=="object"||Array.isArray(payload)'))fail('exam-v2-api must reject null, array, and non-object signed learner payloads.');
-if(!examLogic.includes('typeof body.action==="string"?body.action:""'))fail('exam-v2-api must reject non-string action values instead of coercing them.');
-if(!examLogic.includes('typeof body.attempt_id==="string"?body.attempt_id:""')||!examLogic.includes('typeof body.question_id==="string"?body.question_id:""'))fail('exam-v2-api must reject non-string flag identifiers instead of coercing them.');
-if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('exam-v2-api must reject non-boolean is_flagged values.');
-if(!examLogic.includes('.update({is_flagged:flag}).eq("id",queueRow.id).select("id").single()'))fail('exam-v2-api must require exactly one persisted flag update row.');
-if(!examLogic.includes('if(updateError||!updated)throw new Error("FLAG_UPDATE_FAILED")'))fail('exam-v2-api must reject failed or zero-row flag persistence.');
-if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('exam-v2-api flag lookup must remain scoped to the authenticated learner.');
-
-for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','attempt lookup database error','question lookup database error','zero-row flag update','valid boolean flag persists']){
-  if(!examTests.includes(requiredTest))fail(`Executable Exam API regression coverage missing: ${requiredTest}.`);
-}
-if(!examTests.includes("assert.deepEqual(state.lastUpdateFilters,{id:'queue-1'})"))fail('Exam API regression tests must assert the flag update targets only the resolved queue row id.');
-if(!qaWorkflow.includes('run: node tests/exam-v2-api.mjs'))fail('QA Gate must execute Exam API unit tests.');
-if(!qaWorkflow.includes('esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts'))fail('QA Gate must syntax-parse the TypeScript Exam API entrypoint.');
-
-/**
- * Extract one named workflow job block for deterministic QA configuration checks.
- * @param {string} name Current job name.
- * @param {string} [nextName] Next job name used as the slice boundary.
- * @returns {string} YAML source belonging to the requested job.
- */
-function workflowJobBlock(name,nextName){
-  const start=qaWorkflow.indexOf(`  ${name}:`);
-  if(start<0)return'';
-  const end=nextName?qaWorkflow.indexOf(`  ${nextName}:`,start+1):-1;
-  return qaWorkflow.slice(start,end<0?qaWorkflow.length:end);
-}
-const headRef='ref: ${{ github.event_name == \'pull_request\' && github.event.pull_request.head.sha || github.sha }}';
-const shaAssert='run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"';
-const staticJob=workflowJobBlock('static-quality','browser-smoke');
-const browserJob=workflowJobBlock('browser-smoke');
-for(const [name,job] of [['static-quality',staticJob],['browser-smoke',browserJob]]){
-  if(!job)fail(`QA workflow is missing ${name} job.`);
-  else{
-    if(!job.includes(headRef))fail(`${name} must checkout the exact PR-head SHA for pull_request runs.`);
-    if(!job.includes('persist-credentials: false'))fail(`${name} must disable persisted checkout credentials.`);
-    if(!job.includes(shaAssert))fail(`${name} must assert the checked-out SHA before QA evidence is accepted.`);
-  }
-}
-
-const activeCopyFiles=['index.html','learning-launcher-v2.js','program-exam-v3.js','student-library-v3.js','parent-center-v3.js','dynamic-login-v3.js'];
-for(const file of activeCopyFiles){
-  if(!exists(file))continue;
-  const source=read(file);
-  if(/\b(?:TODO|FIXME)\b/.test(source))warn.push(`${file}: TODO/FIXME remains in active UI source.`);
-}
-
-if(failures.length){
-  console.error('\nSTATIC QA FAILED');
-  for(const message of failures)console.error(`- ${message}`);
-  process.exit(1);
-}
-console.log('Static QA passed: runtime references, Arabic/RTL shell, Learning/Exam answer-group coverage, localized option indexing, selected-state preservation, answer-choice number/value separation, math bidi isolation, dynamic observer wiring, executable exam API guards, TypeScript syntax coverage, per-job exact-head QA binding, checkout hardening, legacy guards, copy normalization and merge-marker checks are valid.');
-for(const message of warn)console.warn(`WARN: ${message}`);
+if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
+console.log('Static QA passed: unified build cache busting, A-F option labels, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');

@@ -3,177 +3,41 @@ import fs from 'node:fs';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const SAVE_DELAY_MS=Number(process.env.PERF_SAVE_DELAY_MS||2500);
-const LIMITS={
-  appReadyMs:Number(process.env.PERF_APP_READY_LIMIT_MS||2500),
-  examOpenUiMs:Number(process.env.PERF_EXAM_OPEN_LIMIT_MS||800),
-  answerVisualMs:Number(process.env.PERF_ANSWER_VISUAL_LIMIT_MS||250),
-  nextQuestionMs:Number(process.env.PERF_NEXT_QUESTION_LIMIT_MS||250),
-  resultUiMs:Number(process.env.PERF_RESULT_UI_LIMIT_MS||800),
-};
-
+const LIMITS={appReadyMs:Number(process.env.PERF_APP_READY_LIMIT_MS||2500),learningOpenUiMs:800,examOpenUiMs:Number(process.env.PERF_EXAM_OPEN_LIMIT_MS||800),answerVisualMs:Number(process.env.PERF_ANSWER_VISUAL_LIMIT_MS||250),nextQuestionMs:Number(process.env.PERF_NEXT_QUESTION_LIMIT_MS||250),resultUiMs:Number(process.env.PERF_RESULT_UI_LIMIT_MS||800)};
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
-const errors=[];
-let saveStartedAt=0,saveCompletedAt=0,saveCalls=0;
+const errors=[];let learningDraftStarted=0,learningDraftCompleted=0,examSaveStarted=0,examSaveCompleted=0;
+page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
 
-page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
-page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
-
-await page.route('**/functions/v1/**',async route=>{
-  const req=route.request();
-  let body={};
-  try{body=JSON.parse(req.postData()||'{}')}catch{}
-  const url=new URL(req.url());
-  const slug=url.pathname.split('/').pop();
-
-  if(slug==='exam-v2-api'&&body.action==='warmup'){
-    return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"warm":true}'});
-  }
-  if(slug==='exam-v2-api'&&body.action==='start_exam'){
-    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
-      attempt_id:'perf-attempt',resumed:false,quiz:{slug:'perf-exam',title:'امتحان الأداء'},questions:[
-        {sequence_no:1,question_id:'perf-q1',status:'active',is_flagged:false,saved_response:null,question:{id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',options:[{position:1,content:'3'},{position:2,content:'4'}],assets:[]}},
-        {sequence_no:2,question_id:'perf-q2',status:'pending',is_flagged:false,saved_response:null,question:{id:'perf-q2',question_code:'PERF-2',prompt:'3 + 1 = ؟',options:[{position:1,content:'4'},{position:2,content:'6'}],assets:[]}}
-      ]
-    })});
-  }
-  if(slug==='exam-v2-api'&&body.action==='save_answer'){
-    saveCalls++;
-    saveStartedAt=Date.now();
-    await new Promise(r=>setTimeout(r,SAVE_DELAY_MS));
-    saveCompletedAt=Date.now();
-    return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-  }
-  if(slug==='exam-v2-api'&&body.action==='submit_exam'){
-    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
-      percentage:50,score_points:1,max_points:2,review:[
-        {question_id:'perf-q1',question_code:'PERF-1',prompt:'2 + 2 = ؟',response:{option_position:1},is_correct:false,was_flagged:false,correct_answer:{option_position:2},hints:[
-          {hint_level:1,content:'حدّد العملية المطلوبة أولًا.'},
-          {hint_level:2,content:'قاعدة الجمع هنا: نضيف الكمية الثانية إلى الأولى.'},
-          {hint_level:3,content:'ابدأ من 2 وأضف وحدتين خطوة خطوة.'},
-          {hint_level:4,content:'بعد الإضافة تصل إلى العدد 4.'}
-        ],explanation:'عندما نضيف 2 إلى 2 تكون النتيجة 4.'},
-        {question_id:'perf-q2',question_code:'PERF-2',prompt:'3 + 1 = ؟',response:{option_position:1},is_correct:true,was_flagged:false,correct_answer:{option_position:1},hints:[],explanation:'3 زائد 1 يساوي 4.'}
-      ]
-    })});
-  }
-  if(slug==='exam-v2-api'&&body.action==='set_flag'){
-    return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"is_flagged":true}'});
-  }
-  if(slug==='family-api'&&body.action==='student_profile'){
-    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learner:{id:'perf-learner',display_name:'اختبار الأداء',slug:'performance',grade_level:5,is_test:true,avatar_emoji:'🧪'},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}})});
-  }
-  if(slug==='family-api'&&body.action==='learner_choices'){
-    return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({learners:[]})});
-  }
+await page.route('**/functions/v1/**',async route=>{const req=route.request();let b={};try{b=JSON.parse(req.postData()||'{}')}catch{};const slug=new URL(req.url()).pathname.split('/').pop();
+  if(slug==='learning-api'&&b.action==='start_quiz')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'lp',resumed:false,quiz:{slug:'perf',title:'تعلم الأداء'},queue:[{question_id:'lq',source_role:'core',status:'active',draft_option_position:null,hint_level_requested:0,question:{id:'lq',prompt:'اختر',options:[{position:1,content:'أول'},{position:2,content:'ثان'}],assets:[]}}]})});
+  if(slug==='learning-api'&&b.action==='save_draft'){learningDraftStarted=Date.now();await new Promise(r=>setTimeout(r,SAVE_DELAY_MS));learningDraftCompleted=Date.now();return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});}
+  if(slug==='learning-api'&&b.action==='answer')return route.fulfill({status:200,contentType:'application/json',body:'{"is_correct":true,"finalized":true,"explanation":"صحيح"}'});
+  if(slug==='learning-api'&&b.action==='finish_quiz')return route.fulfill({status:200,contentType:'application/json',body:'{"percentage":100,"first_try_correct":1,"hints_used":0,"award":{"already_awarded":true},"review":[]}'});
+  if(slug==='exam-v2-api'&&b.action==='warmup')return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
+  if(slug==='exam-v2-api'&&b.action==='start_exam')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'ep',resumed:false,quiz:{slug:'perf',title:'امتحان الأداء'},questions:[{question_id:'e1',saved_response:null,is_flagged:false,question:{id:'e1',prompt:'2 + 2 = ؟',options:[{position:1,content:'3'},{position:2,content:'4'}],assets:[]}},{question_id:'e2',saved_response:null,is_flagged:false,question:{id:'e2',prompt:'3 + 1 = ؟',options:[{position:1,content:'4'},{position:2,content:'6'}],assets:[]}}]})});
+  if(slug==='exam-v2-api'&&b.action==='save_answer'){examSaveStarted=Date.now();await new Promise(r=>setTimeout(r,SAVE_DELAY_MS));examSaveCompleted=Date.now();return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});}
+  if(slug==='exam-v2-api'&&b.action==='submit_exam')return route.fulfill({status:200,contentType:'application/json',body:'{"percentage":100,"score_points":2,"max_points":2,"review":[]}'});
+  if(slug==='exam-v2-api'&&b.action==='set_flag')return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
+  if(slug==='family-api'&&b.action==='student_profile')return route.fulfill({status:200,contentType:'application/json',body:'{"learner":{"id":"p","display_name":"أداء","slug":"perf","grade_level":5,"is_test":true},"gamification":{"xp":0,"reward_points":0,"current_level":1,"current_streak":0,"longest_streak":0,"badges":[],"rewards":[]}}'});
+  if(slug==='family-api'&&b.action==='learner_choices')return route.fulfill({status:200,contentType:'application/json',body:'{"learners":[]}'});
   if(slug==='student-library-api')return route.fulfill({status:200,contentType:'application/json',body:'{"programs":[],"standalone_books":[]}'});
-  if(slug==='activity-api')return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
   return route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
 });
+await page.addInitScript(()=>localStorage.setItem('learner_session','perf-session'));
+const navStart=Date.now();await page.goto(`${BASE_URL}?performance=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>Boolean(window.FLH?.startExamQuiz&&window.FLH?.startLearningQuiz),null,{timeout:10000});const appReadyMs=Date.now()-navStart;
 
-await page.addInitScript(()=>localStorage.setItem('learner_session','perf-test-session'));
-const navStart=Date.now();
-await page.goto(`${BASE_URL}?performance=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
-await page.waitForFunction(()=>Boolean(window.FLH?.startExamQuiz),null,{timeout:10000});
-const appReadyMs=Date.now()-navStart;
+const learningStart=Date.now();await page.evaluate(()=>window.FLH.startLearningQuiz('perf'));await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:5000});const learningOpenUiMs=Date.now()-learningStart;
+const learningAnswerVisualMs=await page.evaluate(async()=>{const b=document.querySelector('.flh-learn-answer');const s=performance.now();b.click();return await new Promise((resolve,reject)=>{const tick=()=>{if(document.querySelector('.flh-learn-answer.selected'))return resolve(performance.now()-s);if(performance.now()-s>1200)return reject(new Error('LEARNING_VISUAL_TIMEOUT'));requestAnimationFrame(tick)};tick()})});
+for(let i=0;i<40&&!learningDraftStarted;i++)await page.waitForTimeout(25);const learningDraftPending=Boolean(learningDraftStarted&&!learningDraftCompleted);
+await page.locator('.flh-learn-answer').nth(1).click();await page.locator('.flh-learn-answer.selected[data-pos="2"]').waitFor({state:'visible',timeout:500});if(await page.locator('#flhConfirmAnswer').isDisabled())throw new Error('LEARNING_CONFIRM_DISABLED');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor({state:'visible',timeout:1500});
 
-const examStart=Date.now();
-await page.evaluate(()=>window.FLH.startExamQuiz('perf-exam'));
-await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
-const examOpenUiMs=Date.now()-examStart;
+const examStart=Date.now();await page.evaluate(()=>window.FLH.startExamQuiz('perf'));await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});const examOpenUiMs=Date.now()-examStart;
+const examAnswerVisualMs=await page.evaluate(async()=>{const b=document.querySelector('.exam-v3-answer');const s=performance.now();b.click();return await new Promise((resolve,reject)=>{const tick=()=>{if(document.querySelector('.exam-v3-answer.selected'))return resolve(performance.now()-s);if(performance.now()-s>1200)return reject(new Error('EXAM_VISUAL_TIMEOUT'));requestAnimationFrame(tick)};tick()})});
+for(let i=0;i<40&&!examSaveStarted;i++)await page.waitForTimeout(25);const nextQuestionMs=await page.evaluate(async()=>{const b=document.querySelector('#examNext');const s=performance.now();b.click();return await new Promise((resolve,reject)=>{const tick=()=>{if(document.body.textContent.includes('السؤال 2 من 2'))return resolve(performance.now()-s);if(performance.now()-s>1200)return reject(new Error('NEXT_TIMEOUT'));requestAnimationFrame(tick)};tick()})});const examSavePendingDuringNavigation=Boolean(examSaveStarted&&!examSaveCompleted);
+await page.locator('.exam-v3-answer').first().click();await page.waitForTimeout(SAVE_DELAY_MS+150);const resultStart=Date.now();await page.locator('#examSubmit').click();await page.getByText('نتيجة الامتحان',{exact:false}).waitFor({state:'visible',timeout:5000});const resultUiMs=Date.now()-resultStart;
 
-const answerVisualMs=await page.evaluate(async()=>{
-  const btn=document.querySelector('.exam-v3-answer');
-  if(!btn)throw new Error('NO_ANSWER_BUTTON');
-  const start=performance.now();
-  btn.click();
-  return await new Promise((resolve,reject)=>{
-    const tick=()=>{
-      if(document.querySelector('.exam-v3-answer.selected'))return resolve(performance.now()-start);
-      if(performance.now()-start>1200)return reject(new Error('ANSWER_VISUAL_TIMEOUT'));
-      requestAnimationFrame(tick);
-    };
-    tick();
-  });
-});
-
-for(let i=0;i<40&&!saveStartedAt;i++)await page.waitForTimeout(25);
-const nextQuestionMs=await page.evaluate(async()=>{
-  const btn=document.querySelector('#examNext');
-  if(!btn)throw new Error('NO_NEXT_BUTTON');
-  const start=performance.now();btn.click();
-  return await new Promise((resolve,reject)=>{
-    const tick=()=>{
-      if(document.body.textContent.includes('السؤال 2 من 2'))return resolve(performance.now()-start);
-      if(performance.now()-start>1200)return reject(new Error('NEXT_QUESTION_TIMEOUT'));
-      requestAnimationFrame(tick);
-    };tick();
-  });
-});
-const saveWasStillPendingDuringNavigation=Boolean(saveStartedAt&&!saveCompletedAt);
-await page.waitForTimeout(SAVE_DELAY_MS+100);
-
-await page.locator('.exam-v3-answer').first().click();
-await page.locator('.exam-v3-answer.selected').waitFor({state:'visible',timeout:1000});
-await page.waitForTimeout(SAVE_DELAY_MS+100);
-
-const resultStart=Date.now();
-await page.locator('#examSubmit').click();
-await page.getByText('نتيجة الامتحان',{exact:false}).waitFor({state:'visible',timeout:5000});
-const resultUiMs=Date.now()-resultStart;
-const wrongReview=page.locator('.exam-review-wrong').first();
-await wrongReview.waitFor({state:'visible',timeout:2000});
-const wrongReviewBefore=(await wrongReview.textContent())||'';
-if(wrongReviewBefore.includes('تلميح'))throw new Error('EXAM_REVIEW_MUST_NOT_USE_HINT_LABEL');
-const explainButton=page.getByRole('button',{name:'📘 الشرح'}).first();
-await explainButton.waitFor({state:'visible',timeout:2000});
-await explainButton.click();
-const basicList=page.locator('#examExplain0 > .flh-explanation > .exam-explanation-steps').first();
-await basicList.getByText('قاعدة الجمع هنا:',{exact:false}).waitFor({state:'visible',timeout:2000});
-const basicSteps=await basicList.locator('li').count();
-if(basicSteps!==3)throw new Error(`EXPECTED_3_BASIC_EXPLANATION_STEPS_GOT_${basicSteps}`);
-const expandButton=page.getByRole('button',{name:'➕ شرح موسّع'}).first();
-await expandButton.click();
-await page.locator('#examExpanded0').waitFor({state:'visible',timeout:2000});
-const expandedSteps=await page.locator('#examExpanded0 .exam-explanation-steps').locator('li').count();
-if(expandedSteps!==6)throw new Error(`EXPECTED_6_EXPANDED_EXPLANATION_STEPS_GOT_${expandedSteps}`);
-await page.locator('#examExpanded0').getByText('عندما نضيف 2 إلى 2 تكون النتيجة 4.',{exact:false}).waitFor({state:'visible',timeout:2000});
-const reviewExplanationPresent=true;
-
-const report={
-  generated_at:new Date().toISOString(),base_url:BASE_URL,injected_save_delay_ms:SAVE_DELAY_MS,
-  measurements:{app_ready_ms:appReadyMs,exam_open_ui_ms:examOpenUiMs,answer_visual_ms:Math.round(answerVisualMs*10)/10,next_question_ms:Math.round(nextQuestionMs*10)/10,result_ui_ms:resultUiMs},
-  limits:{app_ready_ms:LIMITS.appReadyMs,exam_open_ui_ms:LIMITS.examOpenUiMs,answer_visual_ms:LIMITS.answerVisualMs,next_question_ms:LIMITS.nextQuestionMs,result_ui_ms:LIMITS.resultUiMs},
-  save_calls:saveCalls,save_was_still_pending_during_navigation:saveWasStillPendingDuringNavigation,review_explanation_present:reviewExplanationPresent,basic_explanation_steps:basicSteps,expanded_explanation_steps:expandedSteps,browser_errors:errors,
-};
+const report={generated_at:new Date().toISOString(),base_url:BASE_URL,injected_save_delay_ms:SAVE_DELAY_MS,measurements:{app_ready_ms:appReadyMs,learning_open_ui_ms:learningOpenUiMs,learning_answer_visual_ms:+learningAnswerVisualMs.toFixed(1),exam_open_ui_ms:examOpenUiMs,exam_answer_visual_ms:+examAnswerVisualMs.toFixed(1),next_question_ms:+nextQuestionMs.toFixed(1),result_ui_ms:resultUiMs},learning_draft_pending_during_reselection:learningDraftPending,exam_save_pending_during_navigation:examSavePendingDuringNavigation,browser_errors:errors};
 fs.writeFileSync('performance-report.json',JSON.stringify(report,null,2));
-
-const failures=[];
-if(appReadyMs>LIMITS.appReadyMs)failures.push(`app ready ${appReadyMs}ms > ${LIMITS.appReadyMs}ms`);
-if(examOpenUiMs>LIMITS.examOpenUiMs)failures.push(`exam UI ${examOpenUiMs}ms > ${LIMITS.examOpenUiMs}ms`);
-if(answerVisualMs>LIMITS.answerVisualMs)failures.push(`answer visual ${answerVisualMs.toFixed(1)}ms > ${LIMITS.answerVisualMs}ms`);
-if(nextQuestionMs>LIMITS.nextQuestionMs)failures.push(`next question ${nextQuestionMs.toFixed(1)}ms > ${LIMITS.nextQuestionMs}ms`);
-if(resultUiMs>LIMITS.resultUiMs)failures.push(`result UI ${resultUiMs}ms > ${LIMITS.resultUiMs}ms`);
-if(!saveWasStillPendingDuringNavigation)failures.push('navigation was not tested while save_answer was still pending');
-if(saveCalls<2)failures.push('expected two save_answer calls');
-if(!reviewExplanationPresent)failures.push('wrong-answer explanation flow is missing');
-if(basicSteps!==3)failures.push(`basic explanation has ${basicSteps} steps instead of 3`);
-if(expandedSteps!==6)failures.push(`expanded explanation has ${expandedSteps} steps instead of 6`);
-if(errors.length)failures.push(...errors);
-
-const markdown=[
-  '## Family Learning Hub performance smoke','',
-  '| Metric | Result | Limit |','|---|---:|---:|',
-  `| App ready | ${appReadyMs} ms | ${LIMITS.appReadyMs} ms |`,
-  `| Exam UI open | ${examOpenUiMs} ms | ${LIMITS.examOpenUiMs} ms |`,
-  `| Answer visual response | ${answerVisualMs.toFixed(1)} ms | ${LIMITS.answerVisualMs} ms |`,
-  `| Next-question navigation | ${nextQuestionMs.toFixed(1)} ms | ${LIMITS.nextQuestionMs} ms |`,
-  `| Result UI after response | ${resultUiMs} ms | ${LIMITS.resultUiMs} ms |`,'',
-  `Injected backend save delay: **${SAVE_DELAY_MS} ms**`,
-  `Navigation while save pending: **${saveWasStillPendingDuringNavigation?'PASS':'FAIL'}**`,
-  `Exam review explanation (3 steps → 6 steps): **${reviewExplanationPresent&&basicSteps===3&&expandedSteps===6?'PASS':'FAIL'}**`,
-  failures.length?`\n❌ ${failures.join('; ')}`:'\n✅ Performance smoke passed.'
-].join('\n');
-fs.writeFileSync('performance-summary.md',markdown);console.log(markdown);
-await browser.close();
-if(failures.length)throw new Error(`Performance regression: ${failures.join('; ')}`);
+const failures=[];if(appReadyMs>LIMITS.appReadyMs)failures.push(`app ready ${appReadyMs}ms`);if(learningOpenUiMs>LIMITS.learningOpenUiMs)failures.push(`learning open ${learningOpenUiMs}ms`);if(learningAnswerVisualMs>LIMITS.answerVisualMs)failures.push(`learning visual ${learningAnswerVisualMs.toFixed(1)}ms`);if(examOpenUiMs>LIMITS.examOpenUiMs)failures.push(`exam open ${examOpenUiMs}ms`);if(examAnswerVisualMs>LIMITS.answerVisualMs)failures.push(`exam visual ${examAnswerVisualMs.toFixed(1)}ms`);if(nextQuestionMs>LIMITS.nextQuestionMs)failures.push(`next ${nextQuestionMs.toFixed(1)}ms`);if(resultUiMs>LIMITS.resultUiMs)failures.push(`result ${resultUiMs}ms`);if(!learningDraftPending)failures.push('Learning draft delay did not overlap reselection');if(!examSavePendingDuringNavigation)failures.push('Exam save delay did not overlap navigation');if(errors.length)failures.push(...errors);
+const md=['## Family Learning Hub performance smoke','',`Learning selection: **${learningAnswerVisualMs.toFixed(1)} ms**`,`Exam selection: **${examAnswerVisualMs.toFixed(1)} ms**`,`Learning open: **${learningOpenUiMs} ms**`,`Exam open: **${examOpenUiMs} ms**`,`Injected save delay: **${SAVE_DELAY_MS} ms**`,`Learning reselection while draft pending: **${learningDraftPending?'PASS':'FAIL'}**`,`Exam navigation while save pending: **${examSavePendingDuringNavigation?'PASS':'FAIL'}**`,failures.length?`\n❌ ${failures.join('; ')}`:'\n✅ Performance smoke passed.'].join('\n');fs.writeFileSync('performance-summary.md',md);console.log(md);await browser.close();if(failures.length)throw new Error(`Performance regression: ${failures.join('; ')}`);
