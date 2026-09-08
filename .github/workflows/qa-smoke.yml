@@ -42,6 +42,8 @@ jobs:
           npx --yes esbuild@0.25.9 supabase/functions/attempt-history-api/index.ts --format=esm --platform=neutral --outfile=/tmp/attempt-history-api-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
+      - name: Math direction regression
+        run: node tests/math-direction.mjs
       - name: Exam API unit tests
         run: node tests/exam-v2-api.mjs
 
