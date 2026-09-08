@@ -8,6 +8,14 @@ const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
 const index=read('index.html');
 
+function yamlJobBlock(yaml,jobName){
+  const lines=yaml.split(/\r?\n/),start=lines.findIndex(line=>line.trimEnd()===`  ${jobName}:`);
+  if(start<0)return'';
+  let end=lines.length;
+  for(let i=start+1;i<lines.length;i++){if(/^  [A-Za-z0-9_-]+:\s*$/.test(lines[i])){end=i;break;}}
+  return lines.slice(start,end).join('\n');
+}
+
 if(!/<html[^>]+lang=["']ar["'][^>]+dir=["']rtl["']/i.test(index))fail('index.html must declare Arabic RTL.');
 if(!/<meta[^>]+name=["']viewport["']/i.test(index))fail('index.html is missing mobile viewport.');
 if(index.includes('جارِ'))fail('Visible Arabic typo جارِ found in index.html.');
@@ -28,6 +36,7 @@ if(loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('learning
 
 const learning=read('learning-launcher-v2.js');
 const exam=read('program-exam-v3.js');
+const history=read('attempt-history-v1.js');
 const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
@@ -65,9 +74,28 @@ if(mathDirection.includes('observe(document.documentElement'))fail('Math directi
 if(!mathDirection.includes("node.dir = 'ltr'"))fail('Generated math nodes must declare LTR direction.');
 if(!mathDirectionCss.includes('.flh-math-ltr{direction:ltr;unicode-bidi:isolate'))fail('Math runs must use LTR unicode-bidi isolation.');
 if(!mathDirectionCss.includes('input[inputmode="numeric"]')||!mathDirectionCss.includes('input[inputmode="decimal"]'))fail('Numeric answer inputs must be LTR-isolated.');
-if(!mathGuard.includes('const surfaceContracts='))fail('Math rendering architecture guard is missing its surface contract checks.');
-if(!mathGuard.includes("read('.coderabbit.yaml')"))fail('Math rendering guard must protect CodeRabbit math-review instructions.');
-if(!mathGuard.includes("read('.github/pull_request_template.md')"))fail('Math rendering guard must protect the PR math checklist.');
+
+const protectedSurfaces={
+  'learning-launcher-v2.js':[
+    'renderMath(q.prompt)','renderMath(o.content)','renderMath(currentHint.content)','renderMath(d.explanation)',"renderMath(r.prompt||'')",'renderMath(r.explanation)'
+  ],
+  'program-exam-v3.js':[
+    'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li>${renderMath(s)}</li>`)'
+  ],
+  'attempt-history-v1.js':[
+    "mth(x.prompt||'')",'mth(sel)','mth(cor)','mth(x.explanation)'
+  ]
+};
+const protectedSources={'learning-launcher-v2.js':learning,'program-exam-v3.js':exam,'attempt-history-v1.js':history};
+for(const [file,needles] of Object.entries(protectedSurfaces))for(const needle of needles)if(!protectedSources[file].includes(needle))fail(`Required math rendering surface missing from ${file}: ${needle}`);
+
+for(const surface of ['learning-launcher-v2.js','program-exam-v3.js','attempt-history-v1.js'])if(!mathGuard.includes(`'${surface}':[`))fail(`Math architecture guard no longer names protected surface: ${surface}`);
+for(const phrase of ['Math/RTL rendering affected','Math rendering invariant checked','actual Learning Mode, Exam Mode, and completed/review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects PR checklist phrase: ${phrase}`);
+for(const phrase of ['RTL-safe math rendering as a platform invariant','Never fix bidi by reversing operands','real-browser coverage of actual Learning, Exam, and review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects CodeRabbit policy phrase: ${phrase}`);
+for(const phrase of ['Protect main','Static quality','Browser smoke'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects enforcement documentation phrase: ${phrase}`);
+if(!mathGuard.includes("const staticJob=yamlJobBlock(qa,'static-quality')"))fail('Math architecture guard must scope checks to the active Static quality job.');
+if(!mathGuard.includes("const browserJob=yamlJobBlock(qa,'browser-smoke')"))fail('Math architecture guard must scope checks to the active Browser smoke job.');
+if(!mathGuard.includes("needs:\\s*static-quality"))fail('Math architecture guard must require Browser smoke to depend on Static quality.');
 
 if(!library.includes("observer.observe(appRoot,{childList:true,subtree:true})"))fail('Student Library observer must be scoped to #app.');
 if(library.includes("observer.observe(document.documentElement"))fail('Student Library observer must not watch the whole document.');
@@ -78,10 +106,13 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
 const examTests=read('tests/exam-v2-api.mjs');
 const qa=read('.github/workflows/qa-smoke.yml');
+const staticJob=yamlJobBlock(qa,'static-quality'),browserJob=yamlJobBlock(qa,'browser-smoke');
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!staticJob.includes(command))fail(`Static quality missing command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserJob.includes(command))fail(`Browser smoke missing command: ${command}`);
+if(!/^    needs:\s*static-quality\s*$/m.test(browserJob))fail('Browser smoke must depend on Static quality.');
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, self-protected math architecture guard, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, scoped required-job QA wiring, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
