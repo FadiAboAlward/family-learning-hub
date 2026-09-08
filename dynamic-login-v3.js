@@ -5,6 +5,7 @@
   const originalShowPin=typeof showPin==='function'?showPin:null;
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const safe=(s='')=>typeof esc==='function'?esc(s):String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const qaMode=()=>new URLSearchParams(location.search).has('qa');
 
   // Learner auth remains backward-compatible with existing 8-digit PINs.
   // A learner may also type a 10-digit family phone number; only the final
@@ -28,7 +29,15 @@
     if(typeof shell!=='function'||typeof api!=='function')return originalStudentLogin?.();
     shell('🧑‍🎓 دخول الطالب','اختَر اسمك، ثم اكتب رمزك.',`<section class="panel"><div class="choice-grid" id="dynamicLearnerGrid"><div class="loading-card">جارٍ تحميل الحسابات…</div></div><div id="pinArea"></div><div class="actions"><button class="btn btn-soft" id="backHome">رجوع</button></div></section>`);
     document.getElementById('backHome')?.addEventListener('click',()=>{location.hash='';});
-    try{const d=await api('learner_choices'),learners=d.learners||[],grid=document.getElementById('dynamicLearnerGrid');if(!grid)return;grid.innerHTML=learners.length?learners.map(l=>`<button class="profile-card" data-dynamic-learner="${safe(l.slug)}"><span class="big-emoji">${safe(l.avatar_emoji||'🧑‍🎓')}</span><div class="title">${safe(l.display_name)}</div>${l.is_test?'<div class="muted">للتجارب فقط</div>':''}</button>`).join(''):'<div class="empty">لا توجد حسابات طالب مفعّلة.</div>';grid.querySelectorAll('[data-dynamic-learner]').forEach(btn=>btn.addEventListener('click',()=>{const slug=btn.getAttribute('data-dynamic-learner')||'',name=btn.querySelector('.title')?.textContent||slug;if(typeof showPin==='function')showPin(slug,name);}));}
+    try{
+      const d=await api('learner_choices');
+      const learners=[...(d.learners||[])];
+      if(qaMode()&&!learners.some(l=>l.slug==='test')) learners.push({slug:'test',display_name:'Testing',avatar_emoji:'🧪',is_test:true});
+      const grid=document.getElementById('dynamicLearnerGrid');
+      if(!grid)return;
+      grid.innerHTML=learners.length?learners.map(l=>`<button class="profile-card" data-dynamic-learner="${safe(l.slug)}"><span class="big-emoji">${safe(l.avatar_emoji||'🧑‍🎓')}</span><div class="title">${safe(l.display_name)}</div>${l.is_test?'<div class="muted">للتجارب فقط</div>':''}</button>`).join(''):'<div class="empty">لا توجد حسابات طالب مفعّلة.</div>';
+      grid.querySelectorAll('[data-dynamic-learner]').forEach(btn=>btn.addEventListener('click',()=>{const slug=btn.getAttribute('data-dynamic-learner')||'',name=btn.querySelector('.title')?.textContent||slug;if(typeof showPin==='function')showPin(slug,name);}));
+    }
     catch{const grid=document.getElementById('dynamicLearnerGrid');if(grid)grid.innerHTML='<div class="error">تعذر تحميل الحسابات. جرّب تحديث الصفحة.</div>';}
   }
   function testBanner(profile){document.querySelector('[data-dynamic-test-banner]')?.remove();if(!profile?.learner?.is_test)return;const hero=document.querySelector('.hero');if(!hero)return;const b=document.createElement('section');b.className='panel';b.dataset.dynamicTestBanner='1';b.innerHTML='<b>🧪 وضع الاختبار</b><div class="muted">هذا حساب معاينة. نشاطه منفصل عن سجلات المتعلمين الحقيقية وتقارير الأهل.</div>';hero.insertAdjacentElement('afterend',b);}
