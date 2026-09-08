@@ -3,7 +3,7 @@ language: "en-US"
 
 reviews:
   profile: "assertive"
-  request_changes_workflow: false
+  request_changes_workflow: true
   high_level_summary: true
   review_status: true
   poem: false
@@ -20,8 +20,9 @@ reviews:
     - "!**/*.webp"
 
   path_instructions:
-    - path: "**/*.{js,html,css}"
+    - path: "**/*.{js,ts,mjs,html,css}"
       instructions: |
+        Review this repository against the canonical constraints in AGENTS.md, docs/architecture.md, docs/qa-policy.md, and docs/math-rendering-invariant.md.
         Review this as a child-facing, mobile-first Arabic/RTL learning application.
         - Prioritize regressions in student navigation, learning mode, exam mode, parent access, and content isolation between learners.
         - Flag hard-coded learner names, grades, books, quizzes, or curriculum access when the behavior should be data-driven.
@@ -35,14 +36,36 @@ reviews:
         - Flag any raw rendering path that can place question prompts, option values, hints, explanations, learner answers, or correct answers into RTL UI without going through the shared math renderer or the approved bidi-isolation layer.
         - Never fix bidi by reversing operands, signs, strings, or stored data. Direction is a rendering concern only.
         - Changes to math-direction-v1.js/css or any Learning/Exam/review math surface must preserve regression coverage for Learning Mode, Exam Mode, completed/review screens, negative signs, and operand order.
+        - Review test selection as part of implementation: non-trivial pure/isolatable business, validation, authorization, scoring, parsing, state-transition, and error-handling logic should normally have unit coverage; meaningful Supabase/RLS/API/persistence boundaries should have integration/contract coverage when unit tests cannot prove the boundary; important user-visible flows should have Playwright/browser coverage.
+        - For an important bug fix, flag the absence of a deterministic regression test when a practical test at the lowest reliable layer could reproduce the defect.
+        - Do not mechanically demand a unit test for every function or trivial pass-through. Prefer high-value behavior coverage over brittle implementation-detail tests.
+
+    - path: "supabase/functions/**"
+      instructions: |
+        Treat Edge Functions as security and data-integrity boundaries.
+        - Check authentication, authorization, workspace scoping, learner-content isolation, input validation, error handling, and server-authoritative results.
+        - Flag service-role or privileged queries that are not tightly scoped to the authenticated workspace/learner/action.
+        - When non-trivial logic is extractable or already extracted from the transport layer, expect focused unit coverage for that logic.
+        - When correctness depends on the real database/RLS/API contract, expect an integration/contract regression rather than relying only on mocks.
+        - Verify that failure/zero-row cases are not silently reported as success.
+
+    - path: "supabase/migrations/**"
+      instructions: |
+        Review migrations for production safety, RLS, grants, constraints, and forward-only reconciliation.
+        - Do not rewrite migration history that may already be applied in production; prefer a new forward reconciliation migration.
+        - Flag exposed workspace-scoped tables without appropriate RLS or policies.
+        - Check that security-definer functions, grants, and role permissions are no broader than required.
+        - Expect the PR to describe production-vs-fresh-database state and verification when relevant.
 
     - path: "tests/**"
       instructions: |
         Treat QA tests as merge-safety infrastructure.
         - Flag changes that weaken assertions only to make a failing test pass.
-        - Require coverage for the user behavior changed by the PR, especially mobile interactions and learner-content isolation.
-        - Keep deterministic checks for Arabic copy, runtime file references, and legacy-engine guards.
-        - Prefer mocked external APIs in browser smoke tests so CI remains stable and reproducible.
+        - Require coverage for the behavior/risk changed by the PR, using the lowest reliable layer defined in docs/qa-policy.md.
+        - Important bug fixes should normally gain a deterministic regression test unless the PR gives a credible reason or existing coverage already reproduces the issue.
+        - Keep deterministic checks for Arabic copy, runtime file references, math directionality, learner-content isolation, and legacy-engine guards.
+        - Prefer mocked external APIs in browser smoke tests so CI remains stable and reproducible, but do not accept mocks as proof of real RLS/database boundaries when an integration/contract test is needed.
+        - Avoid brittle tests that assert implementation details without protecting user-visible or security-critical behavior.
         - Preserve the math-rendering architecture guard and real-browser coverage of actual Learning, Exam, and review flows. Do not replace these with a synthetic DOM-only probe.
         - Required bidi regression corpus includes both operand orders and leading negative signs, including 19 - (-7), (-7) - 19, -7 + 19, 19 + (-7), -21 - (-6), and -26.
         - Preserve Playwright screenshot evidence for meaningful user-facing UI states. Evidence should use mocked/non-sensitive data, write to the temporary playwright-screenshots/ runtime folder, and must not expose credentials.
@@ -56,12 +79,26 @@ reviews:
         - Playwright screenshot evidence must be uploaded as a GitHub Actions artifact from playwright-screenshots/ with retention-days: 7. Do not replace temporary artifact storage with committing screenshots to repository history.
         - Do not add paths filters that would allow a PR to bypass QA.
         - Flag permissions broader than required and avoid exposing secrets to untrusted pull requests.
+        - Flag removal of meaningful unit, integration, browser, regression, or static checks unless replaced by equal or stronger deterministic coverage.
 
     - path: "docs/**"
       instructions: |
-        Check architecture and QA documentation for consistency with the live system.
-        Flag claims that a feature is enforced when it is only advisory or not actually configured.
+        Check architecture and QA documentation for consistency with the live system and with AGENTS.md.
+        Flag claims that a feature or gate is enforced when it is only advisory or not actually configured.
         Preserve the seven-day temporary Playwright screenshot evidence policy and the rule against committing transient QA screenshots to Git history.
+
+    - path: "AGENTS.md"
+      instructions: |
+        Treat this file as the concise repository-wide development contract.
+        Keep it aligned with docs/architecture.md, docs/qa-policy.md, and docs/math-rendering-invariant.md, and flag rules that contradict the actual CI/runtime architecture.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "docs/architecture.md"
+      - "docs/qa-policy.md"
+      - "docs/math-rendering-invariant.md"
 
 chat:
   auto_reply: true
