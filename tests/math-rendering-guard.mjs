@@ -78,12 +78,39 @@ for(const file of scripts){
   }
 }
 
-const guardTests=read('tests/math-direction.mjs')+read('tests/math-direction-browser.mjs')+read('tests/smoke.mjs');
+const smoke=read('tests/smoke.mjs');
+const guardTests=read('tests/math-direction.mjs')+read('tests/math-direction-browser.mjs')+smoke;
 for(const value of ['19 - (-7)','(-7) - 19','-7 + 19','19 + (-7)','-21 - (-6)','-26']){
   if(!guardTests.includes(value))fail(`Regression corpus lost required math case: ${value}`);
 }
 for(const surface of ['learning','exam','review']){
-  if(!read('tests/smoke.mjs').includes(`math-${surface}-verified`))fail(`Actual-mode smoke marker missing for ${surface}.`);
+  if(!smoke.includes(`math-${surface}-verified`))fail(`Actual-mode smoke marker missing for ${surface}.`);
+}
+if(!smoke.includes('math-learning-review-verified'))fail('Learning completed-review math coverage is missing.');
+
+const qa=read('.github/workflows/qa-smoke.yml');
+for(const command of ['node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs']){
+  if(!qa.includes(command))fail(`QA Gate no longer runs required math guard command: ${command}`);
+}
+if(!/Math rendering architecture guard[\s\S]*node tests\/math-rendering-guard\.mjs/.test(qa))fail('QA Gate must expose the math architecture guard as an explicit Static quality step.');
+
+const template=read('.github/pull_request_template.md');
+for(const phrase of ['Math/RTL rendering affected','Math rendering invariant checked','actual Learning Mode, Exam Mode, and completed/review flows']){
+  if(!template.includes(phrase))fail(`PR checklist lost math rendering gate: ${phrase}`);
+}
+
+const codeRabbit=read('.coderabbit.yaml');
+for(const phrase of ['RTL-safe math rendering as a platform invariant','Never fix bidi by reversing operands','real-browser coverage of actual Learning, Exam, and review flows']){
+  if(!codeRabbit.includes(phrase))fail(`CodeRabbit policy lost math rendering instruction: ${phrase}`);
+}
+
+const policyPath='docs/math-rendering-invariant.md';
+if(!fs.existsSync(path.join(ROOT,policyPath)))fail(`${policyPath} is required.`);
+else{
+  const policy=read(policyPath);
+  for(const phrase of ['every learner','Stored question/answer data is canonical','synthetic DOM probe','Family Learning Hub Playwright']){
+    if(!policy.includes(phrase))fail(`Math rendering policy lost required principle: ${phrase}`);
+  }
 }
 
 if(failures.length){
@@ -91,4 +118,4 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, and real-mode regression markers are intact.');
+console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, CodeRabbit instructions, PR checklist, and QA workflow wiring are intact.');
