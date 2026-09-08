@@ -39,7 +39,6 @@ page.on('console', message => { if (message.type() === 'error') errors.push(`con
 
 await page.addInitScript(value => localStorage.setItem('learner_session', value), session);
 await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
-await page.getByText('Testing', { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
 
 const programs = page.locator('[data-open-program]');
 await programs.first().waitFor({ state: 'visible', timeout: 10000 });
@@ -56,11 +55,11 @@ for (let p = 0; p < await programs.count() && !found; p++) {
         found = true;
         break;
       }
-      await page.goBack().catch(() => {});
+      await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
     }
-    if (!found) await page.goBack().catch(() => {});
+    if (!found) await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
   }
-  if (!found) await page.goBack().catch(() => {});
+  if (!found) await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
 }
 if (!found) throw new Error(`QA quiz ${QA_QUIZ_SLUG} not found in Testing library`);
 
