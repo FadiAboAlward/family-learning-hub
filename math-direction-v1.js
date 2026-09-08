@@ -4,7 +4,7 @@
   const DIGIT = '[0-9٠-٩]';
   const NUMBER = `${DIGIT}+(?:[.,٫]${DIGIT}+)?`;
   const FRACTION = `${NUMBER}(?:\\s*\\/\\s*${NUMBER})?`;
-  const ATOM = `(?:[+\\-−]?\\s*${FRACTION}|\\(\\s*[+\\-−]?\\s*${FRACTION}\\s*\\))`;
+  const ATOM = `(?:(?:[+\\-−]\\s*)?${FRACTION}|\\(\\s*(?:[+\\-−]\\s*)?${FRACTION}\\s*\\))`;
   const OPERATOR = '(?:[+\\-−×÷*/=≤≥]|&lt;|&gt;|<|>)';
   const MATH_RE = new RegExp(`${ATOM}(?:\\s*${OPERATOR}\\s*${ATOM})*(?:\\s*[%٪])?`, 'g');
   const LETTER_OR_DIGIT = /[0-9٠-٩A-Za-z_\u0600-\u06FF]/;
