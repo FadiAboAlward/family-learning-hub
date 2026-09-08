@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -51,7 +52,7 @@ jobs:
     name: Browser smoke
     needs: static-quality
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -108,3 +109,8 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/copy-smoke.mjs
+      - name: Run authenticated Testing learner E2E against real backend
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/authenticated-e2e.mjs
