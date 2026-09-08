@@ -77,7 +77,13 @@ const qa=read('.github/workflows/qa-smoke.yml');
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs','node tests/real-backend-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
+
+const realBackend=read('tests/real-backend-smoke.mjs');
+const qaSession=read('supabase/functions/qa-session-api/index.ts');
+if(!qa.includes('id-token: write'))fail('Browser smoke must have GitHub OIDC id-token permission.');
+for(const required of ['ACTIONS_ID_TOKEN_REQUEST_URL','ACTIONS_ID_TOKEN_REQUEST_TOKEN','family-learning-hub-qa',"display_name!=='Testing'","qaCall('cleanup'",'startLearningQuiz','startExamQuiz','submit_exam'])if(!realBackend.includes(required))fail(`Real backend Testing smoke guard missing: ${required}`);
+for(const required of ['GITHUB_REPOSITORY_ID = "1343709875"','GITHUB_ACTOR_ID = "320162789"','GITHUB_WORKFLOW_PREFIX','runner_environment','TEST_LEARNER_SLUG = "test"','QA_QUIZ_SLUG = "sy-g7-integers-add-subtract-v1"','.eq("learner_id", learnerId)','.eq("quiz_version_id", versionId)'])if(!qaSession.includes(required))fail(`QA session isolation guard missing: ${required}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards, Exam API protections and isolated Testing-learner OIDC QA are valid.');
