@@ -43,6 +43,24 @@ The merge-blocking checks should be:
 
 Both deterministic checks must be tied to the same exact PR-head commit SHA used for the CodeRabbit review. A passing result from an older head is stale and cannot be reused after any push changes the PR-head SHA.
 
+## Canonical Testing learner
+
+Authenticated QA must use the dedicated learner whose stable slug is `test` and whose display name is **Testing**. This learner is platform infrastructure, not a real child profile.
+
+Rules for the Testing learner:
+
+- Keep `metadata.is_test=true` and `metadata.exclude_from_parent_metrics=true` at all times.
+- Never run automated authenticated QA as Aya or Mohammad. Their attempts, scores, XP, streaks, mastery, and parent-visible statistics are real learner data.
+- The Testing learner mirrors active real-learner program enrollments, quiz assignments, and direct content assignments through the existing database mirroring rules, so newly assigned learner content is testable without copying it manually.
+- Testing attempts and gamification may be created freely by QA because they are isolated from parent learner metrics.
+- Automated GitHub QA must not store or use the learner PIN. GitHub Actions obtains a short-lived Testing learner session through `qa-session-api` using GitHub OIDC and the dedicated audience `family-learning-hub-qa`.
+- `qa-session-api` must accept only the approved repository/workflow/actor on a GitHub-hosted runner. The endpoint is intentionally deployed without Supabase JWT verification because GitHub OIDC is its authentication boundary.
+- The canonical full Learning + Exam backend regression quiz is `sy-g7-integers-add-subtract-v1` unless the QA policy is deliberately updated to another active quiz that contains both core and exam-pool questions.
+- Automated cleanup may delete attempts only for the Testing learner and the canonical QA quiz. It must never delete attempts for a real learner.
+- The manual Testing PIN remains a fallback for human production checks, but it must never be committed to the repository, printed in logs, or placed in GitHub Actions configuration.
+
+This creates two complementary browser layers: deterministic mocked browser QA for frontend behavior and authenticated Testing-learner QA against the real production backend. The latter is expected to become part of the required `Browser smoke` job once the OIDC session endpoint is deployed.
+
 ## Merge rule
 
 Do not merge to `main` while either required deterministic check is failing or pending, while CodeRabbit has unresolved actionable findings, or while the required pre-merge results do not all cover the exact current PR-head SHA.
