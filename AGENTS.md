@@ -15,7 +15,7 @@ If implementation and documentation disagree, do not silently choose one. Verify
 
 For every behavior change, explicitly choose the smallest useful test layer(s). Do not write a unit test for every function mechanically.
 
-- **Unit test:** required for non-trivial pure or isolatable business logic, validation, parsing, authorization decisions, scoring/grading logic, state transitions, and error handling when practical.
+- **Unit test:** required for non-trivial pure or isolatable business logic, validation, parsing, authorization decisions, scoring/grading logic, state transitions, and error handling when practical. New standalone Node unit-test files should use `tests/*.unit.mjs`; the QA Gate auto-runs that convention.
 - **Integration/contract test:** required for meaningful database, Supabase, RLS, API-boundary, persistence, migration, or cross-module behavior when a unit test alone cannot prove the boundary.
 - **Browser/E2E test (Playwright):** required for important user-visible student/parent flows, mobile interaction, navigation, Learning Mode, Exam Mode, and UI behavior that depends on rendered state.
 - **Regression test:** for an important bug, add a test that reproduces the failure before/with the fix whenever practical. Put it at the lowest layer that reliably catches the bug.
