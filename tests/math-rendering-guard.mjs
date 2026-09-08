@@ -22,9 +22,7 @@ function yamlJobBlock(yaml,jobName){
 /** Return a job-level `if:` expression, or null when the job is unconditional. */
 function yamlJobCondition(job){
   const lines=job.split(/\r?\n/);
-  const stepsStart=lines.findIndex(line=>/^    steps:\s*$/.test(line));
-  const scope=stepsStart<0?lines:lines.slice(0,stepsStart);
-  const line=scope.find(value=>/^    if:\s*/.test(value));
+  const line=lines.find(value=>/^    if:\s*/.test(value));
   return line?line.replace(/^    if:\s*/,'').trim():null;
 }
 /** Split an active job into its YAML step blocks, ignoring commented-out step text. */
@@ -61,7 +59,7 @@ function yamlStepName(step){
 function yamlAlwaysCondition(condition){
   return /^always\(\)$/i.test(condition||'')||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition||'');
 }
-/** Extract direct shell command lines from one step's run field. */
+/** Extract a sole inline direct shell command from one step's run field. */
 function yamlRunLines(step){
   const lines=step.split(/\r?\n/);
   let runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
@@ -69,14 +67,8 @@ function yamlRunLines(step){
   if(runIndex<0){runIndex=lines.findIndex(line=>/^      -\s+run:\s*/.test(line));firstPrefix=/^      -\s+run:\s*/;}
   if(runIndex<0)return[];
   const first=lines[runIndex].replace(firstPrefix,'').trim();
-  if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?[]:[first];
-  const commands=[];
-  for(let i=runIndex+1;i<lines.length;i++){
-    if(!/^          /.test(lines[i]))break;
-    const command=lines[i].trim();
-    if(command&&!command.startsWith('#'))commands.push(command);
-  }
-  return commands;
+  if(!first||/^[|>][-+0-9]*$/.test(first)||first.startsWith('#'))return[];
+  return [first];
 }
 /** Required command execution is valid only in an unconditional job and unconditional step. */
 function yamlHasDirectRequiredCommand(job,command){
