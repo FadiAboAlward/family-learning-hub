@@ -8,6 +8,7 @@ const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
 const index=read('index.html');
 
+/** Extract one active top-level GitHub Actions job block by YAML indentation. */
 function yamlJobBlock(yaml,jobName){
   const lines=yaml.split(/\r?\n/),start=lines.findIndex(line=>line.trimEnd()===`  ${jobName}:`);
   if(start<0)return'';
@@ -42,6 +43,7 @@ const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
 const mathDirectionCss=read('math-direction-v1.css');
 const mathGuard=read('tests/math-rendering-guard.mjs');
+const screenshotEvidence=read('tests/screenshot-evidence.mjs');
 const library=read('student-library-v3.js');
 
 if(learning.includes('اضغط مرة ثانية'))fail('Learning Mode must not ask for a second tap on the option.');
@@ -97,6 +99,11 @@ if(!mathGuard.includes("const staticJob=yamlJobBlock(qa,'static-quality')"))fail
 if(!mathGuard.includes("const browserJob=yamlJobBlock(qa,'browser-smoke')"))fail('Math architecture guard must scope checks to the active Browser smoke job.');
 if(!mathGuard.includes("needs:\\s*static-quality"))fail('Math architecture guard must require Browser smoke to depend on Static quality.');
 
+if(!screenshotEvidence.includes("const OUTPUT_DIR='playwright-screenshots'"))fail('Screenshot evidence must use the dedicated playwright-screenshots folder.');
+if(!screenshotEvidence.includes('page.screenshot('))fail('Screenshot evidence must capture actual Playwright screenshots.');
+for(const name of ['01-learning-math','02-learning-review','03-exam-math','04-exam-review'])if(!screenshotEvidence.includes(name))fail(`Screenshot evidence stage missing: ${name}`);
+if(!screenshotEvidence.includes('retention_days:7'))fail('Screenshot manifest must record seven-day retention.');
+
 if(!library.includes("observer.observe(appRoot,{childList:true,subtree:true})"))fail('Student Library observer must be scoped to #app.');
 if(library.includes("observer.observe(document.documentElement"))fail('Student Library observer must not watch the whole document.');
 
@@ -111,8 +118,14 @@ if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API bool
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
 for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!staticJob.includes(command))fail(`Static quality missing command: ${command}`);
-for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserJob.includes(command))fail(`Browser smoke missing command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserJob.includes(command))fail(`Browser smoke missing command: ${command}`);
 if(!/^    needs:\s*static-quality\s*$/m.test(browserJob))fail('Browser smoke must depend on Static quality.');
+for(const fragment of ['name: playwright-screenshots-${{ github.run_id }}','path: playwright-screenshots/','retention-days: 7'])if(!browserJob.includes(fragment))fail(`Temporary screenshot artifact policy missing: ${fragment}`);
+
+const prTemplate=read('.github/pull_request_template.md');
+if(!prTemplate.includes('Playwright screenshot evidence'))fail('PR template must request Playwright screenshot evidence for user-facing UI changes.');
+const qaPolicy=read('docs/qa-policy.md');
+for(const phrase of ['playwright-screenshots/','retention-days: 7','Do not commit transient QA screenshots'])if(!qaPolicy.includes(phrase))fail(`QA policy lost screenshot evidence rule: ${phrase}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, scoped required-job QA wiring, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, scoped required-job QA wiring, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
