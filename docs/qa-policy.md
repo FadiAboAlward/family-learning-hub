@@ -39,9 +39,22 @@ The merge-blocking checks should be:
 
 `Static quality` checks JavaScript syntax, runtime references, Arabic/RTL shell requirements, known copy regressions, legacy runtime guards, school-year formatting, merge markers, and repository-defined static safety invariants.
 
-`Browser smoke` runs the mobile Playwright flow and rendered Arabic copy QA. It protects the student hierarchy, learning/exam behavior, learner content isolation, direct standalone-book assignment, parent progressive disclosure, activity filters, mobile interactions, and question references.
+`Browser smoke` runs the mobile Playwright flow and rendered Arabic copy QA. It protects the student hierarchy, learning/exam behavior, learner content isolation, direct standalone-book assignment, parent progressive disclosure, activity filters, mobile interactions, question references, and temporary visual evidence capture for meaningful UI changes.
 
 Both deterministic checks must be tied to the same exact PR-head commit SHA used for the CodeRabbit review. A passing result from an older head is stale and cannot be reused after any push changes the PR-head SHA.
+
+## Playwright screenshot evidence
+
+For user-facing UI changes, the QA process should produce human-viewable Playwright screenshots in addition to machine assertions whenever the visual result is meaningful to the user.
+
+- CI screenshot files are written only to the runtime folder `playwright-screenshots/`.
+- The folder is uploaded as a GitHub Actions artifact named `playwright-screenshots-<run-id>`.
+- The workflow must use `retention-days: 7` so screenshots expire automatically after seven days.
+- Do not commit transient QA screenshots or the `playwright-screenshots/` folder to repository history. Git history is permanent and is the wrong storage mechanism for temporary evidence.
+- Screenshot capture must never expose passwords, learner access codes, tokens, cookies, authorization headers, or other credentials.
+- PR/browser smoke screenshots should normally use mocked test data so evidence is reproducible and does not modify real learner data.
+- For a production verification that uses Family Learning Hub Playwright, capture only the minimum non-sensitive after-state needed to demonstrate the change. When an ephemeral GitHub artifact is available, link that artifact/run in the PR and user-facing completion report.
+- If a change is backend-only or has no meaningful visual surface, screenshot evidence may be marked N/A with a short reason.
 
 ## Merge rule
 
@@ -129,7 +142,8 @@ A production verification plan written before merge is not completion evidence. 
 - timestamp;
 - verifier;
 - deployment or migration identifier;
-- evidence link or an exact evidence reference when no link exists.
+- evidence link or an exact evidence reference when no link exists;
+- screenshot artifact/run link for meaningful UI changes, or an explicit N/A reason.
 
 ## UX research layer
 
