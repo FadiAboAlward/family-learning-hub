@@ -4,7 +4,7 @@
   const API=`${SUPABASE_URL}/functions/v1/student-library-api`;
   const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
-  let cache=null,cacheSession='',activeSession='',requestSerial=0,loadingRequest=0;
+  let cache=null,cacheSession='',activeSession='',requestSerial=0,loadingRequest=0,installQueued=false;
 
   async function load(session){if(!session)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${session}`},body:JSON.stringify({action:'catalog'})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
   function hideLegacy(){document.querySelectorAll('[data-dynamic-programs]').forEach(el=>{el.style.display='none';el.setAttribute('aria-hidden','true');});const old=document.getElementById('fractionQuiz');if(old)old.style.display='none';document.querySelectorAll('.section-title').forEach(el=>{if((el.textContent||'').includes('كويزاتك'))el.style.display='none';});}
@@ -47,7 +47,7 @@
     if(loadingRequest)return;
     const requestId=++requestSerial;
     loadingRequest=requestId;
-    root.innerHTML='<div class="loading-card">جارِ ترتيب مكتبتك…</div>';
+    root.innerHTML='<div class="loading-card">جارٍ ترتيب مكتبتك…</div>';
     try{
       const data=await load(session);
       if(requestId!==requestSerial||activeSession!==session||token()!==session)return;
@@ -61,7 +61,9 @@
     }
     finally{if(loadingRequest===requestId)loadingRequest=0;}
   }
+  function scheduleInstall(){if(installQueued)return;installQueued=true;requestAnimationFrame(()=>{installQueued=false;install();});}
   function reset(){const root=document.querySelector('[data-student-library]');activeSession='';cache=null;cacheSession='';requestSerial++;loadingRequest=0;if(root)delete root.dataset.libraryReady;setTimeout(install,30)}
-  const observer=new MutationObserver(()=>{hideLegacy();install();});observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener('hashchange',reset);document.addEventListener('DOMContentLoaded',install);install();
+  const appRoot=document.getElementById('app');
+  if(appRoot){const observer=new MutationObserver(records=>{if(records.some(r=>!r.target.closest?.('[data-student-library]')))scheduleInstall();});observer.observe(appRoot,{childList:true,subtree:true});}
+  window.addEventListener('hashchange',reset);document.addEventListener('DOMContentLoaded',install,{once:true});install();
 })();
