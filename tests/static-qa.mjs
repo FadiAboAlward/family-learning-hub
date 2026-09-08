@@ -16,54 +16,79 @@ function yamlJobBlock(yaml,jobName){
   for(let i=start+1;i<lines.length;i++){if(/^  [A-Za-z0-9_-]+:\s*$/.test(lines[i])){end=i;break;}}
   return lines.slice(start,end).join('\n');
 }
+/** Return a job-level `if:` expression, or null when the job is unconditional. */
+function yamlJobCondition(job){
+  const lines=job.split(/\r?\n/),stepsStart=lines.findIndex(line=>/^    steps:\s*$/.test(line));
+  const scope=stepsStart<0?lines:lines.slice(0,stepsStart);
+  const line=scope.find(value=>/^    if:\s*/.test(value));
+  return line?line.replace(/^    if:\s*/,'').trim():null;
+}
 /** Split an active job into its YAML step blocks, excluding commented-out text. */
 function yamlStepBlocks(job){
   const lines=job.split(/\r?\n/),stepsStart=lines.findIndex(line=>/^    steps:\s*$/.test(line));
   if(stepsStart<0)return[];
   const blocks=[];
   for(let i=stepsStart+1;i<lines.length;){
-    if(!/^      -\s+/.test(lines[i])){i++;continue;}
+    if(!/^      -(?:\s+|$)/.test(lines[i])){i++;continue;}
     const block=[lines[i++]];
-    while(i<lines.length&&!/^      -\s+/.test(lines[i]))block.push(lines[i++]);
+    while(i<lines.length&&!/^      -(?:\s+|$)/.test(lines[i]))block.push(lines[i++]);
     blocks.push(block.join('\n'));
   }
   return blocks;
 }
-/** Return the active `if:` expression on a workflow step, or null if it is unguarded. */
+/** Return a step-level `if:` expression, including first-field `- if:` syntax. */
 function yamlStepCondition(step){
-  const line=step.split(/\r?\n/).find(value=>/^        if:\s*/.test(value));
-  return line?line.replace(/^        if:\s*/,'').trim():null;
+  const lines=step.split(/\r?\n/);
+  const first=lines.find(value=>/^      -\s+if:\s*/.test(value));
+  if(first)return first.replace(/^      -\s+if:\s*/,'').trim();
+  const nested=lines.find(value=>/^        if:\s*/.test(value));
+  return nested?nested.replace(/^        if:\s*/,'').trim():null;
 }
-/** Mandatory QA may be unguarded or use always() for evidence upload cleanup. */
-function yamlStepUnconditional(step){
-  const condition=yamlStepCondition(step);
-  return condition===null||/^always\(\)$/i.test(condition)||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition);
+/** Return a workflow step name from first-field or nested name syntax. */
+function yamlStepName(step){
+  const lines=step.split(/\r?\n/);
+  const first=lines.find(value=>/^      -\s+name:\s*/.test(value));
+  if(first)return first.replace(/^      -\s+name:\s*/,'').trim();
+  const nested=lines.find(value=>/^        name:\s*/.test(value));
+  return nested?nested.replace(/^        name:\s*/,'').trim():'';
 }
-/** Return mandatory-safe, unconditional GitHub Actions steps. */
-function yamlUnconditionalSteps(job){return yamlStepBlocks(job).filter(yamlStepUnconditional);}
-/** Collect executable run text from unconditional steps while ignoring commented shell lines. */
-function yamlUnconditionalRunText(job){
-  return yamlUnconditionalSteps(job).map(step=>{
-    const lines=step.split(/\r?\n/),runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
-    if(runIndex<0)return'';
-    const first=lines[runIndex].replace(/^        run:\s*/, '').trim();
-    if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?'':first;
-    const commands=[];
-    for(let i=runIndex+1;i<lines.length;i++){
-      if(!/^          /.test(lines[i]))break;
-      const command=lines[i].trim();
-      if(command&&!command.startsWith('#'))commands.push(command);
-    }
-    return commands.join('\n');
-  }).filter(Boolean).join('\n');
+/** True only for explicit always() used on the named screenshot evidence upload. */
+function yamlAlwaysCondition(condition){return /^always\(\)$/i.test(condition||'')||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition||'');}
+/** Extract direct shell command lines from one workflow step. */
+function yamlRunLines(step){
+  const lines=step.split(/\r?\n/);
+  let runIndex=lines.findIndex(line=>/^        run:\s*/.test(line)),prefix=/^        run:\s*/;
+  if(runIndex<0){runIndex=lines.findIndex(line=>/^      -\s+run:\s*/.test(line));prefix=/^      -\s+run:\s*/;}
+  if(runIndex<0)return[];
+  const first=lines[runIndex].replace(prefix,'').trim();
+  if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?[]:[first];
+  const commands=[];
+  for(let i=runIndex+1;i<lines.length;i++){
+    if(!/^          /.test(lines[i]))break;
+    const command=lines[i].trim();
+    if(command&&!command.startsWith('#'))commands.push(command);
+  }
+  return commands;
+}
+/** Required command execution is valid only in an unconditional job and unconditional step. */
+function yamlHasDirectRequiredCommand(job,command){
+  if(yamlJobCondition(job)!==null)return false;
+  return yamlStepBlocks(job).some(step=>yamlStepCondition(step)===null&&yamlRunLines(step).includes(command));
 }
 /** Read a single active needs dependency from a job block. */
 function yamlJobNeeds(job){
   const line=job.split(/\r?\n/).find(value=>/^    needs:\s*[^#\s]+\s*$/.test(value));
   return line?line.replace(/^    needs:\s*/,'').trim():'';
 }
-/** Find one named unconditional workflow step. */
-function yamlNamedUnconditionalStep(job,name){return yamlUnconditionalSteps(job).find(step=>step.split(/\r?\n/).some(line=>line.trim()===`- name: ${name}`))||'';}
+/** Find one named safe workflow step. Only callers opting in may allow always(). */
+function yamlNamedSafeStep(job,name,{allowAlways=false}={}){
+  if(yamlJobCondition(job)!==null)return'';
+  return yamlStepBlocks(job).find(step=>{
+    if(yamlStepName(step)!==name)return false;
+    const condition=yamlStepCondition(step);
+    return condition===null||(allowAlways&&yamlAlwaysCondition(condition));
+  })||'';
+}
 
 if(!/<html[^>]+lang=["']ar["'][^>]+dir=["']rtl["']/i.test(index))fail('index.html must declare Arabic RTL.');
 if(!/<meta[^>]+name=["']viewport["']/i.test(index))fail('index.html is missing mobile viewport.');
@@ -143,7 +168,7 @@ for(const surface of ['learning-launcher-v2.js','program-exam-v3.js','attempt-hi
 for(const phrase of ['Math/RTL rendering affected','Math rendering invariant checked','actual Learning Mode, Exam Mode, and completed/review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects PR checklist phrase: ${phrase}`);
 for(const phrase of ['RTL-safe math rendering as a platform invariant','Never fix bidi by reversing operands','real-browser coverage of actual Learning, Exam, and review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects CodeRabbit policy phrase: ${phrase}`);
 for(const phrase of ['Protect main','Static quality','Browser smoke'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects enforcement documentation phrase: ${phrase}`);
-for(const phrase of ["const staticRuns=yamlUnconditionalRunText(staticJob)","const browserRuns=yamlUnconditionalRunText(browserJob)","yamlJobNeeds(browserJob)!=='static-quality'","yamlNamedUnconditionalStep(staticJob,'Math rendering architecture guard')"])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects unconditional workflow semantics: ${phrase}`);
+for(const phrase of ['yamlJobCondition(staticJob)','yamlJobCondition(browserJob)','yamlHasDirectRequiredCommand(staticJob,command)','yamlHasDirectRequiredCommand(browserJob,command)',"yamlNamedSafeStep(staticJob,'Math rendering architecture guard')"])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects direct unconditional workflow semantics: ${phrase}`);
 
 if(!screenshotEvidence.includes("const OUTPUT_DIR='playwright-screenshots'"))fail('Screenshot evidence must use the dedicated playwright-screenshots folder.');
 if(!screenshotEvidence.includes('page.screenshot('))fail('Screenshot evidence must capture actual Playwright screenshots.');
@@ -160,16 +185,19 @@ const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
 const examTests=read('tests/exam-v2-api.mjs');
 const qa=read('.github/workflows/qa-smoke.yml');
 const staticJob=yamlJobBlock(qa,'static-quality'),browserJob=yamlJobBlock(qa,'browser-smoke');
-const staticRuns=yamlUnconditionalRunText(staticJob),browserRuns=yamlUnconditionalRunText(browserJob);
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!staticRuns.includes(command))fail(`Static quality missing unconditional command: ${command}`);
-for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserRuns.includes(command))fail(`Browser smoke missing unconditional command: ${command}`);
+if(yamlJobCondition(staticJob)!==null)fail('Static quality job must be unconditional.');
+if(yamlJobCondition(browserJob)!==null)fail('Browser smoke job must be unconditional.');
+for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality.');
-const screenshotUpload=yamlNamedUnconditionalStep(browserJob,'Upload Playwright screenshots');
-if(!screenshotUpload)fail('Unconditional Playwright screenshot upload step is missing.');
-for(const fragment of ['name: playwright-screenshots-${{ github.run_id }}','path: playwright-screenshots/','retention-days: 7'])if(!screenshotUpload.includes(fragment))fail(`Temporary screenshot artifact policy missing from unconditional upload step: ${fragment}`);
+const screenshotUpload=yamlNamedSafeStep(browserJob,'Upload Playwright screenshots',{allowAlways:true});
+if(!screenshotUpload)fail('Playwright screenshot upload step is missing or has an unsafe condition.');
+const screenshotCondition=yamlStepCondition(screenshotUpload);
+if(screenshotCondition!==null&&!yamlAlwaysCondition(screenshotCondition))fail('Only always() is permitted on the Playwright screenshot upload step.');
+for(const fragment of ['name: playwright-screenshots-${{ github.run_id }}','path: playwright-screenshots/','retention-days: 7'])if(!screenshotUpload.includes(fragment))fail(`Temporary screenshot artifact policy missing from safe upload step: ${fragment}`);
 const uploadArtifactRefs=[...qa.matchAll(/^\s*uses:\s*actions\/upload-artifact@([^\s#]+).*$/gm)].map(match=>match[1]);
 if(!uploadArtifactRefs.length)fail('QA Gate must upload screenshot/performance artifacts.');
 for(const ref of uploadArtifactRefs)if(!/^[0-9a-f]{40}$/i.test(ref))fail(`actions/upload-artifact must be pinned to an immutable 40-character SHA, got: ${ref}`);
@@ -181,4 +209,4 @@ const qaPolicy=read('docs/qa-policy.md');
 for(const phrase of ['playwright-screenshots/','retention-days: 7','Do not commit transient QA screenshots'])if(!qaPolicy.includes(phrase))fail(`QA policy lost screenshot evidence rule: ${phrase}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, unconditional required-job QA wiring, immutable artifact action pinning, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, direct unconditional required-job QA wiring, immutable artifact action pinning, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
