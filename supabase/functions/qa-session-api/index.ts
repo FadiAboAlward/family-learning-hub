@@ -69,10 +69,16 @@ async function authenticateGithubRunner(req: Request) {
   const token = authorization.slice(7).trim();
   if (!token) throw new Error("AUTH_REQUIRED");
 
-  const { payload } = await jwtVerify(token, githubKeys, {
-    issuer: GITHUB_ISSUER,
-    audience: QA_AUDIENCE,
-  });
+  let payload: Record<string, unknown>;
+  try {
+    const verified = await jwtVerify(token, githubKeys, {
+      issuer: GITHUB_ISSUER,
+      audience: QA_AUDIENCE,
+    });
+    payload = verified.payload as Record<string, unknown>;
+  } catch {
+    throw new Error("INVALID_GITHUB_OIDC");
+  }
 
   const repository = String(payload.repository || "");
   const repositoryId = String(payload.repository_id || "");
@@ -88,8 +94,6 @@ async function authenticateGithubRunner(req: Request) {
   if (!workflowRef.startsWith(GITHUB_WORKFLOW_PREFIX)) throw new Error("WORKFLOW_NOT_ALLOWED");
   if (!["pull_request", "push", "workflow_dispatch"].includes(eventName)) throw new Error("EVENT_NOT_ALLOWED");
   if (runnerEnvironment !== "github-hosted") throw new Error("RUNNER_NOT_ALLOWED");
-
-  return { eventName };
 }
 
 async function getTestingLearner() {
@@ -180,8 +184,7 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "SERVER_ERROR";
     const authErrors = new Set([
       "AUTH_REQUIRED",
-      "JWTClaimValidationFailed",
-      "JWSSignatureVerificationFailed",
+      "INVALID_GITHUB_OIDC",
       "REPOSITORY_NOT_ALLOWED",
       "ACTOR_NOT_ALLOWED",
       "WORKFLOW_NOT_ALLOWED",
