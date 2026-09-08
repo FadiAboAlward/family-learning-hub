@@ -83,6 +83,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/smoke.mjs
+      - name: Run math direction browser regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/math-direction-browser.mjs
       - name: Run performance regression smoke
         env:
           APP_URL: http://127.0.0.1:4173/
