@@ -97,9 +97,9 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
           PERF_SAVE_DELAY_MS: '2500'
-        run: |
-          node tests/performance.mjs
-          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+        run: node tests/performance.mjs
+      - name: Append performance summary
+        run: cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
