@@ -22,12 +22,16 @@ const localRefs=[...index.matchAll(/(?:src|href)=["']\.\/([^"'?]+)(?:\?[^"']*)?[
 for(const ref of localRefs){if(!exists(ref))fail(`index.html references missing file: ${ref}`);}
 const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 for(const f of ['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'])if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);
-for(const f of ['app.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+for(const f of ['app.js','math-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+if(loadedScripts.indexOf('math-direction-v1.js')<loadedScripts.indexOf('app.js'))fail('Math direction runtime must load after app.js so it can wrap the shared math renderer.');
+if(loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js'))fail('Math direction runtime must load before Learning and Exam renderers.');
 
 const learning=read('learning-launcher-v2.js');
 const exam=read('program-exam-v3.js');
 const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
+const mathDirection=read('math-direction-v1.js');
+const mathDirectionCss=read('math-direction-v1.css');
 const library=read('student-library-v3.js');
 
 if(learning.includes('اضغط مرة ثانية'))fail('Learning Mode must not ask for a second tap on the option.');
@@ -49,6 +53,18 @@ if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer mu
 if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
 if(!/@media \(max-width:719px\)[\s\S]*grid-template-columns:minmax\(0,1fr\)/.test(css))fail('Mobile answer layout must force one column.');
 if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(css))fail('Math choices must retain LTR isolation.');
+
+for(const literal of ['19 - (-7)','(-7) - 19','-7 + 19','19 + (-7)','-21 - (-6)','-26']){
+  if(!read('tests/math-direction.mjs').includes(literal))fail(`Math direction regression missing: ${literal}`);
+}
+if(!mathDirection.includes("globalThis.math = directionSafeMath"))fail('Global math renderer must be direction-safe before Learning/Exam use it.');
+if(!mathDirection.includes("new MutationObserver"))fail('Math direction fallback observer is missing.');
+if(!mathDirection.includes("document.getElementById('app')"))fail('Math direction observer must be scoped to #app.');
+if(mathDirection.includes('observe(document.documentElement'))fail('Math direction observer must not watch the full document.');
+if(!mathDirection.includes("node.dir = 'ltr'"))fail('Generated math nodes must declare LTR direction.');
+if(!mathDirectionCss.includes('.flh-math-ltr{direction:ltr;unicode-bidi:isolate'))fail('Math runs must use LTR unicode-bidi isolation.');
+if(!mathDirectionCss.includes('input[inputmode="numeric"]')||!mathDirectionCss.includes('input[inputmode="decimal"]'))fail('Numeric answer inputs must be LTR-isolated.');
+
 if(!library.includes("observer.observe(appRoot,{childList:true,subtree:true})"))fail('Student Library observer must be scoped to #app.');
 if(library.includes("observer.observe(document.documentElement"))fail('Student Library observer must not watch the whole document.');
 
@@ -61,7 +77,7 @@ const qa=read('.github/workflows/qa-smoke.yml');
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
