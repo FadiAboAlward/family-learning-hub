@@ -19,6 +19,14 @@ function yamlJobBlock(yaml,jobName){
   }
   return lines.slice(start,end).join('\n');
 }
+/** Return a job-level `if:` expression, or null when the job is unconditional. */
+function yamlJobCondition(job){
+  const lines=job.split(/\r?\n/);
+  const stepsStart=lines.findIndex(line=>/^    steps:\s*$/.test(line));
+  const scope=stepsStart<0?lines:lines.slice(0,stepsStart);
+  const line=scope.find(value=>/^    if:\s*/.test(value));
+  return line?line.replace(/^    if:\s*/,'').trim():null;
+}
 /** Split an active job into its YAML step blocks, ignoring commented-out step text. */
 function yamlStepBlocks(job){
   const lines=job.split(/\r?\n/);
@@ -26,50 +34,68 @@ function yamlStepBlocks(job){
   if(stepsStart<0)return[];
   const blocks=[];
   for(let i=stepsStart+1;i<lines.length;){
-    if(!/^      -\s+/.test(lines[i])){i++;continue;}
+    if(!/^      -(?:\s+|$)/.test(lines[i])){i++;continue;}
     const block=[lines[i++]];
-    while(i<lines.length&&!/^      -\s+/.test(lines[i]))block.push(lines[i++]);
+    while(i<lines.length&&!/^      -(?:\s+|$)/.test(lines[i]))block.push(lines[i++]);
     blocks.push(block.join('\n'));
   }
   return blocks;
 }
-/** Return the active `if:` expression on a step, or null when no step condition exists. */
+/** Return the active `if:` expression on a step, including first-field `- if:` syntax. */
 function yamlStepCondition(step){
-  const line=step.split(/\r?\n/).find(value=>/^        if:\s*/.test(value));
-  return line?line.replace(/^        if:\s*/,'').trim():null;
+  const lines=step.split(/\r?\n/);
+  const first=lines.find(value=>/^      -\s+if:\s*/.test(value));
+  if(first)return first.replace(/^      -\s+if:\s*/,'').trim();
+  const nested=lines.find(value=>/^        if:\s*/.test(value));
+  return nested?nested.replace(/^        if:\s*/,'').trim():null;
 }
-/** Mandatory QA may have no condition, or the explicit always() condition used for evidence uploads. */
-function yamlStepUnconditional(step){
-  const condition=yamlStepCondition(step);
-  return condition===null||/^always\(\)$/i.test(condition)||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition);
+/** Return a workflow step name from either first-field or nested name syntax. */
+function yamlStepName(step){
+  const lines=step.split(/\r?\n/);
+  const first=lines.find(value=>/^      -\s+name:\s*/.test(value));
+  if(first)return first.replace(/^      -\s+name:\s*/,'').trim();
+  const nested=lines.find(value=>/^        name:\s*/.test(value));
+  return nested?nested.replace(/^        name:\s*/,'').trim():'';
 }
-/** Return only mandatory-safe, unconditional step blocks from a GitHub Actions job. */
-function yamlUnconditionalSteps(job){return yamlStepBlocks(job).filter(yamlStepUnconditional);}
-/** Collect executable run text only from unconditional steps, excluding commented shell lines. */
-function yamlUnconditionalRunText(job){
-  return yamlUnconditionalSteps(job).map(step=>{
-    const lines=step.split(/\r?\n/);
-    const runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
-    if(runIndex<0)return'';
-    const first=lines[runIndex].replace(/^        run:\s*/, '').trim();
-    if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?'':first;
-    const commands=[];
-    for(let i=runIndex+1;i<lines.length;i++){
-      if(!/^          /.test(lines[i]))break;
-      const command=lines[i].trim();
-      if(command&&!command.startsWith('#'))commands.push(command);
-    }
-    return commands.join('\n');
-  }).filter(Boolean).join('\n');
+/** True only for the explicit always() condition permitted on screenshot evidence upload. */
+function yamlAlwaysCondition(condition){
+  return /^always\(\)$/i.test(condition||'')||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition||'');
+}
+/** Extract direct shell command lines from one step's run field. */
+function yamlRunLines(step){
+  const lines=step.split(/\r?\n/);
+  let runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
+  let firstPrefix=/^        run:\s*/;
+  if(runIndex<0){runIndex=lines.findIndex(line=>/^      -\s+run:\s*/.test(line));firstPrefix=/^      -\s+run:\s*/;}
+  if(runIndex<0)return[];
+  const first=lines[runIndex].replace(firstPrefix,'').trim();
+  if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?[]:[first];
+  const commands=[];
+  for(let i=runIndex+1;i<lines.length;i++){
+    if(!/^          /.test(lines[i]))break;
+    const command=lines[i].trim();
+    if(command&&!command.startsWith('#'))commands.push(command);
+  }
+  return commands;
+}
+/** Required command execution is valid only in an unconditional job and unconditional step. */
+function yamlHasDirectRequiredCommand(job,command){
+  if(yamlJobCondition(job)!==null)return false;
+  return yamlStepBlocks(job).some(step=>yamlStepCondition(step)===null&&yamlRunLines(step).includes(command));
 }
 /** Read a single-job needs dependency from an active, uncommented YAML key. */
 function yamlJobNeeds(job){
   const line=job.split(/\r?\n/).find(value=>/^    needs:\s*[^#\s]+\s*$/.test(value));
   return line?line.replace(/^    needs:\s*/,'').trim():'';
 }
-/** Find one named unconditional workflow step. */
-function yamlNamedUnconditionalStep(job,name){
-  return yamlUnconditionalSteps(job).find(step=>step.split(/\r?\n/).some(line=>line.trim()===`- name: ${name}`))||'';
+/** Find one named step, requiring an unconditional job and either no condition or an explicitly allowed always(). */
+function yamlNamedSafeStep(job,name,{allowAlways=false}={}){
+  if(yamlJobCondition(job)!==null)return'';
+  return yamlStepBlocks(job).find(step=>{
+    if(yamlStepName(step)!==name)return false;
+    const condition=yamlStepCondition(step);
+    return condition===null||(allowAlways&&yamlAlwaysCondition(condition));
+  })||'';
 }
 
 const index=read('index.html');
@@ -158,17 +184,19 @@ if(!smoke.includes('math-learning-review-verified'))fail('Learning completed-rev
 const qa=read('.github/workflows/qa-smoke.yml');
 const staticJob=yamlJobBlock(qa,'static-quality');
 const browserJob=yamlJobBlock(qa,'browser-smoke');
-const staticRuns=yamlUnconditionalRunText(staticJob);
-const browserRuns=yamlUnconditionalRunText(browserJob);
+if(yamlJobCondition(staticJob)!==null)fail('Static quality job must not have an if: condition.');
+if(yamlJobCondition(browserJob)!==null)fail('Browser smoke job must not have an if: condition.');
 for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs']){
-  if(!staticRuns.includes(command))fail(`Static quality no longer runs required unconditional command: ${command}`);
+  if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality no longer directly runs required unconditional command: ${command}`);
 }
 for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs']){
-  if(!browserRuns.includes(command))fail(`Browser smoke no longer runs required unconditional command: ${command}`);
+  if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke no longer directly runs required unconditional command: ${command}`);
 }
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality with needs: static-quality.');
-const mathGuardStep=yamlNamedUnconditionalStep(staticJob,'Math rendering architecture guard');
-if(!/^        run:\s*node tests\/math-rendering-guard\.mjs\s*$/m.test(mathGuardStep))fail('Static quality must expose the math architecture guard as an unconditional active step.');
+const mathGuardStep=yamlNamedSafeStep(staticJob,'Math rendering architecture guard');
+if(!mathGuardStep||!yamlRunLines(mathGuardStep).includes('node tests/math-rendering-guard.mjs'))fail('Static quality must expose the math architecture guard as an unconditional direct command step.');
+const screenshotUpload=yamlNamedSafeStep(browserJob,'Upload Playwright screenshots',{allowAlways:true});
+if(!screenshotUpload)fail('Playwright screenshot upload must be a safe named step; only this evidence step may use always().');
 const uploadArtifactRefs=[...qa.matchAll(/^\s*uses:\s*actions\/upload-artifact@([^\s#]+).*$/gm)].map(match=>match[1]);
 if(!uploadArtifactRefs.length)fail('QA Gate must upload screenshot/performance artifacts.');
 for(const ref of uploadArtifactRefs)if(!/^[0-9a-f]{40}$/i.test(ref))fail(`actions/upload-artifact must be pinned to an immutable 40-character SHA, got: ${ref}`);
@@ -197,4 +225,4 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, unconditional QA step wiring, immutable artifact action pinning, CodeRabbit instructions, PR checklist, and server-enforcement documentation are intact.');
+console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, unconditional jobs/steps, direct required command execution, immutable artifact action pinning, CodeRabbit instructions, PR checklist, and server-enforcement documentation are intact.');
