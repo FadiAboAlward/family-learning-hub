@@ -3,7 +3,7 @@ language: "en-US"
 
 reviews:
   profile: "assertive"
-  request_changes_workflow: false
+  request_changes_workflow: true
   high_level_summary: true
   review_status: true
   poem: false
@@ -81,6 +81,13 @@ reviews:
       instructions: |
         Treat this file as the concise repository-wide development contract.
         Keep it aligned with docs/architecture.md and docs/qa-policy.md and flag rules that contradict the actual CI/runtime architecture.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "docs/architecture.md"
+      - "docs/qa-policy.md"
 
 chat:
   auto_reply: true
