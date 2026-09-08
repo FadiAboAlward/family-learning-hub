@@ -94,6 +94,7 @@ jobs:
         with:
           name: performance-report
           path: |
+            smoke-debug.json
             performance-report.json
             performance-summary.md
           if-no-files-found: ignore
