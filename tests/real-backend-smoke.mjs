@@ -53,6 +53,8 @@ page.on('response',response=>{
   if(response.status()>=400)badBackend.push(`${response.status()} ${response.url().split('/functions/v1/')[1]} action=${actionFromResponse(response)||'-'}`);
 });
 
+let primaryError=null;
+let cleanupError=null;
 try{
   await page.addInitScript(session=>localStorage.setItem('learner_session',session),prepared.session);
   await page.goto(`${APP_URL}?realqa=${Date.now()}#student`,{waitUntil:'domcontentloaded',timeout:30000});
@@ -64,6 +66,12 @@ try{
   const learnStartResponse=await learnStart;
   if(!learnStartResponse.ok())throw new Error(`Learning start failed (${learnStartResponse.status()})`);
   await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:10000});
+
+  const hintRequest=waitForAction(page,'/learning-api','request_hint');
+  await page.locator('#flhHelp').click();
+  const hintResponse=await hintRequest;
+  if(!hintResponse.ok())throw new Error(`Learning hint failed (${hintResponse.status()})`);
+  await page.locator('.flh-hint-card').waitFor({state:'visible',timeout:5000});
 
   const draftSave=waitForAction(page,'/learning-api','save_draft');
   await page.locator('.flh-learn-answer').first().click();
@@ -93,6 +101,19 @@ try{
     await page.locator('.exam-v3-answer').first().click();
     const saveResponse=await saveAnswer;
     if(!saveResponse.ok())throw new Error(`Exam answer ${i+1} failed (${saveResponse.status()})`);
+
+    if(i===0){
+      const flagRequest=waitForAction(page,'/exam-v2-api','set_flag');
+      await page.locator('#examFlag').click();
+      const flagResponse=await flagRequest;
+      if(!flagResponse.ok())throw new Error(`Exam flag failed (${flagResponse.status()})`);
+      await page.locator('#examFlag').filter({hasText:'إزالة علامة المراجعة'}).waitFor({state:'visible',timeout:5000});
+      const unflagRequest=waitForAction(page,'/exam-v2-api','set_flag');
+      await page.locator('#examFlag').click();
+      const unflagResponse=await unflagRequest;
+      if(!unflagResponse.ok())throw new Error(`Exam unflag failed (${unflagResponse.status()})`);
+    }
+
     if(i<questionCount-1){
       await page.locator('#examNext').click();
       await page.locator('.exam-status .topline b').filter({hasText:`السؤال ${i+2} من ${questionCount}`}).waitFor({state:'visible',timeout:5000});
@@ -108,8 +129,16 @@ try{
 
   if(badBackend.length)throw new Error(`Backend errors: ${badBackend.join('; ')}`);
   if(errors.length)throw new Error(errors.join('; '));
-  console.log(`Real backend smoke passed for Testing: Learning start/draft/answer and Exam start/${questionCount} saves/submit.`);
-} finally {
+  console.log(`Real backend smoke passed for Testing: Learning start/hint/draft/answer and Exam start/${questionCount} saves/flagging/submit.`);
+}catch(error){
+  primaryError=error;
+}finally{
   await browser.close().catch(()=>{});
-  await qaCall('cleanup',oidc).catch(error=>{throw error;});
+  try{await qaCall('cleanup',oidc);}catch(error){cleanupError=error;}
 }
+
+if(primaryError){
+  if(cleanupError)primaryError.message=`${primaryError.message}; cleanup also failed: ${cleanupError.message}`;
+  throw primaryError;
+}
+if(cleanupError)throw cleanupError;
