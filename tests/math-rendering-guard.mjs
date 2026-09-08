@@ -33,15 +33,21 @@ function yamlStepBlocks(job){
   }
   return blocks;
 }
-/** Return true only for explicitly disabled GitHub Actions steps. */
-function yamlStepDisabled(step){
-  return step.split(/\r?\n/).some(line=>/^        if:\s*(?:false|\$\{\{\s*false\s*\}\})\s*$/i.test(line));
+/** Return the active `if:` expression on a step, or null when no step condition exists. */
+function yamlStepCondition(step){
+  const line=step.split(/\r?\n/).find(value=>/^        if:\s*/.test(value));
+  return line?line.replace(/^        if:\s*/,'').trim():null;
 }
-/** Return only enabled step blocks from a GitHub Actions job. */
-function yamlEnabledSteps(job){return yamlStepBlocks(job).filter(step=>!yamlStepDisabled(step));}
-/** Collect executable run text from enabled steps, excluding commented shell lines. */
-function yamlEnabledRunText(job){
-  return yamlEnabledSteps(job).map(step=>{
+/** Mandatory QA may have no condition, or the explicit always() condition used for evidence uploads. */
+function yamlStepUnconditional(step){
+  const condition=yamlStepCondition(step);
+  return condition===null||/^always\(\)$/i.test(condition)||/^\$\{\{\s*always\(\)\s*\}\}$/i.test(condition);
+}
+/** Return only mandatory-safe, unconditional step blocks from a GitHub Actions job. */
+function yamlUnconditionalSteps(job){return yamlStepBlocks(job).filter(yamlStepUnconditional);}
+/** Collect executable run text only from unconditional steps, excluding commented shell lines. */
+function yamlUnconditionalRunText(job){
+  return yamlUnconditionalSteps(job).map(step=>{
     const lines=step.split(/\r?\n/);
     const runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
     if(runIndex<0)return'';
@@ -61,9 +67,9 @@ function yamlJobNeeds(job){
   const line=job.split(/\r?\n/).find(value=>/^    needs:\s*[^#\s]+\s*$/.test(value));
   return line?line.replace(/^    needs:\s*/,'').trim():'';
 }
-/** Find one named enabled workflow step. */
-function yamlNamedEnabledStep(job,name){
-  return yamlEnabledSteps(job).find(step=>step.split(/\r?\n/).some(line=>line.trim()===`- name: ${name}`))||'';
+/** Find one named unconditional workflow step. */
+function yamlNamedUnconditionalStep(job,name){
+  return yamlUnconditionalSteps(job).find(step=>step.split(/\r?\n/).some(line=>line.trim()===`- name: ${name}`))||'';
 }
 
 const index=read('index.html');
@@ -152,17 +158,17 @@ if(!smoke.includes('math-learning-review-verified'))fail('Learning completed-rev
 const qa=read('.github/workflows/qa-smoke.yml');
 const staticJob=yamlJobBlock(qa,'static-quality');
 const browserJob=yamlJobBlock(qa,'browser-smoke');
-const staticRuns=yamlEnabledRunText(staticJob);
-const browserRuns=yamlEnabledRunText(browserJob);
+const staticRuns=yamlUnconditionalRunText(staticJob);
+const browserRuns=yamlUnconditionalRunText(browserJob);
 for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs']){
-  if(!staticRuns.includes(command))fail(`Static quality no longer runs required enabled command: ${command}`);
+  if(!staticRuns.includes(command))fail(`Static quality no longer runs required unconditional command: ${command}`);
 }
 for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs']){
-  if(!browserRuns.includes(command))fail(`Browser smoke no longer runs required enabled command: ${command}`);
+  if(!browserRuns.includes(command))fail(`Browser smoke no longer runs required unconditional command: ${command}`);
 }
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality with needs: static-quality.');
-const mathGuardStep=yamlNamedEnabledStep(staticJob,'Math rendering architecture guard');
-if(!/^        run:\s*node tests\/math-rendering-guard\.mjs\s*$/m.test(mathGuardStep))fail('Static quality must expose the math architecture guard as an enabled active step.');
+const mathGuardStep=yamlNamedUnconditionalStep(staticJob,'Math rendering architecture guard');
+if(!/^        run:\s*node tests\/math-rendering-guard\.mjs\s*$/m.test(mathGuardStep))fail('Static quality must expose the math architecture guard as an unconditional active step.');
 const uploadArtifactRefs=[...qa.matchAll(/^\s*uses:\s*actions\/upload-artifact@([^\s#]+).*$/gm)].map(match=>match[1]);
 if(!uploadArtifactRefs.length)fail('QA Gate must upload screenshot/performance artifacts.');
 for(const ref of uploadArtifactRefs)if(!/^[0-9a-f]{40}$/i.test(ref))fail(`actions/upload-artifact must be pinned to an immutable 40-character SHA, got: ${ref}`);
@@ -191,4 +197,4 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, enabled QA step wiring, immutable artifact action pinning, CodeRabbit instructions, PR checklist, and server-enforcement documentation are intact.');
+console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, unconditional QA step wiring, immutable artifact action pinning, CodeRabbit instructions, PR checklist, and server-enforcement documentation are intact.');
