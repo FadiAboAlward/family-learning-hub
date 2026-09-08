@@ -42,6 +42,8 @@ jobs:
           npx --yes esbuild@0.25.9 supabase/functions/attempt-history-api/index.ts --format=esm --platform=neutral --outfile=/tmp/attempt-history-api-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
+      - name: Math rendering architecture guard
+        run: node tests/math-rendering-guard.mjs
       - name: Math direction regression
         run: node tests/math-direction.mjs
       - name: Exam API unit tests
@@ -87,16 +89,20 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/math-direction-browser.mjs
+      - name: Capture Playwright screenshot evidence
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/screenshot-evidence.mjs
       - name: Run performance regression smoke
         env:
           APP_URL: http://127.0.0.1:4173/
           PERF_SAVE_DELAY_MS: '2500'
-        run: |
-          node tests/performance.mjs
-          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+        run: node tests/performance.mjs
+      - name: Append performance summary
+        run: cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload performance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: performance-report
           path: |
@@ -108,3 +114,11 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/copy-smoke.mjs
+      - name: Upload Playwright screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-screenshots-${{ github.run_id }}
+          path: playwright-screenshots/
+          retention-days: 7
+          if-no-files-found: warn
