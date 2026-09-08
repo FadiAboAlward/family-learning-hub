@@ -1,8 +1,10 @@
 import { chromium } from 'playwright';
 
-const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
+const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
 const QA_AUTH_URL = 'https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/qa-auth';
 const QA_QUIZ_SLUG = 'fractions-pages-54-57';
+const QA_PROGRAM_TITLE = 'المنهاج السوري — الصف الخامس — 2025–2026';
+const QA_BOOK_TITLE = 'الرياضيات - كتاب التلميذ - الصف الخامس';
 
 async function githubOidcToken() {
   const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
@@ -40,30 +42,17 @@ page.on('console', message => { if (message.type() === 'error') errors.push(`con
 await page.addInitScript(value => localStorage.setItem('learner_session', value), session);
 await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
 
-const programs = page.locator('[data-open-program]');
-await programs.first().waitFor({ state: 'visible', timeout: 10000 });
-let found = false;
-for (let p = 0; p < await programs.count() && !found; p++) {
-  await programs.nth(p).click();
-  const books = page.locator('[data-book]');
-  for (let b = 0; b < await books.count() && !found; b++) {
-    await books.nth(b).click();
-    const units = page.locator('[data-unit]');
-    for (let u = 0; u < await units.count() && !found; u++) {
-      await units.nth(u).click();
-      if (await page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`).count()) {
-        found = true;
-        break;
-      }
-      await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
-    }
-    if (!found) await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
-  }
-  if (!found) await page.locator('[data-nav-back]').first().click().catch(() => page.goBack().catch(() => {}));
-}
-if (!found) throw new Error(`QA quiz ${QA_QUIZ_SLUG} not found in Testing library`);
+const qaProgram = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
+await qaProgram.waitFor({ state: 'visible', timeout: 10000 });
+await qaProgram.click();
 
-await page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`).click();
+const qaBook = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
+await qaBook.waitFor({ state: 'visible', timeout: 10000 });
+await qaBook.click();
+
+const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
+await learningButton.waitFor({ state: 'visible', timeout: 10000 });
+await learningButton.click();
 await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
 await page.locator('.flh-learn-answer').first().click();
 await page.locator('#flhConfirmAnswer').click();
@@ -71,11 +60,13 @@ await page.locator('#flhLearnNext').waitFor({ state: 'visible', timeout: 10000 }
 
 await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
 await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+let submitted = false;
 for (let i = 0; i < 20; i++) {
   await page.locator('.exam-v3-answer').first().click();
   const submit = page.locator('#examSubmit');
   if (await submit.isVisible().catch(() => false)) {
     await submit.click();
+    submitted = true;
     break;
   }
   const next = page.locator('#examNext');
@@ -83,7 +74,7 @@ for (let i = 0; i < 20; i++) {
   await next.click();
   await page.waitForTimeout(150);
 }
-
+if (!submitted) throw new Error('Testing exam did not reach submission');
 if (errors.length) throw new Error(errors.join('; '));
 console.log('Authenticated QA passed: Testing learner, real backend, library, Learning Mode, Exam Mode.');
 await browser.close();
