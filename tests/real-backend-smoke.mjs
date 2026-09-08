@@ -58,8 +58,9 @@ let cleanupError=null;
 try{
   await page.addInitScript(session=>localStorage.setItem('learner_session',session),prepared.session);
   await page.goto(`${APP_URL}?realqa=${Date.now()}#student`,{waitUntil:'domcontentloaded',timeout:30000});
-  await page.getByText('Testing',{exact:true}).first().waitFor({state:'visible',timeout:15000});
-  await page.locator('[data-dynamic-test-banner]').waitFor({state:'visible',timeout:10000});
+  await page.locator('[data-dynamic-test-banner]').waitFor({state:'visible',timeout:15000});
+  const homeText=await page.locator('body').innerText();
+  if(!homeText.includes('Testing'))throw new Error('Testing identity is not rendered on the authenticated student home');
 
   const learnStart=waitForAction(page,'/learning-api','start_quiz');
   await page.evaluate(slug=>window.FLH.startLearningQuiz(slug),prepared.quiz_slug);
