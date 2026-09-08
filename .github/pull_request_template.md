@@ -25,6 +25,7 @@ Describe what changed and why.
 - [ ] If Math/RTL rendering changed, actual Learning Mode, Exam Mode, and completed/review flows are covered by deterministic browser regression; synthetic DOM-only coverage is not sufficient. (Or N/A with reason.)
 - [ ] Mobile interaction and touch targets were considered. (Or N/A with reason.)
 - [ ] Tests were added or updated for behavior changed by this PR, or the PR explains why no test change is needed.
+- [ ] Playwright screenshot evidence was captured for each meaningful user-facing UI change, or marked N/A with reason. Evidence is stored as a temporary GitHub Actions artifact under `playwright-screenshots/`, not committed to repository history, with seven-day retention.
 - Validated PR-head SHA for every required pre-merge gate: `<sha>`
 - [ ] QA Gate / Static quality passed for the exact PR-head SHA recorded above.
 - [ ] QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
@@ -53,6 +54,7 @@ Describe what changed and why.
 
 - Required: yes / no
 - Exact production checks to perform after merge, or N/A reason:
+- Playwright screenshot evidence link / artifact name, or N/A reason:
 
 ### Post-merge completion record
 
@@ -64,7 +66,8 @@ Do not describe delivery as complete until this record is filled when production
 - Verifier:
 - Deployment / migration identifier:
 - Evidence link or exact evidence reference:
+- Screenshot artifact / evidence link:
 
 ## Notes for reviewer
 
-Call out migrations, API changes, security/authorization boundaries, risky assumptions, production-state drift, math/RTL rendering surfaces, or anything that deserves extra attention.
+Call out migrations, API changes, security/authorization boundaries, risky assumptions, production-state drift, math/RTL rendering surfaces, missing screenshot evidence, or anything that deserves extra attention.
