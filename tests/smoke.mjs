@@ -11,6 +11,13 @@ page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
 page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
 mark('init');
 
+/**
+ * Assert that an exact mathematical run is rendered as an isolated LTR element
+ * inside the supplied real Learning/Exam/review locator.
+ * @param {import('playwright').Locator} locator
+ * @param {string} expected
+ * @param {string} label
+ */
 async function assertMath(locator,expected,label){
   const result=await locator.evaluate((el,target)=>{
     const runs=[...el.querySelectorAll('.flh-math-ltr')];
