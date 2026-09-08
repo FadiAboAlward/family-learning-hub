@@ -8,6 +8,7 @@ Describe what changed and why.
 - Parent flow affected: yes / no
 - Data/access rules affected: yes / no
 - Learning or exam behavior affected: yes / no
+- Math/RTL rendering affected: yes / no
 - Production deployment required: yes / no
 - Database migration required: yes / no
 - Security/authorization boundary affected: yes / no
@@ -20,6 +21,8 @@ Describe what changed and why.
 - [ ] Learning Mode still saves/resumes correctly and does not count an unconfirmed first tap as an answer. (Or N/A with reason.)
 - [ ] Exam Mode still autosaves, allows review/flagging, and does not reveal correctness before submission. (Or N/A with reason.)
 - [ ] Arabic/RTL copy was checked; no unintended English UI labels or reversed school-year text were introduced. (Or N/A with reason.)
+- [ ] Math rendering invariant checked: Arabic UI remains RTL while mathematical expressions, negative values, math options, learner/correct answers, explanations, and numeric/decimal inputs preserve LTR mathematical order via the shared renderer/bidi-isolation layer. Stored data was not reversed to solve direction. (Or N/A with reason.)
+- [ ] If Math/RTL rendering changed, actual Learning Mode, Exam Mode, and completed/review flows are covered by deterministic browser regression; synthetic DOM-only coverage is not sufficient. (Or N/A with reason.)
 - [ ] Mobile interaction and touch targets were considered. (Or N/A with reason.)
 - [ ] Tests were added or updated for behavior changed by this PR, or the PR explains why no test change is needed.
 - Validated PR-head SHA for every required pre-merge gate: `<sha>`
@@ -64,4 +67,4 @@ Do not describe delivery as complete until this record is filled when production
 
 ## Notes for reviewer
 
-Call out migrations, API changes, security/authorization boundaries, risky assumptions, production-state drift, or anything that deserves extra attention.
+Call out migrations, API changes, security/authorization boundaries, risky assumptions, production-state drift, math/RTL rendering surfaces, or anything that deserves extra attention.
