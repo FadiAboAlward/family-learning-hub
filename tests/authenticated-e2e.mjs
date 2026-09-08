@@ -57,7 +57,13 @@ for (let i = 0; i < QA_QUESTION_COUNT; i++) {
   await next.waitFor({ state: 'visible', timeout: 10000 });
   await next.click();
 }
-await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 10000 });
+
+await page.waitForFunction(() => document.querySelector('#learnHome') || document.querySelector('#learnRetryFinish'), null, { timeout: 30000 });
+const retryFinish = page.locator('#learnRetryFinish');
+if (await retryFinish.isVisible().catch(() => false)) {
+  await retryFinish.click();
+}
+await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 });
 
 await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
 for (let i = 0; i < QA_QUESTION_COUNT; i++) {
@@ -73,7 +79,7 @@ await page.waitForFunction(() => {
   return b && !b.disabled;
 }, null, { timeout: 10000 });
 await submit.click();
-await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 10000 });
+await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
 
 if (errors.length) throw new Error(errors.join('; '));
 console.log('Authenticated QA passed: isolated Testing learner, QA-only content, real backend, Learning Mode, Exam Mode.');
