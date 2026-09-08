@@ -16,6 +16,46 @@ function yamlJobBlock(yaml,jobName){
   for(let i=start+1;i<lines.length;i++){if(/^  [A-Za-z0-9_-]+:\s*$/.test(lines[i])){end=i;break;}}
   return lines.slice(start,end).join('\n');
 }
+/** Split an active job into its YAML step blocks, excluding commented-out text. */
+function yamlStepBlocks(job){
+  const lines=job.split(/\r?\n/),stepsStart=lines.findIndex(line=>/^    steps:\s*$/.test(line));
+  if(stepsStart<0)return[];
+  const blocks=[];
+  for(let i=stepsStart+1;i<lines.length;){
+    if(!/^      -\s+/.test(lines[i])){i++;continue;}
+    const block=[lines[i++]];
+    while(i<lines.length&&!/^      -\s+/.test(lines[i]))block.push(lines[i++]);
+    blocks.push(block.join('\n'));
+  }
+  return blocks;
+}
+/** Return true only for explicitly disabled GitHub Actions steps. */
+function yamlStepDisabled(step){return step.split(/\r?\n/).some(line=>/^        if:\s*(?:false|\$\{\{\s*false\s*\}\})\s*$/i.test(line));}
+/** Return enabled GitHub Actions step blocks. */
+function yamlEnabledSteps(job){return yamlStepBlocks(job).filter(step=>!yamlStepDisabled(step));}
+/** Collect executable run text from enabled steps while ignoring commented shell lines. */
+function yamlEnabledRunText(job){
+  return yamlEnabledSteps(job).map(step=>{
+    const lines=step.split(/\r?\n/),runIndex=lines.findIndex(line=>/^        run:\s*/.test(line));
+    if(runIndex<0)return'';
+    const first=lines[runIndex].replace(/^        run:\s*/, '').trim();
+    if(first&&!/^[|>][-+0-9]*$/.test(first))return first.startsWith('#')?'':first;
+    const commands=[];
+    for(let i=runIndex+1;i<lines.length;i++){
+      if(!/^          /.test(lines[i]))break;
+      const command=lines[i].trim();
+      if(command&&!command.startsWith('#'))commands.push(command);
+    }
+    return commands.join('\n');
+  }).filter(Boolean).join('\n');
+}
+/** Read a single active needs dependency from a job block. */
+function yamlJobNeeds(job){
+  const line=job.split(/\r?\n/).find(value=>/^    needs:\s*[^#\s]+\s*$/.test(value));
+  return line?line.replace(/^    needs:\s*/,'').trim():'';
+}
+/** Find one named enabled workflow step. */
+function yamlNamedEnabledStep(job,name){return yamlEnabledSteps(job).find(step=>step.split(/\r?\n/).some(line=>line.trim()===`- name: ${name}`))||'';}
 
 if(!/<html[^>]+lang=["']ar["'][^>]+dir=["']rtl["']/i.test(index))fail('index.html must declare Arabic RTL.');
 if(!/<meta[^>]+name=["']viewport["']/i.test(index))fail('index.html is missing mobile viewport.');
@@ -95,9 +135,7 @@ for(const surface of ['learning-launcher-v2.js','program-exam-v3.js','attempt-hi
 for(const phrase of ['Math/RTL rendering affected','Math rendering invariant checked','actual Learning Mode, Exam Mode, and completed/review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects PR checklist phrase: ${phrase}`);
 for(const phrase of ['RTL-safe math rendering as a platform invariant','Never fix bidi by reversing operands','real-browser coverage of actual Learning, Exam, and review flows'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects CodeRabbit policy phrase: ${phrase}`);
 for(const phrase of ['Protect main','Static quality','Browser smoke'])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects enforcement documentation phrase: ${phrase}`);
-if(!mathGuard.includes("const staticJob=yamlJobBlock(qa,'static-quality')"))fail('Math architecture guard must scope checks to the active Static quality job.');
-if(!mathGuard.includes("const browserJob=yamlJobBlock(qa,'browser-smoke')"))fail('Math architecture guard must scope checks to the active Browser smoke job.');
-if(!mathGuard.includes("needs:\\s*static-quality"))fail('Math architecture guard must require Browser smoke to depend on Static quality.');
+for(const phrase of ["const staticRuns=yamlEnabledRunText(staticJob)","const browserRuns=yamlEnabledRunText(browserJob)","yamlJobNeeds(browserJob)!=='static-quality'"])if(!mathGuard.includes(phrase))fail(`Math architecture guard no longer protects enabled workflow semantics: ${phrase}`);
 
 if(!screenshotEvidence.includes("const OUTPUT_DIR='playwright-screenshots'"))fail('Screenshot evidence must use the dedicated playwright-screenshots folder.');
 if(!screenshotEvidence.includes('page.screenshot('))fail('Screenshot evidence must capture actual Playwright screenshots.');
@@ -114,18 +152,25 @@ const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
 const examTests=read('tests/exam-v2-api.mjs');
 const qa=read('.github/workflows/qa-smoke.yml');
 const staticJob=yamlJobBlock(qa,'static-quality'),browserJob=yamlJobBlock(qa,'browser-smoke');
+const staticRuns=yamlEnabledRunText(staticJob),browserRuns=yamlEnabledRunText(browserJob);
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!staticJob.includes(command))fail(`Static quality missing command: ${command}`);
-for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserJob.includes(command))fail(`Browser smoke missing command: ${command}`);
-if(!/^    needs:\s*static-quality\s*$/m.test(browserJob))fail('Browser smoke must depend on Static quality.');
-for(const fragment of ['name: playwright-screenshots-${{ github.run_id }}','path: playwright-screenshots/','retention-days: 7'])if(!browserJob.includes(fragment))fail(`Temporary screenshot artifact policy missing: ${fragment}`);
+for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!staticRuns.includes(command))fail(`Static quality missing enabled command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!browserRuns.includes(command))fail(`Browser smoke missing enabled command: ${command}`);
+if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality.');
+const screenshotUpload=yamlNamedEnabledStep(browserJob,'Upload Playwright screenshots');
+if(!screenshotUpload)fail('Enabled Playwright screenshot upload step is missing.');
+for(const fragment of ['name: playwright-screenshots-${{ github.run_id }}','path: playwright-screenshots/','retention-days: 7'])if(!screenshotUpload.includes(fragment))fail(`Temporary screenshot artifact policy missing from enabled upload step: ${fragment}`);
+const uploadArtifactRefs=[...qa.matchAll(/^\s*uses:\s*actions\/upload-artifact@([^\s#]+).*$/gm)].map(match=>match[1]);
+if(!uploadArtifactRefs.length)fail('QA Gate must upload screenshot/performance artifacts.');
+for(const ref of uploadArtifactRefs)if(!/^[0-9a-f]{40}$/i.test(ref))fail(`actions/upload-artifact must be pinned to an immutable 40-character SHA, got: ${ref}`);
 
 const prTemplate=read('.github/pull_request_template.md');
 if(!prTemplate.includes('Playwright screenshot evidence'))fail('PR template must request Playwright screenshot evidence for user-facing UI changes.');
+if(!prTemplate.includes('Screenshot artifact / evidence link, or N/A reason'))fail('Post-merge screenshot evidence field must allow an explicit N/A reason.');
 const qaPolicy=read('docs/qa-policy.md');
 for(const phrase of ['playwright-screenshots/','retention-days: 7','Do not commit transient QA screenshots'])if(!qaPolicy.includes(phrase))fail(`QA policy lost screenshot evidence rule: ${phrase}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, scoped required-job QA wiring, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, enabled required-job QA wiring, immutable artifact action pinning, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
