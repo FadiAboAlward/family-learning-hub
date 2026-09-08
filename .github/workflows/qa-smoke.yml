@@ -53,6 +53,9 @@ jobs:
     needs: static-quality
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,3 +112,7 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/copy-smoke.mjs
+      - name: Run authenticated Testing learner backend smoke
+        env:
+          APP_URL: http://localhost:4173/
+        run: node tests/real-backend-smoke.mjs
