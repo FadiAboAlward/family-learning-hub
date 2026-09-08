@@ -2,9 +2,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT=process.cwd();
-const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
 const failures=[];
-const fail=m=>failures.push(m);
+
+/** Read a repository text file relative to the current checkout. */
+function read(file){return fs.readFileSync(path.join(ROOT,file),'utf8');}
+/** Record a guard failure while allowing the remaining invariant checks to run. */
+function fail(message){failures.push(message);}
+/** Extract one active top-level GitHub Actions job block by YAML indentation. */
+function yamlJobBlock(yaml,jobName){
+  const lines=yaml.split(/\r?\n/);
+  const start=lines.findIndex(line=>line.trimEnd()===`  ${jobName}:`);
+  if(start<0){fail(`QA Gate missing active job: ${jobName}`);return'';}
+  let end=lines.length;
+  for(let i=start+1;i<lines.length;i++){
+    if(/^  [A-Za-z0-9_-]+:\s*$/.test(lines[i])){end=i;break;}
+  }
+  return lines.slice(start,end).join('\n');
+}
+
 const index=read('index.html');
 const scripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 const styles=[...index.matchAll(/<link[^>]+href=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
@@ -89,10 +104,16 @@ for(const surface of ['learning','exam','review']){
 if(!smoke.includes('math-learning-review-verified'))fail('Learning completed-review math coverage is missing.');
 
 const qa=read('.github/workflows/qa-smoke.yml');
-for(const command of ['node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs']){
-  if(!qa.includes(command))fail(`QA Gate no longer runs required math guard command: ${command}`);
+const staticJob=yamlJobBlock(qa,'static-quality');
+const browserJob=yamlJobBlock(qa,'browser-smoke');
+for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs']){
+  if(!staticJob.includes(command))fail(`Static quality no longer runs required command: ${command}`);
 }
-if(!/Math rendering architecture guard[\s\S]*node tests\/math-rendering-guard\.mjs/.test(qa))fail('QA Gate must expose the math architecture guard as an explicit Static quality step.');
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs']){
+  if(!browserJob.includes(command))fail(`Browser smoke no longer runs required command: ${command}`);
+}
+if(!/^    needs:\s*static-quality\s*$/m.test(browserJob))fail('Browser smoke must depend on Static quality with needs: static-quality.');
+if(!/Math rendering architecture guard[\s\S]*node tests\/math-rendering-guard\.mjs/.test(staticJob))fail('Static quality must expose the math architecture guard as an explicit active step.');
 
 const template=read('.github/pull_request_template.md');
 for(const phrase of ['Math/RTL rendering affected','Math rendering invariant checked','actual Learning Mode, Exam Mode, and completed/review flows']){
@@ -108,7 +129,7 @@ const policyPath='docs/math-rendering-invariant.md';
 if(!fs.existsSync(path.join(ROOT,policyPath)))fail(`${policyPath} is required.`);
 else{
   const policy=read(policyPath);
-  for(const phrase of ['every learner','Stored question/answer data is canonical','synthetic DOM probe','Family Learning Hub Playwright']){
+  for(const phrase of ['every learner','Stored question/answer data is canonical','synthetic DOM probe','Family Learning Hub Playwright','Protect main','Static quality','Browser smoke']){
     if(!policy.includes(phrase))fail(`Math rendering policy lost required principle: ${phrase}`);
   }
 }
@@ -118,4 +139,4 @@ if(failures.length){
   for(const message of failures)console.error(`- ${message}`);
   process.exit(1);
 }
-console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, CodeRabbit instructions, PR checklist, and QA workflow wiring are intact.');
+console.log('Math rendering guard passed: shared renderer load order, Learning/Exam/history surfaces, LTR isolation, numeric inputs, real-mode regressions, active QA job wiring, CodeRabbit instructions, PR checklist, and server-enforcement documentation are intact.');
