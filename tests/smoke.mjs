@@ -64,7 +64,7 @@ await page.locator('.exam-v3-answer').first().click();
 await page.locator('.exam-v3-answer.selected').waitFor({state:'visible',timeout:500});
 mark('exam-selected',{learnWidth,examWidth});
 await page.locator('#examNext').click();
-await page.getByText('السؤال 2 من 2',{exact:false}).waitFor({state:'visible',timeout:500});
+await page.locator('.exam-status .topline b').filter({hasText:'السؤال 2 من 2'}).waitFor({state:'visible',timeout:500});
 mark('exam-next',{learnWidth,examWidth});
 if(calls.examSave<1)throw new Error('Exam save was not started');
 if(errors.length)throw new Error(errors.join('; '));
