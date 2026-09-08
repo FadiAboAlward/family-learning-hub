@@ -66,7 +66,7 @@ Do not describe delivery as complete until this record is filled when production
 - Verifier:
 - Deployment / migration identifier:
 - Evidence link or exact evidence reference:
-- Screenshot artifact / evidence link:
+- Screenshot artifact / evidence link, or N/A reason:
 
 ## Notes for reviewer
 
