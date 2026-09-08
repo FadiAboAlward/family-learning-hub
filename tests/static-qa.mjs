@@ -32,6 +32,7 @@ const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
 const mathDirectionCss=read('math-direction-v1.css');
+const mathGuard=read('tests/math-rendering-guard.mjs');
 const library=read('student-library-v3.js');
 
 if(learning.includes('اضغط مرة ثانية'))fail('Learning Mode must not ask for a second tap on the option.');
@@ -64,6 +65,9 @@ if(mathDirection.includes('observe(document.documentElement'))fail('Math directi
 if(!mathDirection.includes("node.dir = 'ltr'"))fail('Generated math nodes must declare LTR direction.');
 if(!mathDirectionCss.includes('.flh-math-ltr{direction:ltr;unicode-bidi:isolate'))fail('Math runs must use LTR unicode-bidi isolation.');
 if(!mathDirectionCss.includes('input[inputmode="numeric"]')||!mathDirectionCss.includes('input[inputmode="decimal"]'))fail('Numeric answer inputs must be LTR-isolated.');
+if(!mathGuard.includes('const surfaceContracts='))fail('Math rendering architecture guard is missing its surface contract checks.');
+if(!mathGuard.includes("read('.coderabbit.yaml')"))fail('Math rendering guard must protect CodeRabbit math-review instructions.');
+if(!mathGuard.includes("read('.github/pull_request_template.md')"))fail('Math rendering guard must protect the PR math checklist.');
 
 if(!library.includes("observer.observe(appRoot,{childList:true,subtree:true})"))fail('Student Library observer must be scoped to #app.');
 if(library.includes("observer.observe(document.documentElement"))fail('Student Library observer must not watch the whole document.');
@@ -77,7 +81,7 @@ const qa=read('.github/workflows/qa-smoke.yml');
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
-for(const command of ['node tests/static-qa.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs','node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!qa.includes(command))fail(`QA workflow missing command: ${command}`);
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
-console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
+console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, self-protected math architecture guard, numeric input direction, mobile full-width layout, Learning confirmation flow, scoped dynamic observers, active runtime/legacy guards and Exam API protections are valid.');
