@@ -45,6 +45,7 @@ reviews:
         - Prefer mocked external APIs in browser smoke tests so CI remains stable and reproducible.
         - Preserve the math-rendering architecture guard and real-browser coverage of actual Learning, Exam, and review flows. Do not replace these with a synthetic DOM-only probe.
         - Required bidi regression corpus includes both operand orders and leading negative signs, including 19 - (-7), (-7) - 19, -7 + 19, 19 + (-7), -21 - (-6), and -26.
+        - Preserve Playwright screenshot evidence for meaningful user-facing UI states. Evidence should use mocked/non-sensitive data, write to the temporary playwright-screenshots/ runtime folder, and must not expose credentials.
 
     - path: ".github/workflows/**"
       instructions: |
@@ -52,6 +53,7 @@ reviews:
         - QA must run on every pull request targeting main, regardless of changed file type.
         - Static quality must run before browser QA.
         - The math-rendering architecture guard, deterministic math-direction regression, and browser regression must not be removed or bypassed.
+        - Playwright screenshot evidence must be uploaded as a GitHub Actions artifact from playwright-screenshots/ with retention-days: 7. Do not replace temporary artifact storage with committing screenshots to repository history.
         - Do not add paths filters that would allow a PR to bypass QA.
         - Flag permissions broader than required and avoid exposing secrets to untrusted pull requests.
 
@@ -59,6 +61,7 @@ reviews:
       instructions: |
         Check architecture and QA documentation for consistency with the live system.
         Flag claims that a feature is enforced when it is only advisory or not actually configured.
+        Preserve the seven-day temporary Playwright screenshot evidence policy and the rule against committing transient QA screenshots to Git history.
 
 chat:
   auto_reply: true
