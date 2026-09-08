@@ -66,6 +66,10 @@ The repository PR checklist must explicitly ask whether Math/RTL rendering is af
 
 For a math/RTL rendering change, after merge and GitHub Pages deployment, verify the live site using Family Learning Hub Playwright. Confirm the new production build is served and that representative math retains LTR order inside the RTL document. Do not modify a real learner attempt solely to perform this verification.
 
-## Enforcement limitation
+## GitHub enforcement
 
-The workflow and repository checks are deterministic guards, but a GitHub Ruleset/Branch Protection rule is what makes a failing status check technically unmergeable. The target repository should require the existing `Static quality` and `Browser smoke` checks for `main`; `Static quality` contains the math architecture guard. If repository-admin permissions are not available to the connected GitHub tool, this server-side rule must be configured separately in GitHub Settings.
+Repository ruleset **`Protect main`** is active on the default branch and requires pull requests plus the GitHub Actions checks **`Static quality`** and **`Browser smoke`**. Force/non-fast-forward updates and branch deletion are also blocked. There are no bypass actors for the connected user.
+
+Because `Static quality` now contains `tests/math-rendering-guard.mjs`, breaking or removing the math architecture invariant makes that required status check fail; because `Browser smoke` exercises actual Learning, Exam, and review flows, a visual/runtime bidi regression also blocks the merge. This is server-side enforcement, not only documentation.
+
+CodeRabbit remains a separate exact-head review gate defined by project policy and the PR checklist. The current ruleset does not list CodeRabbit as a required GitHub status check, so its exact-head completion must still be verified before merge under `docs/qa-policy.md`.
