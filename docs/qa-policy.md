@@ -5,28 +5,99 @@
 For any non-trivial change that can affect learner behavior, content delivery, authentication, security, data, database schema, quizzes, exams, parent reporting, or production runtime, the default workflow is:
 
 1. Create a dedicated branch and Pull Request. Do not make the change directly on `main` unless it is a true emergency recovery action.
-2. Run the deterministic GitHub Actions `QA Gate` on the PR.
-3. Require both deterministic jobs to pass:
+2. Select the appropriate test layer(s) for the behavior being changed and add/update those tests in the PR.
+3. Run the deterministic GitHub Actions `QA Gate` on the PR.
+4. Require both deterministic jobs to pass:
    - `Static quality`
    - `Browser smoke`
-4. Run CodeRabbit review on the current PR-head commit.
-5. Inspect every actionable CodeRabbit comment. Do not treat a green QA Gate as proof that the change is ready if CodeRabbit has unresolved actionable findings.
-6. Fix valid findings. If a finding does not apply to the actual architecture, document the reason clearly in the review thread and resolve it only after verifying the architecture.
-7. Record the exact PR-head commit SHA covered by `Static quality`, `Browser smoke`, and CodeRabbit. If the PR-head SHA changes for any reason, rerun all three required pre-merge gates against the new SHA and replace the recorded SHA.
-8. Merge only when:
+5. Run CodeRabbit review on the current PR-head commit.
+6. Inspect every actionable CodeRabbit comment. Do not treat a green QA Gate as proof that the change is ready if CodeRabbit has unresolved actionable findings.
+7. Fix valid findings. If a finding does not apply to the actual architecture, document the reason clearly in the review thread and resolve it only after verifying the architecture.
+8. Record the exact PR-head commit SHA covered by `Static quality`, `Browser smoke`, and CodeRabbit. If the PR-head SHA changes for any reason, rerun all three required pre-merge gates against the new SHA and replace the recorded SHA.
+9. Merge only when:
    - `Static quality`, `Browser smoke`, and CodeRabbit review all cover the exact same current PR-head SHA;
    - all actionable CodeRabbit findings are fixed or explicitly resolved with a verified architectural reason;
-   - the PR description/checklist accurately reflects user impact, QA status, migrations, security boundaries, deployment risks, and the production verification plan.
-9. Perform any required production deployment and any required database migration as separate operations. A merged PR alone is not proof that production is updated.
-10. Verify production directly after deployment/migration. Check the actual production state, not only the repository state.
-11. Record production verification completion and evidence, including the result and, as applicable, timestamp, verifier, deployment/migration identifier, and evidence link or exact evidence reference.
-12. Only then describe the work as complete.
+   - the PR description/checklist accurately reflects user impact, selected testing layers, QA status, migrations, security boundaries, deployment risks, and the production verification plan.
+10. Perform any required production deployment and any required database migration as separate operations. A merged PR alone is not proof that production is updated.
+11. Verify production directly after deployment/migration. Check the actual production state, not only the repository state.
+12. Record production verification completion and evidence, including the result and, as applicable, timestamp, verifier, deployment/migration identifier, and evidence link or exact evidence reference.
+13. Only then describe the work as complete.
 
 In short:
 
-`PR → exact-SHA QA Gate → exact-SHA CodeRabbit → fix findings → rerun all gates on any new head SHA → merge → deploy/migrate → production verification + evidence`
+`PR → select/update tests → exact-SHA QA Gate → exact-SHA CodeRabbit → fix findings → rerun all gates on any new head SHA → merge → deploy/migrate → production verification + evidence`
 
 Partial completion must be described accurately. For example, say "merged but not yet verified in production" instead of "done".
+
+## Testing strategy and test selection
+
+Testing is part of implementation, not a final afterthought. The project does **not** require a unit test for every function. Each behavior change should use the smallest deterministic test layer that proves the important risk, with additional layers when the boundary itself matters.
+
+### Unit tests
+
+Add or update unit tests for non-trivial pure or isolatable logic when practical, especially:
+
+- parsing and validation;
+- authentication/authorization decisions that can be isolated;
+- scoring, grading, mastery, reward, or state-transition logic;
+- action dispatch and input-shape handling;
+- error mapping and failure behavior;
+- configuration-driven business rules.
+
+Do not create low-value tests for trivial getters, pass-through wrappers, constants, or implementation details with no meaningful behavior.
+
+### Integration / contract tests
+
+Add or update integration/contract coverage when correctness depends on a boundary that a unit test cannot prove, especially:
+
+- Supabase table/query behavior;
+- Row Level Security and learner/workspace isolation;
+- persistence and resume/autosave behavior;
+- Edge Function/API contracts;
+- database migrations, grants, constraints, or production-sensitive schema behavior;
+- interactions across modules where mocking would hide the real failure mode.
+
+Where useful, combine integration coverage with unit tests for extracted logic so failures remain easy to diagnose.
+
+### Browser / E2E tests
+
+Use Playwright browser coverage for important user-visible behavior, including:
+
+- student and parent navigation;
+- mobile interaction and touch behavior;
+- learner-content isolation visible through the UI;
+- Learning Mode behavior, hints, confirmation, save/resume;
+- Exam Mode autosave, review/flagging, submission, and no correctness disclosure before submission;
+- rendered Arabic/RTL behavior and mathematical directionality when the browser layout is part of the risk.
+
+Keep browser tests focused on high-value flows. Do not move logic assertions into E2E tests when a faster lower-level test can prove them more reliably.
+
+### Regression rule for bugs
+
+For an important defect, add a deterministic regression test that reproduces the failure before/with the fix whenever practical. Put the regression at the **lowest reliable layer** that would have caught the bug:
+
+- pure logic bug → unit regression;
+- data/RLS/API boundary bug → integration/contract regression;
+- rendered interaction/navigation bug → Playwright/browser regression.
+
+A bug fix without a new test is acceptable only when reproduction is not practical or the existing suite already catches the defect; the PR must explain the reason.
+
+### Dedicated high-risk regressions
+
+Changes affecting these areas must preserve targeted coverage:
+
+- learner-content isolation;
+- authentication and authorization boundaries;
+- server-authoritative grading/results;
+- Learning vs Exam behavior;
+- autosave/resume and duplicate-action protection;
+- Arabic/RTL copy and math directionality;
+- mobile touch behavior;
+- migration and production-state reconciliation where applicable.
+
+### No-test changes
+
+Documentation-only, copy-only, or genuinely trivial pass-through changes may require no new test. The PR must mark the test choice as N/A and explain why rather than adding meaningless coverage.
 
 ## Required deterministic QA
 
@@ -37,7 +108,7 @@ The merge-blocking checks should be:
 - `Static quality`
 - `Browser smoke`
 
-`Static quality` checks JavaScript syntax, runtime references, Arabic/RTL shell requirements, known copy regressions, legacy runtime guards, school-year formatting, merge markers, and repository-defined static safety invariants.
+`Static quality` checks JavaScript syntax, runtime references, Arabic/RTL shell requirements, known copy regressions, legacy runtime guards, school-year formatting, merge markers, repository-defined static safety invariants, and server-side unit tests currently wired into the gate.
 
 `Browser smoke` runs the mobile Playwright flow and rendered Arabic copy QA. It protects the student hierarchy, learning/exam behavior, learner content isolation, direct standalone-book assignment, parent progressive disclosure, activity filters, mobile interactions, and question references.
 
@@ -63,17 +134,21 @@ Recommended ruleset settings:
 
 CodeRabbit is an additional review gate for non-trivial changes, but it is not a replacement for deterministic QA.
 
-The repository `.coderabbit.yaml` asks CodeRabbit to review for:
+The repository `.coderabbit.yaml` should review against the canonical repository rules in `AGENTS.md`, `docs/architecture.md`, and this policy. It should specifically review for:
 
-- child-facing mobile/RTL regressions
-- learner content isolation
-- data-driven access instead of hard-coded users/content
-- server-authoritative grading and saved state
-- Learning vs Exam behavior
-- QA-test weakening
-- GitHub Actions bypasses
-- architecture/documentation drift
-- security and database integrity risks
+- child-facing mobile/RTL regressions;
+- learner content isolation;
+- data-driven access instead of hard-coded users/content;
+- server-authoritative grading and saved state;
+- Learning vs Exam behavior;
+- security, RLS, and database integrity risks;
+- QA-test weakening or GitHub Actions bypasses;
+- architecture/documentation drift;
+- **test-selection quality**: whether the PR added the appropriate unit, integration/contract, browser, or regression coverage for the risk it changed;
+- important bug fixes that should gain deterministic regression coverage but do not;
+- over-testing that adds brittle low-value assertions rather than protecting behavior.
+
+CodeRabbit should not mechanically demand unit tests for every function. It should judge the behavior/risk using the testing strategy above.
 
 Rules for CodeRabbit findings:
 
@@ -87,6 +162,18 @@ Rules for CodeRabbit findings:
 - If CodeRabbit is temporarily unavailable, say so explicitly. Do not relabel a manual review as a CodeRabbit review.
 
 The `family-learning-hub` repository is public. The project must not depend on paid/Advanced-only CodeRabbit features for its core safety process. Baseline public-repository review may be used, while deterministic GitHub Actions remain the durable required checks.
+
+## TestSprite / AI exploratory QA layer
+
+TestSprite, once connected to the Family Learning Hub workflow, is an **additional exploratory/AI QA layer**. It does not replace unit tests, integration/contract tests, Playwright, GitHub Actions, CodeRabbit, or direct production verification.
+
+Operating rules:
+
+- Use the dedicated `test` learner for automated learner activity; do not pollute Aya or Mohammad's real progress, rewards, mastery, or reporting.
+- Use TestSprite especially for major feature changes, high-risk flows, and periodic broader regression/exploration where AI-generated coverage can discover cases not explicitly encoded in deterministic tests.
+- Do not make TestSprite a required merge blocker until the integration is connected, stable, repeatable enough for CI use, and its cost/credit behavior is understood.
+- A reproducible defect discovered by TestSprite should be treated as a normal product bug and should gain deterministic regression coverage at the appropriate layer whenever practical.
+- If TestSprite reports a non-reproducible or flaky issue, investigate it, but do not weaken deterministic tests to accommodate it.
 
 ## Production deployment and database migration
 
@@ -137,15 +224,15 @@ After major navigation or interaction changes, run an AI/usability test (for exa
 
 Examples of changes that deserve UX-agent review:
 
-- new student navigation hierarchy
-- major Learning/Exam interaction changes
-- new parent dashboard information architecture
-- onboarding/login redesign
-- substantial mobile layout changes
+- new student navigation hierarchy;
+- major Learning/Exam interaction changes;
+- new parent dashboard information architecture;
+- onboarding/login redesign;
+- substantial mobile layout changes.
 
 ## Pull request discipline
 
-Every PR should explain its user impact and complete the repository PR checklist. When behavior changes, update or add deterministic tests in the same PR rather than weakening existing assertions.
+Every PR should explain its user impact, explicitly declare the test layer(s) selected for the change, and complete the repository PR checklist. When behavior changes, update or add deterministic tests in the same PR rather than weakening existing assertions.
 
 For schema/data/runtime changes, the PR should also state:
 
