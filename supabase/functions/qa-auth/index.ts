@@ -17,6 +17,7 @@ const WORKFLOW_PREFIX = `${REPOSITORY}/.github/workflows/qa-smoke.yml@`;
 const AUDIENCE = "family-learning-hub-qa";
 const SESSION_SECONDS = 10 * 60;
 const LEASE_TTL_SECONDS = 15 * 60;
+const LEGACY_LEASE_TTL_SECONDS = 3 * 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const JWKS = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
 
@@ -151,11 +152,11 @@ async function clearTestingAttempts(learnerId: string) {
   return count || 0;
 }
 
-async function acquireTestingLease(runId: string) {
+async function acquireTestingLease(runId: string, ttlSeconds = LEASE_TTL_SECONDS) {
   const { data, error } = await admin.rpc("flh_qa_acquire_testing_lease", {
     p_workspace_id: WORKSPACE_ID,
     p_run_id: runId,
-    p_ttl_seconds: LEASE_TTL_SECONDS,
+    p_ttl_seconds: ttlSeconds,
   });
   if (error) throw new Error("QA_LEASE_ACQUIRE_FAILED");
   return data === true;
@@ -180,10 +181,23 @@ Deno.serve(async (req) => {
     const learner = await getTestingLearner();
 
     if (action === "legacy") {
-      return response({
-        session: await issueLearnerSession(learner.id),
-        learner: { display_name: learner.display_name, slug: learner.slug },
-      });
+      const runId = crypto.randomUUID();
+      if (!(await acquireTestingLease(runId, LEGACY_LEASE_TTL_SECONDS))) return response({ error: "QA_BUSY" }, 409);
+      try {
+        await clearTestingAttempts(learner.id);
+        return response({
+          session: await issueLearnerSession(learner.id),
+          learner: { display_name: learner.display_name, slug: learner.slug },
+          legacy_lock_seconds: LEGACY_LEASE_TTL_SECONDS,
+        });
+      } catch (error) {
+        try {
+          await releaseTestingLease(runId);
+        } catch {
+          // Preserve the primary failure; otherwise the short legacy lease expires automatically.
+        }
+        throw error;
+      }
     }
 
     if (action === "prepare") {
