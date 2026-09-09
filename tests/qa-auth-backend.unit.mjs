@@ -106,7 +106,8 @@ assert.equal(leaseOwner, null);
 const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
 assert.match(workflow, /group:\s*family-learning-hub-testing-learner/);
-assert.match(workflow, /cancel-in-progress:\s*false/);
+const cancellationModes = [...workflow.matchAll(/cancel-in-progress:\s*(true|false)/g)].map(match => match[1]);
+assert.deepEqual(cancellationModes, ['false', 'false'], 'workflow-level and Testing-job cancellation must both preserve cleanup');
 
 const migration = fs.readFileSync('supabase/migrations/20260909055000_harden_testing_qa_concurrency.sql', 'utf8');
 assert.match(migration, /on conflict \(workspace_id, slug\) do update/);
