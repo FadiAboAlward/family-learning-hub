@@ -8,12 +8,13 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
   pages: write
   id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -24,6 +25,44 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build production site with open PR previews
+        id: site
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          SITE_DIR="${RUNNER_TEMP}/family-learning-hub-pages"
+          rm -rf "${SITE_DIR}"
+          mkdir -p "${SITE_DIR}/pr-preview"
+
+          git archive HEAD | tar -x -C "${SITE_DIR}"
+
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/pulls?state=open&base=main&per_page=100" \
+            > /tmp/open-prs.json
+
+          jq -r --arg repo "${REPO}" '.[] | select(.head.repo.full_name == $repo) | [.number, .head.sha] | @tsv' /tmp/open-prs.json |
+          while IFS=$'\t' read -r pr sha; do
+            [ -n "${pr}" ] || continue
+            echo "Adding preview for PR #${pr} at ${sha}"
+            mkdir -p "${SITE_DIR}/pr-preview/pr-${pr}"
+            curl -fsSL -L \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/tarball/${sha}" \
+              | tar -xz --strip-components=1 -C "${SITE_DIR}/pr-preview/pr-${pr}"
+          done
+
+          touch "${SITE_DIR}/.nojekyll"
+          echo "site_dir=${SITE_DIR}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -31,7 +70,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: '.'
+          path: ${{ steps.site.outputs.site_dir }}
 
       - name: Deploy to GitHub Pages
         id: deployment
