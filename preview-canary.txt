@@ -1,0 +1,4 @@
+TESTSPRITE_PREVIEW_CANARY_20260909
+Purpose: verify per-PR preview routing only.
+No production UI behavior is changed.
+
