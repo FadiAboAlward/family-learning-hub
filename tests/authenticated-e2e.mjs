@@ -57,15 +57,10 @@ async function cleanupQaRun(runId) {
 }
 
 const prepared = await prepareQaRun();
-if (!prepared.session || prepared.learner?.slug !== 'test') {
-  throw new Error('QA auth returned invalid Testing learner session');
+if (!prepared.session || prepared.learner?.slug !== 'test' || !prepared.run_id) {
+  throw new Error('QA auth returned invalid Testing learner session or run ownership');
 }
-
-// Production v1 ignores the new action field and returns no run_id. That fallback keeps
-// this PR testable before v2 is deployed. Once v2 is live, run_id becomes mandatory in
-// the follow-up cleanup PR and every run is explicitly owned and released.
-const ownsRun = Boolean(prepared.run_id);
-if (ownsRun && prepared.quiz_slug !== QA_QUIZ_SLUG) {
+if (prepared.quiz_slug !== QA_QUIZ_SLUG) {
   throw new Error('QA auth returned unexpected canonical quiz');
 }
 
@@ -126,17 +121,15 @@ try {
   await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
 
   if (errors.length) throw new Error(errors.join('; '));
-  console.log(`Authenticated QA passed: isolated Testing learner, ${ownsRun ? 'owned lease' : 'v1 compatibility'}, QA-only content, real backend, Learning Mode, Exam Mode.`);
+  console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode.');
 } catch (error) {
   primaryError = error;
 } finally {
   if (browser) await browser.close().catch(() => {});
-  if (ownsRun) {
-    try {
-      await cleanupQaRun(prepared.run_id);
-    } catch (error) {
-      cleanupError = error;
-    }
+  try {
+    await cleanupQaRun(prepared.run_id);
+  } catch (error) {
+    cleanupError = error;
   }
 }
 
