@@ -1,26 +1,28 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.10.0";
+import {
+  ACTOR_ID,
+  AUDIENCE,
+  QA_QUIZ_SLUG,
+  REPOSITORY,
+  REPOSITORY_ID,
+  SESSION_SECONDS,
+  TEST_LEARNER_SLUG,
+  WORKFLOW_PREFIX,
+  WORKSPACE_ID,
+  executeQaAction,
+  normalizeQaAction,
+  validateGithubClaims,
+} from "./logic.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-
-const WORKSPACE_ID = "55f9224c-8ba7-4cbc-9f88-713e6a6b41df";
-const TEST_LEARNER_SLUG = "test";
-const QA_QUIZ_SLUG = "qa-automation-core";
-const REPOSITORY = "FadiAboAlward/family-learning-hub";
-const REPOSITORY_ID = "1343709875";
-const ACTOR_ID = "320162789";
-const WORKFLOW_PREFIX = `${REPOSITORY}/.github/workflows/qa-smoke.yml@`;
-const AUDIENCE = "family-learning-hub-qa";
-const SESSION_SECONDS = 10 * 60;
-const LEASE_TTL_SECONDS = 15 * 60;
-const LEGACY_LEASE_TTL_SECONDS = 3 * 60;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const JWKS = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
 
+/** Return a non-cacheable JSON response. */
 function response(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -31,16 +33,19 @@ function response(data: unknown, status = 200) {
   });
 }
 
+/** Encode bytes using URL-safe base64 without padding. */
 function b64url(bytes: Uint8Array) {
   let value = "";
   for (const byte of bytes) value += String.fromCharCode(byte);
   return btoa(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
+/** Encode UTF-8 text using URL-safe base64. */
 function b64urlText(text: string) {
   return b64url(new TextEncoder().encode(text));
 }
 
+/** Import the service-role key as the HMAC signing key used by learner sessions. */
 async function hmacKey() {
   return crypto.subtle.importKey(
     "raw",
@@ -51,11 +56,13 @@ async function hmacKey() {
   );
 }
 
+/** Sign one encoded learner-session payload. */
 async function hmac(data: string) {
   const signature = await crypto.subtle.sign("HMAC", await hmacKey(), new TextEncoder().encode(data));
   return b64url(new Uint8Array(signature));
 }
 
+/** Issue the short-lived learner session consumed by existing Family Learning Hub APIs. */
 async function issueLearnerSession(learnerId: string) {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -71,6 +78,7 @@ async function issueLearnerSession(learnerId: string) {
   return `${body}.${await hmac(body)}`;
 }
 
+/** Verify GitHub's JWT cryptographically, then enforce the repository/workflow claim boundary. */
 async function authenticateGithubRunner(oidc: string) {
   if (!oidc) throw new Error("OIDC_REQUIRED");
 
@@ -84,17 +92,10 @@ async function authenticateGithubRunner(oidc: string) {
   } catch {
     throw new Error("INVALID_GITHUB_OIDC");
   }
-
-  if (String(payload.repository || "") !== REPOSITORY) throw new Error("REPOSITORY_NOT_ALLOWED");
-  if (String(payload.repository_id || "") !== REPOSITORY_ID) throw new Error("REPOSITORY_NOT_ALLOWED");
-  if (String(payload.actor_id || "") !== ACTOR_ID) throw new Error("ACTOR_NOT_ALLOWED");
-  if (!String(payload.workflow_ref || "").startsWith(WORKFLOW_PREFIX)) throw new Error("WORKFLOW_NOT_ALLOWED");
-  if (!["pull_request", "push", "workflow_dispatch"].includes(String(payload.event_name || ""))) {
-    throw new Error("EVENT_NOT_ALLOWED");
-  }
-  if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("RUNNER_NOT_ALLOWED");
+  validateGithubClaims(payload);
 }
 
+/** Load the one canonical isolated Testing learner and reject unsafe metadata drift. */
 async function getTestingLearner() {
   const { data: learner, error } = await admin
     .from("learners")
@@ -117,6 +118,7 @@ async function getTestingLearner() {
   return learner;
 }
 
+/** Resolve the latest published version of the fixed QA-only quiz. */
 async function latestQaQuizVersionId() {
   const { data: quiz, error: quizError } = await admin
     .from("quizzes")
@@ -140,6 +142,7 @@ async function latestQaQuizVersionId() {
   return version.id as string;
 }
 
+/** Delete only Testing attempts for the canonical QA quiz version. */
 async function clearTestingAttempts(learnerId: string) {
   const versionId = await latestQaQuizVersionId();
   const { count, error } = await admin
@@ -152,7 +155,8 @@ async function clearTestingAttempts(learnerId: string) {
   return count || 0;
 }
 
-async function acquireTestingLease(runId: string, ttlSeconds = LEASE_TTL_SECONDS) {
+/** Acquire or renew the single database-backed Testing lease. */
+async function acquireTestingLease(runId: string, ttlSeconds: number) {
   const { data, error } = await admin.rpc("flh_qa_acquire_testing_lease", {
     p_workspace_id: WORKSPACE_ID,
     p_run_id: runId,
@@ -162,6 +166,7 @@ async function acquireTestingLease(runId: string, ttlSeconds = LEASE_TTL_SECONDS
   return data === true;
 }
 
+/** Release the Testing lease only when the caller owns its run id. */
 async function releaseTestingLease(runId: string) {
   const { data, error } = await admin.rpc("flh_qa_release_testing_lease", {
     p_workspace_id: WORKSPACE_ID,
@@ -176,74 +181,23 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = body.action == null ? "legacy" : String(body.action);
     await authenticateGithubRunner(String(body.oidc_token || ""));
     const learner = await getTestingLearner();
-
-    if (action === "legacy") {
-      const runId = crypto.randomUUID();
-      if (!(await acquireTestingLease(runId, LEGACY_LEASE_TTL_SECONDS))) return response({ error: "QA_BUSY" }, 409);
-      try {
-        await clearTestingAttempts(learner.id);
-        return response({
-          session: await issueLearnerSession(learner.id),
-          learner: { display_name: learner.display_name, slug: learner.slug },
-          legacy_lock_seconds: LEGACY_LEASE_TTL_SECONDS,
-        });
-      } catch (error) {
-        try {
-          await releaseTestingLease(runId);
-        } catch {
-          // Preserve the primary failure; otherwise the short legacy lease expires automatically.
-        }
-        throw error;
-      }
-    }
-
-    if (action === "prepare") {
-      const runId = crypto.randomUUID();
-      if (!(await acquireTestingLease(runId))) return response({ error: "QA_BUSY" }, 409);
-
-      try {
-        const deletedAttempts = await clearTestingAttempts(learner.id);
-        return response({
-          session: await issueLearnerSession(learner.id),
-          learner: { display_name: learner.display_name, slug: learner.slug },
-          run_id: runId,
-          quiz_slug: QA_QUIZ_SLUG,
-          expires_in: SESSION_SECONDS,
-          deleted_attempts: deletedAttempts,
-        });
-      } catch (error) {
-        try {
-          await releaseTestingLease(runId);
-        } catch {
-          // The bounded lease expires automatically; preserve the primary failure.
-        }
-        throw error;
-      }
-    }
-
-    if (action === "cleanup") {
-      const runId = String(body.run_id || "");
-      if (!UUID_RE.test(runId)) return response({ error: "INVALID_RUN_ID" }, 400);
-      if (!(await acquireTestingLease(runId))) return response({ error: "QA_LEASE_NOT_OWNED" }, 409);
-
-      try {
-        const deletedAttempts = await clearTestingAttempts(learner.id);
-        if (!(await releaseTestingLease(runId))) throw new Error("QA_LEASE_RELEASE_FAILED");
-        return response({ ok: true, deleted_attempts: deletedAttempts });
-      } catch (error) {
-        try {
-          await releaseTestingLease(runId);
-        } catch {
-          // The bounded lease expires automatically; preserve the primary failure.
-        }
-        throw error;
-      }
-    }
-
-    return response({ error: "UNKNOWN_ACTION" }, 400);
+    const result = await executeQaAction(
+      {
+        action: normalizeQaAction(body.action),
+        runId: body.run_id,
+        learner,
+      },
+      {
+        createRunId: () => crypto.randomUUID(),
+        acquireLease: acquireTestingLease,
+        releaseLease: releaseTestingLease,
+        clearAttempts: clearTestingAttempts,
+        issueSession: issueLearnerSession,
+      },
+    );
+    return response(result.body, result.status);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "QA_AUTH_FAILED";
     const authErrors = new Set([
@@ -259,3 +213,9 @@ Deno.serve(async (req) => {
     return response({ error: authErrors.has(reason) ? "QA_AUTH_FAILED" : reason }, authErrors.has(reason) ? 401 : 500);
   }
 });
+
+// Keep these immutable-boundary constants referenced here so repository security review can see the exact scope.
+void REPOSITORY;
+void REPOSITORY_ID;
+void ACTOR_ID;
+void WORKFLOW_PREFIX;
