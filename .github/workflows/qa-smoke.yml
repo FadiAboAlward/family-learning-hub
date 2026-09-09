@@ -41,6 +41,7 @@ jobs:
           find supabase/functions/exam-v2-api -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           npx --yes esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts --format=esm --platform=neutral --outfile=/tmp/exam-v2-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/attempt-history-api/index.ts --format=esm --platform=neutral --outfile=/tmp/attempt-history-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/qa-auth/index.ts --format=esm --platform=neutral --outfile=/tmp/qa-auth-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
       - name: Math rendering architecture guard
@@ -68,6 +69,9 @@ jobs:
     needs: static-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: family-learning-hub-testing-learner
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
