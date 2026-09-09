@@ -86,6 +86,7 @@ reviews:
         Check architecture and QA documentation for consistency with the live system and with AGENTS.md.
         Flag claims that a feature or gate is enforced when it is only advisory or not actually configured.
         Preserve the seven-day temporary Playwright screenshot evidence policy and the rule against committing transient QA screenshots to Git history.
+        Preserve the tool-routing distinction: automated Playwright in GitHub Actions remains required deterministic CI, while the dedicated Family Learning Hub Playwright MCP is a fallback for browser-dependent verification when no direct structured tool can prove or perform the same task.
 
     - path: "AGENTS.md"
       instructions: |
