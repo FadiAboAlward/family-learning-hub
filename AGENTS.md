@@ -9,6 +9,8 @@ Before making a non-trivial product, data, security, quiz, exam, learner, parent
 - `docs/architecture.md` — product and data architecture source of truth.
 - `docs/qa-policy.md` — testing, review, merge, deployment, and production-verification policy.
 - `docs/math-rendering-invariant.md` — mandatory RTL/LTR math-rendering invariant for learner-facing math surfaces.
+- `docs/paper-exam-workflow.md` — canonical workflow for generating, approving, printing, scanning, and ingesting paper exams into learner history.
+- `docs/pdf-generation-standard.md` — canonical fixed-layout PDF authoring and render-QA standard for exams, worksheets, and other printable artifacts.
 
 If implementation and documentation disagree, do not silently choose one. Verify the live architecture and update the stale side in the same change when appropriate.
 
