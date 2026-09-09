@@ -1,9 +1,9 @@
 name: PR Public Preview
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
       name: github-pages
       url: ${{ steps.meta.outputs.preview_url }}
     steps:
-      - name: Checkout main site
+      - name: Checkout trusted main site
         uses: actions/checkout@v4
         with:
           ref: main
@@ -42,10 +42,11 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          rm -rf staging
-          mkdir -p staging/pr-preview
-          cp -a main-site/. staging/
-          rm -rf staging/.git
+          SITE_DIR="${RUNNER_TEMP}/family-learning-hub-pages"
+          rm -rf "${SITE_DIR}"
+          mkdir -p "${SITE_DIR}/pr-preview"
+
+          git -C main-site archive HEAD | tar -x -C "${SITE_DIR}"
 
           curl -fsSL \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -58,11 +59,12 @@ jobs:
             [ -n "${pr}" ] || continue
             echo "Building preview for PR #${pr} at ${sha}"
             git -C main-site fetch --no-tags origin "${sha}"
-            mkdir -p "staging/pr-preview/pr-${pr}"
-            git -C main-site archive FETCH_HEAD | tar -x -C "staging/pr-preview/pr-${pr}"
+            mkdir -p "${SITE_DIR}/pr-preview/pr-${pr}"
+            git -C main-site archive FETCH_HEAD | tar -x -C "${SITE_DIR}/pr-preview/pr-${pr}"
           done
 
-          touch staging/.nojekyll
+          touch "${SITE_DIR}/.nojekyll"
+          echo "site_dir=${SITE_DIR}" >> "$GITHUB_OUTPUT"
           if [ -n "${PR_NUMBER:-}" ]; then
             echo "preview_url=https://fadiaboalward.github.io/family-learning-hub/pr-preview/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
           else
@@ -75,14 +77,14 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: staging
+          path: ${{ steps.meta.outputs.site_dir }}
 
       - name: Deploy Pages with PR previews
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Verify current PR preview
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
         shell: bash
         env:
           PREVIEW_URL: ${{ steps.meta.outputs.preview_url }}
@@ -99,5 +101,5 @@ jobs:
           exit 1
 
       - name: Publish preview URL
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
         run: echo "### PR Preview\n${{ steps.meta.outputs.preview_url }}?qa=1#student" >> "$GITHUB_STEP_SUMMARY"
