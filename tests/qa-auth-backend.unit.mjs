@@ -7,6 +7,7 @@ import {
   QA_QUIZ_SLUG,
   REPOSITORY,
   REPOSITORY_ID,
+  SESSION_SECONDS,
   WORKFLOW_PREFIX,
   executeQaAction,
   validateGithubClaims,
@@ -105,6 +106,7 @@ assert.equal(legacy.status, 200);
 assert.equal(legacy.body.run_id, undefined);
 assert.equal(legacy.body.legacy_lock_seconds, LEGACY_LEASE_TTL_SECONDS);
 assert.equal(lastLeaseTtl, LEGACY_LEASE_TTL_SECONDS);
+assert.ok(LEGACY_LEASE_TTL_SECONDS >= SESSION_SECONDS, 'legacy lease must cover the full legacy session lifetime');
 assert.equal(leaseOwner, generatedIds[0]);
 
 const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8');
