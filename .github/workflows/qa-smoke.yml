@@ -49,6 +49,19 @@ jobs:
         run: node tests/math-direction.mjs
       - name: Exam API unit tests
         run: node tests/exam-v2-api.mjs
+      - name: Convention-based unit test suite
+        shell: bash
+        run: |
+          shopt -s nullglob
+          unit_tests=(tests/*.unit.mjs)
+          if (( ${#unit_tests[@]} == 0 )); then
+            echo "No convention-based unit tests found."
+            exit 0
+          fi
+          for test_file in "${unit_tests[@]}"; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
 
   browser-smoke:
     name: Browser smoke
