@@ -17,6 +17,8 @@ const GITHUB_REPOSITORY_ID = "1343709875";
 const GITHUB_ACTOR_ID = "320162789";
 const GITHUB_WORKFLOW_PREFIX = `${GITHUB_REPOSITORY}/.github/workflows/qa-smoke.yml@`;
 const SESSION_SECONDS = 10 * 60;
+const LEASE_TTL_SECONDS = SESSION_SECONDS + 5 * 60;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const githubKeys = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
 
 function json(data: unknown, status = 200) {
@@ -148,6 +150,25 @@ async function clearTestingAttempts(learnerId: string) {
   return count || 0;
 }
 
+async function acquireTestingLease(runId: string) {
+  const { data, error } = await admin.rpc("flh_qa_acquire_testing_lease", {
+    p_workspace_id: WORKSPACE_ID,
+    p_run_id: runId,
+    p_ttl_seconds: LEASE_TTL_SECONDS,
+  });
+  if (error) throw new Error("QA_LEASE_ACQUIRE_FAILED");
+  return data === true;
+}
+
+async function releaseTestingLease(runId: string) {
+  const { data, error } = await admin.rpc("flh_qa_release_testing_lease", {
+    p_workspace_id: WORKSPACE_ID,
+    p_run_id: runId,
+  });
+  if (error) throw new Error("QA_LEASE_RELEASE_FAILED");
+  return data === true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
 
@@ -158,25 +179,59 @@ Deno.serve(async (req: Request) => {
     const learner = await getTestingLearner();
 
     if (action === "prepare") {
-      const deletedAttempts = await clearTestingAttempts(learner.id);
-      const session = await issueLearnerSession(learner.id);
-      return json({
-        ok: true,
-        learner: {
-          display_name: learner.display_name,
-          slug: learner.slug,
-          is_test: true,
-        },
-        quiz_slug: QA_QUIZ_SLUG,
-        session,
-        expires_in: SESSION_SECONDS,
-        deleted_attempts: deletedAttempts,
-      });
+      const runId = crypto.randomUUID();
+      if (!(await acquireTestingLease(runId))) {
+        return json({ error: "QA_BUSY" }, 409);
+      }
+
+      try {
+        const deletedAttempts = await clearTestingAttempts(learner.id);
+        const session = await issueLearnerSession(learner.id);
+        return json({
+          ok: true,
+          learner: {
+            display_name: learner.display_name,
+            slug: learner.slug,
+            is_test: true,
+          },
+          quiz_slug: QA_QUIZ_SLUG,
+          run_id: runId,
+          session,
+          expires_in: SESSION_SECONDS,
+          lease_ttl_seconds: LEASE_TTL_SECONDS,
+          deleted_attempts: deletedAttempts,
+        });
+      } catch (error) {
+        try {
+          await releaseTestingLease(runId);
+        } catch {
+          // The lease expires automatically; preserve the primary error.
+        }
+        throw error;
+      }
     }
 
     if (action === "cleanup") {
-      const deletedAttempts = await clearTestingAttempts(learner.id);
-      return json({ ok: true, deleted_attempts: deletedAttempts });
+      const runId = String(body?.run_id || "");
+      if (!UUID_RE.test(runId)) return json({ error: "INVALID_RUN_ID" }, 400);
+      if (!(await acquireTestingLease(runId))) {
+        return json({ error: "QA_LEASE_NOT_OWNED" }, 409);
+      }
+
+      try {
+        const deletedAttempts = await clearTestingAttempts(learner.id);
+        if (!(await releaseTestingLease(runId))) {
+          throw new Error("QA_LEASE_RELEASE_FAILED");
+        }
+        return json({ ok: true, deleted_attempts: deletedAttempts });
+      } catch (error) {
+        try {
+          await releaseTestingLease(runId);
+        } catch {
+          // The lease expires automatically; preserve the primary error.
+        }
+        throw error;
+      }
     }
 
     return json({ error: "UNKNOWN_ACTION" }, 400);
