@@ -6,7 +6,7 @@ It applies to Aya, Mohammad, and future learners. Do not hard-code learner-speci
 
 ## Goal
 
-Allow ChatGPT to create a print-ready paper exam, let the learner solve it away from the tablet, then ingest the solved paper back into the existing Family Learning Hub backend so the attempt appears in normal progress/history/reporting.
+Allow ChatGPT to create a print-ready paper exam, let the learner solve it away from the tablet, then ingest the solved paper back into the Family Learning Hub backend so the attempt can appear in normal progress/history/reporting **once the required version-bound server ingestion path described below is implemented and deployed**.
 
 The paper is an alternate **delivery surface**, not a separate grading system.
 
@@ -39,7 +39,7 @@ The same code must be present in:
 - the answer key,
 - the canonical question data used to generate the exam,
 - the backend quiz/version metadata when the paper is approved,
-- the learner attempt metadata when the solved paper is ingested.
+- the learner attempt metadata when solved-paper ingestion is supported and performed.
 
 The code is the bridge between the physical pages and the backend record.
 
@@ -49,7 +49,7 @@ The code is the bridge between the physical pages and the backend record.
 
 Before a paper is approved/published:
 
-1. Check the backend for an existing approved paper with the same `paper_model_code`.
+1. Check the backend for an existing approved paper with the same `paper_model_code` in the same workspace.
 2. If the code already exists, **do not reuse it**. Increment/change the revision component and generate a new code.
 3. Publish the exact approved question package to one immutable `quiz_version_id`.
 4. Store the binding in `quiz_versions.settings.paper_exam` (or an equivalent canonical version-level JSON object if the schema later changes) with at least:
@@ -60,27 +60,51 @@ Before a paper is approved/published:
    - `approved_at`
 5. `paper_question_map` must map each printed question number to the exact backend `question_id` / `question_code` and option positions used by that approved quiz version.
 6. `paper_content_hash` must be calculated from the approved canonical question package, not from the rendered PDF bytes. It is used to detect accidental content drift.
-7. Keep `paper_question_count` version-bound in `quiz_versions.settings.paper_exam`. The paper-specific start operation must read this count from the exact approved `quiz_version_id` and use it for queue construction. Do not rely on `quizzes.delivery_config.exam.question_count` for paper ingestion unless every paper version under that quiz is guaranteed to have one immutable count. Never fall back to the generic default (currently 10) for a paper exam.
+7. Keep `paper_question_count` version-bound in `quiz_versions.settings.paper_exam`. A future paper-specific start operation must read this count from the exact approved `quiz_version_id` and use it for queue construction. Never fall back to the generic default count for a paper exam.
 
 After approval/printing:
 
 - Never resolve a scanned paper to the **latest** quiz version.
-- Resolve `paper_model_code` to **exactly one** approved `quiz_version_id`.
-- If the lookup returns zero versions or more than one version, stop ingestion and resolve the data-integrity problem; never guess.
-- Start the learner attempt against that exact bound `quiz_version_id`.
-- Copy `paper_model_code`, the bound `paper_quiz_version_id`, and `paper_content_hash` into `quiz_attempts.metadata` for provenance.
+- Resolve `paper_model_code` only within the correct workspace and to **exactly one** approved `quiz_version_id`.
+- If the lookup returns zero versions or more than one version, stop; never guess.
+- Any future attempt must be started against that exact bound `quiz_version_id`.
+- Copy `paper_model_code`, the bound `paper_quiz_version_id`, and `paper_content_hash` into `quiz_attempts.metadata` when ingestion is eventually performed.
 - If the canonical package hash no longer matches the approved `paper_content_hash`, block ingestion until the discrepancy is resolved.
 - Any content change after approval requires a new quiz version **and a new `paper_model_code` revision**.
 
 This binding rule prevents a photographed paper from being attached to the wrong model or graded against a newer/different quiz version.
 
-### Current Exam V2 compatibility requirement
+## Current production support status
 
-The generic `flh_exam_start` path historically resolves by quiz slug and may select the latest published version. That generic latest-version behavior is **not sufficient for paper ingestion**.
+**Paper creation, PDF generation, approval, printing, and later answer transcription are supported as an orchestration workflow. Automatic solved-paper ingestion into Exam V2 is not yet a supported production operation.**
 
-Before the first production paper ingestion, the server-side start operation used by ChatGPT must be version-bound: it must accept or otherwise transactionally resolve the approved immutable `quiz_version_id`, build the queue only from that version, read `paper_question_count` from that exact version's paper metadata, and persist the matching paper provenance on the attempt. If a version-bound start path is not available, do not ingest the paper through the generic latest-version path.
+The current generic `flh_exam_start` path resolves by quiz slug and can select the latest published version. It does not provide the required workspace-scoped `paper_model_code` resolution, immutable `quiz_version_id` start contract, or server-side paper queue gate. Therefore:
 
-The created queue must exactly match both the approved `paper_question_count` and `paper_question_map` from the bound version. Any mismatch blocks ingestion.
+- do **not** create a real paper attempt through the generic latest-version start path,
+- do **not** call `flh_exam_save_answer` for transcribed paper answers until the required server gate exists,
+- do **not** claim that a photographed paper has been ingested into learner history merely because its answers were read successfully.
+
+Until the version-bound server path is implemented and deployed, ChatGPT may prepare the exact canonical answer transcription and validation package, but must stop before creating/saving a production attempt.
+
+## Required server-side paper start gate
+
+Before the first production paper ingestion, implement a dedicated server-side operation for paper attempts. It may be an RPC or Edge Function, but it must enforce the following atomically on the server:
+
+1. Accept the current `workspace_id`, learner identity, exact approved `quiz_version_id`, and `paper_model_code` (or resolve the code to that version within the same workspace transactionally).
+2. Verify that the version contains approved `settings.paper_exam` metadata and that the stored `paper_model_code`, `paper_content_hash`, `paper_question_count`, and `paper_question_map` are internally valid.
+3. Create the attempt against **that exact `quiz_version_id` only**; never select a latest published version.
+4. Build the question queue only from that exact approved version.
+5. Before the attempt is allowed to accept answers, verify server-side that:
+   - queue count equals `paper_question_count`,
+   - every queued question matches the expected `paper_question_map`,
+   - no unexpected question is present,
+   - every mapped printed question is present exactly once.
+6. Persist a server-controlled marker such as `paper_queue_validated = true` together with `paper_model_code`, `paper_quiz_version_id`, and `paper_content_hash` in attempt metadata only after the gate passes.
+7. On any mismatch, reject the operation and perform transaction rollback or explicit cleanup so no usable partial paper attempt/queue remains.
+8. The server save-answer path must reject writes for a paper-tagged attempt unless `paper_queue_validated = true`, and must reject any question id not present in that validated paper mapping.
+9. Submission/grading must remain bound to the same immutable quiz version and validated queue.
+
+This gate is a prerequisite for production paper ingestion. A client-side or ChatGPT-side count check alone is not sufficient.
 
 ## Fixed-spec rule
 
@@ -154,7 +178,7 @@ The PDF and the backend quiz must be generated from the **same canonical questio
 
 Creating a draft paper does **not** create a learner attempt.
 
-Recommended sequence:
+Recommended sequence with the current production capability:
 
 1. Generate the canonical question package.
 2. Produce and visually QA the paper PDF.
@@ -162,15 +186,13 @@ Recommended sequence:
 4. Allocate a unique `paper_model_code`, verify it is unused, publish the same exact questions as one versioned backend quiz/exam pool, and store the immutable model-to-version binding, `paper_content_hash`, `paper_question_count`, and `paper_question_map` on that exact quiz version.
 5. Print and solve on paper.
 6. User uploads/photos the solved pages.
-7. Identify the model by `paper_model_code`, resolve it to exactly one bound `quiz_version_id`, verify the content hash and version-bound question count, and transcribe answers by printed question number using the stored question map.
-8. Create a normal server-authoritative Exam attempt against that exact approved quiz version using a version-bound start path; do not fall back to a generic latest-version lookup.
-9. Verify the created queue contains exactly the approved printed question count and mapped questions, then save each response using the mapped backend question id/option position.
-10. Submit through the existing server-authoritative exam grading path.
-11. Verify the attempt appears in learner history/reporting and review displays the same questions/explanations.
+7. Identify the model by `paper_model_code`, resolve it within the correct workspace to exactly one bound `quiz_version_id`, verify the content hash and version-bound question count, and transcribe answers by printed question number using the stored question map.
+8. **Current stop point:** save the validated transcription package for review, but do not create/save a real Exam attempt until the required server-side paper start gate is implemented and deployed.
+9. After that server capability exists, start the attempt through the dedicated version-bound paper path, confirm its server validation marker, save each mapped response, submit through the existing grading path, and verify history/review output.
 
-## Existing backend bridge
+## Existing backend pieces and missing bridge
 
-The current backend already has the core storage and grading pieces required for manual paper ingestion without adding a separate paper-exam product mode:
+The current backend already has core storage and grading pieces that can be reused later:
 
 - `quiz_versions`
 - `quiz_questions`
@@ -179,55 +201,55 @@ The current backend already has the core storage and grading pieces required for
 - `quiz_attempts`
 - `quiz_attempt_question_queue`
 - `quiz_attempt_answers`
-- `flh_exam_start`
 - `flh_exam_save_answer`
 - `flh_exam_submit`
 
-The current schema also provides JSONB storage suitable for the paper provenance/binding without a new table:
+The current schema also provides JSONB storage suitable for paper provenance/binding:
 
 - `quiz_versions.settings`
 - `quiz_attempts.metadata`
 
-The robust bridge is therefore:
+However, these pieces **do not by themselves make production paper ingestion safe or supported**. The missing bridge is the dedicated server-side, workspace-scoped, version-bound paper start/queue-validation operation defined above, plus save-answer enforcement for validated paper attempts.
 
-- publish the approved paper as a normal versioned quiz whose Exam pool contains the exact paper questions,
-- store the unique paper model code, canonical package hash, question map, approval metadata, and printed question count on that exact quiz version,
-- after the paper is solved, resolve the code to that exact version and use a version-bound server start operation for that learner,
-- have that version-bound start operation read `paper_question_count` from the bound version and construct the queue only from that version,
-- verify the queue contains exactly the mapped printed questions before saving answers,
-- save the transcribed paper choices into that attempt, then submit it normally,
+Once that bridge exists, the intended flow is:
+
+- publish the approved paper as a normal immutable quiz version whose Exam pool contains the exact paper questions,
+- store the unique paper model code, canonical package hash, question map, approval metadata, and printed question count on that exact version,
+- resolve the model within the correct workspace to that exact version,
+- start through the dedicated paper server path,
+- require the server-side queue gate to pass,
+- save the transcribed choices through the existing answer path only for the validated mapping,
+- submit normally through server-authoritative grading,
 - store the same paper identity/version/hash provenance on the attempt.
 
-The existing save/submit grading path remains reusable, but the generic latest-version start behavior must not be used for paper ingestion unless it has been made version-bound.
-
-This preserves server-authoritative grading and lets existing attempt history/reporting continue to work.
-
-Do **not** directly fabricate percentage/mastery/reward rows from the scanned paper when the normal server grading path can produce them.
+Do **not** directly fabricate percentage/mastery/reward rows from the scanned paper.
 
 ## Photo / scan ingestion
 
 When solved pages are uploaded:
 
 1. Confirm the printed `paper_model_code` first.
-2. Resolve it to exactly one approved `quiz_version_id`; stop if the result is missing or ambiguous.
+2. Resolve it within the correct workspace to exactly one approved `quiz_version_id`; stop if the result is missing or ambiguous.
 3. Verify the canonical question package hash matches the stored approved `paper_content_hash`.
-4. Confirm the version-bound `paper_question_count` and expected queue size both match the printed paper.
+4. Confirm the version-bound `paper_question_count` matches the printed paper.
 5. Confirm all expected pages are present.
 6. Read only the learner's marks/answers; do not reinterpret the printed question text from OCR if the canonical model is already known.
 7. Map each printed question number through the stored `paper_question_map` to its canonical backend question id.
 8. If a mark is ambiguous, ask for clarification for that question instead of guessing.
-9. Start/submit the mapped answers through the server-authoritative grading path against the bound version; stop if the created queue is not an exact match for the approved paper mapping/count.
-10. Return the learner's normal review/result link or attempt view when available.
+9. Produce the validated answer transcription package.
+10. **If the dedicated version-bound server paper path is not deployed, stop here.** Do not create an attempt or call the generic Exam start/save path.
+11. If the dedicated path is deployed, start through it, require the server-side queue validation marker, save only mapped answers, submit normally, and return the learner's normal result/review view when available.
 
 ## Reporting semantics
 
-A paper Exam attempt should be treated as `delivery_mode = exam` for normal reporting unless the product later adds a first-class paper delivery mode.
+After supported ingestion is implemented, a paper Exam attempt should be treated as `delivery_mode = exam` for normal reporting unless the product later adds a first-class paper delivery mode.
 
 Store paper-specific provenance in attempt metadata, for example:
 
 - `paper_model_code`
 - `paper_quiz_version_id`
 - `paper_content_hash`
+- `paper_queue_validated = true`
 - `paper_ingested = true`
 - `paper_ingested_at`
 - `paper_source = uploaded_photos`
@@ -238,7 +260,8 @@ Do not misrepresent paper answers as interactive tablet actions such as hints or
 
 - Never alter Aya or Mohammad's real progress merely to test this workflow.
 - Use the dedicated `test` learner for automated/exploratory QA.
-- Do not create a real learner attempt until the paper has actually been solved and the user asks for ingestion.
+- Do not create a real learner attempt until the paper has actually been solved, the user asks for ingestion, **and the dedicated server paper gate is deployed**.
 - Preserve question/version immutability once a paper model has been approved and printed; revisions get a new paper model code/version.
 - Never reuse a `paper_model_code` for different content or bind one paper code to multiple quiz versions.
 - Never ingest a paper when the approved version, version-bound question count, question mapping, or generated queue does not exactly match the printed model.
+- Never bypass the required server paper gate by using the generic latest-version Exam start path.
