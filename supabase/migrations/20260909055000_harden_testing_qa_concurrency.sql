@@ -1,19 +1,35 @@
 -- Canonical Testing learner + serialized authenticated QA lifecycle.
 -- The Testing account stays hidden from the normal child login chooser; local
--- Playwright may still authenticate it directly with the protected manual PIN.
+-- Playwright may still authenticate it directly when a protected manual PIN exists.
 
-update public.learners
-set display_name = 'Testing',
-    metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
-      'is_test', true,
-      'exclude_from_parent_metrics', true,
-      'qa_automation', true,
-      'show_on_login', false,
-      'avatar_emoji', '🧪'
-    ),
-    updated_at = now()
-where workspace_id = (select id from public.workspaces where slug = 'family-learning-hub')
-  and slug = 'test';
+insert into public.learners as learner (
+  workspace_id,
+  display_name,
+  slug,
+  grade_level,
+  is_active,
+  metadata
+)
+select
+  id,
+  'Testing',
+  'test',
+  null,
+  true,
+  jsonb_build_object(
+    'is_test', true,
+    'exclude_from_parent_metrics', true,
+    'qa_automation', true,
+    'show_on_login', false,
+    'avatar_emoji', '🧪'
+  )
+from public.workspaces
+where slug = 'family-learning-hub'
+on conflict (workspace_id, slug) do update
+set display_name = excluded.display_name,
+    is_active = true,
+    metadata = coalesce(learner.metadata, '{}'::jsonb) || excluded.metadata,
+    updated_at = now();
 
 insert into public.workspace_settings (workspace_id, key, value, description)
 select id,
@@ -30,7 +46,7 @@ select id,
          'canonical_qa_quiz_slug', 'qa-automation-core',
          'concurrency', 'single_testing_learner_lease',
          'lease_ttl_seconds', 900,
-         'local_playwright_auth', 'manual_pin_direct_login',
+         'local_playwright_auth', 'manual_pin_direct_login_when_configured',
          'real_learner_data_policy', 'never_use_aya_or_mohammad_for_automated_authenticated_qa'
        ),
        'Canonical isolated learner used by automated authenticated QA and local Playwright checks.'
@@ -49,6 +65,9 @@ create table if not exists private.qa_run_leases (
   expires_at timestamptz not null,
   primary key (workspace_id, lease_key)
 );
+
+alter table private.qa_run_leases enable row level security;
+revoke all on table private.qa_run_leases from public, anon, authenticated;
 
 create or replace function public.flh_qa_acquire_testing_lease(
   p_workspace_id uuid,
