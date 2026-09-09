@@ -16,8 +16,15 @@ for (const token of [
   'QA_QUIZ_SLUG = "qa-automation-core"',
   '.eq("learner_id", learnerId)',
   '.eq("quiz_version_id", versionId)',
+  'body.action == null ? "legacy"',
+  'if (action === "legacy")',
 ]) {
   if (!auth.includes(token)) throw new Error(`qa-auth invariant missing: ${token}`);
+}
+
+const legacyBlock = auth.slice(auth.indexOf('if (action === "legacy")'), auth.indexOf('if (action === "prepare")'));
+if (!legacyBlock.includes('issueLearnerSession') || legacyBlock.includes('acquireTestingLease')) {
+  throw new Error('Legacy compatibility path must issue a session without taking the Testing lease.');
 }
 
 if (!workflow.includes('supabase/functions/qa-auth/index.ts')) {
@@ -37,4 +44,4 @@ for (const token of [
   if (!migration.includes(token)) throw new Error(`QA migration invariant missing: ${token}`);
 }
 
-console.log('qa-auth backend security regression passed.');
+console.log('qa-auth backend security and rollout regression passed.');
