@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { pathToFileURL } from 'node:url';
 
 const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
 const QA_AUTH_URL = 'https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/qa-auth';
@@ -60,82 +60,117 @@ async function cleanupQaRun(runId) {
   return payload;
 }
 
-const prepared = await prepareQaRun();
-if (!prepared.session || prepared.learner?.slug !== 'test' || !prepared.run_id) {
-  throw new Error('QA auth returned invalid Testing learner session or run ownership');
-}
-if (prepared.quiz_slug !== QA_QUIZ_SLUG) {
-  throw new Error('QA auth returned unexpected canonical quiz');
-}
+/**
+ * Execute one owned QA lifecycle and always clean up a returned run ID, even when
+ * validation or the browser flow fails. The primary failure takes precedence over
+ * a cleanup failure so the original regression remains visible.
+ */
+export async function runOwnedQaLifecycle({ prepare, validate, run, cleanup }) {
+  let prepared;
+  let ownedRunId = null;
+  let primaryError = null;
+  let cleanupError = null;
 
-let browser;
-let primaryError = null;
-let cleanupError = null;
-
-try {
-  browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-  const errors = [];
-  page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
-  page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
-
-  await page.addInitScript(value => localStorage.setItem('learner_session', value), prepared.session);
-  await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
-
-  const qaProgram = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
-  await qaProgram.waitFor({ state: 'visible', timeout: 10000 });
-  await qaProgram.click();
-  const qaBook = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
-  await qaBook.waitFor({ state: 'visible', timeout: 10000 });
-  await qaBook.click();
-
-  const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
-  await learningButton.waitFor({ state: 'visible', timeout: 10000 });
-  await learningButton.click();
-  for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-    await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('.flh-learn-answer').first().click();
-    await page.locator('#flhConfirmAnswer').click();
-    const next = page.locator('#flhLearnNext');
-    await next.waitFor({ state: 'visible', timeout: 10000 });
-    await next.click();
-  }
-
-  await page.waitForFunction(
-    () => document.querySelector('#learnHome') || document.querySelector('#learnRetryFinish'),
-    null,
-    { timeout: 30000 },
-  );
-  const retryFinish = page.locator('#learnRetryFinish');
-  if (await retryFinish.isVisible().catch(() => false)) await retryFinish.click();
-  await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 });
-
-  await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
-  for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-    await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-    await page.locator('.exam-v3-answer').first().click();
-    if (i < QA_QUESTION_COUNT - 1) await page.locator('#examNext').click();
-  }
-  const submit = page.locator('#examSubmit');
-  await page.waitForFunction(() => {
-    const button = document.querySelector('#examSubmit');
-    return button && !button.disabled;
-  }, null, { timeout: 10000 });
-  await submit.click();
-  await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
-
-  if (errors.length) throw new Error(errors.join('; '));
-  console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode.');
-} catch (error) {
-  primaryError = error;
-} finally {
-  if (browser) await browser.close().catch(() => {});
   try {
-    await cleanupQaRun(prepared.run_id);
+    prepared = await prepare();
+    ownedRunId = prepared?.run_id || null;
+    await validate(prepared);
+    await run(prepared);
   } catch (error) {
-    cleanupError = error;
+    primaryError = error;
+  } finally {
+    if (ownedRunId) {
+      try {
+        await cleanup(ownedRunId);
+      } catch (error) {
+        cleanupError = error;
+      }
+    }
   }
+
+  if (primaryError) throw primaryError;
+  if (cleanupError) throw cleanupError;
+  return prepared;
 }
 
-if (primaryError) throw primaryError;
-if (cleanupError) throw cleanupError;
+/** Run the authenticated Testing learner browser flow against the real backend. */
+async function main() {
+  const { chromium } = await import('playwright');
+
+  await runOwnedQaLifecycle({
+    prepare: prepareQaRun,
+    validate: async prepared => {
+      if (!prepared.session || prepared.learner?.slug !== 'test' || !prepared.run_id) {
+        throw new Error('QA auth returned invalid Testing learner session or run ownership');
+      }
+      if (prepared.quiz_slug !== QA_QUIZ_SLUG) {
+        throw new Error('QA auth returned unexpected canonical quiz');
+      }
+    },
+    run: async prepared => {
+      let browser;
+      try {
+        browser = await chromium.launch({ headless: true });
+        const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+        const errors = [];
+        page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+        page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
+
+        await page.addInitScript(value => localStorage.setItem('learner_session', value), prepared.session);
+        await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
+
+        const qaProgram = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
+        await qaProgram.waitFor({ state: 'visible', timeout: 10000 });
+        await qaProgram.click();
+        const qaBook = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
+        await qaBook.waitFor({ state: 'visible', timeout: 10000 });
+        await qaBook.click();
+
+        const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
+        await learningButton.waitFor({ state: 'visible', timeout: 10000 });
+        await learningButton.click();
+        for (let i = 0; i < QA_QUESTION_COUNT; i++) {
+          await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+          await page.locator('.flh-learn-answer').first().click();
+          await page.locator('#flhConfirmAnswer').click();
+          const next = page.locator('#flhLearnNext');
+          await next.waitFor({ state: 'visible', timeout: 10000 });
+          await next.click();
+        }
+
+        await page.waitForFunction(
+          () => document.querySelector('#learnHome') || document.querySelector('#learnRetryFinish'),
+          null,
+          { timeout: 30000 },
+        );
+        const retryFinish = page.locator('#learnRetryFinish');
+        if (await retryFinish.isVisible().catch(() => false)) await retryFinish.click();
+        await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 });
+
+        await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
+        for (let i = 0; i < QA_QUESTION_COUNT; i++) {
+          await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+          await page.locator('.exam-v3-answer').first().click();
+          if (i < QA_QUESTION_COUNT - 1) await page.locator('#examNext').click();
+        }
+        const submit = page.locator('#examSubmit');
+        await page.waitForFunction(() => {
+          const button = document.querySelector('#examSubmit');
+          return button && !button.disabled;
+        }, null, { timeout: 10000 });
+        await submit.click();
+        await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
+
+        if (errors.length) throw new Error(errors.join('; '));
+        console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode.');
+      } finally {
+        if (browser) await browser.close().catch(() => {});
+      }
+    },
+    cleanup: cleanupQaRun,
+  });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}
