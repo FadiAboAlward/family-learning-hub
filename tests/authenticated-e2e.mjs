@@ -9,6 +9,7 @@ const QA_QUESTION_COUNT = 3;
 const QA_BUSY_RETRIES = 20;
 const QA_BUSY_RETRY_MS = 10000;
 
+/** Request a GitHub Actions OIDC token scoped to the Family Learning Hub QA audience. */
 async function githubOidcToken() {
   const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
   const bearer = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
@@ -23,6 +24,7 @@ async function githubOidcToken() {
   return payload.value;
 }
 
+/** Call qa-auth with an explicit owned lifecycle action and optional run identifier. */
 async function requestQaAuth(action, runId = null) {
   const response = await fetch(QA_AUTH_URL, {
     method: 'POST',
@@ -37,6 +39,7 @@ async function requestQaAuth(action, runId = null) {
   return { response, payload };
 }
 
+/** Acquire the owned Testing QA session, retrying while another valid lease is active. */
 async function prepareQaRun() {
   for (let attempt = 0; attempt < QA_BUSY_RETRIES; attempt++) {
     const { response, payload } = await requestQaAuth('prepare');
@@ -50,6 +53,7 @@ async function prepareQaRun() {
   throw new Error('QA auth prepare retries exhausted');
 }
 
+/** Clear canonical Testing QA attempts and release the owned run lease. */
 async function cleanupQaRun(runId) {
   const { response, payload } = await requestQaAuth('cleanup', runId);
   if (!response.ok) throw new Error(`QA auth cleanup failed: ${response.status} ${payload.error || ''}`.trim());
