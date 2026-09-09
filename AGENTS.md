@@ -12,6 +12,14 @@ Before making a non-trivial product, data, security, quiz, exam, learner, parent
 
 If implementation and documentation disagree, do not silently choose one. Verify the live architecture and update the stale side in the same change when appropriate.
 
+## Tool routing and Playwright scope
+
+Use the fastest reliable structured tool for the job. Prefer repository/GitHub operations, APIs, CLIs, MCPs/plugins/connectors, database/backend tools, and GitHub Actions over interactive browser automation when they can prove or perform the same action more directly.
+
+The dedicated **Family Learning Hub Playwright** MCP is a browser QA/fallback tool, not the default operational tool for the project. Use it when the behavior being verified is genuinely browser-rendered or interaction-dependent, or when no suitable structured API/MCP/plugin/CLI exists. Do not use it for repository edits, settings changes, deployment checks, data inspection, or CI operations when a direct structured tool is available.
+
+This rule does **not** reduce automated Playwright coverage in GitHub Actions. The repository's deterministic Playwright browser smoke remains part of the required QA Gate. If live browser interaction is truly required for Family Learning Hub, use the dedicated Family Learning Hub Playwright rather than Browserbase or a generic browser service.
+
 ## Test selection is part of implementation
 
 For every behavior change, explicitly choose the smallest useful test layer(s). Do not write a unit test for every function mechanically.

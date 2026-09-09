@@ -29,6 +29,16 @@ In short:
 
 Partial completion must be described accurately. For example, say "merged but not yet verified in production" instead of "done".
 
+## Execution-tool routing
+
+Use the fastest reliable structured tool for operational work. Prefer repository/GitHub operations, APIs, CLIs, MCPs/plugins/connectors, Supabase/backend tools, and GitHub Actions over interactive browser automation when they can perform or prove the same action directly.
+
+Automated Playwright inside GitHub Actions is a different layer from the dedicated **Family Learning Hub Playwright** MCP. The deterministic Playwright browser smoke remains required CI coverage and should continue to run automatically on pull requests.
+
+The dedicated Family Learning Hub Playwright MCP is a browser QA/fallback tool. Use it for browser-rendered or interaction-dependent verification, targeted live UI troubleshooting, or when no suitable structured API/MCP/plugin/CLI exists. Do not use it for routine repository edits, settings changes, deployment/status checks, data inspection, or CI operations when a direct structured tool is available. If Family Learning Hub truly requires live browser interaction, use the dedicated Family Learning Hub Playwright rather than Browserbase or a generic browser service.
+
+Production verification should use the lowest-cost reliable evidence source: direct deployment/HTTP/API/database checks for non-visual facts, and browser verification only for claims that depend on actual rendering or user interaction.
+
 ## Required deterministic QA
 
 Every pull request targeting `main` must run the GitHub Actions workflow `QA Gate`.
@@ -192,7 +202,7 @@ For a database migration, record:
 
 ## Production verification
 
-Repository success and production success are separate states.
+Repository success and production success are separate states. Choose the fastest reliable verification layer for the production fact being checked. Use deployment status, HTTP/assets, APIs, Supabase/database inspection, or other structured tools first for non-visual facts. Use Family Learning Hub Playwright only when the production claim depends on actual browser rendering/interaction or when structured checks cannot prove it.
 
 After merge, verify whichever production systems the change touches. Examples:
 
