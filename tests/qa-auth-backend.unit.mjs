@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { runOwnedQaLifecycle } from './authenticated-e2e.mjs';
 import {
   ACTOR_ID,
   LEASE_TTL_SECONDS,
@@ -103,6 +104,21 @@ const missingAction = await executeQaAction({ action: null, learner }, deps);
 assert.deepEqual(missingAction, { status: 400, body: { error: 'UNKNOWN_ACTION' } });
 assert.equal(leaseOwner, null);
 
+const validationFailureRunId = '44444444-4444-4444-8444-444444444444';
+let browserFlowRan = false;
+const lifecycleCleanupIds = [];
+await assert.rejects(
+  () => runOwnedQaLifecycle({
+    prepare: async () => ({ run_id: validationFailureRunId }),
+    validate: async () => { throw new Error('synthetic validation failure'); },
+    run: async () => { browserFlowRan = true; },
+    cleanup: async runId => { lifecycleCleanupIds.push(runId); },
+  }),
+  /synthetic validation failure/,
+);
+assert.equal(browserFlowRan, false, 'browser flow must not run after validation failure');
+assert.deepEqual(lifecycleCleanupIds, [validationFailureRunId], 'owned run must be cleaned after validation failure');
+
 const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
 assert.match(workflow, /^concurrency:\n  group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n  cancel-in-progress: false$/m, 'workflow-level cancellation must preserve cleanup');
@@ -120,10 +136,10 @@ assert.doesNotMatch(logic, /LEGACY_LEASE_TTL_SECONDS|normalized === 'legacy'/);
 
 const e2e = fs.readFileSync('tests/authenticated-e2e.mjs', 'utf8');
 assert.match(e2e, /requestQaAuth\('prepare'\)/);
-assert.match(e2e, /!prepared\.run_id/);
+assert.match(e2e, /ownedRunId = prepared\?\.run_id \|\| null/);
 assert.match(e2e, /finally \{/);
-assert.match(e2e, /cleanupQaRun\(prepared\.run_id\)/);
+assert.match(e2e, /await cleanup\(ownedRunId\)/);
 assert.match(e2e, /payload\.error === 'QA_BUSY'/);
 assert.doesNotMatch(e2e, /v1 compatibility|ownsRun/);
 
-console.log('qa-auth owned lifecycle, behavioral security, serialization, and migration guards passed.');
+console.log('qa-auth owned lifecycle, behavioral security, serialization, cleanup regression, and migration guards passed.');
