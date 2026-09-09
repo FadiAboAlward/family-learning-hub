@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   static-quality:
@@ -69,6 +69,9 @@ jobs:
     needs: static-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: family-learning-hub-testing-learner
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
