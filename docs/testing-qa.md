@@ -34,13 +34,27 @@ The manual Testing PIN is a fallback credential for human/local browser QA. It m
 
 The database stores only the PIN hash. The plaintext PIN must be treated as a secret and supplied only to an authorized local Playwright/browser session when needed.
 
-### 2. GitHub Actions / required CI QA
+### 2. Planned GitHub Actions / required CI QA
 
 GitHub Actions must never use the Testing PIN.
 
-The `qa-smoke.yml` workflow obtains a GitHub OIDC token with audience `family-learning-hub-qa`. The `qa-session-api` validates the exact approved repository/workflow/runner boundary and exchanges that OIDC token for a short-lived learner session for `Testing`.
+This first rollout introduces the isolated Testing identity, the OIDC-authenticated `qa-session-api`, and the serialized Testing lease. The required `qa-smoke.yml` workflow does **not** use that live authenticated path yet; workflow integration is a separate follow-up after the migration and Edge Function are deployed and verified.
 
-The short-lived session is then used by the real-backend Playwright smoke test against Production APIs.
+Once that follow-up is merged, `qa-smoke.yml` will obtain a GitHub OIDC token with audience `family-learning-hub-qa`. The `qa-session-api` will validate the exact approved repository/workflow/runner boundary and exchange that OIDC token for a short-lived learner session for `Testing`.
+
+The short-lived session will then be used by the real-backend Playwright smoke test against Production APIs.
+
+## Serialized Testing lifecycle
+
+Only one authenticated GitHub QA run may own the shared Testing learner at a time.
+
+- `prepare` acquires a database lease and returns a server-generated `run_id` with the short-lived learner session.
+- A second overlapping `prepare` receives `409 QA_BUSY` and must not delete or mutate the active run's Testing attempts.
+- `cleanup` must present the same `run_id`; a different run cannot delete the active run's attempts or release its lease.
+- Cleanup remains limited to Testing plus the canonical QA quiz.
+- The lease has a bounded expiry so a crashed runner cannot block Testing indefinitely.
+
+The follow-up real-backend smoke test must preserve the returned `run_id` from `prepare` and send it back to `cleanup` in a `finally` path.
 
 ## Canonical real-backend regression
 
@@ -65,7 +79,7 @@ The authenticated Testing regression should cover, where supported by the curren
 13. submit the exam;
 14. verify the review/result state loads;
 15. record backend/browser failures without exposing credentials;
-16. clean up only Testing attempts for the canonical QA quiz.
+16. clean up only Testing attempts for the canonical QA quiz using the owning `run_id`.
 
 ## Cleanup boundary
 
@@ -73,7 +87,8 @@ Automated cleanup may delete attempts only when all of these are true:
 
 - workspace is the Family Learning Hub workspace;
 - learner is the dedicated `test` learner;
-- quiz is the canonical QA quiz configured by the QA service.
+- quiz is the canonical QA quiz configured by the QA service;
+- caller owns the active Testing QA lease identified by the server-issued `run_id`.
 
 No automated cleanup path may accept an arbitrary learner id supplied by a caller. It must never delete Aya or Mohammad attempts.
 
@@ -83,7 +98,7 @@ The project uses complementary layers:
 
 1. **Static quality** — syntax, runtime guards, architecture invariants, security regressions.
 2. **Mocked/local browser smoke** — deterministic frontend and interaction behavior.
-3. **Authenticated Testing real-backend smoke** — the reviewed PR frontend against the real Production backend using the isolated Testing learner.
+3. **Planned authenticated Testing real-backend smoke** — after the OIDC endpoint is deployed and verified, a follow-up integrates the reviewed PR frontend against the real Production backend using the isolated Testing learner and serialized lease.
 4. **Post-deploy Production verification** — required after any deployment/migration/backend change; verifies that the deployed artifact matches the reviewed behavior.
 5. **Manual Family Learning Hub Playwright** — used for targeted live browser QA when local/persistent browser behavior or production UX must be checked directly.
 
