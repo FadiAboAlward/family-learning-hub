@@ -8,7 +8,6 @@ export const WORKFLOW_PREFIX = `${REPOSITORY}/.github/workflows/qa-smoke.yml@`;
 export const AUDIENCE = 'family-learning-hub-qa';
 export const SESSION_SECONDS = 10 * 60;
 export const LEASE_TTL_SECONDS = 15 * 60;
-export const LEGACY_LEASE_TTL_SECONDS = SESSION_SECONDS;
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const ALLOWED_EVENTS = new Set(['pull_request', 'push', 'workflow_dispatch']);
@@ -24,13 +23,13 @@ export function validateGithubClaims(payload) {
   return true;
 }
 
-/** Normalize the temporary legacy request shape and explicit prepare/cleanup actions. */
+/** Normalize explicit prepare/cleanup actions; missing actions are rejected. */
 export function normalizeQaAction(action) {
-  return action == null ? 'legacy' : String(action);
+  return String(action || '');
 }
 
 /**
- * Execute one QA lifecycle action against injected lease/session dependencies.
+ * Execute one owned QA lifecycle action against injected lease/session dependencies.
  * This keeps authorization-independent state transitions testable without HTTP or Supabase.
  */
 export async function executeQaAction({ action, runId, learner }, deps) {
@@ -42,27 +41,6 @@ export async function executeQaAction({ action, runId, learner }, deps) {
     clearAttempts,
     issueSession,
   } = deps;
-
-  if (normalized === 'legacy') {
-    const legacyRunId = createRunId();
-    if (!(await acquireLease(legacyRunId, LEGACY_LEASE_TTL_SECONDS))) {
-      return { status: 409, body: { error: 'QA_BUSY' } };
-    }
-    try {
-      await clearAttempts(learner.id);
-      return {
-        status: 200,
-        body: {
-          session: await issueSession(learner.id),
-          learner: { display_name: learner.display_name, slug: learner.slug },
-          legacy_lock_seconds: LEGACY_LEASE_TTL_SECONDS,
-        },
-      };
-    } catch (error) {
-      try { await releaseLease(legacyRunId); } catch {}
-      throw error;
-    }
-  }
 
   if (normalized === 'prepare') {
     const ownedRunId = createRunId();
