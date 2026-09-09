@@ -1,0 +1,108 @@
+name: PR Public Preview
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: PR preview deploy
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.meta.outputs.preview_url }}
+    steps:
+      - name: Checkout trusted main site
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-site
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build Pages artifact with open PR previews
+        id: meta
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          SITE_DIR="${RUNNER_TEMP}/family-learning-hub-pages"
+          rm -rf "${SITE_DIR}"
+          mkdir -p "${SITE_DIR}/pr-preview"
+
+          git -C main-site archive HEAD | tar -x -C "${SITE_DIR}"
+
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/pulls?state=open&base=main&per_page=100" \
+            > /tmp/open-prs.json
+
+          jq -r --arg repo "${REPO}" '.[] | select(.head.repo.full_name == $repo) | [.number, .head.sha] | @tsv' /tmp/open-prs.json |
+          while IFS=$'\t' read -r pr sha; do
+            [ -n "${pr}" ] || continue
+            echo "Building preview for PR #${pr} at ${sha}"
+            mkdir -p "${SITE_DIR}/pr-preview/pr-${pr}"
+            curl -fsSL -L \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/tarball/${sha}" \
+              | tar -xz --strip-components=1 -C "${SITE_DIR}/pr-preview/pr-${pr}"
+          done
+
+          touch "${SITE_DIR}/.nojekyll"
+          echo "site_dir=${SITE_DIR}" >> "$GITHUB_OUTPUT"
+          if [ -n "${PR_NUMBER:-}" ]; then
+            echo "preview_url=https://fadiaboalward.github.io/family-learning-hub/pr-preview/pr-${PR_NUMBER}/" >> "$GITHUB_OUTPUT"
+          else
+            echo "preview_url=https://fadiaboalward.github.io/family-learning-hub/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ steps.meta.outputs.site_dir }}
+
+      - name: Deploy Pages with PR previews
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Verify current PR preview
+        if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.meta.outputs.preview_url }}
+        run: |
+          set -euo pipefail
+          for i in {1..20}; do
+            if curl -fsS "${PREVIEW_URL}?qa=1" | grep -q "Family Learning Hub"; then
+              echo "Preview ready: ${PREVIEW_URL}"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Preview did not become ready: ${PREVIEW_URL}" >&2
+          exit 1
+
+      - name: Publish preview URL
+        if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
+        run: echo "### PR Preview\n${{ steps.meta.outputs.preview_url }}?qa=1#student" >> "$GITHUB_STEP_SUMMARY"
