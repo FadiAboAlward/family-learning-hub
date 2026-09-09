@@ -17,14 +17,23 @@ for (const token of [
   '.eq("learner_id", learnerId)',
   '.eq("quiz_version_id", versionId)',
   'body.action == null ? "legacy"',
+  'LEGACY_LEASE_TTL_SECONDS = 3 * 60',
   'if (action === "legacy")',
 ]) {
   if (!auth.includes(token)) throw new Error(`qa-auth invariant missing: ${token}`);
 }
 
 const legacyBlock = auth.slice(auth.indexOf('if (action === "legacy")'), auth.indexOf('if (action === "prepare")'));
-if (!legacyBlock.includes('issueLearnerSession') || legacyBlock.includes('acquireTestingLease')) {
-  throw new Error('Legacy compatibility path must issue a session without taking the Testing lease.');
+for (const token of [
+  'acquireTestingLease(runId, LEGACY_LEASE_TTL_SECONDS)',
+  'clearTestingAttempts(learner.id)',
+  'issueLearnerSession(learner.id)',
+  'legacy_lock_seconds: LEGACY_LEASE_TTL_SECONDS',
+]) {
+  if (!legacyBlock.includes(token)) throw new Error(`Legacy rollout protection missing: ${token}`);
+}
+if (legacyBlock.includes('run_id:')) {
+  throw new Error('Legacy compatibility response must not expose run ownership that the old E2E cannot clean up.');
 }
 
 if (!workflow.includes('supabase/functions/qa-auth/index.ts')) {
