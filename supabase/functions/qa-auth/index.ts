@@ -175,9 +175,16 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const action = String(body.action || "prepare");
+    const action = body.action == null ? "legacy" : String(body.action);
     await authenticateGithubRunner(String(body.oidc_token || ""));
     const learner = await getTestingLearner();
+
+    if (action === "legacy") {
+      return response({
+        session: await issueLearnerSession(learner.id),
+        learner: { display_name: learner.display_name, slug: learner.slug },
+      });
+    }
 
     if (action === "prepare") {
       const runId = crypto.randomUUID();
