@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   ACTOR_ID,
-  LEGACY_LEASE_TTL_SECONDS,
   LEASE_TTL_SECONDS,
   QA_QUIZ_SLUG,
   REPOSITORY,
@@ -75,6 +74,7 @@ assert.equal(firstPrepare.status, 200);
 assert.equal(firstPrepare.body.run_id, generatedIds[0]);
 assert.equal(firstPrepare.body.quiz_slug, QA_QUIZ_SLUG);
 assert.equal(firstPrepare.body.session, `session:${learner.id}`);
+assert.equal(firstPrepare.body.expires_in, SESSION_SECONDS);
 assert.equal(lastLeaseTtl, LEASE_TTL_SECONDS);
 assert.equal(leaseOwner, generatedIds[0]);
 
@@ -99,18 +99,15 @@ await executeQaAction({ action: 'cleanup', runId: generatedIds[2], learner }, de
 assert.equal(leaseOwner, null);
 assert.ok(cleared >= 4);
 
-idIndex = 0;
-leaseOwner = null;
-const legacy = await executeQaAction({ action: null, learner }, deps);
-assert.equal(legacy.status, 200);
-assert.equal(legacy.body.run_id, undefined);
-assert.equal(legacy.body.legacy_lock_seconds, LEGACY_LEASE_TTL_SECONDS);
-assert.equal(lastLeaseTtl, LEGACY_LEASE_TTL_SECONDS);
-assert.ok(LEGACY_LEASE_TTL_SECONDS >= SESSION_SECONDS, 'legacy lease must cover the full legacy session lifetime');
-assert.equal(leaseOwner, generatedIds[0]);
+const missingAction = await executeQaAction({ action: null, learner }, deps);
+assert.deepEqual(missingAction, { status: 400, body: { error: 'UNKNOWN_ACTION' } });
+assert.equal(leaseOwner, null);
 
 const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
+assert.match(workflow, /group:\s*family-learning-hub-testing-learner/);
+assert.match(workflow, /cancel-in-progress:\s*false/);
+
 const migration = fs.readFileSync('supabase/migrations/20260909055000_harden_testing_qa_concurrency.sql', 'utf8');
 assert.match(migration, /on conflict \(workspace_id, slug\) do update/);
 assert.match(migration, /alter table private\.qa_run_leases enable row level security/);
@@ -118,10 +115,15 @@ assert.match(migration, /revoke all on table private\.qa_run_leases from public,
 assert.match(migration, /grant execute on function public\.flh_qa_acquire_testing_lease\(uuid, uuid, integer\) to service_role/);
 assert.match(migration, /grant execute on function public\.flh_qa_release_testing_lease\(uuid, uuid\) to service_role/);
 
+const logic = fs.readFileSync('supabase/functions/qa-auth/logic.mjs', 'utf8');
+assert.doesNotMatch(logic, /LEGACY_LEASE_TTL_SECONDS|normalized === 'legacy'/);
+
 const e2e = fs.readFileSync('tests/authenticated-e2e.mjs', 'utf8');
 assert.match(e2e, /requestQaAuth\('prepare'\)/);
+assert.match(e2e, /!prepared\.run_id/);
 assert.match(e2e, /finally \{/);
 assert.match(e2e, /cleanupQaRun\(prepared\.run_id\)/);
 assert.match(e2e, /payload\.error === 'QA_BUSY'/);
+assert.doesNotMatch(e2e, /v1 compatibility|ownsRun/);
 
-console.log('qa-auth behavioral security, lease lifecycle, rollout, and migration guards passed.');
+console.log('qa-auth owned lifecycle, behavioral security, serialization, and migration guards passed.');
