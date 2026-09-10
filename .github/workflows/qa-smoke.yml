@@ -19,7 +19,7 @@ jobs:
   static-quality:
     name: Static quality
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,6 +63,17 @@ jobs:
             echo "Running $test_file"
             node "$test_file"
           done
+      - name: Rebuild database from zero
+        run: |
+          npx --yes supabase@2.117.0 db start
+          npx --yes supabase@2.117.0 db reset --local --no-seed
+      - name: Verify reconstructed schema and fixtures
+        run: npx --yes supabase@2.117.0 db query --local --file tests/fresh-database-rebuild.sql
+      - name: Lint reconstructed database
+        run: npx --yes supabase@2.117.0 db lint --local --schema public,private --level error --fail-on error
+      - name: Stop local database
+        if: always()
+        run: npx --yes supabase@2.117.0 stop --no-backup
 
   browser-smoke:
     name: Browser smoke
