@@ -3,9 +3,13 @@
   const quizSlug = (params.get('quiz') || '').trim();
   const mode = (params.get('mode') || '').trim().toLowerCase();
   const learner = (params.get('learner') || '').trim().toLowerCase();
+  const attemptId = (params.get('attempt') || '').trim().toLowerCase();
   const validSlug = /^[a-z0-9][a-z0-9-]{2,120}$/.test(quizSlug);
   const validMode = mode === 'learning' || mode === 'exam';
-  if (!validSlug || !validMode) return;
+  const validAttempt = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(attemptId);
+  const quizRoute = validSlug && validMode;
+  const attemptRoute = validAttempt;
+  if (!quizRoute && !attemptRoute) return;
 
   let launched = false;
   let learnerPreselected = false;
@@ -16,6 +20,7 @@
     next.searchParams.delete('quiz');
     next.searchParams.delete('mode');
     next.searchParams.delete('learner');
+    next.searchParams.delete('attempt');
     history.replaceState(null, '', `${next.pathname}${next.search}${next.hash}`);
   }
 
@@ -39,6 +44,23 @@
       preselectLearner();
       return;
     }
+
+    if (attemptRoute) {
+      const opener = window.FLH?.openAttemptHistoryAttempt;
+      if (typeof opener !== 'function') return;
+      launched = true;
+      Promise.resolve(opener(attemptId))
+        .then(opened => {
+          if (opened === false) {
+            launched = false;
+            return;
+          }
+          cleanUrl();
+        })
+        .catch(() => { launched = false; });
+      return;
+    }
+
     const starter = mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz;
     if (typeof starter !== 'function') return;
     launched = true;
