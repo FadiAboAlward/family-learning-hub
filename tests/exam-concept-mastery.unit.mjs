@@ -4,6 +4,9 @@ import fs from 'node:fs';
 const migration=fs.readFileSync('supabase/migrations/20260910080000_record_exam_concept_mastery.sql','utf8');
 
 for(const required of [
+  'uq_quiz_question_one_primary_concept',
+  'on public.quiz_question_concepts(workspace_id,question_id)',
+  'where is_primary=true',
   'flh_record_exam_concept_mastery',
   'flh_record_exam_mastery_on_submit',
   'trg_record_exam_mastery_on_submit',
