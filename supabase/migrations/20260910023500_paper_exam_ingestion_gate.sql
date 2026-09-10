@@ -159,14 +159,15 @@ begin
     return jsonb_build_object('ok',false,'error','PAPER_METADATA_MISSING');
   end if;
 
-  if v_paper->>'paper_model_code' <> v_attempt.metadata->>'paper_model_code' then
+  if nullif(v_paper->>'paper_model_code','') is null
+     or v_paper->>'paper_model_code' is distinct from v_attempt.metadata->>'paper_model_code' then
     return jsonb_build_object('ok',false,'error','PAPER_MODEL_MISMATCH');
   end if;
-  if v_attempt.metadata->>'paper_quiz_version_id' <> v_attempt.quiz_version_id::text then
+  if v_attempt.metadata->>'paper_quiz_version_id' is distinct from v_attempt.quiz_version_id::text then
     return jsonb_build_object('ok',false,'error','PAPER_VERSION_MISMATCH');
   end if;
   if nullif(v_paper->>'paper_content_hash','') is null
-     or v_paper->>'paper_content_hash' <> v_attempt.metadata->>'paper_content_hash' then
+     or v_paper->>'paper_content_hash' is distinct from v_attempt.metadata->>'paper_content_hash' then
     return jsonb_build_object('ok',false,'error','PAPER_CONTENT_HASH_MISMATCH');
   end if;
 
@@ -188,8 +189,8 @@ begin
   v_runtime_hash := public.flh_paper_exam_runtime_hash(p_workspace_id,v_attempt.quiz_version_id);
   v_stored_runtime_hash := nullif(v_paper->>'paper_runtime_content_hash','');
   if v_runtime_package is null or v_runtime_hash is null or v_stored_runtime_hash is null
-     or v_runtime_hash <> v_stored_runtime_hash
-     or v_attempt.metadata->>'paper_runtime_content_hash' <> v_runtime_hash then
+     or v_runtime_hash is distinct from v_stored_runtime_hash
+     or v_attempt.metadata->>'paper_runtime_content_hash' is distinct from v_runtime_hash then
     return jsonb_build_object('ok',false,'error','PAPER_RUNTIME_HASH_MISMATCH');
   end if;
 
@@ -198,15 +199,15 @@ begin
       extensions.digest(convert_to((v_paper->'paper_canonical_package')::text,'UTF8'),'sha256'),
       'hex'
     );
-    if v_canonical_hash <> v_paper->>'paper_content_hash' then
+    if v_canonical_hash is distinct from v_paper->>'paper_content_hash' then
       return jsonb_build_object('ok',false,'error','PAPER_CANONICAL_HASH_MISMATCH');
     end if;
-    if v_paper->'paper_canonical_package' <> v_runtime_package then
+    if v_paper->'paper_canonical_package' is distinct from v_runtime_package then
       return jsonb_build_object('ok',false,'error','PAPER_CANONICAL_PACKAGE_DRIFT');
     end if;
   elsif coalesce((v_paper->>'paper_legacy_registration')::boolean,false) is true then
     if v_paper->'paper_runtime_package_snapshot' is null
-       or v_paper->'paper_runtime_package_snapshot' <> v_runtime_package then
+       or v_paper->'paper_runtime_package_snapshot' is distinct from v_runtime_package then
       return jsonb_build_object('ok',false,'error','PAPER_LEGACY_PACKAGE_DRIFT');
     end if;
   else
@@ -243,6 +244,10 @@ begin
   from generate_series(1,v_count) g(n)
   where jsonb_typeof(v_map->(g.n::text)->'option_positions') is distinct from 'object'
      or jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) < 1
+     or (
+       select count(distinct m.value)
+       from jsonb_each_text(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) m
+     ) <> jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
      or (
        select count(*)
        from public.quiz_question_options o
@@ -336,7 +341,8 @@ begin
   if v_paper is null or jsonb_typeof(v_paper) <> 'object' then
     return jsonb_build_object('error','PAPER_METADATA_MISSING');
   end if;
-  if v_paper->>'paper_model_code' <> p_paper_model_code then
+  if nullif(v_paper->>'paper_model_code','') is null
+     or v_paper->>'paper_model_code' is distinct from p_paper_model_code then
     return jsonb_build_object('error','PAPER_MODEL_MISMATCH');
   end if;
 
@@ -365,17 +371,17 @@ begin
   v_runtime_package := public.flh_paper_exam_runtime_package(p_workspace_id,p_quiz_version_id);
   v_runtime_hash := public.flh_paper_exam_runtime_hash(p_workspace_id,p_quiz_version_id);
   if v_runtime_package is null or v_runtime_hash is null
-     or v_runtime_hash <> nullif(v_paper->>'paper_runtime_content_hash','') then
+     or v_runtime_hash is distinct from nullif(v_paper->>'paper_runtime_content_hash','') then
     return jsonb_build_object('error','PAPER_RUNTIME_HASH_MISMATCH');
   end if;
   if v_paper->'paper_canonical_package' is not null then
-    if encode(extensions.digest(convert_to((v_paper->'paper_canonical_package')::text,'UTF8'),'sha256'),'hex') <> v_paper->>'paper_content_hash'
-       or v_paper->'paper_canonical_package' <> v_runtime_package then
+    if encode(extensions.digest(convert_to((v_paper->'paper_canonical_package')::text,'UTF8'),'sha256'),'hex') is distinct from v_paper->>'paper_content_hash'
+       or v_paper->'paper_canonical_package' is distinct from v_runtime_package then
       return jsonb_build_object('error','PAPER_CANONICAL_BINDING_MISMATCH');
     end if;
   elsif coalesce((v_paper->>'paper_legacy_registration')::boolean,false) is true then
     if v_paper->'paper_runtime_package_snapshot' is null
-       or v_paper->'paper_runtime_package_snapshot' <> v_runtime_package then
+       or v_paper->'paper_runtime_package_snapshot' is distinct from v_runtime_package then
       return jsonb_build_object('error','PAPER_LEGACY_BINDING_MISMATCH');
     end if;
   else
@@ -419,7 +425,6 @@ begin
   where workspace_id=p_workspace_id
     and learner_id=p_learner_id
     and quiz_version_id=p_quiz_version_id
-    and status='assigned'
   order by created_at desc
   limit 1;
   if v_assignment_id is null then
@@ -560,9 +565,15 @@ set search_path to 'public'
 as $function$
 declare
   v_validation jsonb;
+  v_status_transition boolean;
 begin
+  v_status_transition := tg_op='INSERT';
+  if tg_op='UPDATE' then
+    v_status_transition := old.status is distinct from new.status;
+  end if;
+
   if new.status='submitted'
-     and old.status is distinct from new.status
+     and v_status_transition
      and nullif(new.metadata->>'paper_model_code','') is not null then
     if coalesce((new.metadata->>'paper_queue_validated')::boolean,false) is not true then
       raise exception 'PAPER_QUEUE_NOT_VALIDATED';
@@ -586,7 +597,7 @@ revoke all on function public.flh_guard_paper_attempt_submit() from anon, authen
 
 drop trigger if exists trg_guard_paper_attempt_submit on public.quiz_attempts;
 create trigger trg_guard_paper_attempt_submit
-before update of status on public.quiz_attempts
+before insert or update of status on public.quiz_attempts
 for each row execute function public.flh_guard_paper_attempt_submit();
 
 create or replace function public.flh_complete_paper_assignment()
