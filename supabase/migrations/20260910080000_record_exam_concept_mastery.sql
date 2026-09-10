@@ -208,6 +208,7 @@ begin
     where a.status='submitted'
       and a.delivery_mode='exam'
       and coalesce((a.metadata->>'paper_ingested')::boolean,false) is true
+      and coalesce((a.metadata->>'paper_queue_validated')::boolean,false) is true
       and coalesce((a.metadata->>'concept_mastery_recorded')::boolean,false) is not true
   loop
     v_result := public.flh_record_exam_concept_mastery(r.workspace_id,r.id);
