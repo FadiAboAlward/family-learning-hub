@@ -46,7 +46,7 @@ assert.ok(
 function mergedScore(oldScore,oldEvidence,correct,newEvidence){
   return Math.round((((oldScore*oldEvidence)+(correct*100))/(oldEvidence+newEvidence))*100)/100;
 }
-assert.equal(mergedScore(60.72,21,11,13),69.84,'Mohammad add/sub paper evidence regression');
+assert.equal(mergedScore(60.72,21,11,13),69.86,'Mohammad add/sub paper evidence regression');
 assert.equal(mergedScore(94.44,9,7,7),96.87,'Mohammad multiply/divide paper evidence regression');
 
 // Idempotency: the attempt marker is checked before any concept aggregation/update.
