@@ -5,6 +5,7 @@ do $contract$
 declare
   v_relation text;
   v_function text;
+  v_policy_relation text;
   v_workspace uuid := '55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
   v_paper_version uuid;
 begin
@@ -116,11 +117,57 @@ begin
         'quiz_question_answer_keys','learner_access_tokens','quiz_attempts',
         'quiz_attempt_answers','learner_concept_mastery','learning_programs',
         'program_subjects','program_books','program_quizzes',
-        'learner_program_enrollments','learner_login_rate_limits'
+        'learner_program_enrollments','learner_login_rate_limits',
+        'learner_gamification_state','learner_learning_sessions'
       ])
       and not c.relrowsecurity
   ) then
     raise exception 'FRESH_REBUILD_REQUIRED_RLS_DISABLED';
   end if;
+
+  -- learner_content_assignments is deliberately not included above. The tracked
+  -- repository chain predates its hosted RLS hardening, which is known drift to
+  -- reconcile after issue #37 rather than backport into this historical replay.
+
+  foreach v_policy_relation in array array[
+    'learners',
+    'learner_access_tokens',
+    'quiz_assignments',
+    'quiz_attempts',
+    'quiz_attempt_answers',
+    'learner_concept_mastery',
+    'learner_program_enrollments',
+    'learner_gamification_state',
+    'learner_learning_sessions'
+  ] loop
+    if not exists (
+      select 1
+      from pg_policies p
+      where p.schemaname = 'public'
+        and p.tablename = v_policy_relation
+        and 'authenticated' = any(p.roles)
+        and (
+          coalesce(p.qual, '') like '%private.is_workspace_member%'
+          or coalesce(p.qual, '') like '%private.can_manage_learning%'
+          or coalesce(p.with_check, '') like '%private.can_manage_learning%'
+        )
+    ) then
+      raise exception 'FRESH_REBUILD_WORKSPACE_POLICY_MISSING:%', v_policy_relation;
+    end if;
+
+    if exists (
+      select 1
+      from pg_policies p
+      where p.schemaname = 'public'
+        and p.tablename = v_policy_relation
+        and 'authenticated' = any(p.roles)
+        and (
+          lower(regexp_replace(coalesce(p.qual, ''), '[[:space:]]', '', 'g')) = 'true'
+          or lower(regexp_replace(coalesce(p.with_check, ''), '[[:space:]]', '', 'g')) = 'true'
+        )
+    ) then
+      raise exception 'FRESH_REBUILD_PERMISSIVE_LEARNER_POLICY:%', v_policy_relation;
+    end if;
+  end loop;
 end;
 $contract$;
