@@ -52,7 +52,7 @@ for(const s of ['18 - (-7)','(-16) - 9','(-23) - (-8)','6 - (-13)','13 + (-18)',
   assert.ok(moh.includes(s),`logical LTR math regression missing: ${s}`);
 }
 assert.ok(moh.includes("'Q-' || (20260910020 + v_n)::text"),'question codes must follow Aya codes without collision');
-assert.ok(moh.includes("'paper_canonical_package'"),'approved canonical package must be stored on the immutable version');
-assert.ok(moh.includes("extensions.digest"),'content hash must be SHA-256 over the canonical package');
+assert.ok(moh.includes('paper_canonical_package'),'approved canonical package must be stored on the immutable version');
+assert.ok(moh.includes('extensions.digest'),'content hash must be SHA-256 over the canonical package');
 
 console.log('Paper exam ingestion regression tests passed');
