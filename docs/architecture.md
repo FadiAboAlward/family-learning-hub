@@ -84,7 +84,7 @@ Exam V2 uses the same program access boundary:
 4. answer keys stay server-side while the exam is in progress,
 5. submission is graded on the server,
 6. results and review are returned only after submission,
-7. each server-evaluated submitted question contributes one mastery evidence item to its primary linked learning concept; secondary concept links do not double-count the question.
+7. each server-evaluated submitted question that has a primary linked learning concept contributes exactly one mastery evidence item to that concept; a question with no primary concept link records no mastery evidence, and secondary concept links do not double-count the question.
 
 Paper exams use the same Exam V2 result and concept-mastery path after their exact approved version, queue, mapping, and provenance have passed the dedicated paper-ingestion gate.
 
