@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
@@ -161,8 +162,37 @@ async function main() {
         await submit.click();
         await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
 
+        const attemptId = await page.evaluate(async slug => {
+          const token = localStorage.getItem('learner_session') || sessionStorage.getItem('learner_session') || '';
+          const response = await fetch('https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/attempt-history-api', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              apikey: 'sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W',
+              authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action: 'list_attempts', page_size: 10, mode: 'exam' }),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || 'ATTEMPT_HISTORY_FAILED');
+          return payload.items?.find(item => item.context?.quiz?.slug === slug)?.id || null;
+        }, QA_QUIZ_SLUG);
+        if (!attemptId) throw new Error('QA exam attempt was not discoverable in attempt history');
+
+        const direct = new URL(APP_URL);
+        direct.searchParams.set('attempt', attemptId);
+        direct.searchParams.set('learner', 'test');
+        direct.hash = 'student';
+        await page.goto(direct.toString(), { waitUntil: 'networkidle', timeout: 30000 });
+        await page.locator('.flh-attempt-summary').waitFor({ state: 'visible', timeout: 30000 });
+        await page.locator('.flh-history-review').first().waitFor({ state: 'attached', timeout: 30000 });
+        await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
+        if (new URL(page.url()).searchParams.has('learner')) throw new Error('Attempt deep link did not clean learner query parameter');
+        await mkdir('playwright-screenshots', { recursive: true });
+        await page.screenshot({ path: 'playwright-screenshots/attempt-deep-link-mobile.png', fullPage: true });
+
         if (errors.length) throw new Error(errors.join('; '));
-        console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode.');
+        console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode, direct attempt deep link.');
       } finally {
         if (browser) await browser.close().catch(() => {});
       }
