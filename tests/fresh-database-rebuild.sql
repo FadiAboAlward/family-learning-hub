@@ -124,5 +124,3 @@ begin
   end if;
 end;
 $contract$;
-
-select 'fresh database reconstruction contract passed' as result;
