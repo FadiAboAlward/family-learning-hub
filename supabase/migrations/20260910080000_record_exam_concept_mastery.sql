@@ -2,9 +2,14 @@
 -- model used by Learning Mode. Only primary question-concept links contribute,
 -- so one submitted question contributes exactly one mastery evidence item.
 --
+-- Enforce that invariant at the data layer as well: a question may have many
+-- secondary concept links, but at most one primary concept link.
+create unique index if not exists uq_quiz_question_one_primary_concept
+  on public.quiz_question_concepts(workspace_id,question_id)
+  where is_primary=true;
+
 -- The helper is idempotent per attempt through attempt metadata and is invoked
 -- automatically only on the in_progress -> submitted status transition.
-
 create or replace function public.flh_record_exam_concept_mastery(
   p_workspace_id uuid,
   p_attempt_id uuid
