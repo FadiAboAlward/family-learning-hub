@@ -1,6 +1,6 @@
 -- Record server-authoritative Exam Mode evidence in the same concept-mastery
 -- model used by Learning Mode. Only primary question-concept links contribute,
--- so one submitted question contributes exactly one mastery evidence item.
+-- so one submitted question contributes at most one mastery evidence item.
 --
 -- Enforce that invariant at the data layer as well: a question may have many
 -- secondary concept links, but at most one primary concept link.
@@ -71,6 +71,7 @@ begin
     select qc.concept_id,
            count(*)::integer as evidence_count,
            count(*) filter (where aa.is_correct is true)::integer as correct_count,
+           count(*) filter (where aa.first_try_correct is true)::integer as first_try_count,
            (array_agg(q.difficulty_level order by qq.sequence_no desc))[1]::smallint as last_difficulty
     from public.quiz_attempt_question_queue qq
     join public.quiz_attempt_answers aa
@@ -107,7 +108,7 @@ begin
       update public.learner_concept_mastery
       set mastery_score=v_new_score,
           evidence_count=coalesce(v_old.evidence_count,0)+r.evidence_count,
-          first_try_correct_count=coalesce(v_old.first_try_correct_count,0)+r.correct_count,
+          first_try_correct_count=coalesce(v_old.first_try_correct_count,0)+r.first_try_count,
           total_question_count=coalesce(v_old.total_question_count,0)+r.evidence_count,
           total_hint_count=coalesce(v_old.total_hint_count,0),
           last_difficulty=r.last_difficulty,
@@ -116,6 +117,7 @@ begin
             'last_evidence_mode','exam',
             'last_exam_attempt_id',p_attempt_id,
             'last_exam_correct_count',r.correct_count,
+            'last_exam_first_try_count',r.first_try_count,
             'last_exam_evidence_count',r.evidence_count,
             'mastery_engine','primary-concept-running-evidence-v1'
           )
@@ -131,11 +133,12 @@ begin
         last_difficulty,last_assessed_at,metadata
       ) values (
         p_workspace_id,v_attempt.learner_id,r.concept_id,v_new_score,r.evidence_count,
-        r.correct_count,r.evidence_count,0,
+        r.first_try_count,r.evidence_count,0,
         r.last_difficulty,v_assessed_at,jsonb_build_object(
           'last_evidence_mode','exam',
           'last_exam_attempt_id',p_attempt_id,
           'last_exam_correct_count',r.correct_count,
+          'last_exam_first_try_count',r.first_try_count,
           'last_exam_evidence_count',r.evidence_count,
           'mastery_engine','primary-concept-running-evidence-v1'
         )
@@ -199,13 +202,22 @@ create trigger trg_record_exam_mastery_on_submit
 after update of status on public.quiz_attempts
 for each row execute function public.flh_record_exam_mastery_on_submit();
 
--- One-time historical bridge for approved paper exams that were submitted
--- before the generic Exam mastery hook existed. The helper's attempt marker
--- makes this safe to re-run without double-counting.
-do $backfill$
+-- Best-effort historical bridge. Only already-ingested paper attempts whose
+-- exact paper queue was validated are eligible. Malformed legacy rows are
+-- reported and skipped rather than aborting the schema deployment.
+create or replace function public.flh_backfill_paper_exam_concept_mastery()
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
 declare
   r record;
   v_result jsonb;
+  v_eligible integer := 0;
+  v_recorded integer := 0;
+  v_skipped integer := 0;
+  v_skipped_attempt_ids jsonb := '[]'::jsonb;
 begin
   for r in
     select a.workspace_id,a.id
@@ -215,11 +227,40 @@ begin
       and coalesce((a.metadata->>'paper_ingested')::boolean,false) is true
       and coalesce((a.metadata->>'paper_queue_validated')::boolean,false) is true
       and coalesce((a.metadata->>'concept_mastery_recorded')::boolean,false) is not true
+    order by a.submitted_at nulls last,a.id
   loop
+    v_eligible := v_eligible + 1;
     v_result := public.flh_record_exam_concept_mastery(r.workspace_id,r.id);
-    if coalesce((v_result->>'ok')::boolean,false) is not true then
-      raise exception 'PAPER_EXAM_MASTERY_BACKFILL_FAILED:%',coalesce(v_result->>'error','UNKNOWN');
+    if coalesce((v_result->>'ok')::boolean,false) is true then
+      v_recorded := v_recorded + 1;
+    else
+      v_skipped := v_skipped + 1;
+      v_skipped_attempt_ids := v_skipped_attempt_ids || jsonb_build_array(r.id);
+      raise warning 'PAPER_EXAM_MASTERY_BACKFILL_SKIPPED attempt=% error=%',
+        r.id,coalesce(v_result->>'error','UNKNOWN');
     end if;
   end loop;
+
+  return jsonb_build_object(
+    'ok',true,
+    'eligible',v_eligible,
+    'recorded',v_recorded,
+    'skipped',v_skipped,
+    'skipped_attempt_ids',v_skipped_attempt_ids
+  );
+end;
+$function$;
+
+revoke all on function public.flh_backfill_paper_exam_concept_mastery() from public;
+revoke all on function public.flh_backfill_paper_exam_concept_mastery() from anon, authenticated;
+grant execute on function public.flh_backfill_paper_exam_concept_mastery() to service_role;
+
+do $backfill$
+declare
+  v_summary jsonb;
+begin
+  v_summary := public.flh_backfill_paper_exam_concept_mastery();
+  raise notice 'PAPER_EXAM_MASTERY_BACKFILL_SUMMARY eligible=% recorded=% skipped=%',
+    v_summary->>'eligible',v_summary->>'recorded',v_summary->>'skipped';
 end;
 $backfill$;
