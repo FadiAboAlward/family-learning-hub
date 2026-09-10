@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
@@ -187,6 +188,8 @@ async function main() {
         await page.locator('.flh-history-review').first().waitFor({ state: 'attached', timeout: 30000 });
         await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
         if (new URL(page.url()).searchParams.has('learner')) throw new Error('Attempt deep link did not clean learner query parameter');
+        await mkdir('playwright-screenshots', { recursive: true });
+        await page.screenshot({ path: 'playwright-screenshots/attempt-deep-link-mobile.png', fullPage: true });
 
         if (errors.length) throw new Error(errors.join('; '));
         console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode, direct attempt deep link.');
