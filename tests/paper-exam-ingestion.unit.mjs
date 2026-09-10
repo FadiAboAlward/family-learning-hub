@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const gate=fs.readFileSync('supabase/migrations/20260910023500_paper_exam_ingestion_gate.sql','utf8');
 const moh=fs.readFileSync('supabase/migrations/20260910023600_register_mohammad_integer_paper_exam.sql','utf8');
+const pgcrypto=fs.readFileSync('supabase/migrations/20260823212000_enable_pgcrypto.sql','utf8');
 
 for(const required of [
   'flh_paper_exam_start',
@@ -17,6 +18,8 @@ for(const required of [
   'PAPER_MODEL_NOT_UNIQUE',
   'PAPER_ALREADY_INGESTED',
   'PAPER_QUEUE_VALIDATION_FAILED',
+  'PAPER_OPTION_MAP_MISMATCH',
+  'PAPER_QUEUE_NOT_VALIDATED',
   'trg_guard_paper_attempt_answer',
   'trg_guard_paper_attempt_submit',
   'grant execute on function public.flh_paper_exam_start(uuid,uuid,uuid,text,text) to service_role'
@@ -24,6 +27,39 @@ for(const required of [
 
 assert.ok(!/flh_paper_exam_start\([\s\S]*p_quiz_slug/.test(gate),'paper start must never resolve by quiz slug/latest version');
 assert.ok(gate.includes("v.question_id::text = new.question_id::text")===false,'guard should not contain an invalid alias');
+
+// Fail-closed binding regressions: stripped JSON identity keys must not pass on SQL NULL semantics.
+for(const fragment of [
+  "v_paper->>'paper_model_code' is distinct from v_attempt.metadata->>'paper_model_code'",
+  "v_attempt.metadata->>'paper_quiz_version_id' is distinct from v_attempt.quiz_version_id::text",
+  "v_paper->>'paper_content_hash' is distinct from v_attempt.metadata->>'paper_content_hash'",
+  "v_attempt.metadata->>'paper_runtime_content_hash' is distinct from v_runtime_hash",
+  "v_runtime_hash is distinct from nullif(v_paper->>'paper_runtime_content_hash','')"
+]) assert.ok(gate.includes(fragment),`paper binding is not NULL-safe: ${fragment}`);
+
+// Duplicate printed labels must never map to the same backend option position.
+assert.ok(
+  gate.includes('select count(distinct m.value)') && gate.includes("'PAPER_OPTION_MAP_MISMATCH'"),
+  'paper option map must reject duplicate backend positions'
+);
+
+// A direct submitted paper attempt must be guarded on INSERT, not only on status UPDATE.
+assert.ok(
+  gate.includes('before insert or update of status on public.quiz_attempts'),
+  'submitted paper attempt inserts must pass through the submit guard'
+);
+assert.ok(
+  gate.includes("v_status_transition := tg_op='INSERT'") && gate.includes("raise exception 'PAPER_QUEUE_NOT_VALIDATED'"),
+  'direct submitted paper attempt regression must fail closed before an unvalidated queue can be accepted'
+);
+
+// Reuse the newest existing assignment regardless of its lifecycle state; only create if none exists.
+const assignmentLookup=gate.match(/select id into v_assignment_id[\s\S]*?if v_assignment_id is null then/);
+assert.ok(assignmentLookup,'paper assignment lookup not found');
+assert.ok(!/status\s*=\s*'assigned'/.test(assignmentLookup[0]),'paper assignment lookup must not ignore non-assigned existing rows');
+
+// Clean databases must install pgcrypto before the later learner PIN migration uses extensions.digest/crypt/gen_salt.
+assert.ok(pgcrypto.includes('create extension if not exists pgcrypto with schema extensions'),'pgcrypto bootstrap migration missing');
 
 const match=moh.match(/v_package jsonb := \$json\$\s*([\s\S]*?)\s*\$json\$::jsonb;/);
 assert.ok(match,'Mohammad canonical seed package not found');
@@ -34,6 +70,11 @@ for(const q of questions){
   assert.equal(q.options.length,4,`question ${q.n} must have four printed options`);
   assert.ok(Number.isInteger(q.correct)&&q.correct>=1&&q.correct<=4,`question ${q.n} has invalid answer position`);
 }
+assert.deepEqual(
+  questions.map(q=>q.correct),
+  [1,2,3,2,3,1,2,3,1,4,3,2,1,2,2,2,2,1,2,2],
+  'Mohammad paper answer key must match the approved answer-key artifact'
+);
 
 assert.equal(questions[4].prompt,'احسب: 6 - (-13)');
 assert.equal(questions[4].options[2],'19');
