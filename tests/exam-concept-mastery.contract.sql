@@ -27,6 +27,10 @@ declare
   v_mul_evidence_after integer;
   v_add_first_after integer;
   v_mul_first_after integer;
+  v_add_evidence_repeat integer;
+  v_mul_evidence_repeat integer;
+  v_add_first_repeat integer;
+  v_mul_first_repeat integer;
   r record;
 begin
   select id into v_workspace from public.workspaces where slug='family-learning-hub' limit 1;
@@ -130,6 +134,19 @@ begin
   if coalesce((v_again->>'ok')::boolean,false) is not true
      or coalesce((v_again->>'already_recorded')::boolean,false) is not true then
     raise exception 'CONTRACT_IDEMPOTENCY_FAILED:%',v_again;
+  end if;
+
+  select coalesce((select evidence_count from public.learner_concept_mastery where workspace_id=v_workspace and learner_id=v_test and concept_id=v_addsub),0),
+         coalesce((select evidence_count from public.learner_concept_mastery where workspace_id=v_workspace and learner_id=v_test and concept_id=v_muldiv),0),
+         coalesce((select first_try_correct_count from public.learner_concept_mastery where workspace_id=v_workspace and learner_id=v_test and concept_id=v_addsub),0),
+         coalesce((select first_try_correct_count from public.learner_concept_mastery where workspace_id=v_workspace and learner_id=v_test and concept_id=v_muldiv),0)
+    into v_add_evidence_repeat,v_mul_evidence_repeat,v_add_first_repeat,v_mul_first_repeat;
+
+  if v_add_evidence_repeat <> v_add_evidence_after
+     or v_mul_evidence_repeat <> v_mul_evidence_after
+     or v_add_first_repeat <> v_add_first_after
+     or v_mul_first_repeat <> v_mul_first_after then
+    raise exception 'CONTRACT_IDEMPOTENCY_MUTATED_MASTERY';
   end if;
 
   -- Backfill contract: paper_ingested without a validated queue is not eligible.
