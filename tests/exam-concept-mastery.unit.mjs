@@ -17,6 +17,7 @@ for(const required of [
   'concept_mastery_concept_count',
   'primary-concept-running-evidence-v1',
   "coalesce((a.metadata->>'paper_ingested')::boolean,false) is true",
+  "coalesce((a.metadata->>'paper_queue_validated')::boolean,false) is true",
   'grant execute on function public.flh_record_exam_concept_mastery(uuid,uuid) to service_role'
 ]){
   assert.ok(migration.includes(required),`exam mastery migration missing invariant: ${required}`);
