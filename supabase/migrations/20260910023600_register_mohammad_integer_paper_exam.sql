@@ -189,7 +189,7 @@ begin
       'approval_note','Backfilled from the final printed exam and answer-key artifacts after the paper was solved.',
       'layout',jsonb_build_object('page_size','A4','orientation','portrait','columns_per_page',2,'direction','rtl'),
       'math_storage_direction','logical_ltr'
-    )
+    ))
   where workspace_id=v_workspace and id=v_version_id;
 
   v_canonical := public.flh_paper_exam_runtime_package(v_workspace,v_version_id);
