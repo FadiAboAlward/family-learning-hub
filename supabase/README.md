@@ -4,11 +4,9 @@ This directory is the repository source for Family Learning Hub database and Edg
 
 ## Migration provenance
 
-The platform's first 28 migrations were created in the hosted Supabase project before this repository contained a `supabase/migrations` directory. Their verified pre-architecture state is now squashed into:
+The platform's first 28 migrations were created in the hosted Supabase project before this repository contained a `supabase/migrations` directory. Their verified pre-architecture state is restored as 28 separate files in `supabase/migrations`, using the same version numbers and names already recorded in the Production migration ledger. They begin with `20260823110617_001_core_learning_schema.sql`, end with `20260823150830_exam_mode_defaults_setting.sql`, contain no real learner rows or learner progress, and stop immediately before `20260823213038_family_learning_hub_program_architecture.sql`.
 
-- `20260823213000_pre_program_architecture_baseline.sql`
-
-The baseline preserves each original hosted migration version/name as a source marker, contains no real learner identities or learner progress, and stops immediately before `20260823213038_family_learning_hub_program_architecture.sql`.
+The removed squashed baseline `20260823213000_pre_program_architecture_baseline.sql` and redundant bootstrap `20260823212000_enable_pgcrypto.sql` are intentionally absent because neither version exists in the Production ledger. The historical `20260823110617_001_core_learning_schema.sql` migration already creates `pgcrypto` in the `extensions` schema.
 
 Repository migration tracking starts with the architecture hardening work on 2026-08-23:
 
@@ -19,7 +17,7 @@ Repository migration tracking starts with the architecture hardening work on 202
 
 Those filenames match the hosted Supabase migration ledger.
 
-Existing production migration history has not been changed or reconciled by the baseline work. Do not push the new historical baseline to Production until the separate production-ledger reconciliation is reviewed. From this point forward **every schema change must be both applied as a Supabase migration and committed here with the same migration identity**.
+Production migration history has not been changed or repaired by this work. The restored 28 migration identities already match the corresponding Production ledger entries; any later Production-versus-repository migration drift remains explicitly out of scope for issue #37 and requires separate review. From this point forward **every schema change must be both applied as a Supabase migration and committed here with the same migration identity**.
 
 ## Fresh reconstruction
 
