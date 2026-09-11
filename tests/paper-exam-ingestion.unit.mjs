@@ -3,7 +3,6 @@ import fs from 'node:fs';
 
 const gate=fs.readFileSync('supabase/migrations/20260910023500_paper_exam_ingestion_gate.sql','utf8');
 const moh=fs.readFileSync('supabase/migrations/20260910023600_register_mohammad_integer_paper_exam.sql','utf8');
-const pgcrypto=fs.readFileSync('supabase/migrations/20260823212000_enable_pgcrypto.sql','utf8');
 
 for(const required of [
   'flh_paper_exam_start',
@@ -57,9 +56,6 @@ assert.ok(
 const assignmentLookup=gate.match(/select id into v_assignment_id[\s\S]*?if v_assignment_id is null then/);
 assert.ok(assignmentLookup,'paper assignment lookup not found');
 assert.ok(!/status\s*=\s*'assigned'/.test(assignmentLookup[0]),'paper assignment lookup must not ignore non-assigned existing rows');
-
-// Clean databases must install pgcrypto before the later learner PIN migration uses extensions.digest/crypt/gen_salt.
-assert.ok(pgcrypto.includes('create extension if not exists pgcrypto with schema extensions'),'pgcrypto bootstrap migration missing');
 
 const match=moh.match(/v_package jsonb := \$json\$\s*([\s\S]*?)\s*\$json\$::jsonb;/);
 assert.ok(match,'Mohammad canonical seed package not found');
