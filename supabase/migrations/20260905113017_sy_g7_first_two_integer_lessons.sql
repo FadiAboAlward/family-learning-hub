@@ -25,8 +25,8 @@ begin
   select id into v_curriculum from public.curricula where code='syrian-national';
   select id into v_math from public.subjects where code='math';
   select id into v_mohammad from public.learners where workspace_id=v_workspace and slug='mohammad';
-  if v_workspace is null or v_curriculum is null or v_math is null or v_mohammad is null then
-    raise exception 'Required Family Learning Hub data is missing';
+  if v_workspace is null or v_curriculum is null or v_math is null then
+    raise exception 'Required Family Learning Hub catalog data is missing';
   end if;
 
   select id into v_book from public.books where code='AR-MATH-G7-2025-2026';
@@ -66,12 +66,17 @@ begin
   select v_workspace,v_program,v_book,v_program_subject,true,10,jsonb_build_object('source_year','2025-2026','visual_authoritative',true)
   where not exists (select 1 from public.program_books where program_id=v_program and book_id=v_book);
 
-  update public.learner_program_enrollments set is_primary=false,updated_at=now()
-  where workspace_id=v_workspace and learner_id=v_mohammad and status='active';
-  insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status,is_primary,started_at,metadata)
-  values(v_workspace,v_mohammad,v_program,'active',true,current_date,jsonb_build_object('reason','grade_7_new_school_year','source_book_year','2025-2026'))
-  on conflict (learner_id,program_id) do update
-  set status='active',is_primary=true,ended_at=null,metadata=excluded.metadata,updated_at=now();
+  -- A fresh database intentionally has no real learner rows. Keep the catalog
+  -- reconstruction independent from Production data while preserving the
+  -- historical enrollment behavior whenever Mohammad already exists.
+  if v_mohammad is not null then
+    update public.learner_program_enrollments set is_primary=false,updated_at=now()
+    where workspace_id=v_workspace and learner_id=v_mohammad and status='active';
+    insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status,is_primary,started_at,metadata)
+    values(v_workspace,v_mohammad,v_program,'active',true,current_date,jsonb_build_object('reason','grade_7_new_school_year','source_book_year','2025-2026'))
+    on conflict (learner_id,program_id) do update
+    set status='active',is_primary=true,ended_at=null,metadata=excluded.metadata,updated_at=now();
+  end if;
 
   select id into v_unit from public.units where book_id=v_book and slug='unit-1-numbers';
   if v_unit is null then
