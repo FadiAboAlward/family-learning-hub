@@ -6,6 +6,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_real_backend_performance:
+        description: Run the report-only Testing learner backend benchmark
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +45,10 @@ jobs:
           find . -maxdepth 1 -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           find tests -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           find supabase/functions/exam-v2-api -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          find supabase/functions/_shared -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          npx --yes esbuild@0.25.9 supabase/functions/learning-api/index.ts --format=esm --platform=neutral --outfile=/tmp/learning-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/student-library-api/index.ts --format=esm --platform=neutral --outfile=/tmp/student-library-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/family-api/index.ts --format=esm --platform=neutral --outfile=/tmp/family-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts --format=esm --platform=neutral --outfile=/tmp/exam-v2-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/attempt-history-api/index.ts --format=esm --platform=neutral --outfile=/tmp/attempt-history-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/qa-auth/index.ts --format=esm --platform=neutral --outfile=/tmp/qa-auth-check.js
@@ -155,4 +165,61 @@ jobs:
           name: playwright-screenshots-${{ github.run_id }}
           path: playwright-screenshots/
           retention-days: 7
+          if-no-files-found: warn
+
+  real-backend-performance:
+    name: Real backend performance (report only)
+    if: github.event_name == 'workflow_dispatch' && inputs.run_real_backend_performance
+    needs: static-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: family-learning-hub-testing-learner
+      cancel-in-progress: false
+    steps:
+      - name: Checkout exact workflow SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Assert checked-out SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser benchmark tools
+        run: |
+          npm install --no-save playwright@1.55.0 http-server@14.1.1
+          npx playwright install --with-deps chromium
+      - name: Start local app server
+        run: |
+          npx http-server . -p 4173 -c-1 > /tmp/family-learning-hub-server.log 2>&1 &
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/family-learning-hub-server.log
+          exit 1
+      - name: Run report-only real backend benchmark
+        continue-on-error: true
+        env:
+          APP_URL: http://127.0.0.1:4173/
+          PERF_BROWSER: '1'
+          PERF_SAMPLE_COUNT: '10'
+        run: node tests/real-backend-performance.mjs
+      - name: Append real backend summary
+        if: always()
+        run: test ! -f real-backend-performance-summary.md || cat real-backend-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload real backend report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: real-backend-performance-${{ github.run_id }}
+          path: |
+            real-backend-performance-report.json
+            real-backend-performance-summary.md
+          retention-days: 14
           if-no-files-found: warn
