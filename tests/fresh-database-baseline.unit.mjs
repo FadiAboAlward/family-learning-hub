@@ -60,7 +60,7 @@ assert.ok(!fs.existsSync(path.join(migrationDirectory, removedSquashFile)), 'the
 assert.ok(!fs.existsSync(path.join(migrationDirectory, removedBootstrapFile)), 'the redundant unregistered pgcrypto bootstrap must not return');
 
 const historicalSql = expectedHistoricalFiles
-  .map((file) => fs.readFileSync(path.join(migrationDirectory, file), 'utf8').trim())
+  .map((file) => fs.readFileSync(path.join(migrationDirectory, file), 'utf8').replace(/\r\n/g, '\n').trim())
   .join('\n');
 const historicalSqlSha256 = crypto.createHash('sha256').update(historicalSql).digest('hex');
 
