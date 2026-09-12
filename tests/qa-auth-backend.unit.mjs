@@ -119,7 +119,7 @@ await assert.rejects(
 assert.equal(browserFlowRan, false, 'browser flow must not run after validation failure');
 assert.deepEqual(lifecycleCleanupIds, [validationFailureRunId], 'owned run must be cleaned after validation failure');
 
-const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8');
+const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8').replace(/\r\n/g, '\n');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
 assert.match(workflow, /^concurrency:\n  group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n  cancel-in-progress: false$/m, 'workflow-level cancellation must preserve cleanup');
 assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: family-learning-hub-testing-learner\n      cancel-in-progress: false$/m, 'Testing browser job must be serialized without cancellation');

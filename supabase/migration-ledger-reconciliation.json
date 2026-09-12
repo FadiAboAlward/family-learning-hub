@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "baseCommit": "658eff4caad1c7d09df5511633abd15f1dbb0cb5",
+    "canonicalMigrationCount": 49,
+    "productionLedgerCount": 64,
+    "sharedVersionCount": 38,
+    "historicalMirrorCount": 26,
+    "futureProductionRepairCount": 11,
+    "reconciledMigrationCount": 75
+  },
+  "canonicalMigrationFiles": [
+    "20260823110617_001_core_learning_schema.sql",
+    "20260823110658_002_security_and_index_hardening.sql",
+    "20260823114524_003_curricula_and_config_layer.sql",
+    "20260823115419_004_adaptive_learning_engine.sql",
+    "20260823115503_005_adaptive_learning_indexes.sql",
+    "20260823120202_006_pedagogy_feedback_engine.sql",
+    "20260823120214_007_pedagogy_indexes.sql",
+    "20260823120223_008_pedagogy_feedback_constraints.sql",
+    "20260823120318_009_misconception_aware_feedback.sql",
+    "20260823120621_009_curriculum_language_transition.sql",
+    "20260823120714_010_language_delivery_separation.sql",
+    "20260823123334_009_gamification_and_rewards_engine.sql",
+    "20260823123351_010_gamification_indexes.sql",
+    "20260823123401_011_gamification_reward_integrity.sql",
+    "20260823123409_012_gamification_level_guard.sql",
+    "20260823123423_013_gamification_seed_badges.sql",
+    "20260823141315_test_learner_account_policy.sql",
+    "20260823141328_mark_test_learner_in_reports.sql",
+    "20260823141533_repeatable_test_gamification.sql",
+    "20260823142137_learner_session_tracking.sql",
+    "20260823142302_session_tracking_grants_and_parent_index.sql",
+    "20260823142324_learning_session_settings_update.sql",
+    "20260823142337_learning_session_duration_view.sql",
+    "20260823142357_session_tracking_view_security.sql",
+    "20260823142803_remove_session_report_view.sql",
+    "20260823150650_quiz_learning_and_exam_modes.sql",
+    "20260823150758_exam_mode_attempt_reporting.sql",
+    "20260823150830_exam_mode_defaults_setting.sql",
+    "20260823213038_family_learning_hub_program_architecture.sql",
+    "20260823213136_quiz_content_context_integrity.sql",
+    "20260823213507_learner_auth_and_catalog_hardening.sql",
+    "20260823214151_upgrade_learner_pin_hash_on_login.sql",
+    "20260823224900_retire_legacy_fraction_exam.sql",
+    "20260823232941_direct_content_assignments.sql",
+    "20260823233138_direct_content_quiz_access_sync.sql",
+    "20260824090800_stable_public_question_codes.sql",
+    "20260824124700_question_interaction_state_for_mobile_ux.sql",
+    "20260903140500_tr_g4_division_time_interactive_practice.sql",
+    "20260905112741_exam_pool_for_independent_exam_questions.sql",
+    "20260905112742_validate_exam_pool_delivery_role.sql",
+    "20260905113017_sy_g7_first_two_integer_lessons.sql",
+    "20260905143000_allow_8_to_10_digit_learner_pins.sql",
+    "20260905153100_reconcile_g7_exam_start_rpc.sql",
+    "20260906220200_attempt_history_scalable_index.sql",
+    "20260909055000_harden_testing_qa_concurrency.sql",
+    "20260910023450_jsonb_object_length_compat.sql",
+    "20260910023500_paper_exam_ingestion_gate.sql",
+    "20260910023600_register_mohammad_integer_paper_exam.sql",
+    "20260910080000_record_exam_concept_mastery.sql"
+  ],
+  "canonicalMigrationTreeSha256": "4f51888a00f8e5762d1b5557ca8a3a50e264afeccdb9ffeac44fd9a05b2d6afa",
+  "historicalMirrors": [
+    {
+      "version": "20260824091050",
+      "name": "stable_public_question_codes",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260824090800_stable_public_question_codes",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260824090800_stable_public_question_codes"
+    },
+    {
+      "version": "20260824094908",
+      "name": "question_interaction_state_for_mobile_ux",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260824124700_question_interaction_state_for_mobile_ux",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260824124700_question_interaction_state_for_mobile_ux"
+    },
+    {
+      "version": "20260824215948",
+      "name": "fast_exam_answer_save_rpc",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_flh_exam_save_answer"
+    },
+    {
+      "version": "20260824220240",
+      "name": "fast_exam_start_rpc",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260905153100_reconcile_g7_exam_start_rpc"
+    },
+    {
+      "version": "20260825224312",
+      "name": "add_fast_exam_submit_rpc",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_flh_exam_submit"
+    },
+    {
+      "version": "20260825224459",
+      "name": "include_exam_review_hints",
+      "classification": "actual_state_requires_forward_migration",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_flh_exam_submit"
+    },
+    {
+      "version": "20260826232234",
+      "name": "sbaik_shadow_tracking",
+      "classification": "other_ambiguous",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "separate_product_and_data_ownership_decision"
+    },
+    {
+      "version": "20260831164849",
+      "name": "add_family_learning_exam_attempt_storage",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_final_objects_removed"
+    },
+    {
+      "version": "20260901135239",
+      "name": "add_family_learning_exam_definitions",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_final_objects_removed"
+    },
+    {
+      "version": "20260901150812",
+      "name": "isolate_standalone_quiz_rpcs_from_family_learning_hub",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_final_objects_removed"
+    },
+    {
+      "version": "20260901172235",
+      "name": "remove_standalone_quiz_lab_objects_after_split",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_final_objects_removed"
+    },
+    {
+      "version": "20260903111122",
+      "name": "tr_g4_division_time_interactive_practice",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260903140500_tr_g4_division_time_interactive_practice",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260903140500_tr_g4_division_time_interactive_practice"
+    },
+    {
+      "version": "20260905121716",
+      "name": "allow_8_to_10_digit_learner_pins",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260905143000_allow_8_to_10_digit_learner_pins",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260905143000_allow_8_to_10_digit_learner_pins"
+    },
+    {
+      "version": "20260905123909",
+      "name": "reconcile_g7_exam_start_rpc",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260905153100_reconcile_g7_exam_start_rpc",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260905153100_reconcile_g7_exam_start_rpc"
+    },
+    {
+      "version": "20260906091730",
+      "name": "enable_http_for_pr31_production_smoke",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_paired_disable_left_no_final_object"
+    },
+    {
+      "version": "20260906092026",
+      "name": "disable_http_after_pr31_production_smoke",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_paired_disable_left_no_final_object"
+    },
+    {
+      "version": "20260907173550",
+      "name": "harden_learner_content_assignments_rls",
+      "classification": "actual_state_requires_forward_migration",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_learner_content_assignments_rls"
+    },
+    {
+      "version": "20260909082415",
+      "name": "harden_testing_qa_concurrency",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260909055000_harden_testing_qa_concurrency",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260909055000_harden_testing_qa_concurrency"
+    },
+    {
+      "version": "20260909235701",
+      "name": "paper_exam_ingestion_gate",
+      "classification": "actual_state_requires_forward_migration",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_quiz_versions_paper_model_code_workspace_uidx"
+    },
+    {
+      "version": "20260910080702",
+      "name": "paper_exam_jsonb_object_length_compat_reconcile",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260910023450_jsonb_object_length_compat",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260910023450_jsonb_object_length_compat"
+    },
+    {
+      "version": "20260910080825",
+      "name": "reconcile_final_paper_exam_ingestion_gate",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260910023500_paper_exam_ingestion_gate",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260910023500_paper_exam_ingestion_gate"
+    },
+    {
+      "version": "20260910081009",
+      "name": "backfill_existing_paper_attempt_runtime_hash",
+      "classification": "production_only_data_backfill",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "production_history_only_do_not_replay"
+    },
+    {
+      "version": "20260910081650",
+      "name": "reconcile_mohammad_paper_model_metadata_and_concepts",
+      "classification": "production_only_data_backfill",
+      "equivalentGitIdentity": "20260910023600_register_mohammad_integer_paper_exam",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260910023600_register_mohammad_integer_paper_exam"
+    },
+    {
+      "version": "20260910082736",
+      "name": "paper_exam_version_bound_ingestion_gate",
+      "classification": "production_only_temporary",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "none_transient_rpc_overloads_removed"
+    },
+    {
+      "version": "20260910082942",
+      "name": "restore_canonical_paper_gate_after_reconcile",
+      "classification": "actual_state_requires_forward_migration",
+      "equivalentGitIdentity": null,
+      "finalStateRequiresFutureForwardMigration": true,
+      "finalStateOwner": "future_forward_migration_for_flh_exam_save_answer"
+    },
+    {
+      "version": "20260910091945",
+      "name": "record_exam_concept_mastery",
+      "classification": "historical_equivalent",
+      "equivalentGitIdentity": "20260910080000_record_exam_concept_mastery",
+      "finalStateRequiresFutureForwardMigration": false,
+      "finalStateOwner": "20260910080000_record_exam_concept_mastery"
+    }
+  ],
+  "futureProductionRepairs": [
+    {
+      "version": "20260824090800",
+      "identity": "20260824090800_stable_public_question_codes",
+      "productionEquivalentIdentities": ["20260824091050_stable_public_question_codes"]
+    },
+    {
+      "version": "20260824124700",
+      "identity": "20260824124700_question_interaction_state_for_mobile_ux",
+      "productionEquivalentIdentities": ["20260824094908_question_interaction_state_for_mobile_ux"]
+    },
+    {
+      "version": "20260903140500",
+      "identity": "20260903140500_tr_g4_division_time_interactive_practice",
+      "productionEquivalentIdentities": ["20260903111122_tr_g4_division_time_interactive_practice"]
+    },
+    {
+      "version": "20260905112742",
+      "identity": "20260905112742_validate_exam_pool_delivery_role",
+      "productionEquivalentIdentities": ["20260905112741_exam_pool_for_independent_exam_questions"]
+    },
+    {
+      "version": "20260905143000",
+      "identity": "20260905143000_allow_8_to_10_digit_learner_pins",
+      "productionEquivalentIdentities": ["20260905121716_allow_8_to_10_digit_learner_pins"]
+    },
+    {
+      "version": "20260905153100",
+      "identity": "20260905153100_reconcile_g7_exam_start_rpc",
+      "productionEquivalentIdentities": ["20260905123909_reconcile_g7_exam_start_rpc"]
+    },
+    {
+      "version": "20260909055000",
+      "identity": "20260909055000_harden_testing_qa_concurrency",
+      "productionEquivalentIdentities": ["20260909082415_harden_testing_qa_concurrency"]
+    },
+    {
+      "version": "20260910023450",
+      "identity": "20260910023450_jsonb_object_length_compat",
+      "productionEquivalentIdentities": ["20260910080702_paper_exam_jsonb_object_length_compat_reconcile"]
+    },
+    {
+      "version": "20260910023500",
+      "identity": "20260910023500_paper_exam_ingestion_gate",
+      "productionEquivalentIdentities": ["20260910080825_reconcile_final_paper_exam_ingestion_gate"]
+    },
+    {
+      "version": "20260910023600",
+      "identity": "20260910023600_register_mohammad_integer_paper_exam",
+      "productionEquivalentIdentities": ["20260910081650_reconcile_mohammad_paper_model_metadata_and_concepts"]
+    },
+    {
+      "version": "20260910080000",
+      "identity": "20260910080000_record_exam_concept_mastery",
+      "productionEquivalentIdentities": ["20260910091945_record_exam_concept_mastery"]
+    }
+  ]
+}

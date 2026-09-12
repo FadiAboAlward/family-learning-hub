@@ -19,6 +19,32 @@ Those filenames match the hosted Supabase migration ledger.
 
 Production migration history has not been changed or repaired by this work. The restored 28 migration identities already match the corresponding Production ledger entries; any later Production-versus-repository migration drift remains explicitly out of scope for issue #37 and requires separate review. From this point forward **every schema change must be both applied as a Supabase migration and committed here with the same migration identity**.
 
+## Migration-ledger reconciliation
+
+The Git ledger now carries the immutable union of the 49 migrations that were already in this repository and 26 historical identities that previously existed only in the Production migration ledger. The 26 added files are intentionally inert mirrors: their timestamp and historical name preserve provenance, while their only executable statement is SQL SELECT 1.
+
+Supabase compares migration history by version/timestamp. The mirror filenames retain historical Production names for auditability, but names are not the synchronization key. The machine-readable classifications, Git equivalences, final-state owners, canonical migration checksum, and future repair allowlist live in migration-ledger-reconciliation.json.
+
+Historical Production SQL must never be copied into or substituted for a mirror. Some historical statements were temporary or later superseded, some performed one-time Production data backfills, and some describe final-state drift that must be reconciled with a new forward-only migration. Replaying those statements would make fresh databases depend on Production history and could duplicate or reverse later canonical behavior.
+
+The following 11 Git versions remain intentionally absent from the Production ledger until a separate, explicitly approved Production operation records them as applied without executing their SQL:
+
+- 20260824090800
+- 20260824124700
+- 20260903140500
+- 20260905112742
+- 20260905143000
+- 20260905153100
+- 20260909055000
+- 20260910023450
+- 20260910023500
+- 20260910023600
+- 20260910080000
+
+They are not repaired by this PR because migration repair with applied status is a Production write. Before that later operation, the 64-row Production ledger and schema/data fingerprints must be reverified, the exact 11-version allowlist must be reviewed, and the result must be read back explicitly. This PR neither repairs Production history nor deploys or runs a Production migration.
+
+The known learner-content-assignment hardening, Exam save/submit RPC, paper-model uniqueness, and SBAIK ownership questions remain outside this ledger-only change. Where missing final state is confirmed, it must be introduced later under one new shared timestamp through a forward-only migration. Every future migration must use the same new timestamp in Git and Production from inception; do not create timestamp aliases and do not rewrite established migration files.
+
 ## Fresh reconstruction
 
 The local database is intentionally seedless except for static catalog/configuration rows embedded in migrations. To prove Git can reconstruct the database from zero:

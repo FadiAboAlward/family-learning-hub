@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const ROOT=process.cwd();
 const failures=[];
-const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8');
+const read=p=>fs.readFileSync(path.join(ROOT,p),'utf8').replace(/\r\n/g,'\n');
 const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
 const index=read('index.html');
