@@ -56,7 +56,10 @@ export function createBackendPerformanceTrace({
     async measure(name, { dbOperations = 0, execution = "sequential" } = {}, task) {
       const safeName = safeLabel(name, "phase");
       const safeExecution = execution === "parallel" ? "parallel" : "sequential";
-      const operations = Math.max(0, Math.trunc(Number(dbOperations) || 0));
+      const numericOperations = Number(dbOperations);
+      const operations = Number.isFinite(numericOperations)
+        ? Math.max(0, Math.trunc(numericOperations))
+        : 0;
       const phaseStartedAt = now();
       try {
         return await task();
@@ -109,3 +112,4 @@ export function performanceJsonResponse(trace, data, status, headers) {
   const completed = trace.complete(data, status);
   return new Response(completed.body, { status, headers: { ...headers, ...completed.headers } });
 }
+

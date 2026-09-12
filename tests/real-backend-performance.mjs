@@ -9,8 +9,24 @@ const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
-const SAMPLE_COUNT = Math.max(5, Number(process.env.PERF_SAMPLE_COUNT || 10));
 const REGIONS = { default: null, 'ap-southeast-1': 'ap-southeast-1' };
+
+export function parseSampleCount(value = '10') {
+  if (value === undefined || value === null || value === '') return 10;
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 5) {
+    throw new Error('PERF_SAMPLE_COUNT must be an integer of at least 5');
+  }
+  return count;
+}
+
+export function parseFiniteHeader(value) {
+  if (value == null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+const SAMPLE_COUNT = parseSampleCount(process.env.PERF_SAMPLE_COUNT);
 
 function round(value) {
   return Math.round(Number(value) * 10) / 10;
@@ -120,8 +136,8 @@ async function invoke(functionName, body, { session = null, region = null } = {}
       network_ms: round(responseReceived - started),
       payload_ready_ms: round(payloadReady - started),
       response_parse_ms: round(payloadReady - responseReceived),
-      backend_ms: Number(response.headers.get('x-flh-backend-ms')) || null,
-      database_operations: Number(response.headers.get('x-flh-db-operations')) || null,
+      backend_ms: parseFiniteHeader(response.headers.get('x-flh-backend-ms')),
+      database_operations: parseFiniteHeader(response.headers.get('x-flh-db-operations')),
       edge_region: response.headers.get('x-flh-edge-region') || response.headers.get('x-sb-edge-region') || null,
       correlation_id: response.headers.get('x-flh-correlation-id') || null,
       phases: parseServerTiming(response.headers.get('server-timing')).filter(item => item.name !== 'total'),
@@ -263,7 +279,7 @@ async function browserCorrelation() {
         status: 'measured',
         action_to_request_ms: requestStarted === null ? null : round(requestStarted - actionStarted),
         request_to_response_ms: requestStarted === null ? null : round(responseReceived - requestStarted),
-        backend_total_ms: Number(responseHeaders['x-flh-backend-ms']) || null,
+        backend_total_ms: parseFiniteHeader(responseHeaders['x-flh-backend-ms']),
         response_to_ui_ms: round(uiUpdated - responseReceived),
         action_to_ui_ms: round(uiUpdated - actionStarted),
         correlation_id: responseHeaders['x-flh-correlation-id'] || null,
@@ -350,3 +366,4 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+

@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import { createBackendPerformanceTrace, performanceJsonResponse } from '../supabase/functions/_shared/backend-performance.mjs';
 
 {
+  const logs = [];
+  const trace = createBackendPerformanceTrace({ now: () => 10, logger: line => logs.push(line) });
+  await trace.measure('nonfinite', { dbOperations: Infinity }, async () => 'ok');
+  await trace.measure('nan', { dbOperations: Number.NaN }, async () => 'ok');
+  trace.complete({ ok: true });
+  const event = JSON.parse(logs[0]);
+  assert.equal(event.database_operations, 0);
+  assert.deepEqual(event.phases.map(phase => phase.db_operations), [0, 0]);
+}
+
+{
   const ticks = [0, 5, 17.34, 18.91];
   const logs = [];
   const trace = createBackendPerformanceTrace({
@@ -49,3 +60,4 @@ import { createBackendPerformanceTrace, performanceJsonResponse } from '../supab
 }
 
 console.log('Backend performance telemetry unit tests passed.');
+
