@@ -9,6 +9,19 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 const expectedMirrorVersions = '20260824091050,20260824094908,20260824215948,20260824220240,20260825224312,20260825224459,20260826232234,20260831164849,20260901135239,20260901150812,20260901172235,20260903111122,20260905121716,20260905123909,20260906091730,20260906092026,20260907173550,20260909082415,20260909235701,20260910080702,20260910080825,20260910081009,20260910081650,20260910082736,20260910082942,20260910091945'.split(',');
 const expectedRepairVersions = '20260824090800,20260824124700,20260903140500,20260905112742,20260905143000,20260905153100,20260909055000,20260910023450,20260910023500,20260910023600,20260910080000'.split(',');
+const expectedFutureProductionRepairs = [
+  ['20260824090800', '20260824090800_stable_public_question_codes', ['20260824091050_stable_public_question_codes']],
+  ['20260824124700', '20260824124700_question_interaction_state_for_mobile_ux', ['20260824094908_question_interaction_state_for_mobile_ux']],
+  ['20260903140500', '20260903140500_tr_g4_division_time_interactive_practice', ['20260903111122_tr_g4_division_time_interactive_practice']],
+  ['20260905112742', '20260905112742_validate_exam_pool_delivery_role', ['20260905112741_exam_pool_for_independent_exam_questions']],
+  ['20260905143000', '20260905143000_allow_8_to_10_digit_learner_pins', ['20260905121716_allow_8_to_10_digit_learner_pins']],
+  ['20260905153100', '20260905153100_reconcile_g7_exam_start_rpc', ['20260905123909_reconcile_g7_exam_start_rpc']],
+  ['20260909055000', '20260909055000_harden_testing_qa_concurrency', ['20260909082415_harden_testing_qa_concurrency']],
+  ['20260910023450', '20260910023450_jsonb_object_length_compat', ['20260910080702_paper_exam_jsonb_object_length_compat_reconcile']],
+  ['20260910023500', '20260910023500_paper_exam_ingestion_gate', ['20260910080825_reconcile_final_paper_exam_ingestion_gate']],
+  ['20260910023600', '20260910023600_register_mohammad_integer_paper_exam', ['20260910081650_reconcile_mohammad_paper_model_metadata_and_concepts']],
+  ['20260910080000', '20260910080000_record_exam_concept_mastery', ['20260910091945_record_exam_concept_mastery']],
+].map(([version, identity, productionEquivalentIdentities]) => ({ version, identity, productionEquivalentIdentities }));
 const allowedClassifications = new Set([
   'historical_equivalent',
   'production_only_data_backfill',
@@ -98,6 +111,11 @@ assert.equal(
 const repairVersions = manifest.futureProductionRepairs.map((item) => item.version).sort();
 assert.deepEqual(repairVersions, [...expectedRepairVersions].sort(), 'manifest must retain exactly the 11 reviewed future repair versions');
 assert.equal(new Set(repairVersions).size, repairVersions.length, 'future repair versions must be unique');
+assert.deepEqual(
+  manifest.futureProductionRepairs,
+  expectedFutureProductionRepairs,
+  'future repair ordering and Git-to-Production identity mappings must remain exact',
+);
 for (const repair of manifest.futureProductionRepairs) {
   assert.ok(
     manifest.canonicalMigrationFiles.includes(repair.identity + '.sql'),
