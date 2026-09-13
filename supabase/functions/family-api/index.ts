@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -17,8 +18,9 @@ function cors(origin: string | null) {
   ]);
   return {
     "Access-Control-Allow-Origin": origin && allowed.has(origin) ? origin : "https://fadiaboalward.github.io",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Expose-Headers": "server-timing, x-flh-backend-ms, x-flh-correlation-id, x-flh-db-operations, x-flh-edge-region, x-sb-edge-region",
     "Content-Type": "application/json; charset=utf-8",
     "Vary": "Origin",
   };
@@ -112,12 +114,12 @@ async function clearLoginFailures(guard: any) {
     .eq("client_hash", guard.clientHash);
 }
 
-async function learnerChoices() {
-  const { data } = await admin.from("learners")
+async function learnerChoices(trace: any) {
+  const { data } = await trace.measure("choices.learners", { dbOperations: 1 }, () => admin.from("learners")
     .select("display_name,slug,metadata")
     .eq("workspace_id", WORKSPACE_ID)
     .eq("is_active", true)
-    .order("created_at");
+    .order("created_at"));
   return {
     learners: (data || [])
       .filter((l: any) => (l.metadata || {}).show_on_login !== false)
@@ -130,20 +132,20 @@ async function learnerChoices() {
   };
 }
 
-async function learnerProfile(learnerId: string) {
-  const { data: learner, error: learnerErr } = await admin.from("learners")
+async function learnerProfile(learnerId: string, trace: any) {
+  const { data: learner, error: learnerErr } = await trace.measure("profile.learner", { dbOperations: 1 }, () => admin.from("learners")
     .select("id,display_name,slug,grade_level,metadata")
     .eq("id", learnerId)
     .eq("workspace_id", WORKSPACE_ID)
-    .single();
+    .single());
   if (learnerErr || !learner) throw new Error("LEARNER_NOT_FOUND");
 
-  const [{ data: state }, { data: levels }, { data: ownedBadges }, { data: rewards }] = await Promise.all([
+  const [{ data: state }, { data: levels }, { data: ownedBadges }, { data: rewards }] = await trace.measure("profile.gamification", { dbOperations: 4, execution: "parallel" }, () => Promise.all([
     admin.from("learner_gamification_state").select("xp,reward_points,current_level,current_streak,longest_streak,last_learning_date").eq("workspace_id", WORKSPACE_ID).eq("learner_id", learnerId).maybeSingle(),
     admin.from("gamification_levels").select("level_no,name,min_xp,icon").eq("workspace_id", WORKSPACE_ID).order("level_no"),
     admin.from("learner_badges").select("awarded_at,award_reason,badge:gamification_badges(code,title,description,icon)").eq("workspace_id", WORKSPACE_ID).eq("learner_id", learnerId).order("awarded_at", { ascending: false }),
     admin.from("gamification_rewards").select("id,title,description,reward_type,required_level,required_reward_points,parent_approval_required").eq("workspace_id", WORKSPACE_ID).eq("is_active", true).order("required_reward_points", { ascending: true, nullsFirst: false }),
-  ]);
+  ]));
 
   const s: any = state || { xp: 0, reward_points: 0, current_level: 1, current_streak: 0, longest_streak: 0, last_learning_date: null };
   const current = (levels || []).filter((l: any) => Number(l.min_xp) <= Number(s.xp)).at(-1) || (levels || [])[0] || null;
@@ -188,43 +190,47 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405, origin);
 
+  const trace = createBackendPerformanceTrace({ region: Deno.env.get("SB_REGION") || "unknown" });
+  let telemetryAction = false;
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
+    telemetryAction = new Set(["learner_choices", "student_login", "student_profile"]).has(action);
+    if (telemetryAction) trace.setAction(action);
 
-    if (action === "learner_choices") return json(await learnerChoices(), 200, origin);
+    if (action === "learner_choices") return performanceJsonResponse(trace, await learnerChoices(trace), 200, cors(origin));
 
     if (action === "student_login") {
       const slug = String(body.slug || "").trim().toLowerCase();
       const pin = String(body.pin || "").trim();
-      if (!slug || !/^\d{8}$/.test(pin)) return json({ error: "INVALID_LOGIN" }, 400, origin);
-      const guard = await loginGuard(req, slug);
-      const { data: learner } = await admin.from("learners")
+      if (!slug || !/^\d{8}$/.test(pin)) return performanceJsonResponse(trace, { error: "INVALID_LOGIN" }, 400, cors(origin));
+      const guard = await trace.measure("login.guard", { dbOperations: 1 }, () => loginGuard(req, slug));
+      const { data: learner } = await trace.measure("login.learner", { dbOperations: 1 }, () => admin.from("learners")
         .select("id,workspace_id,display_name,slug,is_active")
         .eq("workspace_id", WORKSPACE_ID)
         .eq("slug", slug)
         .eq("is_active", true)
-        .maybeSingle();
+        .maybeSingle());
       if (!learner) {
-        await recordLoginFailure(guard);
-        return json({ error: "INVALID_LOGIN" }, 401, origin);
+        await trace.measure("login.failure", { dbOperations: 1 }, () => recordLoginFailure(guard));
+        return performanceJsonResponse(trace, { error: "INVALID_LOGIN" }, 401, cors(origin));
       }
-      const { data: tokenId, error: pinError } = await admin.rpc("verify_and_upgrade_learner_pin", {
+      const { data: tokenId, error: pinError } = await trace.measure("login.verify", { dbOperations: 1 }, () => admin.rpc("verify_and_upgrade_learner_pin", {
         p_workspace_id: WORKSPACE_ID,
         p_learner_id: learner.id,
         p_pin: pin,
-      });
+      }));
       if (pinError || !tokenId) {
-        await recordLoginFailure(guard);
-        return json({ error: "INVALID_LOGIN" }, 401, origin);
+        await trace.measure("login.failure", { dbOperations: 1 }, () => recordLoginFailure(guard));
+        return performanceJsonResponse(trace, { error: "INVALID_LOGIN" }, 401, cors(origin));
       }
-      await clearLoginFailures(guard);
-      return json({ session: await issueLearnerSession(learner.id, WORKSPACE_ID), profile: await learnerProfile(learner.id) }, 200, origin);
+      await trace.measure("login.clear_failures", { dbOperations: 1 }, () => clearLoginFailures(guard));
+      return performanceJsonResponse(trace, { session: await issueLearnerSession(learner.id, WORKSPACE_ID), profile: await learnerProfile(learner.id, trace) }, 200, cors(origin));
     }
 
     if (action === "student_profile") {
-      const s = await verifyLearnerSession(req);
-      return json(await learnerProfile(s.learner_id), 200, origin);
+      const s = await trace.measure("authentication", {}, () => verifyLearnerSession(req));
+      return performanceJsonResponse(trace, await learnerProfile(s.learner_id, trace), 200, cors(origin));
     }
 
     if (action === "complete_quiz") {
@@ -295,6 +301,6 @@ Deno.serve(async (req: Request) => {
       : ["AUTH_REQUIRED", "INVALID_SESSION", "SESSION_EXPIRED", "INVALID_PARENT_SESSION"].includes(msg) ? 401
       : msg === "NOT_A_PARENT_MEMBER" ? 403
       : 500;
-    return json({ error: msg }, status, origin);
+    return telemetryAction ? performanceJsonResponse(trace, { error: msg }, status, cors(origin)) : json({ error: msg }, status, origin);
   }
 });
