@@ -153,9 +153,21 @@ begin
 
   begin
     v_correct_option_position := (v_key.correct_answer->>'option_position')::integer;
-  exception when invalid_text_representation then
+  exception when invalid_text_representation or numeric_value_out_of_range then
     v_correct_option_position := null;
   end;
+
+  if v_correct_option_position is null
+     or not exists (
+       select 1
+       from public.quiz_question_options correct_option
+       where correct_option.workspace_id = p_workspace_id
+         and correct_option.question_id = p_question_id
+         and correct_option.position = v_correct_option_position
+     ) then
+    return jsonb_build_object('error', 'ANSWER_KEY_NOT_FOUND');
+  end if;
+
   v_is_correct := coalesce(p_option_position = v_correct_option_position, false);
 
   select v.settings->'attempt_scores'

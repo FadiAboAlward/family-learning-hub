@@ -32,7 +32,7 @@ function spawnPsql(sql) {
       ? resolve(stdout.trim())
       : reject(new Error(`psql exited ${code}: ${stderr}`)));
   });
-  return { child, done, readStdout: () => stdout };
+  return { done };
 }
 
 const setup = fs.readFileSync('tests/learning-answer-rpc.concurrency-setup.sql', 'utf8');
@@ -42,7 +42,7 @@ await psql(setup);
 // Hold the attempt row long enough for both calls to queue behind the same lock.
 // The advisory lock is only a deterministic test signal that the row lock has
 // already been acquired; production serialization uses the RPC's row locks.
-const blocker = spawnPsql(`begin; select pg_advisory_xact_lock(91300101); select id from public.quiz_attempts where id='${attemptId}'::uuid for update; select pg_sleep(8); commit;`);
+const blocker = spawnPsql(`begin; select id from public.quiz_attempts where id='${attemptId}'::uuid for update; select pg_advisory_xact_lock(91300101); select pg_sleep(8); commit;`);
 const lockDeadline = Date.now() + 3000;
 let blockerReady = false;
 while (!blockerReady && Date.now() < lockDeadline) {

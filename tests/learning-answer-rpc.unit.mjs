@@ -18,6 +18,11 @@ assert.match(migration, /grant execute on function public\.flh_learning_answer\(
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
 assert.match(answerFunction, /trace\.measure\("answer\.rpc",\{dbOperations:1\}/);
 assert.match(answerFunction, /admin\.rpc\("flh_learning_answer"/);
+assert.equal(
+  (answerFunction.match(/\badmin\.rpc\s*\(/g) ?? []).length,
+  1,
+  'Learning answer must make exactly one RPC call',
+);
 assert.doesNotMatch(answerFunction, /admin\.from\(/, 'Learning answer must make exactly one Edge database operation');
 
 const configuredFunctions = [...config.matchAll(/^\[functions\.([^\]]+)\]\s*\r?\nverify_jwt\s*=\s*false\s*$/gm)]

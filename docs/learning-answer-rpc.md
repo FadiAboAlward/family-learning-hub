@@ -43,12 +43,15 @@ activation in a consistent order. The existing unique answer-attempt key remains
 the final duplicate-row guard. Mastery uses one atomic upsert so concurrent
 attempts cannot overwrite each other's counters.
 
-After finalization, the exact response and submitted option are stored inside
-the queue row's internal `interaction_metadata`. A same-option retry while the
-attempt is still active returns that response without inserting another answer
-attempt, repeating mastery, adding remediation again, or activating another
-question. A different option, a stale/non-active queue row, a completed attempt,
-or a cross-learner/workspace request remains rejected.
+After a question is finalized, the exact response and submitted option are
+stored inside the queue row's internal `interaction_metadata`. A same-option
+retry while the overall attempt is still active returns that response without
+inserting another answer attempt, repeating mastery, adding remediation again,
+or activating another question. While the queue row itself is still active,
+repeating an answer is graded as the next Learning attempt, matching the prior
+path. A different option for an already finalized question, a stale/non-active
+queue row without a matching finalized response, a completed attempt, or a
+cross-learner/workspace request remains rejected.
 
 ## Security
 
@@ -69,3 +72,11 @@ The migration is additive. If behavior regresses after a later Production
 release, redeploy the previous `learning-api` source. Its table-based answer path
 remains compatible, while the unused RPC and its internal retry metadata are
 harmless. Dropping the RPC is not required for rollback.
+
+The exact migration identity for release and reconciliation is
+`supabase/migrations/20260913145055_learning_answer_rpc.sql`. This PR does not
+deploy the Edge function, apply or reconcile that migration in Production, or
+claim Production verification. After merge, the release record must identify
+that migration, record the `learning-api` deployment, reconcile the remote
+migration ledger, and attach the required Production verification evidence
+before the change is described as complete in Production.

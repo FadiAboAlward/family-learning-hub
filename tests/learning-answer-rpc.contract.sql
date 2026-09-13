@@ -255,12 +255,32 @@ begin
     where quiz_attempt_id = v_attempt_d and status in ('active', 'pending')
   ) then raise exception 'LEARNING_RPC_END_OF_QUEUE_INVALID'; end if;
 
-  -- Input, ownership, attempt, question, completion, and workspace rejection.
+  -- A missing, malformed, or non-existent correct option is a data error, not
+  -- a learner's incorrect answer, and must not consume an attempt.
+  update public.quiz_question_answer_keys
+  set correct_answer = '{}'::jsonb
+  where workspace_id = v_workspace and question_id = v_q_end;
   insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
   values (v_attempt_e, v_workspace, v_learner, v_version, 'in_progress', 'learning');
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_e, 1, v_q_end, v_concept_three, 1, 'active');
+  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ANSWER_KEY_NOT_FOUND'
+     or exists (select 1 from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_e) then
+    raise exception 'LEARNING_RPC_MALFORMED_ANSWER_KEY_NOT_REJECTED';
+  end if;
+  update public.quiz_question_answer_keys
+  set correct_answer = '{"option_position":99}'::jsonb
+  where workspace_id = v_workspace and question_id = v_q_end;
+  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ANSWER_KEY_NOT_FOUND'
+     or exists (select 1 from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_e) then
+    raise exception 'LEARNING_RPC_UNKNOWN_CORRECT_OPTION_NOT_REJECTED';
+  end if;
+  update public.quiz_question_answer_keys
+  set correct_answer = '{"option_position":2}'::jsonb
+  where workspace_id = v_workspace and question_id = v_q_end;
+
+  -- Input, ownership, attempt, question, completion, and workspace rejection.
   if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 99)->>'error' <> 'INVALID_ANSWER'
      or public.flh_learning_answer(v_workspace, v_other_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE'
      or public.flh_learning_answer(v_workspace, v_learner, gen_random_uuid(), v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE'
