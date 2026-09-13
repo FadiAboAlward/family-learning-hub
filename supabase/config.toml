@@ -381,6 +381,20 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# These four endpoints authenticate their own custom learner/parent sessions in
+# function code. Keep the platform JWT gateway disabled to match Production.
+[functions.learning-api]
+verify_jwt = false
+
+[functions.student-library-api]
+verify_jwt = false
+
+[functions.family-api]
+verify_jwt = false
+
+[functions.exam-v2-api]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

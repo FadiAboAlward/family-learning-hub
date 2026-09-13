@@ -85,10 +85,10 @@ The telemetry makes the current waterfall explicit. Expected new-attempt counts 
 |---|---:|---|---|
 | `start_quiz` new attempt | 14, plus optional asset lookup | question, option, and question-asset payload queries | access checks, attempt lookup/create, queue construction/load |
 | `save_draft` | 4 | none | attempt lookup, queue lookup, option validation, draft update |
-| `answer` finalized core answer | up to 14 without remediation | none | active-state checks, grading inputs, answer writes, mastery, next activation |
+| `answer` | 1 | none | one transactional `flh_learning_answer` RPC performs validation, grading, answer writes, remediation, mastery, and next activation |
 | `finish_quiz` already-awarded path | 10 | answer/question/version scoring inputs | completion checks, submit update, quiz/award/review lookups |
 
-Actual events are authoritative because branches such as resumed attempts, missing assets, hints, remediation, first-time awards, badges, and final-question activation change the count.
+Actual events remain authoritative because branches such as resumed attempts, missing assets, first-time awards, and badges change other action counts. The `answer` Edge count is fixed at one because those branches now execute inside the RPC transaction.
 
 ## Threshold policy
 
