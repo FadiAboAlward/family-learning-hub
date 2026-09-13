@@ -28,7 +28,9 @@ misconception for a selected distractor. The RPC therefore leaves
 `quiz_answer_attempts.detected_misconception_id` and `error_classification` at
 their existing defaults instead of inventing new pedagogy in a performance PR.
 Mastery is updated only when a question is finalized, using the same weighted
-evidence calculation and first-try/hint counters as before.
+evidence calculation and first-try counter as before. Hint counters now reflect
+the highest hint level actually delivered, so a sparse or missing hint row is
+not reported as a hint shown to the learner.
 
 The explicit validation boundary is workspace, active learner, owned active
 Learning attempt, version-bound active queue question, and a real option on that

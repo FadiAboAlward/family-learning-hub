@@ -26,6 +26,7 @@ declare
   v_attempt_e constant uuid := '20000000-0000-4000-8000-000000000005';
   v_attempt_f constant uuid := '20000000-0000-4000-8000-000000000006';
   v_attempt_g constant uuid := '20000000-0000-4000-8000-000000000007';
+  v_attempt_h constant uuid := '20000000-0000-4000-8000-000000000008';
   v_misconception constant uuid := '30000000-0000-4000-8000-000000000001';
   v_wrong_option uuid;
   v_result jsonb;
@@ -233,11 +234,11 @@ begin
     select 1 from public.quiz_attempt_answers
     where attempt_id = v_attempt_c and question_id = v_q_two
       and not is_correct and points_awarded = 0 and attempts_used = 2
-      and hints_used = 2 and mastery_result = 'not_mastered'
+      and hints_used = 1 and mastery_result = 'not_mastered'
   ) or not exists (
     select 1 from public.learner_concept_mastery
     where learner_id = v_learner and concept_id = v_concept_two
-      and mastery_score = 0 and evidence_count = 1 and total_hint_count = 2
+      and mastery_score = 0 and evidence_count = 1 and total_hint_count = 1
   ) or not exists (
     select 1 from public.quiz_attempt_question_queue
     where quiz_attempt_id = v_attempt_c and question_id = v_q_rem_two and status = 'active'
@@ -254,6 +255,23 @@ begin
     select 1 from public.quiz_attempt_question_queue
     where quiz_attempt_id = v_attempt_d and status in ('active', 'pending')
   ) then raise exception 'LEARNING_RPC_END_OF_QUEUE_INVALID'; end if;
+
+  -- A missing hint reports no delivered hint level and does not increment the
+  -- persisted hint count.
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_h, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_h, 1, v_q_end, v_concept_three, 1, 'active');
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_h, v_q_end, 1);
+  if v_result @> '{"is_correct":false,"attempt_no":1,"finalized":false,"hint":null,"hint_level":null,"hints_used":0}'::jsonb is not true
+     or not exists (
+       select 1 from public.quiz_answer_attempts
+       where quiz_attempt_id = v_attempt_h and question_id = v_q_end
+         and attempt_no = 1 and hint_level_shown is null
+     ) then
+    raise exception 'LEARNING_RPC_MISSING_HINT_REPORTED_AS_DELIVERED:%', v_result;
+  end if;
 
   -- A missing, malformed, or non-existent correct option is a data error, not
   -- a learner's incorrect answer, and must not consume an attempt.
@@ -336,7 +354,7 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h);
   delete from public.quizzes where id = v_quiz;
   delete from public.learning_concepts where id in (v_concept_one, v_concept_two, v_concept_three);
   delete from public.subjects where id = v_subject;

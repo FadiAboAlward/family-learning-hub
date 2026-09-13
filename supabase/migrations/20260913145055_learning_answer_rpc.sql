@@ -219,6 +219,7 @@ begin
       where id = v_queue.id;
     else
       v_hint := null;
+      v_hint_level := null;
     end if;
   else
     update public.quiz_attempt_question_queue
@@ -371,10 +372,7 @@ begin
   end if;
 
   if v_finalized then
-    v_hints_used := greatest(
-      v_used_hint_level,
-      least(4, v_attempt_no - case when v_is_correct then 1 else 0 end)
-    );
+    v_hints_used := v_used_hint_level;
 
     insert into public.quiz_attempt_answers(
       workspace_id,
