@@ -24,6 +24,12 @@ assert.equal(
   'Learning answer must make exactly one RPC call',
 );
 assert.doesNotMatch(answerFunction, /admin\.from\(/, 'Learning answer must make exactly one Edge database operation');
+assert.match(
+  answerFunction,
+  /console\.error\("Learning answer RPC failed",\{code:error\.code,message:error\.message\}\)/,
+  'RPC failures must retain only the database error code and message in server logs',
+);
+assert.match(answerFunction, /throw new Error\("ANSWER_SAVE_FAILED"\)/, 'RPC failures must stay opaque to callers');
 
 const configuredFunctions = [...config.matchAll(/^\[functions\.([^\]]+)\]\s*\r?\nverify_jwt\s*=\s*false\s*$/gm)]
   .map((match) => match[1])

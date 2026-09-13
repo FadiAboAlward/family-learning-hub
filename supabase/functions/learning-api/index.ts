@@ -52,7 +52,10 @@ async function answerQuestion(learnerId:string,b:any,trace:any){
   const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),pos=Number(b.option_position);
   if(!attemptId||!questionId||!Number.isInteger(pos))throw new Error("INVALID_ANSWER");
   const{data,error}=await trace.measure("answer.rpc",{dbOperations:1},()=>admin.rpc("flh_learning_answer",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_option_position:pos}));
-  if(error)throw new Error("ANSWER_SAVE_FAILED");
+  if(error){
+    console.error("Learning answer RPC failed",{code:error.code,message:error.message});
+    throw new Error("ANSWER_SAVE_FAILED");
+  }
   if((data as any)?.error)throw new Error(String((data as any).error));
   return data;
 }
