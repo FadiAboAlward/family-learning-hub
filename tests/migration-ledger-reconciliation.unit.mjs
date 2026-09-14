@@ -46,7 +46,7 @@ assert.deepEqual(
   [49, 64, 38, 26, 11, 75],
   'the reviewed migration-count reconciliation must remain explicit',
 );
-assert.equal(migrationFiles.length, 75, 'post-reconciliation Git history must contain exactly 75 migration identities');
+assert.ok(migrationFiles.length >= 75, 'Git history must retain all 75 reconciled migration identities');
 
 const versions = migrationFiles.map((file) => {
   const match = file.match(/^(\d{14})_.+\.sql$/);
@@ -91,9 +91,25 @@ const markedMirrorFiles = migrationFiles
   .sort();
 assert.deepEqual(markedMirrorFiles, mirrorFiles, 'mirror files and the manifest allowlist must change together');
 
-const canonicalFiles = migrationFiles.filter((file) => !mirrorFiles.includes(file));
-assert.deepEqual(canonicalFiles, manifest.canonicalMigrationFiles, 'the 49 canonical migrations must not be removed or renamed');
+const canonicalFiles = manifest.canonicalMigrationFiles;
+assert.ok(
+  canonicalFiles.every((file) => migrationFiles.includes(file)),
+  'the 49 reconciled canonical migrations must not be removed or renamed',
+);
 assert.equal(canonicalFiles.length, 49);
+
+const reconciledFiles = new Set([...canonicalFiles, ...mirrorFiles]);
+const newestReconciledVersion = [...reconciledFiles]
+  .map((file) => file.slice(0, 14))
+  .sort()
+  .at(-1);
+const forwardOnlyFiles = migrationFiles.filter((file) => !reconciledFiles.has(file));
+for (const file of forwardOnlyFiles) {
+  assert.ok(
+    file.slice(0, 14) > newestReconciledVersion,
+    'new migrations must be forward-only and newer than the reconciled baseline: ' + file,
+  );
+}
 
 const canonicalHash = crypto.createHash('sha256');
 for (const file of canonicalFiles) {
