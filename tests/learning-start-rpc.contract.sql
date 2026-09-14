@@ -89,6 +89,15 @@ begin
     (v_workspace, v_question_one, 1, 'A', 'option one'),
     (v_workspace, v_question_two, 1, 'A', 'second question option'),
     (v_workspace, v_question_remediation, 1, 'A', 'remediation option');
+  insert into public.quiz_question_answer_keys(
+    question_id, workspace_id, correct_answer, explanation, grading_config
+  ) values (
+    v_question_one,
+    v_workspace,
+    '{"position":1,"sentinel":"LEARNING_START_ANSWER_KEY_SENTINEL"}',
+    'LEARNING_START_ANSWER_KEY_EXPLANATION',
+    '{"sentinel":"LEARNING_START_GRADING_CONFIG_SENTINEL"}'
+  );
   insert into public.assets(id, workspace_id, kind, storage_bucket, storage_path, mime_type, metadata)
   values (v_asset, v_workspace, 'image', 'qa-assets', 'learning/start.png', 'image/png', '{"public_url":"https://example.test/start.png"}');
   insert into public.quiz_question_assets(workspace_id, question_id, asset_id, position, purpose, alt_text)
@@ -115,7 +124,12 @@ begin
      or v_result->'queue'->0->'question'->'options'->0 @> '{"position":1,"label":"A","content":"option one"}'::jsonb is not true
      or v_result->'queue'->0->'question'->'options'->1 @> '{"position":2,"label":"B","content":"option two"}'::jsonb is not true
      or v_result->'queue'->0->'question'->'assets'->0 @> '{"position":1,"purpose":"prompt","alt_text":"QA image","kind":"image","mime_type":"image/png","url":"https://example.test/start.png","storage_bucket":"qa-assets","storage_path":"learning/start.png"}'::jsonb is not true
-     or v_result::text like '%correct_answer%' then
+      or v_result::text like '%LEARNING_START_ANSWER_KEY_SENTINEL%'
+      or v_result::text like '%LEARNING_START_ANSWER_KEY_EXPLANATION%'
+      or v_result::text like '%LEARNING_START_GRADING_CONFIG_SENTINEL%'
+      or v_result::text like '%correct_answer%'
+      or v_result::text like '%explanation%'
+      or v_result::text like '%grading_config%' then
     raise exception 'LEARNING_START_QUESTION_PAYLOAD_INVALID:%', v_result;
   end if;
   select array_agg(key order by key) into v_keys from jsonb_object_keys(v_result) key;
@@ -260,6 +274,7 @@ begin
 
   delete from public.workspaces where id = v_other_workspace;
   delete from public.assets where id = v_asset;
+  delete from public.quiz_question_answer_keys where question_id = v_question_one;
   delete from public.quiz_attempts where quiz_version_id in (
     v_version_program, v_version_assignment, v_version_unavailable, v_version_draft, v_version_empty
   );
