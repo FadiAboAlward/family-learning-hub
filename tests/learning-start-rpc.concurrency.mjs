@@ -42,7 +42,7 @@ const lockExpression = `hashtextextended('${workspaceId}:${learnerId}:${versionI
 // Acquire the production serialization lock first, then expose a second lock as
 // a deterministic signal that both RPC calls can be started behind it.
 const blocker = spawnPsql(`begin; select pg_advisory_xact_lock(${lockExpression}); select pg_advisory_xact_lock(91300401); select pg_sleep(8); commit;`);
-const lockDeadline = Date.now() + 3000;
+const lockDeadline = Date.now() + 6000;
 let blockerReady = false;
 while (!blockerReady && Date.now() < lockDeadline) {
   blockerReady = await psql("select count(*)::text from pg_locks where locktype='advisory' and objid=91300401 and granted") === '1';
@@ -54,6 +54,20 @@ assert.equal(blockerReady, true, 'the concurrency blocker must acquire the Learn
 const startSql = `set role service_role; select public.flh_learning_start('${workspaceId}'::uuid,'${learnerId}'::uuid,'${slug}')::text; reset role;`;
 const first = spawnPsql(startSql);
 const second = spawnPsql(startSql);
+
+// Prove both calls overlap behind the production advisory lock. Final row
+// counts alone would not distinguish real concurrency from sequential starts.
+const waiterDeadline = Date.now() + 5000;
+let waiters = 0;
+while (waiters < 2 && Date.now() < waiterDeadline) {
+  waiters = Number(await psql(
+    `select count(*)::text from pg_stat_activity where wait_event_type='Lock' and wait_event='advisory' and query like '%flh_learning_start%' and query like '%${slug}%'`,
+  ));
+  if (waiters >= 2) break;
+  await new Promise((resolve) => setTimeout(resolve, 25));
+}
+assert.equal(waiters, 2, 'both Learning start calls must wait on the serialization lock simultaneously');
+
 const [, firstOutput, secondOutput] = await Promise.all([blocker.done, first.done, second.done]);
 
 const firstResult = JSON.parse(firstOutput);
