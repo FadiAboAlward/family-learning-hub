@@ -36,6 +36,27 @@ assert.match(
   'RPC failures must retain only the database error code and message in server logs',
 );
 assert.match(startFunction, /throw new Error\("START_QUIZ_FAILED"\)/, 'unexpected RPC failures must stay opaque');
+assert.match(
+  startFunction,
+  /if\(\(data as any\)\?\.error\)throw new Error\(String\(\(data as any\)\.error\)\)/,
+  'Learning start must preserve server-authoritative domain errors',
+);
+assert.match(startFunction, /return data;/, 'Learning start must return the RPC response unchanged');
+assert.match(
+  migration,
+  /raise warning 'flh_learning_start create failed at stage % \(SQLSTATE %, message %\)'/i,
+  'caught create failures must retain server-side diagnostics',
+);
+assert.doesNotMatch(
+  migration,
+  /jsonb_build_object\('error',\s*'ATTEMPT_CREATE_FAILED',/i,
+  'database diagnostics must not leak into the attempt error response',
+);
+assert.doesNotMatch(
+  migration,
+  /jsonb_build_object\('error',\s*'QUEUE_CREATE_FAILED',/i,
+  'database diagnostics must not leak into the queue error response',
+);
 
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
 assert.match(answerFunction, /trace\.measure\("answer\.rpc",\{dbOperations:1\}/);

@@ -179,6 +179,10 @@ begin
         and q.delivery_role = 'core'
       order by q.position;
     exception when others then
+      raise warning 'flh_learning_start create failed at stage % (SQLSTATE %, message %)',
+        v_create_stage,
+        sqlstate,
+        sqlerrm;
       if v_create_stage = 'attempt' then
         return jsonb_build_object('error', 'ATTEMPT_CREATE_FAILED');
       end if;
