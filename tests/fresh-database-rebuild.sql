@@ -75,6 +75,7 @@ begin
     'public.verify_and_upgrade_learner_pin(uuid,uuid,text)',
     'public.flh_learning_start(uuid,uuid,text)',
     'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)',
+    'public.flh_learning_finish(uuid,uuid,uuid,integer)',
     'public.flh_exam_start(uuid,uuid,text)',
     'public.flh_paper_exam_start(uuid,uuid,uuid,text,text)',
     'public.flh_record_exam_concept_mastery(uuid,uuid)'
