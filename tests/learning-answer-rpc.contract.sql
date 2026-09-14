@@ -1,6 +1,8 @@
 -- Transactional contract coverage for public.flh_learning_answer.
 -- All fixtures use the existing local `test` learner. The single DO statement
--- is atomic and removes its fixtures after successful assertions.
+-- is atomic and removes its fixtures after successful assertions. Fixture and
+-- assertion SQL stays administrative; every RPC invocation switches to the
+-- production caller role so relation grants and RLS applicability are tested.
 
 do $contract$
 declare
@@ -128,7 +130,9 @@ begin
     (v_workspace, v_attempt_a, 1, v_q_one, v_concept_one, 3, 'active', 2),
     (v_workspace, v_attempt_a, 2, v_q_two, v_concept_two, 2, 'pending', null);
 
+  set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_a, v_q_one, 2);
+  reset role;
   if v_result @> '{"is_correct":true,"attempt_no":1,"finalized":true,"hint":null,"hint_level":null,"hints_used":0,"remediation_added":null,"explanation":"correct explanation","correct_option_position":2}'::jsonb is not true then
     raise exception 'LEARNING_RPC_FIRST_TRY_CONTRACT_INVALID:%', v_result;
   end if;
@@ -157,14 +161,19 @@ begin
       and first_try_correct_count = 1 and total_question_count = 1 and total_hint_count = 0
   ) then raise exception 'LEARNING_RPC_FIRST_MASTERY_INVALID'; end if;
 
+  set local role service_role;
   v_retry := public.flh_learning_answer(v_workspace, v_learner, v_attempt_a, v_q_one, 2);
+  reset role;
   if v_retry <> v_result then raise exception 'LEARNING_RPC_RETRY_RESPONSE_DRIFT'; end if;
   if (select count(*) from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_a and question_id = v_q_one) <> 1
      or (select evidence_count from public.learner_concept_mastery where learner_id = v_learner and concept_id = v_concept_one) <> 1
      or (select count(*) from public.quiz_attempt_question_queue where quiz_attempt_id = v_attempt_a and status = 'active') <> 1 then
     raise exception 'LEARNING_RPC_RETRY_DUPLICATED_SIDE_EFFECTS';
   end if;
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_a, v_q_one, 1)->>'error' <> 'QUESTION_NOT_ACTIVE' then
+  set local role service_role;
+  v_retry := public.flh_learning_answer(v_workspace, v_learner, v_attempt_a, v_q_one, 1);
+  reset role;
+  if v_retry->>'error' <> 'QUESTION_NOT_ACTIVE' then
     raise exception 'LEARNING_RPC_STALE_DIFFERENT_RETRY_NOT_REJECTED';
   end if;
 
@@ -176,7 +185,9 @@ begin
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status, draft_option_position
   ) values (v_workspace, v_attempt_b, 1, v_q_one, v_concept_one, 3, 'active', 1);
 
+  set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
+  reset role;
   if v_result @> '{"is_correct":false,"attempt_no":1,"finalized":false,"hint_level":1,"hints_used":1,"explanation":null,"correct_option_position":null}'::jsonb is not true
      or v_result->'hint'->>'content' <> 'hint one' then
     raise exception 'LEARNING_RPC_INCORRECT_HINT_ONE_INVALID:%', v_result;
@@ -189,8 +200,10 @@ begin
          and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
      ) then raise exception 'LEARNING_RPC_NONFINAL_OR_MISCONCEPTION_PARITY_INVALID'; end if;
 
+  set local role service_role;
   perform public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
+  reset role;
   if v_result->>'attempt_no' <> '3'
      or v_result->>'finalized' <> 'false'
      or v_result->'remediation_added'->>'question_id' <> v_q_rem_one::text
@@ -199,7 +212,9 @@ begin
      or v_result->'remediation_added'->'question'->'assets' <> '[]'::jsonb then
     raise exception 'LEARNING_RPC_REMEDIATION_PAYLOAD_INVALID:%', v_result;
   end if;
+  set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 2);
+  reset role;
   if v_result @> '{"is_correct":true,"attempt_no":4,"finalized":true,"hints_used":3,"explanation":"correct explanation","correct_option_position":2}'::jsonb is not true then
     raise exception 'LEARNING_RPC_FINAL_CORRECT_INVALID:%', v_result;
   end if;
@@ -224,8 +239,10 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_c, 1, v_q_two, v_concept_two, 2, 'active');
+  set local role service_role;
   perform public.flh_learning_answer(v_workspace, v_learner, v_attempt_c, v_q_two, 1);
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_c, v_q_two, 1);
+  reset role;
   if v_result @> '{"is_correct":false,"attempt_no":2,"finalized":true,"hint":null,"hint_level":null,"hints_used":1,"explanation":"final incorrect explanation","correct_option_position":2}'::jsonb is not true
      or v_result->'remediation_added'->>'question_id' <> v_q_rem_two::text then
     raise exception 'LEARNING_RPC_FINAL_INCORRECT_INVALID:%', v_result;
@@ -250,7 +267,9 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_d, 1, v_q_end, v_concept_three, 1, 'active');
+  set local role service_role;
   perform public.flh_learning_answer(v_workspace, v_learner, v_attempt_d, v_q_end, 2);
+  reset role;
   if exists (
     select 1 from public.quiz_attempt_question_queue
     where quiz_attempt_id = v_attempt_d and status in ('active', 'pending')
@@ -263,12 +282,18 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_h, 1, v_q_end, v_concept_three, 1, 'active');
+  set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_h, v_q_end, 1);
+  reset role;
   if v_result @> '{"is_correct":false,"attempt_no":1,"finalized":false,"hint":null,"hint_level":null,"hints_used":0}'::jsonb is not true
      or not exists (
        select 1 from public.quiz_answer_attempts
        where quiz_attempt_id = v_attempt_h and question_id = v_q_end
          and attempt_no = 1 and hint_level_shown is null
+     ) or not exists (
+       select 1 from public.quiz_attempt_question_queue
+       where quiz_attempt_id = v_attempt_h and question_id = v_q_end
+         and draft_option_position is null
      ) then
     raise exception 'LEARNING_RPC_MISSING_HINT_REPORTED_AS_DELIVERED:%', v_result;
   end if;
@@ -283,14 +308,20 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_e, 1, v_q_end, v_concept_three, 1, 'active');
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ANSWER_KEY_NOT_FOUND'
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ANSWER_KEY_NOT_FOUND'
      or exists (select 1 from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_e) then
     raise exception 'LEARNING_RPC_MALFORMED_ANSWER_KEY_NOT_REJECTED';
   end if;
   update public.quiz_question_answer_keys
   set correct_answer = '{"option_position":99}'::jsonb
   where workspace_id = v_workspace and question_id = v_q_end;
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ANSWER_KEY_NOT_FOUND'
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ANSWER_KEY_NOT_FOUND'
      or exists (select 1 from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_e) then
     raise exception 'LEARNING_RPC_UNKNOWN_CORRECT_OPTION_NOT_REJECTED';
   end if;
@@ -299,13 +330,28 @@ begin
   where workspace_id = v_workspace and question_id = v_q_end;
 
   -- Input, ownership, attempt, question, completion, and workspace rejection.
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 99)->>'error' <> 'INVALID_ANSWER'
-     or public.flh_learning_answer(v_workspace, v_other_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE'
-     or public.flh_learning_answer(v_workspace, v_learner, gen_random_uuid(), v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE'
-     or public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_outside, 2)->>'error' <> 'QUESTION_NOT_ACTIVE'
-     or public.flh_learning_answer(gen_random_uuid(), v_learner, v_attempt_e, v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE' then
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_end, 99);
+  reset role;
+  if v_result->>'error' <> 'INVALID_ANSWER' then
     raise exception 'LEARNING_RPC_REJECTION_CONTRACT_INVALID';
   end if;
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_other_learner, v_attempt_e, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ATTEMPT_NOT_ACTIVE' then raise exception 'LEARNING_RPC_REJECTION_CONTRACT_INVALID'; end if;
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, gen_random_uuid(), v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ATTEMPT_NOT_ACTIVE' then raise exception 'LEARNING_RPC_REJECTION_CONTRACT_INVALID'; end if;
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_e, v_q_outside, 2);
+  reset role;
+  if v_result->>'error' <> 'QUESTION_NOT_ACTIVE' then raise exception 'LEARNING_RPC_REJECTION_CONTRACT_INVALID'; end if;
+  set local role service_role;
+  v_result := public.flh_learning_answer(gen_random_uuid(), v_learner, v_attempt_e, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ATTEMPT_NOT_ACTIVE' then raise exception 'LEARNING_RPC_REJECTION_CONTRACT_INVALID'; end if;
   if exists (select 1 from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_e) then
     raise exception 'LEARNING_RPC_REJECTION_WROTE_ATTEMPT';
   end if;
@@ -315,7 +361,10 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_attempt_f, 1, v_q_end, v_concept_three, 1, 'active');
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_f, v_q_end, 2)->>'error' <> 'ATTEMPT_NOT_ACTIVE' then
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_f, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'ATTEMPT_NOT_ACTIVE' then
     raise exception 'LEARNING_RPC_COMPLETED_ATTEMPT_NOT_REJECTED';
   end if;
 
@@ -330,7 +379,10 @@ begin
   )
   select v_workspace, v_attempt_g, v_q_end, n, jsonb_build_object('option_position', 1), false, 0
   from generate_series(1, 4) n;
-  if public.flh_learning_answer(v_workspace, v_learner, v_attempt_g, v_q_end, 2)->>'error' <> 'MAX_ATTEMPTS_REACHED'
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_g, v_q_end, 2);
+  reset role;
+  if v_result->>'error' <> 'MAX_ATTEMPTS_REACHED'
      or (select count(*) from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_g) <> 4 then
     raise exception 'LEARNING_RPC_MAX_ATTEMPT_GUARD_INVALID';
   end if;

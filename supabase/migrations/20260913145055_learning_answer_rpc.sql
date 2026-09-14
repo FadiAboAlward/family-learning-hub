@@ -220,6 +220,9 @@ begin
     else
       v_hint := null;
       v_hint_level := null;
+      update public.quiz_attempt_question_queue
+      set draft_option_position = null
+      where id = v_queue.id;
     end if;
   else
     update public.quiz_attempt_question_queue
