@@ -83,12 +83,12 @@ The telemetry makes the current waterfall explicit. Expected new-attempt counts 
 
 | Action | Typical DB operations | Parallel work | Sequential shape |
 |---|---:|---|---|
-| `start_quiz` new attempt | 14, plus optional asset lookup | question, option, and question-asset payload queries | access checks, attempt lookup/create, queue construction/load |
+| `start_quiz` | 1 | none | one transactional `flh_learning_start` RPC performs access checks, attempt start/resume, queue construction/restore, and payload loading |
 | `save_draft` | 4 | none | attempt lookup, queue lookup, option validation, draft update |
 | `answer` | 1 | none | one transactional `flh_learning_answer` RPC performs validation, grading, answer writes, remediation, mastery, and next activation |
 | `finish_quiz` already-awarded path | 10 | answer/question/version scoring inputs | completion checks, submit update, quiz/award/review lookups |
 
-Actual events remain authoritative because branches such as resumed attempts, missing assets, first-time awards, and badges change other action counts. The `answer` Edge count is fixed at one because those branches now execute inside the RPC transaction.
+Actual events remain authoritative because branches such as first-time awards and badges change other action counts. The historical Production start baseline was 14 operations plus an optional asset lookup; no post-deployment improvement is claimed by the implementation PR. The `start_quiz` and `answer` Edge counts are structurally fixed at one because their branches now execute inside their respective RPC transactions.
 
 ## Threshold policy
 
