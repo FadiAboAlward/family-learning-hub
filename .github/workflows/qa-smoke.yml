@@ -82,6 +82,10 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-answer-rpc.contract.sql
       - name: Verify Learning answer concurrency and idempotency
         run: node tests/learning-answer-rpc.concurrency.mjs
+      - name: Verify Learning start RPC contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/learning-start-rpc.contract.sql
+      - name: Verify Learning start concurrency and idempotency
+        run: node tests/learning-start-rpc.concurrency.mjs
       - name: Lint reconstructed database
         run: npx --yes supabase@2.117.0 db lint --local --schema public,private --level error --fail-on error
       - name: Stop local database
