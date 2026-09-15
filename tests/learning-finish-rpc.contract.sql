@@ -94,9 +94,10 @@ begin
   values (v_workspace, v_learner, v_keep_going_badge, 'quiz:qa-learning-finish-rpc');
 
   insert into public.quiz_attempts(
-    id, workspace_id, learner_id, quiz_version_id, status, delivery_mode, started_at
+    id, workspace_id, learner_id, quiz_version_id, status, delivery_mode, started_at, metadata
   ) values (
-    v_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning', now() - interval '10 minutes'
+    v_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning', now() - interval '10 minutes',
+    '{"quiz_slug":"qa-learning-finish-rpc","server_state":true,"preserve":"yes"}'::jsonb
   );
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, difficulty_level, status, source_role
@@ -145,6 +146,7 @@ begin
       and score_points = 6 and max_points = 7 and percentage = 85.71
       and duration_seconds = 123
       and metadata @> '{"engine":"learning-api-v2","server_graded":true,"first_try_correct":2,"hints_used":2}'::jsonb
+      and metadata @> '{"quiz_slug":"qa-learning-finish-rpc","server_state":true,"preserve":"yes"}'::jsonb
       and metadata->'learning_finish_last_result' = v_result
   ) then raise exception 'LEARNING_FINISH_ATTEMPT_FINALIZATION_INVALID'; end if;
   select submitted_at into strict v_submitted_at from public.quiz_attempts where id = v_attempt;

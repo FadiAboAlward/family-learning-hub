@@ -364,7 +364,7 @@ begin
       max_points = v_max_points,
       percentage = v_percentage,
       duration_seconds = v_duration_seconds,
-      metadata = jsonb_build_object(
+      metadata = coalesce(v_attempt.metadata, '{}'::jsonb) || jsonb_build_object(
         'engine', 'learning-api-v2',
         'server_graded', true,
         'first_try_correct', v_first_try_correct,

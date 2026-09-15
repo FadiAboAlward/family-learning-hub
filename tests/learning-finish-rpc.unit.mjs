@@ -16,14 +16,30 @@ assert.match(migration, /revoke all on function public\.flh_learning_finish\(uui
 assert.match(migration, /grant execute on function public\.flh_learning_finish\(uuid,uuid,uuid,integer\) to service_role/i);
 assert.match(migration, /for update/i, 'finish must serialize on owned rows');
 assert.match(migration, /learning_finish_last_result/i, 'finish must persist its retry response');
+assert.match(migration, /metadata = coalesce\(v_attempt\.metadata, '\{\}'::jsonb\) \|\| jsonb_build_object/i, 'finish must preserve start metadata');
 assert.match(migration, /on conflict \(learner_id, badge_id\) do nothing/i, 'badge writes must be idempotent');
 
+/** Extract a function declaration by balancing braces from its opening body. */
+function extractFunction(source, declaration) {
+  const start = source.indexOf(declaration);
+  assert.ok(start >= 0, `${declaration} must exist`);
+  const bodyStart = source.indexOf('{', start);
+  assert.ok(bodyStart >= 0, `${declaration} must have a body`);
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  assert.fail(`${declaration} must have a balanced body`);
+}
+
 const finishStart = learningApi.indexOf('async function finishQuiz');
-const finishEnd = learningApi.indexOf('\n}\n\nDeno.serve', finishStart) + 2;
-const finishFunction = learningApi.slice(finishStart, finishEnd);
-assert.ok(finishStart >= 0 && finishEnd > finishStart, 'finishQuiz must exist');
+const finishFunction = extractFunction(learningApi, 'async function finishQuiz');
+assert.ok(finishStart >= 0, 'finishQuiz must exist');
 assert.match(finishFunction, /admin\.rpc\("flh_learning_finish"/);
 assert.match(finishFunction, /"finish\.rpc",\{dbOperations:1\}/);
+assert.match(finishFunction, /if\(!attemptId\)throw new Error\("ATTEMPT_NOT_ACTIVE"\)/);
 assert.doesNotMatch(finishFunction, /admin\.from\(/, 'finish Edge adapter must not make extra DB calls');
 assert.doesNotMatch(learningApi, /async function awardCompletion/, 'award waterfall must move into the RPC');
 

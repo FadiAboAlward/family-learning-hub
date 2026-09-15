@@ -39,8 +39,10 @@ async function answerQuestion(learnerId:string,b:any,trace:any){
   return data;
 }
 
+/** Finish one authenticated Learning attempt through the atomic database RPC. */
 async function finishQuiz(learnerId:string,b:any,trace:any){
   const attemptId=String(b.attempt_id||""),duration=Math.max(0,Math.min(86400,Number(b.duration_seconds||0)));
+  if(!attemptId)throw new Error("ATTEMPT_NOT_ACTIVE");
   const{data,error}=await trace.measure("finish.rpc",{dbOperations:1},()=>admin.rpc("flh_learning_finish",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_duration_seconds:Number.isFinite(duration)?Math.round(duration):0}));
   if(error){
     console.error("Learning finish RPC failed",{code:error.code,message:error.message});

@@ -8,6 +8,7 @@ const containerName = 'supabase_db_family-learning-hub';
 const workspaceId = '55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
 const attemptId = '94000000-0000-4000-8000-000000000004';
 
+/** Execute one SQL command against the disposable local Supabase database. */
 async function psql(sql) {
   const { stdout } = await execFileAsync('docker', [
     'exec', containerName, 'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1',
@@ -16,6 +17,7 @@ async function psql(sql) {
   return stdout.trim();
 }
 
+/** Start one concurrent SQL command and expose its completion promise. */
 function spawnPsql(sql) {
   const child = spawn('docker', [
     'exec', containerName, 'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1',
@@ -39,7 +41,7 @@ const learnerId = await psql(`select id::text from public.learners where workspa
 
 // Hold the same attempt row first, then start two RPC calls that must overlap
 // behind the production serialization lock.
-const blocker = spawnPsql(`begin; select id from public.quiz_attempts where id='${attemptId}'::uuid for update; select pg_advisory_xact_lock(91500501); select pg_sleep(8); commit;`);
+const blocker = spawnPsql(`begin; select id from public.quiz_attempts where id='${attemptId}'::uuid for update; select pg_advisory_xact_lock(91500501); select pg_sleep(12); commit;`);
 const lockDeadline = Date.now() + 3000;
 let blockerReady = false;
 while (!blockerReady && Date.now() < lockDeadline) {
