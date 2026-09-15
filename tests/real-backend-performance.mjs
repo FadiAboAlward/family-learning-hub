@@ -8,7 +8,8 @@ const QA_AUTH_URL = `${SUPABASE_URL}/functions/v1/qa-auth`;
 const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
-const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
+const QA_QUESTION_COUNT = 3;
+const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
 const REGIONS = { default: null, 'ap-southeast-1': 'ap-southeast-1' };
 
 export function parseSampleCount(value = '10') {
@@ -20,6 +21,15 @@ export function parseSampleCount(value = '10') {
   return count;
 }
 
+export function parseBrowserRunCount(value = '3') {
+  if (value === undefined || value === null || value === '') return 3;
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 3) {
+    throw new Error('PERF_BROWSER_RUN_COUNT must be an integer of at least 3');
+  }
+  return count;
+}
+
 export function parseFiniteHeader(value) {
   if (value == null || value === '') return null;
   const parsed = Number(value);
@@ -27,6 +37,7 @@ export function parseFiniteHeader(value) {
 }
 
 const SAMPLE_COUNT = parseSampleCount(process.env.PERF_SAMPLE_COUNT);
+const BROWSER_RUN_COUNT = parseBrowserRunCount(process.env.PERF_BROWSER_RUN_COUNT);
 
 function round(value) {
   return Math.round(Number(value) * 10) / 10;
@@ -59,6 +70,44 @@ export function parseServerTiming(value) {
     const match = item.trim().match(/^([a-z][a-z0-9_.-]*);dur=([0-9.]+)(?:;desc="(sequential|parallel):([0-9]+)")?$/);
     return match ? { name: match[1], duration_ms: Number(match[2]), execution: match[3] || null, db_operations: match[4] ? Number(match[4]) : null } : null;
   }).filter(Boolean);
+}
+
+export function correlateUiTiming(actionStarted, uiReady, request = null) {
+  const uiWait = Math.max(0, uiReady - actionStarted);
+  if (!request) {
+    return {
+      ui_wait_ms: round(uiWait),
+      frontend_only_ms: round(uiWait),
+      request_start_offset_ms: null,
+      request_started_before_checkpoint_ms: null,
+      request_network_ms: null,
+      backend_ms: null,
+      network_transport_ms: null,
+      post_response_render_ms: null,
+      ui_ready_before_response_ms: null,
+      database_operations: null,
+      correlation_id: null,
+      edge_region: null,
+    };
+  }
+  const overlapStart = Math.max(actionStarted, request.started_at);
+  const overlapEnd = Math.min(uiReady, request.response_at);
+  const networkOverlap = Math.max(0, overlapEnd - overlapStart);
+  const backend = parseFiniteHeader(request.backend_ms);
+  return {
+    ui_wait_ms: round(uiWait),
+    frontend_only_ms: round(Math.max(0, uiWait - networkOverlap)),
+    request_start_offset_ms: request.started_at >= actionStarted ? round(request.started_at - actionStarted) : null,
+    request_started_before_checkpoint_ms: request.started_at < actionStarted ? round(actionStarted - request.started_at) : null,
+    request_network_ms: round(request.response_at - request.started_at),
+    backend_ms: backend,
+    network_transport_ms: backend === null ? null : round(Math.max(0, request.response_at - request.started_at - backend)),
+    post_response_render_ms: uiReady >= request.response_at ? round(uiReady - request.response_at) : null,
+    ui_ready_before_response_ms: uiReady < request.response_at ? round(request.response_at - uiReady) : null,
+    database_operations: parseFiniteHeader(request.database_operations),
+    correlation_id: request.correlation_id || null,
+    edge_region: request.edge_region || null,
+  };
 }
 
 async function githubOidcToken() {
@@ -246,49 +295,223 @@ function requestAction(request) {
   try { return JSON.parse(request.postData() || '{}').action || ''; } catch { return ''; }
 }
 
+function requestMatches(request, functionName, action) {
+  return request.url().includes(`/functions/v1/${functionName}`) && requestAction(request) === action;
+}
+
+function captureRequest(page, functionName, action) {
+  const requestPromise = page.waitForRequest(request => requestMatches(request, functionName, action), { timeout: 30000 })
+    .then(request => ({ request, started_at: performance.now() }));
+  const responsePromise = page.waitForResponse(response => requestMatches(response.request(), functionName, action), { timeout: 30000 })
+    .then(async response => {
+      const headers = await response.allHeaders();
+      return {
+        response,
+        response_at: performance.now(),
+        backend_ms: parseFiniteHeader(headers['x-flh-backend-ms']),
+        database_operations: parseFiniteHeader(headers['x-flh-db-operations']),
+        correlation_id: headers['x-flh-correlation-id'] || null,
+        edge_region: headers['x-flh-edge-region'] || headers['x-sb-edge-region'] || null,
+      };
+    });
+  return Promise.all([requestPromise, responsePromise]).then(([started, completed]) => ({ ...started, ...completed }));
+}
+
+async function measureNetworkUi(page, functionName, action, trigger, waitForUi) {
+  const request = captureRequest(page, functionName, action);
+  const actionStarted = performance.now();
+  await trigger();
+  const uiReadyPromise = waitForUi().then(() => performance.now());
+  const [network, uiReady] = await Promise.all([request, uiReadyPromise]);
+  return correlateUiTiming(actionStarted, uiReady, network);
+}
+
+async function measureFrontendUi(trigger, waitForUi) {
+  const actionStarted = performance.now();
+  await trigger();
+  await waitForUi();
+  return correlateUiTiming(actionStarted, performance.now());
+}
+
+async function openQaActivity(page) {
+  const program = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
+  const programOpen = await measureFrontendUi(
+    () => program.click(),
+    () => page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE }).waitFor({ state: 'visible', timeout: 10000 }),
+  );
+  const book = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
+  await book.click();
+  const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
+  await learningButton.waitFor({ state: 'visible', timeout: 10000 });
+  return { programOpen, learningButton };
+}
+
+async function measureFinish(page) {
+  const finishRequest = captureRequest(page, 'learning-api', 'finish_quiz');
+  const profileRequest = captureRequest(page, 'family-api', 'student_profile');
+  const actionStarted = performance.now();
+  await page.locator('#flhLearnNext').click();
+  const resultReadyPromise = page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 }).then(() => performance.now());
+  const [finishNetwork, resultReady] = await Promise.all([finishRequest, resultReadyPromise]);
+  const profileNetwork = await profileRequest;
+  return {
+    result: correlateUiTiming(actionStarted, resultReady, finishNetwork),
+    profile_refresh: {
+      ...correlateUiTiming(actionStarted, resultReady, profileNetwork),
+      completed_before_result: profileNetwork.response_at <= resultReady,
+    },
+  };
+}
+
+async function measureReturnHome(page) {
+  const actionStarted = performance.now();
+  await page.locator('#learnHome').click();
+  await page.locator('.hero h1').filter({ hasText: 'أهلًا' }).waitFor({ state: 'visible', timeout: 10000 });
+  const homeReady = performance.now();
+  await page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE }).waitFor({ state: 'visible', timeout: 10000 });
+  const libraryReady = performance.now();
+  return {
+    result_to_home: correlateUiTiming(actionStarted, homeReady),
+    home_to_library: correlateUiTiming(homeReady, libraryReady),
+  };
+}
+
+async function measureLearningJourney(page) {
+  const { programOpen, learningButton } = await openQaActivity(page);
+  const learningStart = await measureNetworkUi(
+    page,
+    'learning-api',
+    'start_quiz',
+    () => learningButton.click(),
+    () => page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 30000 }),
+  );
+
+  const draftRequest = captureRequest(page, 'learning-api', 'save_draft');
+  const selectionStarted = performance.now();
+  await page.locator('.flh-learn-answer').first().click();
+  await page.locator('.flh-learn-answer.selected').waitFor({ state: 'visible', timeout: 10000 });
+  const selectionReady = performance.now();
+  const draftNetwork = await draftRequest;
+  const saveDraft = correlateUiTiming(selectionStarted, selectionReady, draftNetwork);
+
+  const hint = await measureNetworkUi(
+    page,
+    'learning-api',
+    'request_hint',
+    () => page.locator('#flhHelp').click(),
+    () => page.locator('.flh-hint-card').waitFor({ state: 'visible', timeout: 30000 }),
+  );
+
+  const answers = [];
+  for (let question = 0; question < QA_QUESTION_COUNT; question++) {
+    if (question > 0) {
+      await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+      await page.locator('.flh-learn-answer').first().click();
+    }
+    answers.push(await measureNetworkUi(
+      page,
+      'learning-api',
+      'answer',
+      () => page.locator('#flhConfirmAnswer').click(),
+      () => page.locator('#flhLearnNext').waitFor({ state: 'visible', timeout: 30000 }),
+    ));
+    if (question < QA_QUESTION_COUNT - 1) {
+      await page.locator('#flhLearnNext').click();
+      await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+    }
+  }
+
+  const finish = await measureFinish(page);
+  const home = await measureReturnHome(page);
+  return {
+    program_open: programOpen,
+    learning_start: learningStart,
+    save_draft: saveDraft,
+    hint,
+    answer_confirmations: answers,
+    finish_result: finish.result,
+    profile_refresh: finish.profile_refresh,
+    ...home,
+  };
+}
+
+function flattenBrowserCheckpoints(runs, path, key) {
+  return runs.flatMap(run => {
+    const value = run[path]?.[key];
+    return Array.isArray(value) ? value : value ? [value] : [];
+  });
+}
+
+function summarizeBrowserCheckpoints(runs, path) {
+  const keys = ['session_restore_home', 'home_to_library', 'program_open', 'learning_start', 'save_draft', 'hint', 'answer_confirmations', 'finish_result', 'profile_refresh', 'result_to_home'];
+  return Object.fromEntries(keys.map(key => {
+    const samples = flattenBrowserCheckpoints(runs, path, key);
+    const summary = {};
+    for (const field of ['ui_wait_ms', 'frontend_only_ms', 'request_network_ms', 'backend_ms', 'network_transport_ms', 'post_response_render_ms']) {
+      summary[field] = summarizeSamples(samples.map(sample => ({ ok: Number.isFinite(sample[field]), [field]: sample[field] })), field);
+    }
+    summary.database_operations = [...new Set(samples.map(sample => sample.database_operations).filter(value => value !== null))];
+    summary.observed_regions = [...new Set(samples.map(sample => sample.edge_region).filter(Boolean))];
+    return [key, summary];
+  }));
+}
+
 async function browserCorrelation() {
   if (process.env.PERF_BROWSER !== '1') return { status: 'skipped', reason: 'PERF_BROWSER is not enabled' };
-  return withQaRun(async prepared => {
-    const { chromium } = await import('playwright');
-    const browser = await chromium.launch({ headless: true });
-    try {
-      const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-      await page.addInitScript(session => localStorage.setItem('learner_session', session), prepared.session);
-      await page.goto(`${APP_URL}?real_backend_performance=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
-      const program = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
-      await program.waitFor({ state: 'visible', timeout: 10000 });
-      await program.click();
-      const book = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
-      await book.waitFor({ state: 'visible', timeout: 10000 });
-      await book.click();
-      const button = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
-      await button.waitFor({ state: 'visible', timeout: 10000 });
-      let requestStarted = null, responseReceived = null;
-      page.on('request', request => {
-        if (request.url().includes('/functions/v1/learning-api') && requestAction(request) === 'start_quiz') requestStarted = performance.now();
-      });
-      const responsePromise = page.waitForResponse(response => response.url().includes('/functions/v1/learning-api') && requestAction(response.request()) === 'start_quiz');
-      const actionStarted = performance.now();
-      await button.click();
-      const response = await responsePromise;
-      responseReceived = performance.now();
-      const responseHeaders = await response.allHeaders();
-      await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 30000 });
-      const uiUpdated = performance.now();
-      return {
-        status: 'measured',
-        action_to_request_ms: requestStarted === null ? null : round(requestStarted - actionStarted),
-        request_to_response_ms: requestStarted === null ? null : round(responseReceived - requestStarted),
-        backend_total_ms: parseFiniteHeader(responseHeaders['x-flh-backend-ms']),
-        response_to_ui_ms: round(uiUpdated - responseReceived),
-        action_to_ui_ms: round(uiUpdated - actionStarted),
-        correlation_id: responseHeaders['x-flh-correlation-id'] || null,
-        edge_region: responseHeaders['x-flh-edge-region'] || responseHeaders['x-sb-edge-region'] || null,
-      };
-    } finally {
-      await browser.close();
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ headless: true });
+  const runs = [];
+  try {
+    for (let index = 0; index < BROWSER_RUN_COUNT; index++) {
+      runs.push(await withQaRun(async prepared => {
+        const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+        try {
+          const page = await context.newPage();
+          const browserErrors = [];
+          page.on('pageerror', error => browserErrors.push(`pageerror: ${error.message}`));
+          page.on('console', message => { if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`); });
+          await page.addInitScript(session => localStorage.setItem('learner_session', session), prepared.session);
+
+          const profileRequest = captureRequest(page, 'family-api', 'student_profile');
+          const libraryRequest = captureRequest(page, 'student-library-api', 'catalog');
+          const navigationStarted = performance.now();
+          await page.goto(`${APP_URL}?real_backend_performance=${Date.now()}-${index}#student`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await page.locator('.hero h1').filter({ hasText: 'أهلًا' }).waitFor({ state: 'visible', timeout: 30000 });
+          const homeReady = performance.now();
+          await page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE }).waitFor({ state: 'visible', timeout: 30000 });
+          const libraryReady = performance.now();
+          const [profileNetwork, libraryNetwork] = await Promise.all([profileRequest, libraryRequest]);
+
+          const cold = {
+            session_restore_home: correlateUiTiming(navigationStarted, homeReady, profileNetwork),
+            home_to_library: correlateUiTiming(homeReady, libraryReady, libraryNetwork),
+            ...(await measureLearningJourney(page)),
+          };
+          const warm = await measureLearningJourney(page);
+          if (browserErrors.length) throw new Error(browserErrors.join('; '));
+          return { run: index + 1, cold, warm };
+        } finally {
+          await context.close();
+        }
+      }));
     }
-  });
+    return {
+      status: 'measured',
+      app_url: APP_URL,
+      run_count: runs.length,
+      definitions: {
+        cold: 'Fresh browser context with empty app memory and persistent performance caches.',
+        warm: 'Same active page and Testing session after the cold journey, with normal in-memory profile/catalog caches.',
+      },
+      summary: {
+        cold: summarizeBrowserCheckpoints(runs, 'cold'),
+        warm: summarizeBrowserCheckpoints(runs, 'warm'),
+      },
+      runs,
+    };
+  } finally {
+    await browser.close();
+  }
 }
 
 function phaseBreakdown(sample) {
@@ -316,6 +539,13 @@ function markdown(report) {
     }
   }
   const phaseRows = Object.entries(report.learning_phase_breakdown || {}).map(([action, item]) => `| ${action} | ${item.database_operations ?? 'N/A'} | ${item.cumulative_phase_ms ?? 'N/A'} | ${item.backend_total_ms ?? 'N/A'} | ${item.backend_phase_percent ?? 'N/A'} | ${item.slowest_phase?.name || 'N/A'} | ${item.slowest_phase?.duration_ms ?? 'N/A'} |`);
+  const browserRows = [];
+  for (const path of ['cold', 'warm']) {
+    for (const [checkpoint, item] of Object.entries(report.browser_correlation?.summary?.[path] || {})) {
+      const p50 = field => item[field]?.p50_ms ?? 'N/A';
+      browserRows.push(`| ${path} | ${checkpoint} | ${p50('ui_wait_ms')} | ${p50('frontend_only_ms')} | ${p50('request_network_ms')} | ${p50('backend_ms')} | ${p50('network_transport_ms')} | ${p50('post_response_render_ms')} | ${item.database_operations?.join(', ') || 'N/A'} |`);
+    }
+  }
   return [
     '# Real backend performance report', '',
     `Generated: ${report.generated_at}`, `Report-only: yes`, `Testing learner only: yes`, '',
@@ -330,7 +560,12 @@ function markdown(report) {
     '| Action | DB operations | Cumulative phases ms | Backend total ms | Backend phases % | Slowest phase | Slowest ms |',
     '|---|---:|---:|---:|---:|---|---:|', ...phaseRows, '',
     '## Browser correlation', '',
-    '```json', JSON.stringify(report.browser_correlation, null, 2), '```', '',
+    `Status: ${report.browser_correlation?.status || 'not_run'}`,
+    `App URL: ${report.browser_correlation?.app_url || 'N/A'}`,
+    `Representative runs: ${report.browser_correlation?.run_count || 0}`, '',
+    '| Path | Checkpoint | UI wait p50 | Frontend-only p50 | Request p50 | Backend p50 | Transport p50 | Post-response render p50 | DB operations |',
+    '|---|---|---:|---:|---:|---:|---:|---:|---|', ...browserRows, '',
+    'Full per-run correlation IDs, regions, timings, and cold/warm evidence are preserved in real-backend-performance-report.json.', '',
     report.error ? `Harness error: ${report.error}` : 'Harness completed.',
   ].join('\n');
 }

@@ -223,8 +223,9 @@ jobs:
       - name: Run report-only real backend benchmark
         continue-on-error: true
         env:
-          APP_URL: http://127.0.0.1:4173/
+          APP_URL: http://localhost:4173/
           PERF_BROWSER: '1'
+          PERF_BROWSER_RUN_COUNT: '3'
           PERF_SAMPLE_COUNT: '10'
         run: node tests/real-backend-performance.mjs
       - name: Append real backend summary
