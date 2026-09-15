@@ -36,6 +36,15 @@ export function parseFiniteHeader(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+export function observeRejection(promise) {
+  promise.catch(() => {});
+  return promise;
+}
+
+export function isLearningFinishAction(text) {
+  return String(text || '').trim() === 'إنهاء التدريب';
+}
+
 const SAMPLE_COUNT = parseSampleCount(process.env.PERF_SAMPLE_COUNT);
 const BROWSER_RUN_COUNT = parseBrowserRunCount(process.env.PERF_BROWSER_RUN_COUNT);
 
@@ -314,7 +323,8 @@ function captureRequest(page, functionName, action) {
         edge_region: headers['x-flh-edge-region'] || headers['x-sb-edge-region'] || null,
       };
     });
-  return Promise.all([requestPromise, responsePromise]).then(([started, completed]) => ({ ...started, ...completed }));
+  return observeRejection(Promise.all([requestPromise, responsePromise])
+    .then(([started, completed]) => ({ ...started, ...completed })));
 }
 
 async function measureNetworkUi(page, functionName, action, trigger, waitForUi) {
@@ -403,8 +413,8 @@ async function measureLearningJourney(page) {
   );
 
   const answers = [];
-  for (let question = 0; question < QA_QUESTION_COUNT; question++) {
-    if (question > 0) {
+  while (answers.length < QA_QUESTION_COUNT * 4) {
+    if (answers.length > 0) {
       await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
       await page.locator('.flh-learn-answer').first().click();
     }
@@ -415,11 +425,12 @@ async function measureLearningJourney(page) {
       () => page.locator('#flhConfirmAnswer').click(),
       () => page.locator('#flhLearnNext').waitFor({ state: 'visible', timeout: 30000 }),
     ));
-    if (question < QA_QUESTION_COUNT - 1) {
-      await page.locator('#flhLearnNext').click();
-      await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-    }
+    const next = page.locator('#flhLearnNext');
+    if (isLearningFinishAction(await next.innerText())) break;
+    await next.click();
+    await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
   }
+  if (!isLearningFinishAction(await page.locator('#flhLearnNext').innerText())) throw new Error('LEARNING_QUEUE_DID_NOT_COMPLETE');
 
   const finish = await measureFinish(page);
   const home = await measureReturnHome(page);

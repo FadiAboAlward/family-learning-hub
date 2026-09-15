@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { correlateUiTiming, parseBrowserRunCount, parseFiniteHeader, parseSampleCount, parseServerTiming, summarizeSamples } from './real-backend-performance.mjs';
+import { correlateUiTiming, isLearningFinishAction, observeRejection, parseBrowserRunCount, parseFiniteHeader, parseSampleCount, parseServerTiming, summarizeSamples } from './real-backend-performance.mjs';
 
 assert.equal(parseSampleCount(), 10);
 assert.equal(parseSampleCount('5'), 5);
@@ -20,6 +20,13 @@ assert.equal(parseFiniteHeader('0.0'), 0);
 assert.equal(parseFiniteHeader('12.5'), 12.5);
 assert.equal(parseFiniteHeader('Infinity'), null);
 assert.equal(parseFiniteHeader(''), null);
+
+const rejected = Promise.reject(new Error('capture failed'));
+assert.equal(observeRejection(rejected), rejected);
+await assert.rejects(rejected, /capture failed/);
+
+assert.equal(isLearningFinishAction(' إنهاء التدريب '), true);
+assert.equal(isLearningFinishAction('السؤال التالي'), false);
 
 const samples = [100, 200, 300, 400, 500].map(network_ms => ({ ok: true, network_ms }));
 samples.push({ ok: false, network_ms: null });
