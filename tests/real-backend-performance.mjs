@@ -372,7 +372,7 @@ async function measureReturnHome(page) {
   const libraryReady = performance.now();
   return {
     result_to_home: correlateUiTiming(actionStarted, homeReady),
-    home_to_library: correlateUiTiming(homeReady, libraryReady),
+    return_home_to_library: correlateUiTiming(homeReady, libraryReady),
   };
 }
 
@@ -443,7 +443,7 @@ function flattenBrowserCheckpoints(runs, path, key) {
 }
 
 function summarizeBrowserCheckpoints(runs, path) {
-  const keys = ['session_restore_home', 'home_to_library', 'program_open', 'learning_start', 'save_draft', 'hint', 'answer_confirmations', 'finish_result', 'profile_refresh', 'result_to_home'];
+  const keys = ['session_restore_home', 'session_restore_library', 'home_to_library', 'program_open', 'learning_start', 'save_draft', 'hint', 'answer_confirmations', 'finish_result', 'profile_refresh', 'result_to_home', 'return_home_to_library'];
   return Object.fromEntries(keys.map(key => {
     const samples = flattenBrowserCheckpoints(runs, path, key);
     const summary = {};
@@ -484,6 +484,7 @@ async function browserCorrelation() {
 
           const cold = {
             session_restore_home: correlateUiTiming(navigationStarted, homeReady, profileNetwork),
+            session_restore_library: correlateUiTiming(navigationStarted, libraryReady, libraryNetwork),
             home_to_library: correlateUiTiming(homeReady, libraryReady, libraryNetwork),
             ...(await measureLearningJourney(page)),
           };
