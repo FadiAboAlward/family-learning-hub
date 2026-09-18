@@ -39,6 +39,36 @@ The dedicated Family Learning Hub Playwright MCP is a browser QA/fallback tool. 
 
 Production verification should use the lowest-cost reliable evidence source: direct deployment/HTTP/API/database checks for non-visual facts, and browser verification only for claims that depend on actual rendering or user interaction.
 
+## Feature specification, Codex, and TestSprite handoff
+
+For every non-trivial product behavior, workflow, data/security change, or meaningful bug fix, establish the product contract before implementation:
+
+1. Create or update the canonical Feature Spec in `My Drive / Family Learning Hub / System & SOP / Feature Specs` using the project Feature Spec template.
+2. Assign a stable `FEATURE_ID` and semantic `SPEC_VERSION`.
+3. Pin the exact contract in the GitHub Issue/PR with:
+   - `FEATURE_ID`
+   - `SPEC_VERSION`
+   - Drive URL
+   - Drive revision ID captured at implementation start
+   - a short acceptance-criteria summary
+4. Codex, as the primary implementer, reads that pinned spec before modifying code.
+5. The pinned revision is immutable for the PR contract. Editing the Drive document does not silently retarget an in-progress branch. A material requirement change requires a new `SPEC_VERSION`, an updated pin, and re-evaluation of affected implementation/tests.
+6. There is no repository-wide “current feature” pointer. Every branch/PR is independently pinned so multiple features may proceed safely in parallel.
+
+### TestSprite inside the Codex loop
+
+TestSprite is an additive requirement-aware verifier, not a replacement for deterministic repository tests.
+
+- Install/enable TestSprite for Codex in the development environment using TestSprite's supported Codex integration. The supported CLI setup is `testsprite setup --agent codex` (or the non-interactive equivalent using `TESTSPRITE_API_KEY`).
+- Before an exploratory run, give TestSprite the same pinned Feature Spec/acceptance criteria. Prefer using the spec as the PRD/plan source (for example through TestSprite's `--plan-from` flow or project-document ingestion) rather than allowing intent to be inferred only from the code.
+- For non-trivial UI, Learning/Exam, navigation, resume, browser-state, or externally observable API behavior, a TestSprite run is normally expected before merge unless the PR records a credible N/A reason.
+- Documentation-only, metadata-only, purely internal migration mechanics, or changes that TestSprite cannot meaningfully validate may mark the run N/A.
+- TestSprite may diagnose failures and repair its own fragile test artifacts; product-code changes remain the responsibility of the implementer and must be validated normally.
+- A reproducible product defect found by TestSprite should gain deterministic regression protection at the lowest reliable layer when practical.
+- Until the integration proves stable enough to promote deliberately, TestSprite is not a merge-blocking GitHub status check. `Static quality` and `Browser smoke` remain the deterministic required checks.
+
+If a stable TestSprite plan is intentionally retained, version it with the code and identify the `FEATURE_ID` / `SPEC_VERSION` it derives from. The Drive Feature Spec remains the canonical product requirement.
+
 ## Required deterministic QA
 
 Every pull request targeting `main` must run the GitHub Actions workflow `QA Gate`.
