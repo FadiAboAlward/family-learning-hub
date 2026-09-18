@@ -2,6 +2,22 @@
 
 Describe what changed and why.
 
+## Feature specification
+
+For every non-trivial feature/behavior/data/security change, pin the exact Drive Feature Spec used by implementation and QA. Use N/A only for truly trivial changes.
+
+- Feature Spec ID: `<FLH-FEAT-YYYY-NNN or N/A>`
+- GitHub Feature Issue / handoff: `<#NN or N/A>`
+- Spec version: `<vX.Y or N/A>`
+- Canonical Drive URL:
+- Spec status at implementation start: READY_FOR_IMPLEMENTATION / N/A
+- Requirement changed after implementation started: yes / no / N/A
+- If yes, new pinned spec version:
+- Codex implemented from the linked Issue/branch context against this pinned spec: yes / no / N/A
+- TestSprite received the same pinned spec / acceptance criteria: yes / no / N/A
+
+A Drive edit does not silently change this PR's contract. If observable requirements change after implementation starts, publish/pin a new spec version and rerun affected implementation/QA against it.
+
 ## User impact
 
 - Student flow affected: yes / no
@@ -22,13 +38,15 @@ Classify the risk changed by this PR and declare the test layer(s) selected. Use
 - Integration/contract tests: added / updated / existing coverage sufficient / N/A — reason:
 - Playwright/browser tests: added / updated / existing coverage sufficient / N/A — reason:
 - Regression test for a bug: added / existing test reproduced it / N/A — reason:
-- TestSprite exploratory run: required after connection / optional / N/A — reason:
+- TestSprite exploratory run against the pinned Feature Spec: required / optional / N/A — spec version + reason:
 
 For an important bug, prefer a deterministic regression at the lowest reliable layer that reproduces the failure.
 
 ## QA checklist
 
 - [ ] The change follows `AGENTS.md`, `docs/architecture.md`, `docs/qa-policy.md`, and `docs/math-rendering-invariant.md` where applicable.
+- [ ] For non-trivial work, Codex and TestSprite used the same pinned Feature Spec ID/version; any material requirement change created a new spec version rather than silently moving the target. (Or N/A with reason.)
+- [ ] Any reproducible product defect found by TestSprite gained deterministic regression coverage at the lowest reliable layer when practical, or the N/A reason is explicit.
 - [ ] The change is data-driven; no learner, grade, book, or quiz access was hard-coded unnecessarily. (Mark N/A with a note if documentation-only.)
 - [ ] Learner content isolation still works: one learner cannot see another learner's assigned content. (Or N/A with reason.)
 - [ ] Student hierarchy remains clear: program or standalone book → book → unit → Learning/Exam. (Or N/A with reason.)
