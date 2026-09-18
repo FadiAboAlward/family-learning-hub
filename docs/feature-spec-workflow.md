@@ -30,7 +30,7 @@ Each Feature Spec has:
 - `FEATURE_ID` — stable across revisions;
 - `SPEC_VERSION` — semantic product-contract version, e.g. `1.0`, `1.1`;
 - `SPEC_URL` — canonical Drive document URL;
-- `SPEC_REVISION_ID` — exact Drive revision captured when implementation starts.
+- `DRIVE_REVISION_ID` — exact retrievable revision ID returned by Google Drive revision history (`revisions.list`) when implementation starts. Do not pin the transient Google Docs API `revisionId`, because it may not remain retrievable later.
 
 The GitHub Issue/PR must pin all four values and summarize the acceptance criteria.
 

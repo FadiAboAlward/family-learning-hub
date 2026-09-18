@@ -10,7 +10,7 @@ For non-trivial changes, pin the exact Drive Feature Spec revision this PR imple
 - FEATURE_ID:
 - SPEC_VERSION:
 - SPEC_URL:
-- SPEC_REVISION_ID:
+- DRIVE_REVISION_ID:
 - Acceptance criteria summary:
   - 
   - 
@@ -46,7 +46,7 @@ For an important bug, prefer a deterministic regression at the lowest reliable l
 ## QA checklist
 
 - [ ] The change follows `AGENTS.md`, `docs/architecture.md`, `docs/qa-policy.md`, `docs/feature-spec-workflow.md`, and `docs/math-rendering-invariant.md` where applicable.
-- [ ] For a non-trivial change, FEATURE_ID / SPEC_VERSION / SPEC_URL / SPEC_REVISION_ID are pinned above and match the contract Codex/TestSprite used. (Or N/A with reason.)
+- [ ] For a non-trivial change, FEATURE_ID / SPEC_VERSION / SPEC_URL / DRIVE_REVISION_ID are pinned above and match the contract Codex/TestSprite used. (Or N/A with reason.)
 - [ ] The change is data-driven; no learner, grade, book, or quiz access was hard-coded unnecessarily. (Mark N/A with a note if documentation-only.)
 - [ ] Learner content isolation still works: one learner cannot see another learner's assigned content. (Or N/A with reason.)
 - [ ] Student hierarchy remains clear: program or standalone book → book → unit → Learning/Exam. (Or N/A with reason.)

@@ -49,7 +49,7 @@ For every non-trivial product behavior, workflow, data/security change, or meani
    - `FEATURE_ID`
    - `SPEC_VERSION`
    - Drive URL
-   - Drive revision ID captured at implementation start
+   - `DRIVE_REVISION_ID` captured from Google Drive revision history at implementation start; do not use the transient Google Docs API `revisionId` as the durable pin
    - a short acceptance-criteria summary
 4. Codex, as the primary implementer, reads that pinned spec before modifying code.
 5. The pinned revision is immutable for the PR contract. Editing the Drive document does not silently retarget an in-progress branch. A material requirement change requires a new `SPEC_VERSION`, an updated pin, and re-evaluation of affected implementation/tests.
