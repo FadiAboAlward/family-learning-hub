@@ -7,12 +7,13 @@ Describe what changed and why.
 For every non-trivial feature/behavior/data/security change, pin the exact Drive Feature Spec used by implementation and QA. Use N/A only for truly trivial changes.
 
 - Feature Spec ID: `<FLH-FEAT-YYYY-NNN or N/A>`
+- GitHub Feature Issue / handoff: `<#NN or N/A>`
 - Spec version: `<vX.Y or N/A>`
 - Canonical Drive URL:
 - Spec status at implementation start: READY_FOR_IMPLEMENTATION / N/A
 - Requirement changed after implementation started: yes / no / N/A
 - If yes, new pinned spec version:
-- Codex implemented against this pinned spec: yes / no / N/A
+- Codex implemented from the linked Issue/branch context against this pinned spec: yes / no / N/A
 - TestSprite received the same pinned spec / acceptance criteria: yes / no / N/A
 
 A Drive edit does not silently change this PR's contract. If observable requirements change after implementation starts, publish/pin a new spec version and rerun affected implementation/QA against it.
