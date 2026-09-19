@@ -41,7 +41,7 @@ Production verification should use the lowest-cost reliable evidence source: dir
 
 ## Feature specification, Codex, and TestSprite handoff
 
-For every non-trivial product behavior, workflow, data/security change, or meaningful bug fix, establish the product contract before implementation:
+For every non-trivial product behavior, workflow, data/security change, or meaningful bug fix, establish the product contract before implementation. A non-trivial engineering/QA/review workflow or configuration change that materially changes delivery gates counts as a workflow change and also requires a Feature Spec. Documentation-only, copy-only, metadata-only, or genuinely trivial pass-through changes may use N/A with a reason.
 
 1. Create or update the canonical Feature Spec in `My Drive / Family Learning Hub / System & SOP / Feature Specs` using the project Feature Spec template.
 2. Assign a stable `FEATURE_ID` and semantic `SPEC_VERSION`.
