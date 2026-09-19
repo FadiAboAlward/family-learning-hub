@@ -69,6 +69,7 @@ If CodeRabbit automatic review is unavailable, trigger the review manually. Serv
 
 CodeRabbit governance rules:
 
+- The detailed cross-tool authority is section 21 of `My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.3`. Keep `.coderabbit.yaml`, `docs/qa-policy.md`, this file, and the PR template aligned when that policy changes.
 - Review the built-in Pre-Merge Checks plus the five Family Learning Hub custom checks defined in `.coderabbit.yaml`. The custom checks are initially warning-only; verify and disposition warnings rather than treating them as automatic product requirements.
 - Inspect Change Stack before merge when a PR spans at least three architectural concern layers, or combines a database/schema migration with an externally observable API/UI behavior change. This is blast-radius review, not a substitute for deterministic QA or Security Review.
 - CodeRabbit Security Review is additive; real authorization/RLS/database boundaries still require deterministic contract/integration verification.
