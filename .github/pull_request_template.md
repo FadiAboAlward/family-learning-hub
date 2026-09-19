@@ -63,6 +63,8 @@ For an important bug, prefer a deterministic regression at the lowest reliable l
 - [ ] QA Gate / Static quality passed for the exact PR-head SHA recorded above.
 - [ ] QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
 - [ ] CodeRabbit review completed for the exact same PR-head SHA; all actionable findings are fixed or explicitly resolved with a verified architectural reason.
+- [ ] CodeRabbit built-in Pre-Merge Checks and the five Family Learning Hub custom policy checks were reviewed for this PR; warning-mode findings are fixed or explicitly dispositioned with a verified reason.
+- [ ] Change Stack was reviewed if this PR spans at least three architectural concern layers or combines a database/schema migration with an externally observable API/UI change; otherwise record N/A and why in Notes for reviewer.
 - [ ] If the PR-head SHA changed after any required result, Static quality, Browser smoke, and CodeRabbit review were all rerun/re-reviewed for the new SHA and the recorded SHA above was updated.
 - [ ] Production deployment steps are documented below, or explicitly marked N/A.
 - [ ] Database migration steps and reconciliation requirements are documented below, or explicitly marked N/A.
