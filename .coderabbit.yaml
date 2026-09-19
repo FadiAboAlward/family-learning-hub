@@ -20,11 +20,14 @@ reviews:
     - "!**/*.webp"
 
   path_instructions:
+    - path: "**/*"
+      instructions: |
+        For every non-trivial change, verify the PR pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, and that these match the contract used by Codex/TestSprite.
+        Treat docs/feature-spec-workflow.md as the repository-wide handoff contract. Flag silent scope drift or implementation/tests that contradict the pinned acceptance criteria, regardless of file type.
+
     - path: "**/*.{js,ts,mjs,html,css}"
       instructions: |
         Review this repository against the canonical constraints in AGENTS.md, docs/architecture.md, docs/qa-policy.md, and docs/math-rendering-invariant.md.
-        - For non-trivial changes, verify the PR pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID. Flag silent scope drift or implementation/tests that contradict the pinned acceptance criteria.
-        - Treat docs/feature-spec-workflow.md as the repository handoff contract. Do not infer a different product requirement from existing code when the PR points to a pinned Feature Spec.
         Review this as a child-facing, mobile-first Arabic/RTL learning application.
         - Prioritize regressions in student navigation, learning mode, exam mode, parent access, and content isolation between learners.
         - Flag hard-coded learner names, grades, books, quizzes, or curriculum access when the behavior should be data-driven.
