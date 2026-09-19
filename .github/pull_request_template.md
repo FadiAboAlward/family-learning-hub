@@ -39,7 +39,7 @@ Classify the risk changed by this PR and declare the test layer(s) selected. Use
 - Playwright/browser tests: added / updated / existing coverage sufficient / N/A — reason:
 - Regression test for a bug: added / existing test reproduced it / N/A — reason:
 - TestSprite exploratory run: required / completed / optional / N/A — reason:
-- TestSprite requirement source used: pinned Feature Spec / derived plan / N/A — reason:
+- TestSprite requirement source used: pinned Feature Spec / N/A — reason:
 
 For an important bug, prefer a deterministic regression at the lowest reliable layer that reproduces the failure.
 
