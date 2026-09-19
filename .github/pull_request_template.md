@@ -2,6 +2,22 @@
 
 Describe what changed and why.
 
+## Feature contract
+
+For non-trivial changes, pin the exact Drive Feature Spec revision this PR implements. For truly trivial changes, mark the fields N/A with a short reason.
+
+- Requirement source: Feature Spec / N/A — reason:
+- FEATURE_ID:
+- SPEC_VERSION:
+- SPEC_URL:
+- DRIVE_REVISION_ID:
+- Acceptance criteria summary:
+  - 
+  - 
+  - 
+- Material requirement changed after implementation started: yes / no / N/A
+- If yes, new SPEC_VERSION pinned and affected implementation/tests re-evaluated: yes / no / N/A
+
 ## User impact
 
 - Student flow affected: yes / no
@@ -22,13 +38,15 @@ Classify the risk changed by this PR and declare the test layer(s) selected. Use
 - Integration/contract tests: added / updated / existing coverage sufficient / N/A — reason:
 - Playwright/browser tests: added / updated / existing coverage sufficient / N/A — reason:
 - Regression test for a bug: added / existing test reproduced it / N/A — reason:
-- TestSprite exploratory run: required after connection / optional / N/A — reason:
+- TestSprite exploratory run: required / completed / optional / N/A — reason:
+- TestSprite requirement source used: pinned Feature Spec / N/A — reason:
 
 For an important bug, prefer a deterministic regression at the lowest reliable layer that reproduces the failure.
 
 ## QA checklist
 
-- [ ] The change follows `AGENTS.md`, `docs/architecture.md`, `docs/qa-policy.md`, and `docs/math-rendering-invariant.md` where applicable.
+- [ ] The change follows `AGENTS.md`, `docs/architecture.md`, `docs/qa-policy.md`, `docs/feature-spec-workflow.md`, and `docs/math-rendering-invariant.md` where applicable.
+- [ ] For a non-trivial change, FEATURE_ID / SPEC_VERSION / SPEC_URL / DRIVE_REVISION_ID are pinned above and match the contract Codex/TestSprite used. (Or N/A with reason.)
 - [ ] The change is data-driven; no learner, grade, book, or quiz access was hard-coded unnecessarily. (Mark N/A with a note if documentation-only.)
 - [ ] Learner content isolation still works: one learner cannot see another learner's assigned content. (Or N/A with reason.)
 - [ ] Student hierarchy remains clear: program or standalone book → book → unit → Learning/Exam. (Or N/A with reason.)

@@ -20,6 +20,12 @@ reviews:
     - "!**/*.webp"
 
   path_instructions:
+    - path: "**/*"
+      instructions: |
+        For every non-trivial change, verify the PR pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, and that these match the contract used by Codex/TestSprite.
+        Require the PR to include an acceptance-criteria summary for the pinned Feature Spec.
+        Treat docs/feature-spec-workflow.md as the repository-wide handoff contract. Flag silent scope drift or implementation/tests that contradict the pinned acceptance criteria, regardless of file type.
+
     - path: "**/*.{js,ts,mjs,html,css}"
       instructions: |
         Review this repository against the canonical constraints in AGENTS.md, docs/architecture.md, docs/qa-policy.md, and docs/math-rendering-invariant.md.
@@ -84,6 +90,7 @@ reviews:
     - path: "docs/**"
       instructions: |
         Check architecture and QA documentation for consistency with the live system and with AGENTS.md.
+        Preserve the Feature Spec pinning model: Drive is the canonical behavior source; each non-trivial branch/PR pins its own FEATURE_ID, SPEC_VERSION, URL, and retrievable Drive revision ID; there is no global current-feature pointer.
         Flag claims that a feature or gate is enforced when it is only advisory or not actually configured.
         Preserve the seven-day temporary Playwright screenshot evidence policy and the rule against committing transient QA screenshots to Git history.
         Preserve the tool-routing distinction: automated Playwright in GitHub Actions remains required deterministic CI, while the dedicated Family Learning Hub Playwright MCP is a fallback for browser-dependent verification when no direct structured tool can prove or perform the same task.
