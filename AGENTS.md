@@ -25,7 +25,7 @@ This rule does **not** reduce automated Playwright coverage in GitHub Actions. T
 
 ## Feature specification and Codex/TestSprite handoff
 
-For every non-trivial feature, behavior/workflow change, data/security change, or meaningful bug fix, use a versioned Feature Spec before implementation. Truly trivial copy/metadata changes may be marked N/A.
+For every non-trivial feature, behavior/workflow change, data/security change, meaningful bug fix, or engineering/QA/review configuration change that materially changes delivery gates, use a versioned Feature Spec before implementation. Only documentation-only, copy-only, metadata-only, or genuinely trivial pass-through changes may be marked N/A with a reason.
 
 - The canonical product/behavior requirement lives in Google Drive: `My Drive / Family Learning Hub / System & SOP / Feature Specs`.
 - Each spec has a stable `FEATURE_ID` and semantic `SPEC_VERSION`.
