@@ -150,6 +150,8 @@ Use the dedicated `test` learner for TestSprite activity. A reproducible defect 
 
 ## CodeRabbit policy-as-code and Change Stack
 
+The cross-tool canonical process for this policy is **My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.3**, section 21. This repository section is the executable/review-facing mirror and must stay aligned with that SOP when the policy changes.
+
 CodeRabbit remains an additive review/governance layer on top of deterministic repository QA. It must not become the sole proof for invariants that can be tested deterministically.
 
 ### Built-in and custom Pre-Merge Checks
