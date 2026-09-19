@@ -23,6 +23,7 @@ reviews:
     - path: "**/*"
       instructions: |
         For every non-trivial change, verify the PR pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, and that these match the contract used by Codex/TestSprite.
+        Require the PR to include an acceptance-criteria summary for the pinned Feature Spec.
         Treat docs/feature-spec-workflow.md as the repository-wide handoff contract. Flag silent scope drift or implementation/tests that contradict the pinned acceptance criteria, regardless of file type.
 
     - path: "**/*.{js,ts,mjs,html,css}"
