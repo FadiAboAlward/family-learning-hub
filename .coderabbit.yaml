@@ -19,7 +19,7 @@ reviews:
           Evaluate requirement traceability for the current pull request.
           Pass when either:
           1. The PR is documentation-only, copy-only, metadata-only, or a genuinely trivial pass-through change and explicitly records a credible N/A reason for the Feature Spec fields; or
-          2. A non-trivial product, engineering/QA/review workflow or configuration, data/security, externally observable API, learner/parent behavior, or meaningful bug-fix change pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, includes a concrete acceptance-criteria summary, and the implementation/tests stay within that pinned contract.
+          2. A non-trivial product, data/security, externally observable API, learner/parent behavior, or meaningful bug-fix change — plus any engineering/QA/review workflow or configuration change that materially changes delivery gates — pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, includes a concrete acceptance-criteria summary, and the implementation/tests stay within that pinned contract.
           Warn when required fields are missing/placeholders, the TestSprite requirement source differs from the pinned Feature Spec, or the diff silently expands/contradicts the pinned acceptance criteria.
 
       - name: "Security and Tenant Isolation"
