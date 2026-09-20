@@ -11,6 +11,45 @@ reviews:
     enabled: true
     drafts: false
 
+  pre_merge_checks:
+    custom_checks:
+      - name: "Feature Spec Contract"
+        mode: "warning"
+        instructions: |
+          Evaluate requirement traceability for the current pull request.
+          Pass when either:
+          1. The PR is documentation-only, copy-only, metadata-only, or a genuinely trivial pass-through change and explicitly records a credible N/A reason for the Feature Spec fields; or
+          2. A non-trivial product, data/security, externally observable API, learner/parent behavior, or meaningful bug-fix change — plus any engineering/QA/review workflow or configuration change that materially changes delivery gates — pins FEATURE_ID, SPEC_VERSION, SPEC_URL, and DRIVE_REVISION_ID, includes a concrete acceptance-criteria summary, and the implementation/tests stay within that pinned contract.
+          Warn when required fields are missing/placeholders, the TestSprite requirement source differs from the pinned Feature Spec, or the diff silently expands/contradicts the pinned acceptance criteria.
+
+      - name: "Security and Tenant Isolation"
+        mode: "warning"
+        instructions: |
+          Evaluate only security, authorization, tenant/workspace/learner isolation, and privileged-access risks introduced by this PR.
+          Pass when the PR does not change those boundaries, or when relevant changes preserve session-derived identity, workspace/learner scoping, RLS and grants, intended SECURITY INVOKER/DEFINER behavior, safe search_path, least-privilege ACLs, and correct 401/403 failure behavior.
+          Warn on client-supplied identity trusted where session identity is required, weakened/bypassed RLS, broadened service-role or RPC privileges without a narrowly justified contract, cross-learner/workspace exposure, or missing deterministic security/contract coverage for a changed boundary.
+
+      - name: "Migration Safety"
+        mode: "warning"
+        instructions: |
+          Apply this check when the PR changes Supabase/database migrations or schema-affecting SQL; otherwise pass.
+          Pass when migration history remains immutable, fixes are forward-only, new migrations are safely scoped and idempotent where practical, RLS/grants/search_path/ACL invariants are preserved, production-vs-fresh-database implications are documented, and relevant preflight/contract/rollback-or-cleanup verification is present.
+          Warn on rewriting/reordering/reusing historical applied migrations, destructive or broad schema changes without explicit scope and recovery notes, weakened authorization, or migration behavior that lacks the deterministic verification required by docs/qa-policy.md.
+
+      - name: "Sensitive Data and Logging"
+        mode: "warning"
+        instructions: |
+          Inspect changed code, workflow/configuration, logs/telemetry behavior, DOM/report output, and QA evidence paths for sensitive-data exposure.
+          Pass only when the PR introduces no secrets, tokens, PINs, credentials, service keys, authorization headers, cookies, sensitive request/response bodies, or real learner private data into source, logs, DOM output, screenshots, reports, fixtures, or artifacts.
+          Telemetry must use allowlisted non-sensitive fields. Automated QA must use testing data and must not expose Mohammad/Aya real state. Warn on any new exposure path or hard-coded live credential.
+
+      - name: "QA Gate Integrity"
+        mode: "warning"
+        instructions: |
+          Evaluate whether this PR preserves Family Learning Hub merge-safety infrastructure and selects appropriate deterministic coverage for the risk changed.
+          Pass when PRs targeting main cannot bypass QA by path filters, Static quality remains before Browser smoke, required exact-SHA checks are preserved, meaningful assertions are not weakened merely to pass CI, and affected product/security/database behavior has the lowest reliable unit/contract/browser regression coverage or a credible N/A reason.
+          Preserve seven-day temporary Playwright screenshot artifacts for meaningful UI changes. Warn on any bypass, stale-SHA reuse, removed/softened safety assertion without equal replacement, or mismatch between the PR's declared testing strategy and the actual changed risk.
+
   path_filters:
     - "!**/node_modules/**"
     - "!**/*.min.js"

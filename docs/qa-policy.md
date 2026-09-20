@@ -25,7 +25,7 @@ For any non-trivial change that can affect learner behavior, content delivery, a
 
 In short:
 
-`PR → choose/update tests → exact-SHA QA Gate → exact-SHA CodeRabbit → fix findings → rerun all gates on any new head SHA → merge → deploy/migrate → production verification + evidence`
+`PR → choose/update tests → exact-SHA QA Gate → exact-SHA CodeRabbit review + pre-merge policy checks → Change Stack when required → fix findings → rerun all gates on any new head SHA → merge → deploy/migrate → production verification + evidence`
 
 Partial completion must be described accurately. For example, say "merged but not yet verified in production" instead of "done".
 
@@ -41,7 +41,7 @@ Production verification should use the lowest-cost reliable evidence source: dir
 
 ## Feature specification, Codex, and TestSprite handoff
 
-For every non-trivial product behavior, workflow, data/security change, or meaningful bug fix, establish the product contract before implementation:
+For every non-trivial product behavior, workflow, data/security change, or meaningful bug fix, establish the product contract before implementation. A non-trivial engineering/QA/review workflow or configuration change that materially changes delivery gates counts as a workflow change and also requires a Feature Spec. Documentation-only, copy-only, metadata-only, or genuinely trivial pass-through changes may use N/A with a reason.
 
 1. Create or update the canonical Feature Spec in `My Drive / Family Learning Hub / System & SOP / Feature Specs` using the project Feature Spec template.
 2. Assign a stable `FEATURE_ID` and semantic `SPEC_VERSION`.
@@ -147,6 +147,34 @@ Documentation-only, copy-only, metadata-only, or truly trivial pass-through chan
 TestSprite, when connected, is an additive AI/exploratory QA layer. It does not replace deterministic unit, integration/contract, Playwright, GitHub Actions, or CodeRabbit checks and is not a merge blocker until the integration is proven stable enough to be promoted deliberately.
 
 Use the dedicated `test` learner for TestSprite activity. A reproducible defect discovered by TestSprite should be treated as a normal product bug and should gain deterministic regression coverage at the lowest reliable layer when practical.
+
+## CodeRabbit policy-as-code and Change Stack
+
+The cross-tool canonical process for this policy is **My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.3**, section 21. This repository section is the executable/review-facing mirror and must stay aligned with that SOP when the policy changes.
+
+CodeRabbit remains an additive review/governance layer on top of deterministic repository QA. It must not become the sole proof for invariants that can be tested deterministically.
+
+### Built-in and custom Pre-Merge Checks
+
+- CodeRabbit's built-in Pre-Merge Checks run with the repository review and cover general PR hygiene such as title/description quality, docstring coverage, linked issues, and scope alignment when applicable.
+- Family Learning Hub defines five repository-owned custom checks in `.coderabbit.yaml`: **Feature Spec Contract**, **Security and Tenant Isolation**, **Migration Safety**, **Sensitive Data and Logging**, and **QA Gate Integrity**.
+- These five checks start in `warning` mode as a calibration stage. A warning is not, by itself, a deterministic merge blocker, but it must be reviewed and either fixed or explicitly dispositioned with a verified reason before merge.
+- Keep the custom checks in warning mode through at least three representative non-trivial PRs. Promote an individual check to `error` only through a reviewed policy/configuration PR after it demonstrates low false-positive noise, clear remediation guidance, and value not already covered more reliably by deterministic CI.
+- Do not promote all checks mechanically. Deterministic GitHub checks remain the primary merge-safety enforcement for syntax, tests, database contracts, and browser regressions.
+- If a custom check conflicts with the current architecture or a pinned Feature Spec, verify the architecture/spec first; do not change production behavior merely to satisfy an AI-generated warning.
+
+### Change Stack usage
+
+Review CodeRabbit Change Stack before merge when either of these conditions is true:
+
+- the PR spans three or more architectural concern layers among database/migrations, Edge/API, client/runtime UI, authentication/authorization, tests/CI, and deployment/operations; or
+- the PR combines a database/schema migration with an externally observable API or UI behavior change.
+
+For smaller/localized PRs, Change Stack is optional. When required, use it to inspect dependency/blast-radius relationships and to spot missing adjacent changes, but do not treat it as a replacement for the diff, deterministic QA, Security Review, Feature Spec acceptance criteria, or production verification.
+
+### Security Review relationship
+
+CodeRabbit Security Review is an additional signal for changed code. Security findings must be verified against the real Supabase/RLS/RPC/authentication architecture. Security Review does not replace RLS/authorization contract tests, database preflight, or least-privilege verification.
 
 ## Playwright screenshot evidence
 

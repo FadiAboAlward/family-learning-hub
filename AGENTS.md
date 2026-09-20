@@ -25,7 +25,7 @@ This rule does **not** reduce automated Playwright coverage in GitHub Actions. T
 
 ## Feature specification and Codex/TestSprite handoff
 
-For every non-trivial feature, behavior/workflow change, data/security change, or meaningful bug fix, use a versioned Feature Spec before implementation. Truly trivial copy/metadata changes may be marked N/A.
+For every non-trivial feature, behavior/workflow change, data/security change, meaningful bug fix, or engineering/QA/review configuration change that materially changes delivery gates, use a versioned Feature Spec before implementation. Only documentation-only, copy-only, metadata-only, or genuinely trivial pass-through changes may be marked N/A with a reason.
 
 - The canonical product/behavior requirement lives in Google Drive: `My Drive / Family Learning Hub / System & SOP / Feature Specs`.
 - Each spec has a stable `FEATURE_ID` and semantic `SPEC_VERSION`.
@@ -63,9 +63,16 @@ For meaningful user-facing UI changes, preserve the repository's temporary Playw
 
 Default non-trivial workflow:
 
-`pinned Feature Spec → branch/PR → implement with Codex → choose/update deterministic tests → TestSprite when relevant → QA Gate → CodeRabbit on exact PR-head SHA → fix/re-run on new SHA → merge → deploy/migrate if required → production verification + evidence`
+`pinned Feature Spec → branch/PR → implement with Codex → choose/update deterministic tests → TestSprite when relevant → QA Gate → CodeRabbit review + pre-merge policy checks on exact PR-head SHA → Change Stack when required → fix/re-run on new SHA → merge → deploy/migrate if required → production verification + evidence`
 
 If CodeRabbit automatic review is unavailable, trigger the review manually. Service rate limits do not waive the exact-SHA review requirement.
+
+CodeRabbit governance rules:
+
+- The detailed cross-tool authority is section 21 of `My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.3`. Keep `.coderabbit.yaml`, `docs/qa-policy.md`, this file, and the PR template aligned when that policy changes.
+- Review the built-in Pre-Merge Checks plus the five Family Learning Hub custom checks defined in `.coderabbit.yaml`. The custom checks are initially warning-only; verify and disposition warnings rather than treating them as automatic product requirements.
+- Inspect Change Stack before merge when a PR spans at least three architectural concern layers, or combines a database/schema migration with an externally observable API/UI behavior change. This is blast-radius review, not a substitute for deterministic QA or Security Review.
+- CodeRabbit Security Review is additive; real authorization/RLS/database boundaries still require deterministic contract/integration verification.
 
 Do not describe work as complete before required production verification is actually completed.
 
