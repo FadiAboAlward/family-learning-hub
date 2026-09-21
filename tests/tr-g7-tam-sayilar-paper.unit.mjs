@@ -29,6 +29,7 @@ for(const fragment of [
   "'paper_question_count',20",
   "'shared_delivery_invariant','learning_exam_paper_same_question_set'",
   "false,'core','tr'",
+  "if v_mohammad is not null and not exists (",
   "v_workspace,v_mohammad,v_program,'active',false",
   'flh_paper_exam_runtime_package',
   'paper_canonical_package',
@@ -37,6 +38,7 @@ for(const fragment of [
 ]) assert.ok(sql.includes(fragment),`missing shared-paper invariant: ${fragment}`);
 
 assert.ok(!sql.includes("'exam_pool'"),'this quiz must not define a separate Exam-only question pool');
+assert.ok(!sql.includes("v_math is null or v_mohammad is null"),'fresh rebuild must not require or fabricate Mohammad');
 assert.equal((sql.match(/'question_count',20/g)||[]).length,2,'Learning and Exam must both explicitly use 20 questions');
 
 assert.equal(questions[0].prompt,'Bir ölçekte 0 sayısı “başlangıç/referans noktası” olarak kullanılıyor. Aşağıdakilerden hangisi buna en uygun örnektir?');
