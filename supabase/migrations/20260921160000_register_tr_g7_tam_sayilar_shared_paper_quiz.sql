@@ -281,7 +281,7 @@ begin
     where workspace_id=v_workspace and slug='mohammad' and is_active
     limit 1;
 
-  if v_workspace is null or v_curriculum is null or v_math is null or v_mohammad is null then
+  if v_workspace is null or v_curriculum is null or v_math is null then
     raise exception 'TR_G7_TAM_SAYILAR_PREREQUISITES_MISSING';
   end if;
 
@@ -545,7 +545,10 @@ begin
     );
   end if;
 
-  if not exists (
+  -- Fresh database QA intentionally contains no real Mohammad/Aya learner.
+  -- Enrollment is therefore conditional: Production adds Mohammad as a
+  -- secondary program only when his real learner row already exists.
+  if v_mohammad is not null and not exists (
     select 1 from public.learner_program_enrollments
     where workspace_id=v_workspace and learner_id=v_mohammad and program_id=v_program
   ) then
