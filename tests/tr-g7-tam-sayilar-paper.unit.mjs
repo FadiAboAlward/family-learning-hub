@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const migrationPath='supabase/migrations/20260921160000_register_tr_g7_tam_sayilar_shared_paper_quiz.sql';
 const sql=fs.readFileSync(migrationPath,'utf8');
 
-const match=sql.match(/v_package jsonb := \\$json\\$\\s*([\\s\\S]*?)\\s*\\$json\\$::jsonb;/);
+const match=sql.match(/v_package jsonb := \$json\$\s*([\s\S]*?)\s*\$json\$::jsonb;/);
 assert.ok(match,'canonical 20-question package not found');
 const questions=JSON.parse(match[1]);
 
