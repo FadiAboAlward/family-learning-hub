@@ -512,10 +512,10 @@ begin
       workspace_id,question_id,hint_level,pedagogical_role,content,metadata,
       language,terminology_display_mode
     ) values
-      (v_workspace,v_question,1,'prompting',
+      (v_workspace,v_question,1,'nudge',
        'حدّد أولاً معنى الإشارة أو موقع العدد بالنسبة إلى 0.',
        '{}'::jsonb,'ar','dual_term'),
-      (v_workspace,v_question,2,'scaffolding',
+      (v_workspace,v_question,2,'guide',
        'استخدم خط الأعداد: اليمين أكبر، اليسار أصغر، والمسافة تُحسب بعدد الوحدات.',
        '{}'::jsonb,'ar','dual_term');
 
