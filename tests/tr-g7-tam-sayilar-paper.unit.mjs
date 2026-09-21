@@ -38,6 +38,9 @@ for(const fragment of [
 ]) assert.ok(sql.includes(fragment),`missing shared-paper invariant: ${fragment}`);
 
 assert.ok(!sql.includes("'exam_pool'"),'this quiz must not define a separate Exam-only question pool');
+assert.ok(sql.includes("(v_workspace,v_question,1,'nudge',"),'hint 1 must use a schema-approved nudge role');
+assert.ok(sql.includes("(v_workspace,v_question,2,'guide',"),'hint 2 must use a schema-approved guide role');
+assert.ok(!sql.includes("'prompting'")&&!sql.includes("'scaffolding'"),'unsupported hint roles must not be introduced');
 assert.ok(!sql.includes("v_math is null or v_mohammad is null"),'fresh rebuild must not require or fabricate Mohammad');
 assert.equal((sql.match(/'question_count',20/g)||[]).length,2,'Learning and Exam must both explicitly use 20 questions');
 
