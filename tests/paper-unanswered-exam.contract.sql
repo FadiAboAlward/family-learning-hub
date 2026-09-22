@@ -26,6 +26,9 @@ declare
   v_paper_ingested boolean;
   v_mastery_recorded boolean;
   v_mastery_evidence integer;
+  v_assignment_before jsonb;
+  v_assignment_existed boolean := false;
+  v_mastery_before jsonb := '[]'::jsonb;
   r record;
   v_option integer;
 begin
@@ -61,6 +64,30 @@ begin
   where workspace_id=v_workspace
     and learner_id=v_test
     and quiz_version_id=v_version;
+
+  select to_jsonb(qa) into v_assignment_before
+  from public.quiz_assignments qa
+  where qa.workspace_id=v_workspace
+    and qa.learner_id=v_test
+    and qa.quiz_version_id=v_version
+  order by qa.created_at desc
+  limit 1;
+
+  v_assignment_existed := v_assignment_before is not null;
+
+  select coalesce(jsonb_agg(to_jsonb(m)),'[]'::jsonb) into v_mastery_before
+  from public.learner_concept_mastery m
+  where m.workspace_id=v_workspace
+    and m.learner_id=v_test
+    and m.concept_id in (
+      select distinct qc.concept_id
+      from public.quiz_questions q
+      join public.quiz_question_concepts qc
+        on qc.workspace_id=q.workspace_id
+       and qc.question_id=q.id
+      where q.workspace_id=v_workspace
+        and q.quiz_version_id=v_version
+    );
 
   select id into v_assignment
   from public.quiz_assignments
@@ -232,7 +259,110 @@ begin
      or v_mastery_evidence <> 20 then
     raise exception 'CONTRACT_PAPER_PROVENANCE_OR_MASTERY_INVALID';
   end if;
+
+  -- Success cleanup: leave the Testing learner exactly as found.
+  delete from public.quiz_attempts
+  where workspace_id=v_workspace
+    and learner_id=v_test
+    and quiz_version_id=v_version;
+
+  delete from public.learner_concept_mastery m
+  where m.workspace_id=v_workspace
+    and m.learner_id=v_test
+    and m.concept_id in (
+      select distinct qc.concept_id
+      from public.quiz_questions q
+      join public.quiz_question_concepts qc
+        on qc.workspace_id=q.workspace_id
+       and qc.question_id=q.id
+      where q.workspace_id=v_workspace
+        and q.quiz_version_id=v_version
+    );
+
+  insert into public.learner_concept_mastery(
+    id,workspace_id,learner_id,concept_id,mastery_score,evidence_count,
+    first_try_correct_count,total_question_count,total_hint_count,last_difficulty,
+    last_assessed_at,metadata,created_at,updated_at
+  )
+  select
+    x.id,x.workspace_id,x.learner_id,x.concept_id,x.mastery_score,x.evidence_count,
+    x.first_try_correct_count,x.total_question_count,x.total_hint_count,x.last_difficulty,
+    x.last_assessed_at,x.metadata,x.created_at,x.updated_at
+  from jsonb_to_recordset(v_mastery_before) as x(
+    id uuid, workspace_id uuid, learner_id uuid, concept_id uuid,
+    mastery_score numeric, evidence_count integer, first_try_correct_count integer,
+    total_question_count integer, total_hint_count integer, last_difficulty smallint,
+    last_assessed_at timestamptz, metadata jsonb, created_at timestamptz, updated_at timestamptz
+  );
+
+  if v_assignment_existed then
+    update public.quiz_assignments
+    set status=v_assignment_before->>'status',
+        available_at=(v_assignment_before->>'available_at')::timestamptz,
+        due_at=(v_assignment_before->>'due_at')::timestamptz,
+        max_attempts=(v_assignment_before->>'max_attempts')::integer,
+        assigned_by=nullif(v_assignment_before->>'assigned_by','')::uuid,
+        learner_program_enrollment_id=nullif(v_assignment_before->>'learner_program_enrollment_id','')::uuid,
+        metadata=coalesce(v_assignment_before->'metadata','{}'::jsonb)
+    where id=v_assignment;
+  else
+    delete from public.quiz_assignments
+    where id=v_assignment;
+  end if;
+
+exception when others then
+  -- Failure cleanup: best effort before re-raising the original assertion/error.
+  if v_workspace is not null and v_test is not null and v_version is not null then
+    delete from public.quiz_attempts
+    where workspace_id=v_workspace
+      and learner_id=v_test
+      and quiz_version_id=v_version;
+
+    delete from public.learner_concept_mastery m
+    where m.workspace_id=v_workspace
+      and m.learner_id=v_test
+      and m.concept_id in (
+        select distinct qc.concept_id
+        from public.quiz_questions q
+        join public.quiz_question_concepts qc
+          on qc.workspace_id=q.workspace_id
+         and qc.question_id=q.id
+        where q.workspace_id=v_workspace
+          and q.quiz_version_id=v_version
+      );
+
+    insert into public.learner_concept_mastery(
+      id,workspace_id,learner_id,concept_id,mastery_score,evidence_count,
+      first_try_correct_count,total_question_count,total_hint_count,last_difficulty,
+      last_assessed_at,metadata,created_at,updated_at
+    )
+    select
+      x.id,x.workspace_id,x.learner_id,x.concept_id,x.mastery_score,x.evidence_count,
+      x.first_try_correct_count,x.total_question_count,x.total_hint_count,x.last_difficulty,
+      x.last_assessed_at,x.metadata,x.created_at,x.updated_at
+    from jsonb_to_recordset(coalesce(v_mastery_before,'[]'::jsonb)) as x(
+      id uuid, workspace_id uuid, learner_id uuid, concept_id uuid,
+      mastery_score numeric, evidence_count integer, first_try_correct_count integer,
+      total_question_count integer, total_hint_count integer, last_difficulty smallint,
+      last_assessed_at timestamptz, metadata jsonb, created_at timestamptz, updated_at timestamptz
+    );
+
+    if v_assignment is not null then
+      if v_assignment_existed then
+        update public.quiz_assignments
+        set status=v_assignment_before->>'status',
+            available_at=(v_assignment_before->>'available_at')::timestamptz,
+            due_at=(v_assignment_before->>'due_at')::timestamptz,
+            max_attempts=(v_assignment_before->>'max_attempts')::integer,
+            assigned_by=nullif(v_assignment_before->>'assigned_by','')::uuid,
+            learner_program_enrollment_id=nullif(v_assignment_before->>'learner_program_enrollment_id','')::uuid,
+            metadata=coalesce(v_assignment_before->'metadata','{}'::jsonb)
+        where id=v_assignment;
+      else
+        delete from public.quiz_assignments where id=v_assignment;
+      end if;
+    end if;
+  end if;
+  raise;
 end;
 $contract$;
-
-rollback;
