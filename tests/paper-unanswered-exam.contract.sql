@@ -3,8 +3,6 @@
 -- evidence, while normal interactive Exam remains strict.
 -- All mutations use the Testing learner and roll back.
 
-begin;
-
 do $contract$
 declare
   v_workspace uuid;
