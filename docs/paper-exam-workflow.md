@@ -156,6 +156,16 @@ For historical paper models approved before canonical-package persistence existe
 12. Submit through the normal server-authoritative grading path.
 13. Verify persisted score, wrong-answer review, paper provenance, assignment completion, learner history, and parent/reporting surfaces.
 
+## Unanswered printed questions
+
+A visibly blank printed question is valid paper evidence and must never be converted into a fabricated option selection.
+
+- Only the paper ingestion path may materialize a missing printed response as `{"unanswered": true}`.
+- The unanswered row is graded as incorrect with zero points, `first_try_correct = false`, `attempts_used = 0`, `hints_used = 0`, and `mastery_result = not_mastered`.
+- A selected wrong option remains a selected wrong option; do not rewrite it as unanswered.
+- Normal interactive Exam Mode remains strict: missing interactive answers still block submission with `EXAM_NOT_COMPLETE`.
+- The exact paper queue/version/hash/map validation remains mandatory before unanswered rows can be created.
+
 ## Reporting semantics
 
 A paper Exam attempt is stored as `delivery_mode = exam` so it participates in normal Exam reporting. Paper-specific provenance belongs in `quiz_attempts.metadata`, including:
