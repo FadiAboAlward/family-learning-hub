@@ -63,6 +63,21 @@ begin
 end;
 $function$;
 
+-- Preserve the historical 1..10 interaction invariant while allowing exactly one
+-- non-interactive representation: an explicitly unanswered paper response.
+alter table public.quiz_attempt_answers
+  drop constraint if exists quiz_attempt_answers_attempts_used_check;
+
+alter table public.quiz_attempt_answers
+  add constraint quiz_attempt_answers_attempts_used_check
+  check (
+    attempts_used between 1 and 10
+    or (
+      attempts_used = 0
+      and response = '{"unanswered":true}'::jsonb
+    )
+  );
+
 revoke all on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) from public;
 revoke all on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) from anon, authenticated;
 grant execute on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) to service_role;
