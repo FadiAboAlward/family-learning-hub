@@ -49,7 +49,7 @@ assert.match(versionId, /^[0-9a-f-]{36}$/i);
 
 const assignmentBefore = await psql(`
   select coalesce((
-    select to_jsonb(qa)::text
+    select to_jsonb(qa)
     from public.quiz_assignments qa
     where qa.workspace_id='${workspaceId}'::uuid
       and qa.learner_id='${learnerId}'::uuid
