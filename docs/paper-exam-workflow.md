@@ -152,15 +152,15 @@ For historical paper models approved before canonical-package persistence existe
 8. Verify the stored package/hash/count/map and confirm all expected pages are present.
 9. Read only the learner's marks/answers. Do not reinterpret canonical printed question text from OCR if the model is already known. Ambiguous marks require clarification rather than guessing.
 10. Start through `flh_paper_exam_start` using the exact version and require server queue validation.
-11. Save only mapped response positions through the normal server answer path.
-12. Submit through the normal server-authoritative grading path.
-13. Verify persisted score, wrong-answer review, paper provenance, assignment completion, learner history, and parent/reporting surfaces.
+11. Save every marked response through `flh_exam_save_answer`, and require `ok = true` from every save. Record the visibly blank printed question sequence numbers separately; never infer blanks from failed or missing saves.
+12. Submit paper attempts through `flh_paper_exam_submit(..., p_unanswered_sequence_nos)`. The declared blank sequence numbers must exactly match the queue rows that have no saved answer; otherwise submission fails closed.
+13. Verify that the persisted `{"unanswered": true}` rows match the visibly blank printed question numbers exactly, then verify score, wrong-answer review, paper provenance, assignment completion, learner history, and parent/reporting surfaces.
 
 ## Unanswered printed questions
 
 A visibly blank printed question is valid paper evidence and must never be converted into a fabricated option selection.
 
-- Only the paper ingestion path may materialize a missing printed response as `{"unanswered": true}`.
+- Only the declared paper-submit path `flh_paper_exam_submit` may materialize a missing printed response as `{"unanswered": true}`; direct interactive submission never infers blanks from missing rows.
 - The unanswered row is graded as incorrect with zero points, `first_try_correct = false`, `attempts_used = 0`, `hints_used = 0`, and `mastery_result = not_mastered`.
 - A selected wrong option remains a selected wrong option; do not rewrite it as unanswered.
 - Normal interactive Exam Mode remains strict: missing interactive answers still block submission with `EXAM_NOT_COMPLETE`.
