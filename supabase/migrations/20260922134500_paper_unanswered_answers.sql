@@ -18,12 +18,27 @@ language plpgsql
 security definer
 set search_path to 'public'
 as $function$
+declare
+  v_attempt_active boolean := false;
 begin
   if p_option_position is null or p_option_position < 1 then
     return jsonb_build_object('error','INVALID_ANSWER');
   end if;
 
-  if not exists (
+  -- Serialize answer saves with submission on the same attempt row. A save that
+  -- begins while submit is grading waits here, then re-checks the committed
+  -- status before it can touch quiz_attempt_answers.
+  select true
+    into v_attempt_active
+  from public.quiz_attempts a
+  where a.workspace_id = p_workspace_id
+    and a.id = p_attempt_id
+    and a.learner_id = p_learner_id
+    and a.delivery_mode = 'exam'
+  limit 1
+  for update;
+
+  if not found or v_attempt_active is not true or not exists (
     select 1
     from public.quiz_attempts a
     join public.quiz_attempt_question_queue q
