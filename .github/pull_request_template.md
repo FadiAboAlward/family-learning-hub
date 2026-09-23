@@ -41,7 +41,7 @@ Classify the risk changed by this PR and declare the test layer(s) selected. Use
 - TestSprite exploratory run: required / completed / optional / N/A — reason:
 - TestSprite requirement source used: pinned Feature Spec / N/A — reason:
 - TestSprite run ID / link:
-- TestSprite outcome: passed / findings / blocked / N/A — reason:
+- TestSprite outcome: PASS / FINDINGS / BLOCKED_EXTERNAL / N/A — reason/evidence:
 
 For an important bug, prefer a deterministic regression at the lowest reliable layer that reproduces the failure.
 
@@ -59,7 +59,7 @@ For an important bug, prefer a deterministic regression at the lowest reliable l
 - [ ] If Math/RTL rendering changed, actual Learning Mode, Exam Mode, and completed/review flows are covered by deterministic browser regression; synthetic DOM-only coverage is not sufficient. (Or N/A with reason.)
 - [ ] Mobile interaction and touch targets were considered. (Or N/A with reason.)
 - [ ] The selected test layer(s) match the risk changed by this PR; tests were added/updated where appropriate, or the N/A reason is explicit.
-- [ ] TestSprite run-specific evidence is recorded above when required/completed; optional/N/A has an explicit reason.
+- [ ] TestSprite run-specific evidence is recorded above when completed; BLOCKED_EXTERNAL/N/A has an explicit reason/evidence, and neither is used to waive missing or failing deterministic coverage.
 - [ ] Existing assertions were not weakened merely to make QA pass.
 - [ ] Playwright screenshot evidence was captured for each meaningful user-facing UI change, or marked N/A with reason. Evidence is stored as a temporary GitHub Actions artifact under `playwright-screenshots/`, not committed to repository history, with seven-day retention.
 - Validated PR-head SHA for every required pre-merge gate: `<sha>`
