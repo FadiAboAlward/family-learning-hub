@@ -101,6 +101,9 @@ begin
   limit 1;
 
   if not found or nullif(v_attempt.metadata->>'paper_model_code','') is null then
+    if new.response ? 'unanswered' then
+      raise exception 'UNANSWERED_REQUIRES_PAPER_ATTEMPT';
+    end if;
     return new;
   end if;
 
@@ -131,7 +134,10 @@ begin
   -- A blank printed response is a first-class paper response, never a fake option.
   -- Keep the representation exact so extra/contradictory fields fail closed.
   if new.response = '{"unanswered":true}'::jsonb then
-    if coalesce(new.attempts_used,0) <> 0 or coalesce(new.hints_used,0) <> 0 then
+    if current_setting('flh.paper_unanswered_attempt_id', true) is distinct from new.attempt_id::text then
+      raise exception 'PAPER_UNANSWERED_REQUIRES_DECLARED_SUBMIT';
+    end if;
+    if new.attempts_used is distinct from 0 or new.hints_used is distinct from 0 then
       raise exception 'PAPER_UNANSWERED_INTERACTION_INVALID';
     end if;
     return new;
@@ -184,7 +190,6 @@ declare
   v_duration integer := 1;
   v_review jsonb := '[]'::jsonb;
   v_quiz jsonb := '{}'::jsonb;
-  v_is_paper boolean := false;
 begin
   select a.id, a.quiz_version_id, a.started_at, a.metadata
     into v_attempt
@@ -194,52 +199,19 @@ begin
     and a.learner_id = p_learner_id
     and a.status = 'in_progress'
     and a.delivery_mode = 'exam'
-  limit 1;
+  limit 1
+  for update;
 
   if not found then
     return jsonb_build_object('error','ATTEMPT_NOT_ACTIVE');
   end if;
-
-  v_is_paper := nullif(v_attempt.metadata->>'paper_model_code','') is not null;
-
   select count(*) into v_queue_count
   from public.quiz_attempt_question_queue qq
   where qq.workspace_id = p_workspace_id
     and qq.quiz_attempt_id = p_attempt_id;
 
-  -- Paper is an alternate delivery surface. A visibly blank printed question
-  -- must be represented explicitly rather than blocking submission or forcing
-  -- a fabricated option. The paper answer guard validates each inserted row.
-  if v_is_paper then
-    insert into public.quiz_attempt_answers (
-      workspace_id, attempt_id, question_id, response, evaluation,
-      is_correct, points_awarded, answered_at, attempts_used, hints_used,
-      first_try_correct, mastery_result
-    )
-    select
-      qq.workspace_id,
-      qq.quiz_attempt_id,
-      qq.question_id,
-      '{"unanswered":true}'::jsonb,
-      'ungraded',
-      null,
-      null,
-      clock_timestamp(),
-      0,
-      0,
-      null,
-      null
-    from public.quiz_attempt_question_queue qq
-    where qq.workspace_id = p_workspace_id
-      and qq.quiz_attempt_id = p_attempt_id
-      and not exists (
-        select 1
-        from public.quiz_attempt_answers aa
-        where aa.workspace_id = qq.workspace_id
-          and aa.attempt_id = qq.quiz_attempt_id
-          and aa.question_id = qq.question_id
-      );
-  end if;
+  -- Missing rows remain missing here. Paper-only blank materialization is performed
+  -- by flh_paper_exam_submit after an exact declared-blank/missing-set match.
 
   select count(*) into v_answer_count
   from public.quiz_attempt_answers aa
@@ -363,7 +335,8 @@ begin
         'flagged_count',v_flagged_count
       )
   where id = p_attempt_id
-    and workspace_id = p_workspace_id;
+    and workspace_id = p_workspace_id
+    and status = 'in_progress';
 
   update public.quiz_attempt_question_queue
   set status = 'completed'
@@ -391,3 +364,150 @@ begin
   );
 end;
 $function$;
+
+
+revoke all on function public.flh_exam_submit(uuid,uuid,uuid) from public;
+revoke all on function public.flh_exam_submit(uuid,uuid,uuid) from anon, authenticated;
+grant execute on function public.flh_exam_submit(uuid,uuid,uuid) to service_role;
+
+create or replace function public.flh_paper_exam_submit(
+  p_workspace_id uuid,
+  p_learner_id uuid,
+  p_attempt_id uuid,
+  p_unanswered_sequence_nos integer[]
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_attempt record;
+  v_validation jsonb;
+  v_missing integer[] := '{}'::integer[];
+  v_declared integer[] := '{}'::integer[];
+  v_declared_count integer := 0;
+  v_declared_distinct_count integer := 0;
+  v_invalid_declared_count integer := 0;
+  v_result jsonb;
+begin
+  select a.id,a.metadata
+    into v_attempt
+  from public.quiz_attempts a
+  where a.workspace_id=p_workspace_id
+    and a.id=p_attempt_id
+    and a.learner_id=p_learner_id
+    and a.status='in_progress'
+    and a.delivery_mode='exam'
+  limit 1
+  for update;
+
+  if not found then
+    return jsonb_build_object('error','ATTEMPT_NOT_ACTIVE');
+  end if;
+
+  if nullif(v_attempt.metadata->>'paper_model_code','') is null then
+    return jsonb_build_object('error','PAPER_ATTEMPT_REQUIRED');
+  end if;
+
+  if coalesce((v_attempt.metadata->>'paper_queue_validated')::boolean,false) is not true then
+    return jsonb_build_object('error','PAPER_QUEUE_NOT_VALIDATED');
+  end if;
+
+  v_validation := public.flh_paper_exam_validate_queue(p_workspace_id,p_attempt_id);
+  if coalesce((v_validation->>'ok')::boolean,false) is not true then
+    return jsonb_build_object(
+      'error','PAPER_QUEUE_VALIDATION_FAILED',
+      'reason',coalesce(v_validation->>'error','UNKNOWN')
+    );
+  end if;
+
+  if p_unanswered_sequence_nos is null then
+    p_unanswered_sequence_nos := '{}'::integer[];
+  end if;
+
+  if array_position(p_unanswered_sequence_nos,null) is not null then
+    return jsonb_build_object('error','PAPER_UNANSWERED_DECLARATION_INVALID');
+  end if;
+
+  select
+    count(*),
+    count(distinct x),
+    coalesce(array_agg(distinct x order by x),'{}'::integer[])
+  into v_declared_count,v_declared_distinct_count,v_declared
+  from unnest(p_unanswered_sequence_nos) x;
+
+  if v_declared_count <> v_declared_distinct_count then
+    return jsonb_build_object('error','PAPER_UNANSWERED_DECLARATION_INVALID');
+  end if;
+
+  select count(*) into v_invalid_declared_count
+  from unnest(v_declared) x
+  where not exists (
+    select 1
+    from public.quiz_attempt_question_queue qq
+    where qq.workspace_id=p_workspace_id
+      and qq.quiz_attempt_id=p_attempt_id
+      and qq.sequence_no=x
+  );
+
+  if v_invalid_declared_count <> 0 then
+    return jsonb_build_object('error','PAPER_UNANSWERED_DECLARATION_INVALID');
+  end if;
+
+  select coalesce(array_agg(qq.sequence_no order by qq.sequence_no),'{}'::integer[])
+    into v_missing
+  from public.quiz_attempt_question_queue qq
+  where qq.workspace_id=p_workspace_id
+    and qq.quiz_attempt_id=p_attempt_id
+    and not exists (
+      select 1
+      from public.quiz_attempt_answers aa
+      where aa.workspace_id=qq.workspace_id
+        and aa.attempt_id=qq.quiz_attempt_id
+        and aa.question_id=qq.question_id
+    );
+
+  if v_declared is distinct from v_missing then
+    return jsonb_build_object(
+      'error','PAPER_UNANSWERED_SET_MISMATCH',
+      'declared_count',cardinality(v_declared),
+      'missing_count',cardinality(v_missing)
+    );
+  end if;
+
+  if cardinality(v_declared) > 0 then
+    perform set_config('flh.paper_unanswered_attempt_id',p_attempt_id::text,true);
+
+    insert into public.quiz_attempt_answers (
+      workspace_id,attempt_id,question_id,response,evaluation,
+      is_correct,points_awarded,answered_at,attempts_used,hints_used,
+      first_try_correct,mastery_result
+    )
+    select
+      qq.workspace_id,qq.quiz_attempt_id,qq.question_id,
+      '{"unanswered":true}'::jsonb,'ungraded',
+      null,null,clock_timestamp(),0,0,null,null
+    from public.quiz_attempt_question_queue qq
+    where qq.workspace_id=p_workspace_id
+      and qq.quiz_attempt_id=p_attempt_id
+      and qq.sequence_no=any(v_declared)
+      and not exists (
+        select 1
+        from public.quiz_attempt_answers aa
+        where aa.workspace_id=qq.workspace_id
+          and aa.attempt_id=qq.quiz_attempt_id
+          and aa.question_id=qq.question_id
+      );
+
+    perform set_config('flh.paper_unanswered_attempt_id','',true);
+  end if;
+
+  v_result := public.flh_exam_submit(p_workspace_id,p_learner_id,p_attempt_id);
+  return v_result;
+end;
+$function$;
+
+revoke all on function public.flh_paper_exam_submit(uuid,uuid,uuid,integer[]) from public;
+revoke all on function public.flh_paper_exam_submit(uuid,uuid,uuid,integer[]) from anon, authenticated;
+grant execute on function public.flh_paper_exam_submit(uuid,uuid,uuid,integer[]) to service_role;
