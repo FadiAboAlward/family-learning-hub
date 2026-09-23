@@ -22,7 +22,9 @@ for(const fragment of [
   `for update;`,
   `and status = 'in_progress';`,
   `revoke all on function public.flh_exam_submit(uuid,uuid,uuid) from public;`,
-  `grant execute on function public.flh_exam_submit(uuid,uuid,uuid) to service_role;`
+  `grant execute on function public.flh_exam_submit(uuid,uuid,uuid) to service_role;`,
+  `select true\n    into v_attempt_active`,
+  `limit 1\n  for update;`
 ]){
   assert.ok(migration.includes(fragment),`paper unanswered migration missing invariant: ${fragment}`);
 }
@@ -51,3 +53,14 @@ assert.ok(
 );
 
 console.log('Paper unanswered ingestion regression tests passed');
+
+
+const saveFunctionStart=migration.indexOf('create or replace function public.flh_exam_save_answer(');
+const saveFunctionEnd=migration.indexOf('create or replace function public.flh_guard_paper_attempt_answer(',saveFunctionStart);
+const saveFunction=migration.slice(saveFunctionStart,saveFunctionEnd);
+assert.ok(
+  saveFunction.includes('into v_attempt_active') &&
+  saveFunction.includes('for update;') &&
+  saveFunction.indexOf('for update;') < saveFunction.indexOf('insert into public.quiz_attempt_answers'),
+  'exam answer save must lock/re-check the attempt before touching the answer row'
+);
