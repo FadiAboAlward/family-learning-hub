@@ -2,6 +2,71 @@
 -- Preserve genuinely unanswered printed questions during paper-exam ingestion
 -- without inventing an option. Interactive Exam behavior remains unchanged.
 
+
+-- Fresh rebuilds must also reconstruct the current production Exam save RPC.
+-- This is intentionally behavior-preserving: Production already has this exact
+-- signature/semantics, while historical mirror migrations are identity-only.
+create or replace function public.flh_exam_save_answer(
+  p_workspace_id uuid,
+  p_learner_id uuid,
+  p_attempt_id uuid,
+  p_question_id uuid,
+  p_option_position integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+begin
+  if p_option_position is null or p_option_position < 1 then
+    return jsonb_build_object('error','INVALID_ANSWER');
+  end if;
+
+  if not exists (
+    select 1
+    from public.quiz_attempts a
+    join public.quiz_attempt_question_queue q
+      on q.quiz_attempt_id = a.id
+     and q.workspace_id = a.workspace_id
+     and q.question_id = p_question_id
+    where a.workspace_id = p_workspace_id
+      and a.id = p_attempt_id
+      and a.learner_id = p_learner_id
+      and a.status = 'in_progress'
+      and a.delivery_mode = 'exam'
+  ) then
+    return jsonb_build_object('error','ATTEMPT_OR_QUESTION_NOT_ACTIVE');
+  end if;
+
+  insert into public.quiz_attempt_answers (
+    workspace_id, attempt_id, question_id, response, evaluation,
+    is_correct, points_awarded, answered_at, attempts_used, hints_used,
+    first_try_correct, mastery_result
+  ) values (
+    p_workspace_id, p_attempt_id, p_question_id,
+    jsonb_build_object('option_position', p_option_position),
+    'ungraded', null, null, now(), 1, 0, null, null
+  )
+  on conflict (attempt_id, question_id) do update set
+    response = excluded.response,
+    evaluation = 'ungraded',
+    is_correct = null,
+    points_awarded = null,
+    answered_at = now(),
+    attempts_used = 1,
+    hints_used = 0,
+    first_try_correct = null,
+    mastery_result = null;
+
+  return jsonb_build_object('ok',true,'option_position',p_option_position);
+end;
+$function$;
+
+revoke all on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) from public;
+revoke all on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) from anon, authenticated;
+grant execute on function public.flh_exam_save_answer(uuid,uuid,uuid,uuid,integer) to service_role;
+
 create or replace function public.flh_guard_paper_attempt_answer()
 returns trigger
 language plpgsql
