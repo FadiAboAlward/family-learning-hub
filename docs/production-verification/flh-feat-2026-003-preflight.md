@@ -74,9 +74,9 @@ $function$
 
 ### Comparison against the migration replacement
 
-Normalized PL/pgSQL body match: **YES**.
+The captured Production body is the baseline above. The migration initially reconstructed it byte-for-behavior, then the review identified a save-vs-submit race. The final forward migration intentionally differs in one concurrency-safe way: `flh_exam_save_answer` locks the matching `quiz_attempts` row with `FOR UPDATE` before re-checking that the attempt is still `in_progress` and before touching `quiz_attempt_answers`.
 
-The migration intentionally reconstructs this Production RPC on fresh databases because the historical Git migration is identity-only. No feature behavior change is intended in this function.
+This preserves normal save semantics while preventing a racing save from resetting an answer to `ungraded` after submission has graded and finalized the attempt. A deterministic two-session regression test covers this exact race.
 
 ## Production: flh_exam_submit
 
@@ -224,9 +224,10 @@ $function$
 
 ### Comparison against the migration replacement
 
-The replacement is intentionally **not byte-identical** because FLH-FEAT-2026-003 changes the paper path while preserving the interactive path. The reviewed delta is limited to:
+The replacement is intentionally **not byte-identical** because FLH-FEAT-2026-003 changes the paper path and review hardening adds compatible concurrency controls while preserving interactive Exam semantics. The reviewed delta is limited to:
 
-- lock the active attempt row with `FOR UPDATE` and require `status = 'in_progress'` again on the final attempt update;
+- lock the active attempt row with `FOR UPDATE` in submit and require `status = 'in_progress'` again on the final attempt update;
+- lock the same active attempt row in answer-save before its status re-check/upsert, serializing save-vs-submit races;
 - grade an already validated explicit `{"unanswered": true}` paper row as incorrect / zero points / not mastered;
 - keep missing rows strict inside generic `flh_exam_submit`; it does not create unanswered rows;
 - materialize declared printed blanks only in the new service-role-only `flh_paper_exam_submit(..., integer[])` wrapper after declared blank sequence numbers exactly match missing answer rows;
