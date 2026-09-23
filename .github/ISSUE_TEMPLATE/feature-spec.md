@@ -56,7 +56,7 @@ Out of scope:
 - Requirement source used: pinned Feature Spec / N/A — reason:
 - Run requirement: required / completed / optional / N/A — reason:
 - Run ID or link:
-- Outcome: passed / findings / blocked / N/A — reason:
+- Outcome: PASS / FINDINGS / BLOCKED_EXTERNAL / N/A — reason/evidence:
 - Reproducible product defects converted to deterministic regression coverage where practical: yes / no / N/A — reason:
 
 ## Exact-head QA evidence
@@ -66,7 +66,7 @@ Out of scope:
 - Static quality result:
 - Browser smoke result:
 - CodeRabbit exact-head result:
-- TestSprite run evidence, or N/A reason:
+- TestSprite outcome/evidence, or N/A reason:
 
 ## Final verification
 
