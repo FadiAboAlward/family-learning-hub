@@ -92,6 +92,8 @@ jobs:
         run: node tests/learning-finish-rpc.concurrency.mjs
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
+      - name: Verify Exam answer save/submit concurrency
+        run: node tests/exam-save-submit-race.concurrency.mjs
       - name: Lint reconstructed database
         run: npx --yes supabase@2.117.0 db lint --local --schema public,private --level error --fail-on error
       - name: Stop local database
