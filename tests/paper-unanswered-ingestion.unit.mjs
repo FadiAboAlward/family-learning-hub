@@ -5,32 +5,43 @@ const migration=fs.readFileSync('supabase/migrations/20260922134500_paper_unansw
 
 for(const fragment of [
   'FLH-FEAT-2026-003',
-  `if new.response = '{"unanswered":true}'::jsonb then`,
+  `raise exception 'UNANSWERED_REQUIRES_PAPER_ATTEMPT'`,
+  `raise exception 'PAPER_UNANSWERED_REQUIRES_DECLARED_SUBMIT'`,
   `raise exception 'PAPER_UNANSWERED_INTERACTION_INVALID'`,
   `if new.response ? 'unanswered' then`,
-  `v_is_paper := nullif(v_attempt.metadata->>'paper_model_code','') is not null`,
-  `insert into public.quiz_attempt_answers`,
+  `create or replace function public.flh_paper_exam_submit(`,
+  `p_unanswered_sequence_nos integer[]`,
+  `'PAPER_UNANSWERED_SET_MISMATCH'`,
+  `set_config('flh.paper_unanswered_attempt_id',p_attempt_id::text,true)`,
   `'{"unanswered":true}'::jsonb`,
   `if v_queue_count = 0 or v_answer_count <> v_queue_count then`,
   `return jsonb_build_object('error','EXAM_NOT_COMPLETE')`,
   `when aa.response = '{"unanswered":true}'::jsonb then false`,
   `when aa.response = '{"unanswered":true}'::jsonb then 0`,
-  `when aa.response = '{"unanswered":true}'::jsonb then 'not_mastered'`
+  `when aa.response = '{"unanswered":true}'::jsonb then 'not_mastered'`,
+  `for update;`,
+  `and status = 'in_progress';`,
+  `revoke all on function public.flh_exam_submit(uuid,uuid,uuid) from public;`,
+  `grant execute on function public.flh_exam_submit(uuid,uuid,uuid) to service_role;`
 ]){
   assert.ok(migration.includes(fragment),`paper unanswered migration missing invariant: ${fragment}`);
 }
 
-const autoMaterialization=migration.match(/if v_is_paper then[\s\S]*?end if;/);
-assert.ok(autoMaterialization,'paper-only unanswered materialization block not found');
+const genericSubmitStart=migration.indexOf('create or replace function public.flh_exam_submit(');
+const paperSubmitStart=migration.indexOf('create or replace function public.flh_paper_exam_submit(');
+assert.ok(genericSubmitStart >= 0 && paperSubmitStart > genericSubmitStart,'paper submit wrapper must exist after generic submit');
+
+const genericSubmit=migration.slice(genericSubmitStart,paperSubmitStart);
 assert.ok(
-  autoMaterialization[0].includes(`and not exists (`),
-  'paper unanswered rows must only materialize for missing queue answers'
+  !genericSubmit.includes(`insert into public.quiz_attempt_answers (`),
+  'generic exam submit must not infer or materialize unanswered paper rows'
 );
 
+const paperSubmit=migration.slice(paperSubmitStart);
 assert.ok(
-  migration.indexOf(`if v_queue_count = 0 or v_answer_count <> v_queue_count then`) >
-  migration.indexOf(`if v_is_paper then`),
-  'interactive incomplete-exam guard must remain outside and after the paper-only block'
+  paperSubmit.includes('v_declared is distinct from v_missing') &&
+  paperSubmit.includes(`qq.sequence_no=any(v_declared)`),
+  'paper submit must require an exact declared-blank/missing-set match before materialization'
 );
 
 assert.ok(
