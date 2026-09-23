@@ -134,7 +134,10 @@ begin
   -- A blank printed response is a first-class paper response, never a fake option.
   -- Keep the representation exact so extra/contradictory fields fail closed.
   if new.response = '{"unanswered":true}'::jsonb then
-    if current_setting('flh.paper_unanswered_attempt_id', true) is distinct from new.attempt_id::text then
+    -- Only creation/transition to an unanswered row requires the declared-submit
+    -- context. Later grading updates may keep the already-declared response.
+    if (tg_op = 'INSERT' or old.response is distinct from new.response)
+       and current_setting('flh.paper_unanswered_attempt_id', true) is distinct from new.attempt_id::text then
       raise exception 'PAPER_UNANSWERED_REQUIRES_DECLARED_SUBMIT';
     end if;
     if new.attempts_used is distinct from 0 or new.hints_used is distinct from 0 then
