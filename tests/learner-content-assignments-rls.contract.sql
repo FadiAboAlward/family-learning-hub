@@ -63,4 +63,3 @@ begin
 end
 $$;
 
-select 'learner content assignment RLS contract passed' as result;
