@@ -30,10 +30,10 @@ Copy the numbered acceptance criteria from the pinned spec version.
 ## Scope / non-goals
 
 In scope:
--
+- [Describe in-scope work]
 
 Out of scope:
--
+- [Describe out-of-scope work]
 
 ## Risk / boundaries
 
