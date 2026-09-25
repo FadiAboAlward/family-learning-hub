@@ -152,4 +152,4 @@ begin
   delete from public.workspaces where id=v_workspace;
   delete from auth.users where id in (v_user_a,v_user_b);
 end
-$;
+$$;
