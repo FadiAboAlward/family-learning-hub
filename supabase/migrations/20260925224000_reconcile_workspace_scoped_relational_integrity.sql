@@ -1,7 +1,15 @@
 -- FLH-FEAT-2026-004 v1.0
+-- SPEC_REVISION_ID: ANLCKQnwFqCYcaKt2Ya83wo9qsDKMMAFx5ljT0YI8qZZj2dlBKCYPz6dAwwLgRc33AdkfDHkwRH5mc6QAKcLgm6h6J_RbomaNrk3Tipl6BA
+-- MIGRATION_IDENTITY: 20260925224000_reconcile_workspace_scoped_relational_integrity.sql
 -- Forward-only reconciliation for workspace-scoped relational integrity.
 -- Production preflight on 2026-09-25 found zero cross-workspace mismatches
 -- across all six relationships before this migration.
+-- A fresh database reaches the historical scalar-reference state before this
+-- migration; this file reconciles it forward without editing applied history.
+-- Post-merge Production verification must confirm all six composite foreign
+-- keys are present + validated with preserved delete actions, superseded scalar
+-- constraints are absent, mismatch counts remain zero, and the migration ledger
+-- contains this exact migration identity.
 
 -- Parent composite keys. Each parent id is already globally unique through its
 -- primary key; these keys make workspace identity part of the referenced key.
