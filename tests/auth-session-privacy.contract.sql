@@ -126,6 +126,18 @@ begin
   perform set_config('request.jwt.claim.sub', v_user_a::text, true);
   execute 'set local role authenticated';
 
+  select private.is_workspace_member(v_workspace,v_user_a)
+  into v_member;
+  if v_member is distinct from true then
+    raise exception 'positive control failed: user A is not recognized as member';
+  end if;
+
+  select private.workspace_role(v_workspace,v_user_a)
+  into v_role;
+  if v_role is distinct from 'viewer' then
+    raise exception 'positive control failed: user A role is not viewer: %', v_role;
+  end if;
+
   select private.is_workspace_member(v_workspace,v_user_b)
   into v_member;
   if v_member is distinct from false then
@@ -143,6 +155,14 @@ begin
   where id=v_learner_badge;
   if v_visible <> 0 then
     raise exception 'non-manager authenticated member can read learner_badges row';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_user_b::text, true);
+  select count(*) into v_visible
+  from public.learner_badges
+  where id=v_learner_badge;
+  if v_visible <> 1 then
+    raise exception 'positive control failed: owner cannot read learner_badges row';
   end if;
 
   execute 'reset role';
