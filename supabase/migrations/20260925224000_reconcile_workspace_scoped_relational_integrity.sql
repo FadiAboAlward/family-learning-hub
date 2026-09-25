@@ -9,7 +9,7 @@
 -- renames an index adopted by UNIQUE USING INDEX to the constraint name, so
 -- unconditional CREATE INDEX IF NOT EXISTS would create a redundant index on a
 -- repeated run.
-do $
+do $parent_keys$
 begin
   if not exists (
     select 1 from pg_constraint
@@ -71,7 +71,7 @@ begin
       unique using index gamification_rewards_id_workspace_id_uidx;
   end if;
 end
-$;
+$parent_keys$;
 
 -- Add composite constraints as NOT VALID first so current rows can be checked
 -- explicitly before the old scalar constraints are removed.
