@@ -5,24 +5,19 @@
 
 -- Parent composite keys. Each parent id is already globally unique through its
 -- primary key; these keys make workspace identity part of the referenced key.
-create unique index if not exists quiz_assignments_id_workspace_id_uidx
-  on public.quiz_assignments(id, workspace_id);
-create unique index if not exists curriculum_concept_terms_id_workspace_id_uidx
-  on public.curriculum_concept_terms(id, workspace_id);
-create unique index if not exists feedback_templates_id_workspace_id_uidx
-  on public.feedback_templates(id, workspace_id);
-create unique index if not exists gamification_badges_id_workspace_id_uidx
-  on public.gamification_badges(id, workspace_id);
-create unique index if not exists gamification_rewards_id_workspace_id_uidx
-  on public.gamification_rewards(id, workspace_id);
-
-do $$
+-- Build the backing index only when the owning constraint is absent. PostgreSQL
+-- renames an index adopted by UNIQUE USING INDEX to the constraint name, so
+-- unconditional CREATE INDEX IF NOT EXISTS would create a redundant index on a
+-- repeated run.
+do $
 begin
   if not exists (
     select 1 from pg_constraint
     where conrelid='public.quiz_assignments'::regclass
       and conname='quiz_assignments_id_workspace_id_key'
   ) then
+    create unique index if not exists quiz_assignments_id_workspace_id_uidx
+      on public.quiz_assignments(id, workspace_id);
     alter table public.quiz_assignments
       add constraint quiz_assignments_id_workspace_id_key
       unique using index quiz_assignments_id_workspace_id_uidx;
@@ -33,6 +28,8 @@ begin
     where conrelid='public.curriculum_concept_terms'::regclass
       and conname='curriculum_concept_terms_id_workspace_id_key'
   ) then
+    create unique index if not exists curriculum_concept_terms_id_workspace_id_uidx
+      on public.curriculum_concept_terms(id, workspace_id);
     alter table public.curriculum_concept_terms
       add constraint curriculum_concept_terms_id_workspace_id_key
       unique using index curriculum_concept_terms_id_workspace_id_uidx;
@@ -43,6 +40,8 @@ begin
     where conrelid='public.feedback_templates'::regclass
       and conname='feedback_templates_id_workspace_id_key'
   ) then
+    create unique index if not exists feedback_templates_id_workspace_id_uidx
+      on public.feedback_templates(id, workspace_id);
     alter table public.feedback_templates
       add constraint feedback_templates_id_workspace_id_key
       unique using index feedback_templates_id_workspace_id_uidx;
@@ -53,6 +52,8 @@ begin
     where conrelid='public.gamification_badges'::regclass
       and conname='gamification_badges_id_workspace_id_key'
   ) then
+    create unique index if not exists gamification_badges_id_workspace_id_uidx
+      on public.gamification_badges(id, workspace_id);
     alter table public.gamification_badges
       add constraint gamification_badges_id_workspace_id_key
       unique using index gamification_badges_id_workspace_id_uidx;
@@ -63,12 +64,14 @@ begin
     where conrelid='public.gamification_rewards'::regclass
       and conname='gamification_rewards_id_workspace_id_key'
   ) then
+    create unique index if not exists gamification_rewards_id_workspace_id_uidx
+      on public.gamification_rewards(id, workspace_id);
     alter table public.gamification_rewards
       add constraint gamification_rewards_id_workspace_id_key
       unique using index gamification_rewards_id_workspace_id_uidx;
   end if;
 end
-$$;
+$;
 
 -- Add composite constraints as NOT VALID first so current rows can be checked
 -- explicitly before the old scalar constraints are removed.
