@@ -1,7 +1,6 @@
 -- FLH-FEAT-2026-005 deterministic authorization/privacy contract.
--- Fixture writes are transaction-scoped and rolled back so the contract is repeatable.
-begin;
-
+-- Fixture writes use deterministic IDs and are explicitly cleaned up on success.
+-- CI resets/stops the disposable local database after failures.
 do $$
 declare
   v_def text;
@@ -147,7 +146,10 @@ begin
   end if;
 
   execute 'reset role';
-end
-$$;
 
-rollback;
+  -- Workspace cascade removes its test membership, learner, badge and
+  -- learner_badges row; auth users are then removed separately.
+  delete from public.workspaces where id=v_workspace;
+  delete from auth.users where id in (v_user_a,v_user_b);
+end
+$;
