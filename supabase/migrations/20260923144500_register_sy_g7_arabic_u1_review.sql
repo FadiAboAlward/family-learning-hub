@@ -1474,6 +1474,9 @@ begin
       'approved_artifact','Mohammad_AR_G7_Unit1_Continuation_Paper_20Q_20260923.pdf',
       'approved_artifact_url','https://drive.google.com/file/d/1u14SZc57gHeAPA8PP2dyWnu1MF9W6QHS/view?usp=drivesdk',
       'approved_artifact_sha256','3ab145006f1809d873fb4bfd9a5df5f66fcffc72dd7143f9a7c11db51b6036e6',
+      'approved_artifact_content_verified',true,
+      'approved_artifact_content_verified_at','2026-09-25T22:18:00+03:00',
+      'approved_artifact_content_verification','Recovered original sent Gmail PDF; verified all 20 printed question numbers, prompts, option order/labels, and choices against v_paper_package before immutable backend registration.',
       'approved_at','2026-09-23T15:38:49+03:00',
       'approval_note','Existing two-page black-and-white paper previously generated and sent to Mohammad; recovered from the original sent Gmail attachment before backend registration.',
       'layout',jsonb_build_object(
@@ -1517,5 +1520,18 @@ begin
     true
   )
   where workspace_id=v_workspace and id=v_paper_version;
+
+  -- Paper-only versions contain a canonical grading package with answer keys.
+  -- Hide those rows from ordinary authenticated workspace-member reads while
+  -- preserving manager access through the existing quiz_versions_manage policy.
+  drop policy if exists quiz_versions_read on public.quiz_versions;
+  create policy quiz_versions_read
+    on public.quiz_versions
+    for select
+    to authenticated
+    using (
+      private.is_workspace_member(workspace_id, (select auth.uid()))
+      and not (settings ? 'paper_exam')
+    );
 end;
 $migration$;
