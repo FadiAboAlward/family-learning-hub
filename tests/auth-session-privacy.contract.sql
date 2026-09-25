@@ -1,8 +1,20 @@
 -- FLH-FEAT-2026-005 deterministic authorization/privacy contract.
+-- Fixture writes are transaction-scoped and rolled back so the contract is repeatable.
+begin;
+
 do $$
 declare
   v_def text;
   v_policy text;
+  v_workspace uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699001';
+  v_user_a uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699002';
+  v_user_b uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699003';
+  v_learner uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699004';
+  v_badge uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699005';
+  v_learner_badge uuid := 'd513dd0a-2ea4-4e53-a505-79db5d699006';
+  v_visible integer;
+  v_member boolean;
+  v_role text;
 begin
   select pg_get_functiondef('private.workspace_role(uuid,uuid)'::regprocedure)
   into v_def;
@@ -86,5 +98,56 @@ begin
      or not has_table_privilege('service_role','public.learner_learning_sessions','DELETE') then
     raise exception 'service_role is missing learner_learning_sessions CRUD access';
   end if;
+
+  -- Behavioral negative-access fixture. User A is an ordinary viewer while
+  -- user B is a manager in the same workspace. A must not be able to use B's
+  -- identity in helpers or read a real existing learner_badges row.
+  insert into auth.users(id) values (v_user_a), (v_user_b);
+
+  insert into public.workspaces(id,name,slug)
+  values (v_workspace,'QA auth privacy workspace','qa-auth-privacy-workspace');
+
+  insert into public.workspace_members(workspace_id,user_id,role)
+  values
+    (v_workspace,v_user_a,'viewer'),
+    (v_workspace,v_user_b,'owner');
+
+  insert into public.learners(id,workspace_id,display_name,slug,grade_level,metadata)
+  values (v_learner,v_workspace,'QA learner','qa-auth-privacy-learner',7,'{"is_test":true}'::jsonb);
+
+  insert into public.gamification_badges(id,workspace_id,code,title,metadata)
+  values (v_badge,v_workspace,'qa-auth-privacy-badge','QA auth privacy badge','{"is_test":true}'::jsonb);
+
+  insert into public.learner_badges(id,workspace_id,learner_id,badge_id,award_reason,metadata)
+  values (
+    v_learner_badge,v_workspace,v_learner,v_badge,
+    'qa-auth-session-privacy','{"is_test":true}'::jsonb
+  );
+
+  perform set_config('request.jwt.claim.sub', v_user_a::text, true);
+  execute 'set local role authenticated';
+
+  select private.is_workspace_member(v_workspace,v_user_b)
+  into v_member;
+  if v_member is distinct from false then
+    raise exception 'user A can authorize user B through is_workspace_member';
+  end if;
+
+  select private.workspace_role(v_workspace,v_user_b)
+  into v_role;
+  if v_role is not null then
+    raise exception 'user A can reveal user B role through workspace_role: %', v_role;
+  end if;
+
+  select count(*) into v_visible
+  from public.learner_badges
+  where id=v_learner_badge;
+  if v_visible <> 0 then
+    raise exception 'non-manager authenticated member can read learner_badges row';
+  end if;
+
+  execute 'reset role';
 end
 $$;
+
+rollback;
