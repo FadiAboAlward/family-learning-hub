@@ -1,4 +1,26 @@
 -- FLH-FEAT-2026-005 v1.0
+-- SPEC_REVISION_ID: ANLCKQkbQF8doNFfd1ZWTBozOhQ3RgVC1dTb1w1kc2m6EGW45rytPwn7A2teeT2I_C4oomGDAYHIQAl0X00SVUKRCpZGMubkBTWmU9xgTEA
+-- MIGRATION_IDENTITY: 20260925225500_harden_authenticated_authorization_and_session_privacy.sql
+--
+-- Production/fresh-database reconciliation:
+-- * Production preflight on 2026-09-25 confirmed the historical state is still live:
+--   private.workspace_role/is_workspace_member/can_manage_learning are executable by
+--   PUBLIC/anon/authenticated; learner-specific gamification SELECT policies still use
+--   workspace-member-wide access; authenticated still has direct learner_learning_sessions
+--   privileges and the parent-read policy remains present.
+-- * A fresh replay reaches the same historical contract before this migration.
+-- * This migration is forward-only: rebind helper authorization to auth.uid(), narrow the
+--   learner-specific read policies, and remove direct browser access to
+--   public.learner_learning_sessions while retaining service_role CRUD for activity-api.
+--
+-- Post-merge Production checks:
+-- * helper definitions bind both lookup identity and p_user_id to auth.uid();
+-- * PUBLIC/anon cannot EXECUTE the three private helpers; authenticated can for RLS;
+-- * learner_badges/reward_claims/learner_gamification_state/gamification_events reads are
+--   manager-scoped through private.can_manage_learning;
+-- * no authenticated learner_learning_sessions policy or direct CRUD privilege remains;
+-- * service_role retains learner_learning_sessions CRUD and activity-api flows remain valid.
+--
 -- Bind browser-facing authorization decisions to auth.uid(), narrow
 -- learner-specific gamification reads, and keep learner session nonces
 -- behind the server-authorized activity API.
