@@ -82,6 +82,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/learner-content-assignments-rls.contract.sql
       - name: Verify authenticated authorization and session privacy
         run: npx --yes supabase@2.117.0 db query --local --file tests/auth-session-privacy.contract.sql
+      - name: Verify workspace relational integrity contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/workspace-relational-integrity.contract.sql
       - name: Verify Learning answer RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-answer-rpc.contract.sql
       - name: Verify Learning answer concurrency and idempotency
