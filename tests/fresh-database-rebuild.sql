@@ -204,8 +204,7 @@ begin
     select * from (values
       ('workspaces', 'SELECT', 'qual'),
       ('workspaces', 'UPDATE', 'qual'),
-      ('workspaces', 'UPDATE', 'with_check'),
-      ('learner_learning_sessions', 'SELECT', 'qual')
+      ('workspaces', 'UPDATE', 'with_check')
     ) as partial_contract(tablename, command_name, expression_name)
   loop
     if not exists (

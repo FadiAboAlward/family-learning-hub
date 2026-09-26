@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
+import { canManageLearningRole } from "../_shared/parent-authorization.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -181,7 +182,7 @@ async function parentUser(req: Request) {
     .eq("workspace_id", WORKSPACE_ID)
     .eq("user_id", data.user.id)
     .maybeSingle();
-  if (!member) throw new Error("NOT_A_PARENT_MEMBER");
+  if (!member || !canManageLearningRole(member.role)) throw new Error("NOT_A_PARENT_MEMBER");
   return { user: data.user, member };
 }
 
