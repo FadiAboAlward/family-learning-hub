@@ -181,7 +181,7 @@ async function parentUser(req: Request) {
     .eq("workspace_id", WORKSPACE_ID)
     .eq("user_id", data.user.id)
     .maybeSingle();
-  if (!member) throw new Error("NOT_A_PARENT_MEMBER");
+  if (!member || !["owner", "admin", "teacher"].includes(member.role)) throw new Error("NOT_A_PARENT_MEMBER");
   return { user: data.user, member };
 }
 
