@@ -34,12 +34,12 @@ function assertSafeFutureMigration(sql, label) {
     const predicate = whereMatch[1];
     assert.match(
       predicate,
-      /(?:^|[\\s(])(?:[a-z_][a-z0-9_]*\\.)?workspace_id\\s*(?:=|\\bin\\s*\\()/i,
+      /(?:^|[\s(])(?:[a-z_][a-z0-9_]*\.)?workspace_id\s*(?:=|\bin\s*\()/i,
       `${label}: null-curriculum quiz backfills must scope workspace_id in the WHERE predicate`,
     );
     assert.match(
       predicate,
-      /(?:^|[\\s(])(?:[a-z_][a-z0-9_]*\\.)?(?:slug|code|id)\\s*(?:=|\\bin\\s*\\()/i,
+      /(?:^|[\s(])(?:[a-z_][a-z0-9_]*\.)?(?:slug|code|id)\s*(?:=|\bin\s*\()/i,
       `${label}: null-curriculum quiz backfills must use an explicit catalog identifier in the WHERE predicate`,
     );
   }
