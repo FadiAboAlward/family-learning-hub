@@ -6,19 +6,18 @@ const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4,
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 
 const text = value => typeof value === 'string' ? value.trim() : '';
-const normalize = value => text(value).normalize('NFKC').toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
-const normalizeOption = value => text(value).normalize('NFKC').toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
+const canonicalMath = value => text(value).normalize('NFKC').replace(/[−–—]/g, '-').replace(/[×✕·]/g, '*').replace(/÷/g, '/');
+const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
+const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
+const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\d+(?:[.,]\d+)?/g, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 const escapeRegex = value => [...value].map(ch => '\\^$.*+?()[]{}'.includes(ch) ? '\\' + ch : ch).join('');
 
 function answerLeak(hintText, answer) {
-  const h = text(hintText).normalize('NFKC');
-  const a = text(answer).normalize('NFKC');
+  const h = canonicalMath(hintText).toLocaleLowerCase('en-US');
+  const a = canonicalMath(answer).toLocaleLowerCase('en-US');
   if (!h || !a) return false;
-  if (/^[-+]?\d+(?:[.,]\d+)?$/.test(a)) {
-    return new RegExp('(^|[^0-9])' + escapeRegex(a) + '([^0-9]|$)').test(h);
-  }
-  const n = normalize(a);
-  return n.length >= 4 && normalize(h).includes(n);
+  const phrase = escapeRegex(a).replace(/\s+/g, '\\s*');
+  return new RegExp('(^|[^\\p{L}\\p{N}])' + phrase + '($|[^\\p{L}\\p{N}])', 'iu').test(h);
 }
 
 function issue(list, code, path, message) {
@@ -114,7 +113,7 @@ export function validateAcademicPackage(pkg) {
       }
     }
 
-    const promptForm = normalize(q && q.prompt).replace(/\d+/g, '#');
+    const promptForm = normalizePrompt(q && q.prompt);
     if (promptForm) {
       if (promptForms.has(promptForm)) issue(errors, 'NORMALIZED_PROMPT_DUPLICATE', p + '.prompt', 'Prompt is a normalized near-duplicate of ' + promptForms.get(promptForm) + '.');
       else promptForms.set(promptForm, code || p);
