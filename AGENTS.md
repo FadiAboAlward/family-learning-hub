@@ -11,6 +11,7 @@ Before making a non-trivial product, data, security, quiz, exam, learner, parent
 - `docs/feature-spec-workflow.md` — Drive Feature Spec pinning and Codex/TestSprite handoff protocol.
 - `docs/math-rendering-invariant.md` — mandatory RTL/LTR math-rendering invariant for learner-facing math surfaces.
 - `docs/paper-exam-workflow.md` — canonical workflow for generating, approving, printing, scanning, and ingesting paper exams into learner history.
+- `docs/academic-content-quality.md` — mandatory authoring/QA contract for new assessment packages, learner-state grounding, difficulty, distractors, progressive hints, mode boundaries, and optional external-tool use.
 - `docs/pdf-generation-standard.md` — canonical fixed-layout PDF authoring and render-QA standard for exams, worksheets, and other printable artifacts.
 
 If implementation and documentation disagree, do not silently choose one. Verify the live architecture and update the stale side in the same change when appropriate.
