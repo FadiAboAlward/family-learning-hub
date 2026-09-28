@@ -14,8 +14,13 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/[×✕·]/g, '*')
   .replace(/÷/g, '/')
   .replace(/٫/g, '.');
+const normalizeHint = value => canonicalMath(value)
+  .toLocaleLowerCase('en-US')
+  .replace(/\s+/g, '')
+  .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
 const normalizeReasoning = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
+  .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#')
   .replace(/\s+/g, '')
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
 
@@ -241,7 +246,7 @@ export function validateAcademicPackage(pkg) {
 
         if (correctCount === 1 && answerLeak(combined, correctContent)) issue(errors, 'HINT_ANSWER_LEAK', hp, 'Hint exposes the correct option/final answer before finalization.');
 
-        const hn = normalizeReasoning(combined);
+        const hn = normalizeHint(combined);
         if (hn && hintTexts.includes(hn)) issue(errors, 'DUPLICATE_HINT_CONTENT', hp, 'Later hint duplicates an earlier hint instead of adding support.');
         hintTexts.push(hn);
 
