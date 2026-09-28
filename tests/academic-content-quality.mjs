@@ -120,6 +120,12 @@ reasoningOperators.blueprint[1].reasoning_signature = 'x - y';
 const reasoningOperatorsResult = validateAcademicPackage(reasoningOperators);
 assert.ok(!reasoningOperatorsResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Reasoning signatures must preserve semantically meaningful math operators');
 
+const reasoningNumericVariants = read('valid-package.json');
+reasoningNumericVariants.blueprint[0].reasoning_signature = 'اجمع 2 + 3';
+reasoningNumericVariants.blueprint[1].reasoning_signature = 'اجمع 8 + 9';
+const reasoningNumericVariantsResult = validateAcademicPackage(reasoningNumericVariants);
+assert.ok(reasoningNumericVariantsResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Reasoning signatures that differ only by numeric operands must be treated as duplicates');
+
 const arabicDecimalAnalogy = read('valid-package.json');
 arabicDecimalAnalogy.questions[0].options[0].content = '3';
 arabicDecimalAnalogy.questions[0].hints[0].content = 'مثال مشابه يستخدم العدد ٣٫٥ دون أن يعطي جواب هذا السؤال.';
@@ -158,4 +164,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, multi-word answer leak detection, signed-number-safe numeric boundaries, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons with numeric abstraction only for reasoning signatures, multi-word answer leak detection, signed-number-safe numeric boundaries, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
