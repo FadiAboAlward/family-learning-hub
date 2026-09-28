@@ -97,8 +97,8 @@ const fractionOperatorSpacingLeakResult = validateAcademicPackage(fractionOperat
 assert.ok(fractionOperatorSpacingLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Equivalent fraction answer with spaced Unicode operator must be detected as a leak');
 
 const decimalAnalogy = read('valid-package.json');
-decimalAnalogy.questions[1].options[0].content = '3';
-decimalAnalogy.questions[0].hints[0].content = 'مثال مشابه: العدد 3.5 أكبر من 3 بقليل، لكن طبّق قاعدة السؤال نفسه.';
+decimalAnalogy.questions[0].options[0].content = '3';
+decimalAnalogy.questions[0].hints[0].content = 'مثال مشابه: العدد 3.5 يحتاج قاعدة مشابهة، لكن طبّق قاعدة السؤال نفسه.';
 const decimalAnalogyResult = validateAcademicPackage(decimalAnalogy);
 assert.ok(!decimalAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Integer answer must not match the integer part of an analogous decimal');
 
