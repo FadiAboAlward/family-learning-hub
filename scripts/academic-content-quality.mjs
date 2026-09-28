@@ -7,22 +7,44 @@ const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book
 
 const text = value => typeof value === 'string' ? value.trim() : '';
 const canonicalMath = value => text(value).normalize('NFKC')
+  .replace(/\p{Cf}/gu, '')
   .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
   .replace(/÷/g, '/');
+const comparableMath = value => canonicalMath(value)
+  .toLocaleLowerCase('en-US')
+  .replace(/\s*([+\-*/=<>])\s*/g, '$1')
+  .replace(/\s+/g, ' ');
 const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
-const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
+const normalizeOption = value => comparableMath(value);
 const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
-const escapeRegex = value => [...value].map(ch => '\\^$.*+?()[]{}'.includes(ch) ? '\\' + ch : ch).join('');
 
 function answerLeak(hintText, answer) {
-  const h = canonicalMath(hintText).toLocaleLowerCase('en-US');
-  const a = canonicalMath(answer).toLocaleLowerCase('en-US');
+  const h = comparableMath(hintText);
+  const a = comparableMath(answer);
   if (!h || !a) return false;
-  const phrase = escapeRegex(a).replace(/\s+/g, '\\s*');
-  return new RegExp('(^|[^\\p{L}\\p{N}])' + phrase + '($|[^\\p{L}\\p{N}])', 'iu').test(h);
+
+  let start = h.indexOf(a);
+  while (start !== -1) {
+    const end = start + a.length;
+    const before = start > 0 ? h[start - 1] : '';
+    const after = end < h.length ? h[end] : '';
+    const prev = start > 1 ? h[start - 2] : '';
+    const next = end + 1 < h.length ? h[end + 1] : '';
+
+    const leftWordAdjacent = /[\p{L}\p{N}]/u.test(before);
+    const rightWordAdjacent = /[\p{L}\p{N}]/u.test(after);
+    const startsWithDigit = /^\d/u.test(a);
+    const endsWithDigit = /\d$/u.test(a);
+    const leftDecimalContinuation = startsWithDigit && /[.,]/u.test(before) && /\d/u.test(prev);
+    const rightDecimalContinuation = endsWithDigit && /[.,]/u.test(after) && /\d/u.test(next);
+
+    if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation) return true;
+    start = h.indexOf(a, start + 1);
+  }
+  return false;
 }
 
 function issue(list, code, path, message) {
