@@ -111,6 +111,15 @@ const mathDirectionCss=read('math-direction-v1.css');
 const mathGuard=read('tests/math-rendering-guard.mjs');
 const screenshotEvidence=read('tests/screenshot-evidence.mjs');
 const library=read('student-library-v3.js');
+const academicContract=read('docs/academic-content-quality.md');
+const academicValidator=read('scripts/academic-content-quality.mjs');
+const academicTests=read('tests/academic-content-quality.mjs');
+const agents=read('AGENTS.md');
+
+for(const phrase of ['Student Academic State','runtime_external_dependencies','nudge','near_solution','Brisk Teaching','Snorkl'])if(!academicContract.includes(phrase))fail(`Academic quality contract missing protected rule: ${phrase}`);
+for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
+for(const code of ['HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN'])if(!academicTests.includes(code))fail(`Academic content regression missing: ${code}`);
+if(!agents.includes('docs/academic-content-quality.md'))fail('AGENTS.md must pin the academic content quality contract.');
 
 if(learning.includes('اضغط مرة ثانية'))fail('Learning Mode must not ask for a second tap on the option.');
 if(!learning.includes('id="flhConfirmAnswer"'))fail('Learning Mode needs a dedicated confirm button.');
@@ -182,8 +191,9 @@ if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API bool
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');
 for(const requiredTest of ['signed null learner payload','array action is rejected','array attempt_id is rejected','learner-content isolation','zero-row flag update','valid boolean flag persists'])if(!examTests.includes(requiredTest))fail(`Exam API regression missing: ${requiredTest}`);
 if(yamlJobCondition(staticJob)!==null)fail('Static quality job must be unconditional.');
+if(!qa.includes("find scripts -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check"))fail('Static quality must syntax-check academic authoring scripts.');
 if(yamlJobCondition(browserJob)!==null)fail('Browser smoke job must be unconditional.');
-for(const command of ['node tests/static-qa.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/academic-content-quality.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
 for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality.');
 const screenshotUpload=yamlNamedSafeStep(browserJob,'Upload Playwright screenshots',{allowAlways:true});
