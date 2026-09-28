@@ -1,0 +1,42 @@
+{
+  "academic_context": {
+    "student_ref": "testing-learner",
+    "grade": "7",
+    "curriculum": "Türkiye MEB",
+    "subject": "Mathematics",
+    "book_code": "TR-MATH-G7-2026-2027",
+    "confirmed_scope": "K1",
+    "learner_state_ref": "state:test",
+    "evidence_refs": [],
+    "next_target": "integer operations"
+  },
+  "runtime_external_dependencies": ["snorkl"],
+  "blueprint": [
+    {"question_code":"BAD-1","delivery_surface":"learning","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P1","reasoning_signature":"same-form"},
+    {"question_code":"BAD-2","delivery_surface":"practice","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P2","reasoning_signature":"same-form"}
+  ],
+  "questions": [
+    {
+      "question_code":"BAD-1","delivery_surface":"learning","question_type":"single_choice","prompt":"احسب 2 + 3","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P1",
+      "options":[
+        {"position":1,"content":"5","is_correct":true},
+        {"position":2,"content":"5","is_correct":false},
+        {"position":3,"content":"1","is_correct":false},
+        {"position":4,"content":"0","is_correct":false}
+      ],
+      "hints":[
+        {"level":1,"role":"nudge","decomposable":true,"content":"الإجابة هي 5","steps":["فكر"],"expanded_steps":["فكر"]}
+      ]
+    },
+    {
+      "question_code":"BAD-2","delivery_surface":"exam","question_type":"single_choice","prompt":"احسب 8 + 9","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P2",
+      "options":[
+        {"position":1,"content":"17","is_correct":true},
+        {"position":2,"content":"1","is_correct":false,"distractor_rationale":"فرق القيم"},
+        {"position":3,"content":"72","is_correct":false,"distractor_rationale":"يستخدم الضرب"},
+        {"position":4,"content":"-17","is_correct":false,"distractor_rationale":"يعكس الإشارة"}
+      ],
+      "hints":[{"level":1,"role":"nudge","content":"جرّب الجمع"}]
+    }
+  ]
+}
