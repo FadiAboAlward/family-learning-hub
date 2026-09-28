@@ -21,11 +21,18 @@ const normalizeReasoning = value => canonicalMath(value)
 
 const escapeRegexChar = ch => '\\^$.*+?()[]{}|'.includes(ch) ? '\\' + ch : ch;
 const flexibleAnswerPattern = value => {
-  const chars = [...value];
+  const normalized = canonicalMath(value)
+    .toLocaleLowerCase('en-US')
+    .replace(/\s*([+\-*/=<>])\s*/g, '$1')
+    .replace(/\s+/g, ' ');
+  const chars = [...normalized];
   let pattern = '';
   for (let i = 0; i < chars.length; i++) {
     const ch = chars[i];
-    if (/\s/u.test(ch)) continue;
+    if (/\s/u.test(ch)) {
+      if (!pattern.endsWith('\\s+')) pattern += '\\s+';
+      continue;
+    }
     if (/[+\-*/=<>]/u.test(ch)) {
       const operator = escapeRegexChar(ch);
       if (i === 0) pattern += operator + '\\s*';
@@ -37,7 +44,6 @@ const flexibleAnswerPattern = value => {
   }
   return pattern;
 };
-const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
 const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
@@ -64,8 +70,17 @@ function answerLeak(hintText, answer) {
     const endsWithDigit = /\d$/u.test(a);
     const leftDecimalContinuation = startsWithDigit && /[.,]/u.test(before) && /\d/u.test(prev);
     const rightDecimalContinuation = endsWithDigit && /[.,]/u.test(after) && /\d/u.test(next);
+    const unsignedNumber = /^\d+(?:[.,]\d+)?$/u.test(a);
+    const leftNonSpaceMatch = h.slice(0, start).match(/(\S)\s*$/u);
+    const leftNonSpace = leftNonSpaceMatch ? leftNonSpaceMatch[1] : '';
+    const leftNegativeContinuation = unsignedNumber && leftNonSpace === '-';
+    const rightNonSpaceMatch = h.slice(end).match(/^\s*(\S)/u);
+    const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
+    const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
+    const leftArithmeticContinuation = unsignedNumber && /[*/]/u.test(leftNonSpace);
 
-    if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation) return true;
+    if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation &&
+        !leftNegativeContinuation && !leftArithmeticContinuation && !rightArithmeticContinuation) return true;
   }
   return false;
 }
@@ -226,7 +241,7 @@ export function validateAcademicPackage(pkg) {
 
         if (correctCount === 1 && answerLeak(combined, correctContent)) issue(errors, 'HINT_ANSWER_LEAK', hp, 'Hint exposes the correct option/final answer before finalization.');
 
-        const hn = normalize(combined);
+        const hn = normalizeReasoning(combined);
         if (hn && hintTexts.includes(hn)) issue(errors, 'DUPLICATE_HINT_CONTENT', hp, 'Later hint duplicates an earlier hint instead of adding support.');
         hintTexts.push(hn);
 
