@@ -12,25 +12,47 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
-  .replace(/÷/g, '/');
-const comparableLeakMath = value => canonicalMath(value)
+  .replace(/÷/g, '/')
+  .replace(/٫/g, '.');
+const normalizeReasoning = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
-  .replace(/\s*([*/=<>])\s*/g, '$1')
-  .replace(/(\p{N})\s*([+\-])\s*(?=\p{N})/gu, '$1$2')
-  .replace(/(^|[^\p{L}\p{N}])([+\-])\s+(?=\p{N})/gu, '$1$2')
-  .replace(/\s+/g, ' ');
+  .replace(/\s+/g, '')
+  .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
+
+const escapeRegexChar = ch => '\\^$.*+?()[]{}|'.includes(ch) ? '\\' + ch : ch;
+const flexibleAnswerPattern = value => {
+  const chars = [...value];
+  let pattern = '';
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (/\s/u.test(ch)) continue;
+    if (/[+\-*/=<>]/u.test(ch)) {
+      const operator = escapeRegexChar(ch);
+      if (i === 0) pattern += operator + '\\s*';
+      else if (i === chars.length - 1) pattern += '\\s*' + operator;
+      else pattern += '\\s*' + operator + '\\s*';
+    } else {
+      pattern += escapeRegexChar(ch);
+    }
+  }
+  return pattern;
+};
 const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
 const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
-  const h = comparableLeakMath(hintText);
-  const a = comparableLeakMath(answer);
+  const h = canonicalMath(hintText).toLocaleLowerCase('en-US');
+  const a = canonicalMath(answer).toLocaleLowerCase('en-US');
   if (!h || !a) return false;
 
-  let start = h.indexOf(a);
-  while (start !== -1) {
-    const end = start + a.length;
+  const phrase = flexibleAnswerPattern(a);
+  if (!phrase) return false;
+  const re = new RegExp(phrase, 'giu');
+
+  for (const match of h.matchAll(re)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
     const before = start > 0 ? h[start - 1] : '';
     const after = end < h.length ? h[end] : '';
     const prev = start > 1 ? h[start - 2] : '';
@@ -44,11 +66,9 @@ function answerLeak(hintText, answer) {
     const rightDecimalContinuation = endsWithDigit && /[.,]/u.test(after) && /\d/u.test(next);
 
     if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation) return true;
-    start = h.indexOf(a, start + 1);
   }
   return false;
 }
-
 function issue(list, code, path, message) {
   list.push({ code, path, message });
 }
@@ -105,7 +125,7 @@ export function validateAcademicPackage(pkg) {
     if (!ORIGINS.has(b && b.origin)) issue(errors, 'INVALID_ORIGIN', p + '.origin', 'origin must be BOOK_DERIVED or GENERATED_SIMILAR.');
     if (!text(b && b.source_ref)) issue(errors, 'SOURCE_REF_REQUIRED', p + '.source_ref', 'source_ref is required.');
 
-    const sig = normalize(b && b.reasoning_signature);
+    const sig = normalizeReasoning(b && b.reasoning_signature);
     if (!sig) issue(errors, 'REASONING_SIGNATURE_REQUIRED', p + '.reasoning_signature', 'reasoning_signature is required for duplicate/near-duplicate protection.');
     else if (reasoning.has(sig)) issue(errors, 'DUPLICATE_REASONING_SIGNATURE', p + '.reasoning_signature', 'Reasoning form duplicates ' + reasoning.get(sig) + '.');
     else reasoning.set(sig, code || p);
