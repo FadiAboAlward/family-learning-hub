@@ -13,17 +13,19 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
   .replace(/÷/g, '/');
-const comparableMath = value => canonicalMath(value)
+const comparableLeakMath = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
-  .replace(/\s*([+\-*/=<>])\s*/g, '$1')
+  .replace(/\s*([*/=<>])\s*/g, '$1')
+  .replace(/(\p{N})\s*([+\-])\s*(?=\p{N})/gu, '$1$2')
+  .replace(/(^|[^\p{L}\p{N}])([+\-])\s+(?=\p{N})/gu, '$1$2')
   .replace(/\s+/g, ' ');
 const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
-const normalizeOption = value => comparableMath(value);
+const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
-  const h = comparableMath(hintText);
-  const a = comparableMath(answer);
+  const h = comparableLeakMath(hintText);
+  const a = comparableLeakMath(answer);
   if (!h || !a) return false;
 
   let start = h.indexOf(a);
