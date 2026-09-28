@@ -52,6 +52,8 @@ For every behavior change, explicitly choose the smallest useful test layer(s). 
 
 Prefer a few high-value deterministic tests over broad brittle tests. Never weaken an assertion merely to make CI pass.
 
+For newly authored academic assessment content, package-specific validation is mandatory before any migration, seed/import payload, backend registration, printable artifact, or other publication artifact is created or updated. Materialize the exact candidate package in a non-published working location, run `node scripts/academic-content-quality.mjs <academic-package.json>`, stop on errors, disposition warnings, and record the package-specific validation result in the PR/Issue handoff. Fixture-only CI coverage does not replace this pre-publication validation, and real Aya/Mohammad attempts must not be copied into committed regression fixtures.
+
 Convention-based unit tests belong under `tests/*.unit.mjs`; GitHub Actions discovers and runs them automatically.
 
 ## Test data and evidence
