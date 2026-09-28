@@ -38,4 +38,28 @@ examLeak.questions[1].hints = [{ level: 1, role: 'nudge', content: 'hint' }];
 const examResult = validateAcademicPackage(examLeak);
 assert.ok(examResult.errors.some(x => x.code === 'NON_LEARNING_HINTS_FORBIDDEN'), 'Exam must not carry in-progress hints');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, answer-leak prevention, canonical Learning/Exam boundaries, and duplicate reasoning guards are enforced.');
+const mixedOperators = read('valid-package.json');
+mixedOperators.questions[0].prompt = 'احسب 2 + 3';
+mixedOperators.questions[1].prompt = 'احسب 8 - 9';
+const mixedOperatorsResult = validateAcademicPackage(mixedOperators);
+assert.ok(!mixedOperatorsResult.errors.some(x => x.code === 'NORMALIZED_PROMPT_DUPLICATE'), 'Different math operators must remain distinct during near-duplicate normalization');
+
+const cosmeticDuplicate = read('valid-package.json');
+cosmeticDuplicate.questions[0].prompt = 'احسب 2 + 3';
+cosmeticDuplicate.questions[1].prompt = 'احسب 8 + 9';
+const cosmeticDuplicateResult = validateAcademicPackage(cosmeticDuplicate);
+assert.ok(cosmeticDuplicateResult.errors.some(x => x.code === 'NORMALIZED_PROMPT_DUPLICATE'), 'Same-operation numeric variants must still be caught as near-duplicates');
+
+for (const [answer, hint] of [
+  ['نعم', 'فكّر جيدًا ثم اختر نعم.'],
+  ['x < 3', 'العلاقة الصحيحة هي x < 3.'],
+  ['−4', 'الموضع النهائي هو −4.']
+]) {
+  const shortLeak = read('valid-package.json');
+  shortLeak.questions[0].options[0].content = answer;
+  shortLeak.questions[0].hints[0].content = hint;
+  const shortLeakResult = validateAcademicPackage(shortLeak);
+  assert.ok(shortLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Short/symbolic answer leak must be detected for ' + answer);
+}
+
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic answer-leak prevention, math-operator-aware near-duplicate checks, canonical Learning/Exam boundaries, and duplicate reasoning guards are enforced.');
