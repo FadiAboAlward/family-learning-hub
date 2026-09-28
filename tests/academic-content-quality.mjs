@@ -126,6 +126,26 @@ arabicDecimalAnalogy.questions[0].hints[0].content = 'مثال مشابه يست
 const arabicDecimalAnalogyResult = validateAcademicPackage(arabicDecimalAnalogy);
 assert.ok(!arabicDecimalAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Arabic decimal separator must keep 3 from matching inside ٣٫٥');
 
+const multiWordAnswerLeak = read('valid-package.json');
+multiWordAnswerLeak.questions[0].options[0].content = 'لا يمكن تحديدها';
+multiWordAnswerLeak.questions[0].hints[0].content = 'بعد التحليل ستجد أن الإجابة لا يمكن تحديدها.';
+const multiWordAnswerLeakResult = validateAcademicPackage(multiWordAnswerLeak);
+assert.ok(multiWordAnswerLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Multi-word correct answers must be detected when leaked with normal whitespace');
+
+for (const negativeExample of ['-4', '- 4']) {
+  const unsignedInsideNegative = read('valid-package.json');
+  unsignedInsideNegative.questions[0].options[0].content = '4';
+  unsignedInsideNegative.questions[0].hints[0].content = 'مثال مختلف يمكن أن تكون نتيجته ' + negativeExample + '، ثم طبّق القاعدة على السؤال.';
+  const unsignedInsideNegativeResult = validateAcademicPackage(unsignedInsideNegative);
+  assert.ok(!unsignedInsideNegativeResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Unsigned answer must not match inside negative value ' + negativeExample);
+}
+
+const distinctMathHints = read('valid-package.json');
+distinctMathHints.questions[0].hints[0] = { level: 1, role: 'nudge', content: 'قارن x + y', decomposable: false };
+distinctMathHints.questions[0].hints[1] = { level: 2, role: 'guide', content: 'قارن x - y', decomposable: false };
+const distinctMathHintsResult = validateAcademicPackage(distinctMathHints);
+assert.ok(!distinctMathHintsResult.errors.some(x => x.code === 'DUPLICATE_HINT_CONTENT' && x.path === 'questions[0].hints[1]'), 'Hint duplicate normalization must preserve meaningful math operators');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -138,4 +158,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, multi-word answer leak detection, signed-number-safe numeric boundaries, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
