@@ -97,6 +97,20 @@ GitHub Actions runs the regression suite as a direct unconditional step in Stati
 
 ## Publication rule
 
+Package-specific validation is a mandatory authoring boundary, not merely fixture-backed CI coverage.
+
+Before an agent creates or updates any migration, seed/import payload, backend registration, printable artifact, or other publication artifact for a newly authored assessment package, it must:
+
+1. materialize the exact candidate package as JSON in a local or otherwise non-published working location;
+2. run `node scripts/academic-content-quality.mjs path/to/academic-package.json` against that exact candidate;
+3. stop on any validator error;
+4. review and disposition warnings before continuing;
+5. record the package-specific validation result in the PR/Issue handoff or equivalent durable delivery evidence.
+
+Do not place real learner attempts into repository regression fixtures merely to satisfy this boundary. The exact package may be validated from a temporary working file; synthetic Testing-learner fixtures remain the committed regression evidence.
+
+If a future centralized authoring/import/publishing command is added to the repository, that command must invoke `validateAcademicPackage` before any persistence or publication write. Until such a centralized writer exists, the agent authoring boundary above is mandatory for every content-publication path.
+
 A package is not academically ready when the validator reports errors. Warnings require human review/disposition but do not automatically fail validation.
 
 This gate is necessary but not sufficient: source correctness, visual-authoritative math verification, learner-state reconciliation, and the existing QA/security rules still apply.
