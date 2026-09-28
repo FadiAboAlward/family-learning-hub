@@ -108,6 +108,24 @@ bidiDuplicate.questions[0].options[1].content = '\u200e-4';
 const bidiDuplicateResult = validateAcademicPackage(bidiDuplicate);
 assert.ok(bidiDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Invisible bidi controls must not make visually identical options distinct');
 
+const symbolicOperatorSpacingLeak = read('valid-package.json');
+symbolicOperatorSpacingLeak.questions[0].options[0].content = 'x + 3';
+symbolicOperatorSpacingLeak.questions[0].hints[0].content = 'العلاقة النهائية هي x+3.';
+const symbolicOperatorSpacingLeakResult = validateAcademicPackage(symbolicOperatorSpacingLeak);
+assert.ok(symbolicOperatorSpacingLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Symbolic binary plus/minus spacing must not bypass answer-leak detection');
+
+const reasoningOperators = read('valid-package.json');
+reasoningOperators.blueprint[0].reasoning_signature = 'x + y';
+reasoningOperators.blueprint[1].reasoning_signature = 'x - y';
+const reasoningOperatorsResult = validateAcademicPackage(reasoningOperators);
+assert.ok(!reasoningOperatorsResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Reasoning signatures must preserve semantically meaningful math operators');
+
+const arabicDecimalAnalogy = read('valid-package.json');
+arabicDecimalAnalogy.questions[0].options[0].content = '3';
+arabicDecimalAnalogy.questions[0].hints[0].content = 'مثال مشابه يستخدم العدد ٣٫٥ دون أن يعطي جواب هذا السؤال.';
+const arabicDecimalAnalogyResult = validateAcademicPackage(arabicDecimalAnalogy);
+assert.ok(!arabicDecimalAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Arabic decimal separator must keep 3 from matching inside ٣٫٥');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -120,4 +138,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction operator-spacing leak detection, decimal-boundary-safe leak detection, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
