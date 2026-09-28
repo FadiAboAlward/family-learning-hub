@@ -62,4 +62,43 @@ for (const [answer, hint] of [
   assert.ok(shortLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Short/symbolic answer leak must be detected for ' + answer);
 }
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic answer-leak prevention, math-operator-aware near-duplicate checks, canonical Learning/Exam boundaries, and duplicate reasoning guards are enforced.');
+
+const arabicDigitPromptDuplicate = read('valid-package.json');
+arabicDigitPromptDuplicate.questions[0].prompt = 'احسب ٢ + ٣';
+arabicDigitPromptDuplicate.questions[1].prompt = 'احسب ٨ + ٩';
+const arabicDigitPromptDuplicateResult = validateAcademicPackage(arabicDigitPromptDuplicate);
+assert.ok(arabicDigitPromptDuplicateResult.errors.some(x => x.code === 'NORMALIZED_PROMPT_DUPLICATE'), 'Arabic-Indic numeric variants must be caught as near-duplicates');
+
+const persianDigitPromptDuplicate = read('valid-package.json');
+persianDigitPromptDuplicate.questions[0].prompt = 'احسب ۲ + ۳';
+persianDigitPromptDuplicate.questions[1].prompt = 'احسب ۸ + ۹';
+const persianDigitPromptDuplicateResult = validateAcademicPackage(persianDigitPromptDuplicate);
+assert.ok(persianDigitPromptDuplicateResult.errors.some(x => x.code === 'NORMALIZED_PROMPT_DUPLICATE'), 'Eastern Arabic/Persian numeric variants must be caught as near-duplicates');
+
+for (const digitLeak of ['−٤', '−۴']) {
+  const arabicDigitLeak = read('valid-package.json');
+  arabicDigitLeak.questions[0].options[0].content = '-4';
+  arabicDigitLeak.questions[0].hints[0].content = 'الموضع النهائي هو ' + digitLeak + '.';
+  const arabicDigitLeakResult = validateAcademicPackage(arabicDigitLeak);
+  assert.ok(arabicDigitLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Arabic-script digit answer leak must be detected for ' + digitLeak);
+}
+
+const spacedOperatorDuplicate = read('valid-package.json');
+spacedOperatorDuplicate.questions[0].options[0].content = '2 - 6';
+spacedOperatorDuplicate.questions[0].options[1].content = '2-6';
+const spacedOperatorDuplicateResult = validateAcademicPackage(spacedOperatorDuplicate);
+assert.ok(spacedOperatorDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Equivalent math options that differ only by operator spacing must be rejected');
+
+const malformedExamHints = read('valid-package.json');
+malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
+const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
+assert.ok(malformedExamHintsResult.errors.some(x => x.code === 'NON_LEARNING_HINTS_FORBIDDEN'), 'Exam must reject malformed non-array hint payloads');
+
+const singleQuestionPackage = read('valid-package.json');
+singleQuestionPackage.blueprint = [singleQuestionPackage.blueprint[0]];
+singleQuestionPackage.questions = [singleQuestionPackage.questions[0]];
+delete singleQuestionPackage.academic_context.single_difficulty_justification;
+const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
+assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
+
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
