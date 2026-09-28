@@ -6,10 +6,15 @@ const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4,
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 
 const text = value => typeof value === 'string' ? value.trim() : '';
-const canonicalMath = value => text(value).normalize('NFKC').replace(/[−–—]/g, '-').replace(/[×✕·]/g, '*').replace(/÷/g, '/');
+const canonicalMath = value => text(value).normalize('NFKC')
+  .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
+  .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
+  .replace(/[−–—]/g, '-')
+  .replace(/[×✕·]/g, '*')
+  .replace(/÷/g, '/');
 const normalize = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/[\p{P}\p{S}\s]+/gu, '');
-const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
-const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\d+(?:[.,]\d+)?/g, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
+const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
+const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 const escapeRegex = value => [...value].map(ch => '\\^$.*+?()[]{}'.includes(ch) ? '\\' + ch : ch).join('');
 
 function answerLeak(hintText, answer) {
@@ -83,7 +88,7 @@ export function validateAcademicPackage(pkg) {
   }
 
   const difficulties = new Set(blueprint.map(x => x && x.difficulty_level).filter(Number.isInteger));
-  if (blueprint.length > 1 && difficulties.size === 1 && !text(ctx && ctx.single_difficulty_justification)) {
+  if (blueprint.length > 0 && difficulties.size === 1 && !text(ctx && ctx.single_difficulty_justification)) {
     issue(errors, 'SINGLE_DIFFICULTY_UNJUSTIFIED', 'academic_context.single_difficulty_justification', 'A one-level package needs an explicit academic justification.');
   }
 
@@ -186,8 +191,8 @@ export function validateAcademicPackage(pkg) {
           if (!Array.isArray(h.expanded_steps) || h.expanded_steps.length !== 6 || h.expanded_steps.some(x => !text(x))) issue(errors, 'HINT_SIX_STEP_SHAPE', hp + '.expanded_steps', 'Expanded decomposable hints require exactly 6 non-empty steps.');
         }
       }
-    } else if (hints.length) {
-      issue(errors, 'NON_LEARNING_HINTS_FORBIDDEN', p + '.hints', 'Exam and paper questions must not carry in-progress hint payloads.');
+    } else if (q && q.hints !== undefined && (!Array.isArray(q.hints) || hints.length)) {
+      issue(errors, 'NON_LEARNING_HINTS_FORBIDDEN', p + '.hints', 'Exam and paper questions must not carry in-progress hint payloads, including malformed non-array hint data.');
     }
   }
 
