@@ -89,6 +89,25 @@ spacedOperatorDuplicate.questions[0].options[1].content = '2-6';
 const spacedOperatorDuplicateResult = validateAcademicPackage(spacedOperatorDuplicate);
 assert.ok(spacedOperatorDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Equivalent math options that differ only by operator spacing must be rejected');
 
+
+const fractionOperatorSpacingLeak = read('valid-package.json');
+fractionOperatorSpacingLeak.questions[0].options[0].content = '1/2';
+fractionOperatorSpacingLeak.questions[0].hints[0].content = 'فكّر في الكسر ١ ÷ ٢ قبل أن تختار.';
+const fractionOperatorSpacingLeakResult = validateAcademicPackage(fractionOperatorSpacingLeak);
+assert.ok(fractionOperatorSpacingLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'Equivalent fraction answer with spaced Unicode operator must be detected as a leak');
+
+const decimalAnalogy = read('valid-package.json');
+decimalAnalogy.questions[1].options[0].content = '3';
+decimalAnalogy.questions[0].hints[0].content = 'مثال مشابه: العدد 3.5 أكبر من 3 بقليل، لكن طبّق قاعدة السؤال نفسه.';
+const decimalAnalogyResult = validateAcademicPackage(decimalAnalogy);
+assert.ok(!decimalAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Integer answer must not match the integer part of an analogous decimal');
+
+const bidiDuplicate = read('valid-package.json');
+bidiDuplicate.questions[0].options[0].content = '-4';
+bidiDuplicate.questions[0].options[1].content = '\u200e-4';
+const bidiDuplicateResult = validateAcademicPackage(bidiDuplicate);
+assert.ok(bidiDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Invisible bidi controls must not make visually identical options distinct');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -101,4 +120,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction operator-spacing leak detection, decimal-boundary-safe leak detection, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
