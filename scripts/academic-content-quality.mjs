@@ -271,7 +271,8 @@ export function validateAcademicPackage(pkg) {
       }
       if (hints.length !== 4) issue(errors, 'FOUR_HINT_LEVELS_REQUIRED', p + '.hints', 'Learning questions require exactly four progressive hint levels.');
 
-      const hintTexts = [];
+      const hintContentTexts = [];
+      const hintPayloadTexts = [];
       for (const [j, h] of hints.entries()) {
         const hp = p + '.hints[' + j + ']';
         const expected = j + 1;
@@ -288,9 +289,16 @@ export function validateAcademicPackage(pkg) {
 
         if (correctCount === 1 && answerLeak(combined, correctContent)) issue(errors, 'HINT_ANSWER_LEAK', hp, 'Hint exposes the correct option/final answer before finalization.');
 
-        const hn = normalizeHint(combined);
-        if (hn && hintTexts.includes(hn)) issue(errors, 'DUPLICATE_HINT_CONTENT', hp, 'Later hint duplicates an earlier hint instead of adding support.');
-        hintTexts.push(hn);
+        const contentKey = normalizeHint(h && h.content);
+        const payloadKey = normalizeHint(combined);
+        const duplicateVisibleContent = contentKey && hintContentTexts.includes(contentKey);
+        if (duplicateVisibleContent) {
+          issue(errors, 'DUPLICATE_HINT_CONTENT', hp + '.content', 'Later learner-visible hint content duplicates an earlier hint instead of adding support.');
+        } else if (payloadKey && hintPayloadTexts.includes(payloadKey)) {
+          issue(errors, 'DUPLICATE_HINT_CONTENT', hp, 'Later hint payload duplicates an earlier hint instead of adding support.');
+        }
+        hintContentTexts.push(contentKey);
+        hintPayloadTexts.push(payloadKey);
 
         if (h && typeof h.decomposable === 'boolean' && typeof q.decomposable === 'boolean' && h.decomposable !== q.decomposable) {
           issue(errors, 'HINT_DECOMPOSABLE_MISMATCH', hp + '.decomposable', 'Hint decomposable flag must match the Learning question classification.');
@@ -324,8 +332,16 @@ function main() {
   if (!result.ok) process.exit(1);
 }
 
-const modulePath = path.resolve(fileURLToPath(import.meta.url));
-const entryPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const modulePath = fs.realpathSync(path.resolve(fileURLToPath(import.meta.url)));
+let entryPath = '';
+if (process.argv[1]) {
+  const resolvedEntry = path.resolve(process.argv[1]);
+  try {
+    entryPath = fs.realpathSync(resolvedEntry);
+  } catch {
+    entryPath = resolvedEntry;
+  }
+}
 const sameEntrypoint = process.platform === 'win32'
   ? entryPath.toLocaleLowerCase('en-US') === modulePath.toLocaleLowerCase('en-US')
   : entryPath === modulePath;
