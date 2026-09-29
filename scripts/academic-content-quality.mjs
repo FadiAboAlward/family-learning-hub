@@ -5,17 +5,17 @@ import { fileURLToPath } from 'node:url';
 const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
 const PROMPT_LANGUAGES = new Set(['ar', 'tr', 'en']);
-const HTML_ENTITY_RE = /&(?:#(?:x[0-9a-f]+|\\d+)|[a-z][a-z0-9]+);/iu;
-const RAW_HTML_TAG_RE = /<\\/?[a-z][^>]*>/iu;
+const HTML_ENTITY_RE = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/iu;
+const RAW_HTML_TAG_RE = /<\/?[a-z][^>]*>/iu;
 const SOURCE_DEPENDENCY_PATTERNS = [
-  /\\bkitap(?:ta|taki|tan)\\b/iu,
-  /\\bkitaba\\s+g[oö]re\\b/iu,
-  /\\bsayfa(?:da|daki|dan)\\b/iu,
-  /\\bkayna(?:kta|ktaki|[gğ]a\\s+g[oö]re)\\b/iu,
-  /\\b(?:in|from|according\\s+to|refer\\s+to)\\s+(?:the\\s+)?(?:book|textbook|page|source|reference)\\b/iu,
-  /\\bon\\s+page\\s+\\d+\\b/iu,
-  /(?:في|من|راجع|ارجع\\s+إلى|بالرجوع\\s+إلى)\\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
-  /وفق(?:ًا|ا)\\s+(?:للكتاب|للمصدر|للمرجع)/u
+  /\bkitap(?:ta|taki|tan)\b/iu,
+  /\bkitaba\s+g[oö]re\b/iu,
+  /\bsayfa(?:da|daki|dan)\b/iu,
+  /\bkayna(?:kta|ktaki|[gğ]a\s+g[oö]re)\b/iu,
+  /\b(?:in|from|according\s+to|refer\s+to)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\bon\s+page\s+\d+\b/iu,
+  /(?:في|من|راجع|ارجع\s+إلى|بالرجوع\s+إلى)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
 ];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
