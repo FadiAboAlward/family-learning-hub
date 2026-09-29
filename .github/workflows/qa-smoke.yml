@@ -161,6 +161,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/math-direction-browser.mjs
+      - name: Run content direction browser regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/content-direction-browser.mjs
       - name: Capture Playwright screenshot evidence
         env:
           APP_URL: http://127.0.0.1:4173/
