@@ -142,6 +142,9 @@ if(layout.includes("observer.observe(document.documentElement"))fail('Answer obs
 if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer must not re-scan on every click.');
 if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
 if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
+if(!learning.includes('hintAttrs(currentHint,q)'))fail('Learning hints must use the hint language with question-language fallback.');
+if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
+if(!exam.includes('<li dir="auto">'))fail('Exam review explanation steps must isolate their own prose direction.');
 if(!learning.includes('questionAttrs(r)')||!exam.includes('questionAttrs(r)'))fail('Learning and Exam reviews must preserve prompt_language direction.');
 if(learning.includes('flh-code-inline')||exam.includes('flh-code-inline'))fail('Question code must have one visible owner; Learning/Exam must not render duplicate inline codes.');
 if(!questionReference.includes("b.dir='ltr'")||!questionReference.includes("b.lang='en'"))fail('Question reference chips must isolate the code as LTR.');
