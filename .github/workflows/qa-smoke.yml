@@ -60,6 +60,8 @@ jobs:
         run: node tests/math-rendering-guard.mjs
       - name: Math direction regression
         run: node tests/math-direction.mjs
+      - name: Content direction regression
+        run: node tests/content-direction.mjs
       - name: Exam API unit tests
         run: node tests/exam-v2-api.mjs
       - name: Convention-based unit test suite
