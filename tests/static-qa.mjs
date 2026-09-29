@@ -171,7 +171,7 @@ const protectedSurfaces={
     'renderMath(q.prompt)','renderMath(o.content)','renderMath(currentHint.content)','renderMath(d.explanation)',"renderMath(r.prompt||'')",'renderMath(r.explanation)'
   ],
   'program-exam-v3.js':[
-    'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li>${renderMath(s)}</li>`)'
+    'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`)'
   ],
   'attempt-history-v1.js':[
     "mth(x.prompt||'')",'mth(sel)','mth(cor)','mth(x.explanation)'
