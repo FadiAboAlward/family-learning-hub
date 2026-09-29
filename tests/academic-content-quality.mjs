@@ -386,6 +386,33 @@ arabicThousandsDuplicate.questions[0].options[1].content = '١٬٠٠٠';
 const arabicThousandsDuplicateResult = validateAcademicPackage(arabicThousandsDuplicate);
 assert.ok(arabicThousandsDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Arabic thousands-separated and ungrouped numeric forms must be duplicate options');
 
+const missingOptionPosition = read('valid-package.json');
+delete missingOptionPosition.questions[0].options[0].position;
+const missingOptionPositionResult = validateAcademicPackage(missingOptionPosition);
+assert.ok(missingOptionPositionResult.errors.some(x => x.code === 'OPTION_POSITION_INVALID' && x.path === 'questions[0].options[0].position'), 'Every option must have a positive integer position');
+
+const duplicateOptionPosition = read('valid-package.json');
+duplicateOptionPosition.questions[0].options[1].position = duplicateOptionPosition.questions[0].options[0].position;
+const duplicateOptionPositionResult = validateAcademicPackage(duplicateOptionPosition);
+assert.ok(duplicateOptionPositionResult.errors.some(x => x.code === 'DUPLICATE_OPTION_POSITION' && x.path === 'questions[0].options[1].position'), 'Option positions must be unique within a question');
+
+const nonBooleanHintDecomposable = read('valid-package.json');
+nonBooleanHintDecomposable.questions[0].decomposable = false;
+for (const hint of nonBooleanHintDecomposable.questions[0].hints) {
+  hint.decomposable = false;
+  delete hint.steps;
+  delete hint.expanded_steps;
+}
+nonBooleanHintDecomposable.questions[0].hints[0].decomposable = 'true';
+const nonBooleanHintDecomposableResult = validateAcademicPackage(nonBooleanHintDecomposable);
+assert.ok(nonBooleanHintDecomposableResult.errors.some(x => x.code === 'HINT_DECOMPOSABLE_INVALID' && x.path === 'questions[0].hints[0].decomposable'), 'Present hint decomposition flags must be boolean');
+
+const percentOperandAnalogy = read('valid-package.json');
+percentOperandAnalogy.questions[0].options[0].content = '4';
+percentOperandAnalogy.questions[0].hints[0].content = 'مثال مشابه: 4% من 100';
+const percentOperandAnalogyResult = validateAcademicPackage(percentOperandAnalogy);
+assert.ok(!percentOperandAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Bare numeric answer must not match a percentage operand such as 4%');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -398,4 +425,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands, and Arabic-percent answer-leak prevention including spacing variants, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
