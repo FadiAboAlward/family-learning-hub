@@ -29,7 +29,7 @@ const canonicalMath = value => preserveSuperscripts(text(value)).normalize('NFKC
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
-  .replace(/÷/g, '/')
+  .replace(/[÷⁄∕]/g, '/')
   .replace(/≤/g, '<=')
   .replace(/≥/g, '>=')
   .replace(/٫/g, '.');
@@ -55,7 +55,7 @@ const escapeRegexChar = ch => '\\^$.*+?()[]{}|'.includes(ch) ? '\\' + ch : ch;
 const flexibleAnswerPattern = value => {
   const normalized = canonicalMath(value)
     .toLocaleLowerCase('en-US')
-    .replace(/\s*([+\-*/=<>])\s*/g, '$1')
+    .replace(/\s*([+\-*/^=<>])\s*/g, '$1')
     .replace(/\s+/g, ' ');
   const chars = [...normalized];
   let pattern = '';
@@ -65,7 +65,7 @@ const flexibleAnswerPattern = value => {
       if (!pattern.endsWith('\\s+')) pattern += '\\s+';
       continue;
     }
-    if (/[+\-*/=<>]/u.test(ch)) {
+    if (/[+\-*/^=<>]/u.test(ch)) {
       const operator = escapeRegexChar(ch);
       if (i === 0) pattern += operator + '\\s*';
       else if (i === chars.length - 1) pattern += '\\s*' + operator;
@@ -76,7 +76,7 @@ const flexibleAnswerPattern = value => {
   }
   return pattern;
 };
-const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
+const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/^=<>])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => caseFold(canonicalMath(value)).replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
@@ -108,9 +108,9 @@ function answerLeak(hintText, answer) {
     const leftNegativeContinuation = unsignedNumber && leftNonSpace === '-';
     const rightNonSpaceMatch = h.slice(end).match(/^\s*(\S)/u);
     const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
-    const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
+    const rightArithmeticContinuation = unsignedNumber && /[+\-*/^]/u.test(rightNonSpace);
     const prefix = h.slice(0, start);
-    const leftOperatorMatch = prefix.match(/([+*/])\s*$/u);
+    const leftOperatorMatch = prefix.match(/([+*/^])\s*$/u);
     const beforeLeftOperator = leftOperatorMatch ? prefix.slice(0, leftOperatorMatch.index) : '';
     const hasLeftOperandBeforeOperator = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(beforeLeftOperator);
     const leftArithmeticContinuation = unsignedNumber && !!leftOperatorMatch && hasLeftOperandBeforeOperator;
