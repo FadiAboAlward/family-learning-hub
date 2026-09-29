@@ -17,7 +17,7 @@
   ],
   "questions": [
     {
-      "question_code":"BAD-1","delivery_surface":"learning","question_type":"single_choice","prompt":"احسب 2 + 3","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P1",
+      "question_code":"BAD-1","delivery_surface":"learning","question_type":"single_choice","decomposable":true,"prompt":"احسب 2 + 3","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"P1",
       "options":[
         {"position":1,"content":"5","is_correct":true},
         {"position":2,"content":"5","is_correct":false},
