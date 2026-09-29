@@ -29,6 +29,8 @@
     if(!answers.length) return;
 
     group.classList.add('answer-layout-v8');
+    const proseDir = group.getAttribute('dir') || 'auto';
+    const proseLang = group.getAttribute('lang') || '';
     const lengths = [];
 
     answers.forEach((answer, i) => {
@@ -57,7 +59,8 @@
 
       const text = cleanText(answer);
       const mathLike = isMathLikeText(text);
-      setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : 'auto');
+      setAttrIfChanged(content, 'dir', mathLike ? 'ltr' : proseDir);
+      if(proseLang) setAttrIfChanged(content, 'lang', proseLang);
       content.classList.toggle('math-choice', mathLike);
       setAttrIfChanged(answer, 'aria-label', `الخيار ${label}: ${text}${selected ? '، محدد' : ''}`);
       setAttrIfChanged(answer, 'aria-pressed', String(selected));
