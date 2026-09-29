@@ -24,10 +24,9 @@ const normalizeReasoning = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
   .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
     const before = source.slice(0, offset);
-    const after = source.slice(offset + number.length);
     const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
-    const nextNonSpace = after.match(/^\s*(\S)/u)?.[1] || '';
-    const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextNonSpace);
+    const nextChar = source[offset + number.length] || '';
+    const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextChar);
     return semanticNumber ? number : '#';
   })
   .replace(/\s+/g, '')
@@ -93,7 +92,8 @@ function answerLeak(hintText, answer) {
     const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
     const leftArithmeticContinuation = unsignedNumber && /[*/]/u.test(leftNonSpace);
     const signedNumber = /^[+\-]\d+(?:[.,]\d+)?$/u.test(a);
-    const signedBinaryContinuation = signedNumber && /[\p{N}A-Za-z)\]}]/u.test(leftNonSpace);
+    const leftArithmeticOperand = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(h.slice(0, start));
+    const signedBinaryContinuation = signedNumber && leftArithmeticOperand;
 
     if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation &&
         !leftNegativeContinuation && !leftArithmeticContinuation && !rightArithmeticContinuation &&
@@ -239,6 +239,9 @@ export function validateAcademicPackage(pkg) {
     const hints = Array.isArray(q && q.hints) ? q.hints : [];
 
     if (q && q.delivery_surface === 'learning') {
+      if (typeof q.decomposable !== 'boolean') {
+        issue(errors, 'DECOMPOSABLE_CLASSIFICATION_REQUIRED', p + '.decomposable', 'Learning questions must explicitly declare decomposable as true or false.');
+      }
       if (hints.length !== 4) issue(errors, 'FOUR_HINT_LEVELS_REQUIRED', p + '.hints', 'Learning questions require exactly four progressive hint levels.');
 
       const hintTexts = [];
@@ -262,9 +265,12 @@ export function validateAcademicPackage(pkg) {
         if (hn && hintTexts.includes(hn)) issue(errors, 'DUPLICATE_HINT_CONTENT', hp, 'Later hint duplicates an earlier hint instead of adding support.');
         hintTexts.push(hn);
 
-        if (h && h.decomposable === true) {
-          if (!Array.isArray(h.steps) || h.steps.length !== 3 || h.steps.some(x => !text(x))) issue(errors, 'HINT_THREE_STEP_SHAPE', hp + '.steps', 'Decomposable normal hints require exactly 3 non-empty steps.');
-          if (!Array.isArray(h.expanded_steps) || h.expanded_steps.length !== 6 || h.expanded_steps.some(x => !text(x))) issue(errors, 'HINT_SIX_STEP_SHAPE', hp + '.expanded_steps', 'Expanded decomposable hints require exactly 6 non-empty steps.');
+        if (h && typeof h.decomposable === 'boolean' && typeof q.decomposable === 'boolean' && h.decomposable !== q.decomposable) {
+          issue(errors, 'HINT_DECOMPOSABLE_MISMATCH', hp + '.decomposable', 'Hint decomposable flag must match the Learning question classification.');
+        }
+        if (q && q.decomposable === true) {
+          if (!Array.isArray(h && h.steps) || h.steps.length !== 3 || h.steps.some(x => !text(x))) issue(errors, 'HINT_THREE_STEP_SHAPE', hp + '.steps', 'Decomposable Learning questions require exactly 3 non-empty steps in every hint.');
+          if (!Array.isArray(h && h.expanded_steps) || h.expanded_steps.length !== 6 || h.expanded_steps.some(x => !text(x))) issue(errors, 'HINT_SIX_STEP_SHAPE', hp + '.expanded_steps', 'Decomposable Learning questions require exactly 6 non-empty expanded steps in every hint.');
         }
       }
     } else if (q && q.hints !== undefined && (!Array.isArray(q.hints) || hints.length)) {
