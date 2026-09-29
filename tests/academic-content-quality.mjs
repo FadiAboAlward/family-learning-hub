@@ -12,6 +12,29 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+const sourceDependent = read('valid-package.json');
+sourceDependent.questions[1].prompt_language = 'tr';
+sourceDependent.questions[1].prompt = 'Kitapta verilen kurala göre doğru seçenek hangisidir?';
+const sourceDependentResult = validateAcademicPackage(sourceDependent);
+assert.ok(sourceDependentResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'), 'Generated learner questions must not depend on the textbook/page/reference.');
+
+const entityArtifact = read('valid-package.json');
+entityArtifact.questions[1].prompt_language = 'tr';
+entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
+const entityArtifactResult = validateAcademicPackage(entityArtifact);
+assert.ok(entityArtifactResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Encoded HTML entities must be rejected from learner-visible authored text.');
+
+const rawMarkup = read('valid-package.json');
+rawMarkup.questions[1].prompt = 'احسب <b>2 + 3</b>';
+const rawMarkupResult = validateAcademicPackage(rawMarkup);
+assert.ok(rawMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Raw HTML-like markup must be rejected from learner-visible authored text.');
+
+const safeTurkishApostrophe = read('valid-package.json');
+safeTurkishApostrophe.questions[1].prompt_language = 'tr';
+safeTurkishApostrophe.questions[1].prompt = "A şehrinin saat dilimi UTC+2, B şehrinin saat dilimi UTC-4'tür. A şehri B'den kaç saat ileridedir?";
+const safeTurkishApostropheResult = validateAcademicPackage(safeTurkishApostrophe);
+assert.ok(!safeTurkishApostropheResult.errors.some(x => ['LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY','PROMPT_LANGUAGE_UNSUPPORTED'].includes(x.code)), 'Normal Turkish apostrophes and UTC +/- notation must remain valid plain text.');
+
 const invalid = validateAcademicPackage(read('invalid-package.json'));
 assert.equal(invalid.ok, false);
 const codes = new Set(invalid.errors.map(x => x.code));
@@ -27,7 +50,8 @@ for (const code of [
   'HINT_ANSWER_LEAK',
   'HINT_THREE_STEP_SHAPE',
   'HINT_SIX_STEP_SHAPE',
-  'NON_LEARNING_HINTS_FORBIDDEN'
+  'NON_LEARNING_HINTS_FORBIDDEN',
+  'PROMPT_LANGUAGE_REQUIRED'
 ]) {
   assert.ok(codes.has(code), 'missing expected validation error ' + code);
 }
