@@ -18,6 +18,30 @@ sourceDependent.questions[1].prompt = 'Kitapta verilen kurala göre doğru seçe
 const sourceDependentResult = validateAcademicPackage(sourceDependent);
 assert.ok(sourceDependentResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'), 'Generated learner questions must not depend on the textbook/page/reference.');
 
+for (const prompt of [
+  'Open the book to page 5 and answer the question.',
+  'Look at page 5 before choosing your answer.',
+  'Use the diagram on the previous page to solve the problem.'
+]) {
+  const directExternalInstruction = read('valid-package.json');
+  directExternalInstruction.questions[1].prompt_language = 'en';
+  directExternalInstruction.questions[1].prompt = prompt;
+  const directExternalInstructionResult = validateAcademicPackage(directExternalInstruction);
+  assert.ok(
+    directExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'Direct instruction to consult external material must be rejected: ' + prompt
+  );
+}
+
+const selfContainedBookProblem = read('valid-package.json');
+selfContainedBookProblem.questions[1].prompt_language = 'tr';
+selfContainedBookProblem.questions[1].prompt = 'Bir kitapta 120 sayfa vardır. Ali 30 sayfa okudu. Kaç sayfa kaldı?';
+const selfContainedBookProblemResult = validateAcademicPackage(selfContainedBookProblem);
+assert.ok(
+  !selfContainedBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained word problem may mention a book as the problem object.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
