@@ -141,8 +141,8 @@ if(!layout.includes("const appRoot = document.getElementById('app');"))fail('Ans
 if(layout.includes("observer.observe(document.documentElement"))fail('Answer observer must not scan the whole document.');
 if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer must not re-scan on every click.');
 if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
-if(!learning.includes('contentAttrs(q.prompt_language)')||!exam.includes('contentAttrs(q.prompt_language)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
-if(!learning.includes('contentAttrs(r.prompt_language)')||!exam.includes('contentAttrs(r.prompt_language)'))fail('Learning and Exam reviews must preserve prompt_language direction.');
+if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
+if(!learning.includes('questionAttrs(r)')||!exam.includes('questionAttrs(r)'))fail('Learning and Exam reviews must preserve prompt_language direction.');
 if(learning.includes('flh-code-inline')||exam.includes('flh-code-inline'))fail('Question code must have one visible owner; Learning/Exam must not render duplicate inline codes.');
 if(!questionReference.includes("b.dir='ltr'")||!questionReference.includes("b.lang='en'"))fail('Question reference chips must isolate the code as LTR.');
 if(!questionReference.includes("document.getElementById('app')")||questionReference.includes('observe(document.documentElement'))fail('Question reference observer must be scoped to #app.');
