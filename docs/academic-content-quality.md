@@ -61,7 +61,9 @@ The existing four-level hint contract remains authoritative:
 3. strong_guide: give a worked sub-step, decomposition, or analogous example without the final answer;
 4. near_solution: give the clearest allowed path while leaving the learner to produce or identify the final answer.
 
-For a decomposable concept, the normal hint uses exactly three short steps and the expanded form uses exactly six short steps. Expansion changes granularity, not disclosure level.
+Every Learning question must explicitly declare `decomposable: true` or `decomposable: false` at question level. This question-level classification is authoritative for the whole four-hint sequence; a hint-level `decomposable` flag, when present, must agree with it.
+
+For a decomposable Learning question, every hint uses exactly three short steps and the expanded form uses exactly six short steps. Expansion changes granularity, not disclosure level. An explicitly non-decomposable Learning question may omit the 3/6-step arrays.
 
 The validator rejects direct answer leakage when the correct option appears in a pre-finalization hint. Later hints must not be exact duplicates of earlier hints.
 
