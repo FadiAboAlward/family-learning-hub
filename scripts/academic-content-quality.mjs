@@ -16,11 +16,20 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/٫/g, '.');
 const normalizeHint = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
+  .replace(/(\d)\.(?=\d)/gu, '$1\uE000')
   .replace(/\s+/g, '')
-  .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
+  .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '')
+  .replace(/\uE000/gu, '.');
 const normalizeReasoning = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
-  .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#')
+  .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
+    const before = source.slice(0, offset);
+    const after = source.slice(offset + number.length);
+    const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
+    const nextNonSpace = after.match(/^\s*(\S)/u)?.[1] || '';
+    const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextNonSpace);
+    return semanticNumber ? number : '#';
+  })
   .replace(/\s+/g, '')
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
 
@@ -83,9 +92,12 @@ function answerLeak(hintText, answer) {
     const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
     const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
     const leftArithmeticContinuation = unsignedNumber && /[*/]/u.test(leftNonSpace);
+    const signedNumber = /^[+\-]\d+(?:[.,]\d+)?$/u.test(a);
+    const signedBinaryContinuation = signedNumber && /[\p{N}A-Za-z)\]}]/u.test(leftNonSpace);
 
     if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation &&
-        !leftNegativeContinuation && !leftArithmeticContinuation && !rightArithmeticContinuation) return true;
+        !leftNegativeContinuation && !leftArithmeticContinuation && !rightArithmeticContinuation &&
+        !signedBinaryContinuation) return true;
   }
   return false;
 }
