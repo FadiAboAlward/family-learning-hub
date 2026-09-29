@@ -18,7 +18,7 @@
   ],
   "questions": [
     {
-      "question_code":"QA-L-001","delivery_surface":"learning","question_type":"single_choice","prompt":"ابدأ من الصفر وتحرك 4 وحدات إلى اليسار. أين تصل؟","concept_code":"integer-direction","difficulty_level":2,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P017",
+      "question_code":"QA-L-001","delivery_surface":"learning","question_type":"single_choice","decomposable":true,"prompt":"ابدأ من الصفر وتحرك 4 وحدات إلى اليسار. أين تصل؟","concept_code":"integer-direction","difficulty_level":2,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P017",
       "options":[
         {"position":1,"content":"-4","is_correct":true},
         {"position":2,"content":"4","is_correct":false,"misconception_code":"direction-sign-reversal","distractor_rationale":"يعكس المتعلم معنى اليسار ويختار الموجب."},
