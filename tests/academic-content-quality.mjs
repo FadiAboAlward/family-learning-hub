@@ -152,6 +152,33 @@ distinctMathHints.questions[0].hints[1] = { level: 2, role: 'guide', content: '�
 const distinctMathHintsResult = validateAcademicPackage(distinctMathHints);
 assert.ok(!distinctMathHintsResult.errors.some(x => x.code === 'DUPLICATE_HINT_CONTENT' && x.path === 'questions[0].hints[1]'), 'Hint duplicate normalization must preserve meaningful math operators');
 
+const decimalHintDistinction = read('valid-package.json');
+decimalHintDistinction.questions[0].options[0].content = '99';
+decimalHintDistinction.questions[0].hints[0] = { level: 1, role: 'nudge', content: 'قارن ٣٫٥', decomposable: false };
+decimalHintDistinction.questions[0].hints[1] = { level: 2, role: 'guide', content: 'قارن ٣٥', decomposable: false };
+const decimalHintDistinctionResult = validateAcademicPackage(decimalHintDistinction);
+assert.ok(!decimalHintDistinctionResult.errors.some(x => x.code === 'DUPLICATE_HINT_CONTENT' && x.path === 'questions[0].hints[1]'), 'Hint normalization must preserve decimal points between digits');
+
+const semanticReasoningNumbers = read('valid-package.json');
+semanticReasoningNumbers.blueprint[0].reasoning_signature = 'simplify x^2';
+semanticReasoningNumbers.blueprint[1].reasoning_signature = 'simplify x^3';
+const semanticReasoningNumbersResult = validateAcademicPackage(semanticReasoningNumbers);
+assert.ok(!semanticReasoningNumbersResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Semantic exponent numbers in reasoning signatures must remain distinct');
+
+const dimensionReasoningNumbers = read('valid-package.json');
+dimensionReasoningNumbers.blueprint[0].reasoning_signature = 'identify 2D shapes';
+dimensionReasoningNumbers.blueprint[1].reasoning_signature = 'identify 3D shapes';
+const dimensionReasoningNumbersResult = validateAcademicPackage(dimensionReasoningNumbers);
+assert.ok(!dimensionReasoningNumbersResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Dimension numbers in reasoning signatures must remain distinct');
+
+for (const subtractionHint of ['مثال مشابه: 5 - 4', 'مثال مشابه: x - 4']) {
+  const negativeInsideSubtraction = read('valid-package.json');
+  negativeInsideSubtraction.questions[0].options[0].content = '-4';
+  negativeInsideSubtraction.questions[0].hints[0].content = subtractionHint;
+  const negativeInsideSubtractionResult = validateAcademicPackage(negativeInsideSubtraction);
+  assert.ok(!negativeInsideSubtractionResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Negative answer must not match a binary subtraction fragment: ' + subtractionHint);
+}
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -164,4 +191,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons with numeric abstraction only for reasoning signatures, multi-word answer leak detection, signed-number-safe numeric boundaries, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction distinction, decimal-preserving hint comparison, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
