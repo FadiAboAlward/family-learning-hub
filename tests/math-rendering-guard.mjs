@@ -151,7 +151,7 @@ for(const [file,contracts] of Object.entries(surfaceContracts)){
   for(const [label,needle] of contracts)if(!source.includes(needle))fail(`${file} bypasses the shared math renderer for ${label}.`);
 }
 
-const rawInterpolation=/\$\{([^}]*(?:\.prompt|\.explanation)[^}]*)\}/g;
+const rawInterpolation=/\$\{([^}]*(?:\.prompt(?![A-Za-z0-9_])|\.explanation(?![A-Za-z0-9_]))[^}]*)\}/g;
 for(const file of scripts){
   if(!fs.existsSync(path.join(ROOT,file)))continue;
   const source=read(file);
