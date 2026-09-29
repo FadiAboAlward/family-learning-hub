@@ -44,8 +44,9 @@ const normalizeHint = value => caseFold(canonicalMath(value))
 const abstractOperandNumbers = value => value.replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
   const before = source.slice(0, offset);
   const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
-  const nextChar = source[offset + number.length] || '';
-  const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextChar);
+  const suffix = source.slice(offset + number.length);
+  const semanticDimension = /^[dD](?!\p{L})/u.test(suffix);
+  const semanticNumber = prevNonSpace === '^' || semanticDimension;
   return semanticNumber ? number : '#';
 });
 const normalizeReasoning = value => abstractOperandNumbers(caseFold(canonicalMath(value)))
@@ -56,7 +57,7 @@ const escapeRegexChar = ch => '\\^$.*+?()[]{}|'.includes(ch) ? '\\' + ch : ch;
 const flexibleAnswerPattern = value => {
   const normalized = canonicalMath(value)
     .toLocaleLowerCase('en-US')
-    .replace(/\s*([+\-*/^=<>])\s*/g, '$1')
+    .replace(/\s*([+\-*/^=<>%])\s*/g, '$1')
     .replace(/\s+/g, ' ');
   const chars = [...normalized];
   let pattern = '';
@@ -66,7 +67,7 @@ const flexibleAnswerPattern = value => {
       if (!pattern.endsWith('\\s+')) pattern += '\\s+';
       continue;
     }
-    if (/[+\-*/^=<>]/u.test(ch)) {
+    if (/[+\-*/^=<>%]/u.test(ch)) {
       const operator = escapeRegexChar(ch);
       if (i === 0) pattern += operator + '\\s*';
       else if (i === chars.length - 1) pattern += '\\s*' + operator;
@@ -77,7 +78,7 @@ const flexibleAnswerPattern = value => {
   }
   return pattern;
 };
-const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/^=<>])\s*/g, '$1').replace(/\s+/g, ' ');
+const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/^=<>%])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(value))).replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
@@ -117,7 +118,9 @@ function answerLeak(hintText, answer) {
     const leftArithmeticContinuation = unsignedNumber && !!leftOperatorMatch && hasLeftOperandBeforeOperator;
     const signedNumber = /^[+\-]\d+(?:[.,]\d+)?$/u.test(a);
     const leftArithmeticOperand = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(prefix);
-    const signedBinaryContinuation = signedNumber && leftArithmeticOperand;
+    const signedAfterBinaryOperator = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*[+\-*/^]\s*$/u.test(prefix);
+    const signedInsideOperatorParen = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*[+\-*/^]\s*\(\s*$/u.test(prefix);
+    const signedBinaryContinuation = signedNumber && (leftArithmeticOperand || signedAfterBinaryOperator || signedInsideOperatorParen);
 
     if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation &&
         !leftNegativeContinuation && !leftArithmeticContinuation && !rightArithmeticContinuation &&
