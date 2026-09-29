@@ -111,13 +111,13 @@
       if(!expanded.length)expanded.push(...basic);
       return{basic,expanded};
     }
-    function stepsHtml(steps){return`<ol class="exam-explanation-steps">${steps.map(s=>`<li>${renderMath(s)}</li>`).join('')}</ol>`;}
+    function stepsHtml(steps){return`<ol class="exam-explanation-steps">${steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`).join('')}</ol>`;}
 
     function reviewHtml(rows){
       return rows.map((r,i)=>{
         const wrong=!r.is_correct,selected=optionText(r.question_id,r.response?.option_position),correct=optionText(r.question_id,r.correct_answer?.option_position),plan=explanationSteps(r,correct),hasHelp=wrong&&(plan.basic.length||plan.expanded.length);
         const help=hasHelp?`<button class="btn btn-soft exam-review-explain" data-help="${i}">📘 الشرح</button><div id="examExplain${i}" hidden><div class="flh-explanation"><b>الشرح</b>${stepsHtml(plan.basic)}${plan.expanded.length>plan.basic.length?`<button class="btn btn-soft exam-review-expand" data-expand="${i}">➕ شرح موسّع</button><div id="examExpanded${i}" hidden><b>شرح موسّع</b>${stepsHtml(plan.expanded)}</div>`:''}</div></div>`:'';
-        return`<details class="exam-review ${wrong?'exam-review-wrong':''}" ${wrong?'open':''}><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}${r.was_flagged?' 🚩':''}</summary><div class="question" ${questionAttrs(r)}><b>${renderMath(r.prompt||'')}</b></div>${wrong?`<div class="muted">إجابتك: <b>${renderMath(selected||String(r.response?.option_position||''))}</b></div><div class="muted">الإجابة الصحيحة: <b>${renderMath(correct||String(r.correct_answer?.option_position||''))}</b></div>`:''}${help}</details>`;
+        return`<details class="exam-review ${wrong?'exam-review-wrong':''}" ${wrong?'open':''}><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}${r.was_flagged?' 🚩':''}</summary><div class="question" ${questionAttrs(r)}><b>${renderMath(r.prompt||'')}</b></div>${wrong?`<div class="muted">إجابتك: <b ${questionAttrs(r)}>${renderMath(selected||String(r.response?.option_position||''))}</b></div><div class="muted">الإجابة الصحيحة: <b ${questionAttrs(r)}>${renderMath(correct||String(r.correct_answer?.option_position||''))}</b></div>`:''}${help}</details>`;
       }).join('');
     }
 
