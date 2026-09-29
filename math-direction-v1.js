@@ -8,6 +8,7 @@
   const OPERATOR = '(?:[+\\-−×÷*/=≤≥]|&lt;|&gt;|<|>)';
   const MATH_RE = new RegExp(`${ATOM}(?:\\s*${OPERATOR}\\s*${ATOM})*(?:\\s*[%٪])?`, 'g');
   const LETTER_OR_DIGIT = /[0-9٠-٩A-Za-z_\u0600-\u06FF]/;
+  const HTML_ENTITY = /^&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);$/i;
   const TARGET_SELECTOR = [
     '.question',
     '.answer',
@@ -36,6 +37,9 @@
     while ((match = MATH_RE.exec(text))) {
       const start = match.index;
       const end = start + match[0].length;
+      const amp = text.lastIndexOf('&', start);
+      const semi = amp >= 0 ? text.indexOf(';', amp) : -1;
+      if (amp >= 0 && semi >= end && HTML_ENTITY.test(text.slice(amp, semi + 1))) continue;
       const before = start > 0 ? text[start - 1] : '';
       const after = end < text.length ? text[end] : '';
       if ((before && LETTER_OR_DIGIT.test(before)) || (after && LETTER_OR_DIGIT.test(after))) continue;
