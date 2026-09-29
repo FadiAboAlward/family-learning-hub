@@ -413,6 +413,30 @@ percentOperandAnalogy.questions[0].hints[0].content = 'مثال مشابه: 4% �
 const percentOperandAnalogyResult = validateAcademicPackage(percentOperandAnalogy);
 assert.ok(!percentOperandAnalogyResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Bare numeric answer must not match a percentage operand such as 4%');
 
+const asciiThousandsLeak = read('valid-package.json');
+asciiThousandsLeak.questions[0].options[0].content = '1000';
+asciiThousandsLeak.questions[0].hints[0].content = 'The final answer is 1,000.';
+const asciiThousandsLeakResult = validateAcademicPackage(asciiThousandsLeak);
+assert.ok(asciiThousandsLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Grouped ASCII thousands must not bypass answer-leak detection');
+
+const asciiThousandsDuplicate = read('valid-package.json');
+asciiThousandsDuplicate.questions[0].options[0].content = '1000';
+asciiThousandsDuplicate.questions[0].options[1].content = '1,000';
+const asciiThousandsDuplicateResult = validateAcademicPackage(asciiThousandsDuplicate);
+assert.ok(asciiThousandsDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Grouped and ungrouped ASCII thousands must be duplicate options');
+
+const commaDecimalPreserved = read('valid-package.json');
+commaDecimalPreserved.questions[0].options[0].content = '3,5';
+commaDecimalPreserved.questions[0].options[1].content = '35';
+const commaDecimalPreservedResult = validateAcademicPackage(commaDecimalPreserved);
+assert.ok(!commaDecimalPreservedResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Genuine comma decimals must remain distinct from unseparated integers');
+
+const signedExponentReasoning = read('valid-package.json');
+signedExponentReasoning.blueprint[0].reasoning_signature = 'simplify x^-2';
+signedExponentReasoning.blueprint[1].reasoning_signature = 'simplify x^-3';
+const signedExponentReasoningResult = validateAcademicPackage(signedExponentReasoning);
+assert.ok(!signedExponentReasoningResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Signed exponent values must remain semantically distinct');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -425,4 +449,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
