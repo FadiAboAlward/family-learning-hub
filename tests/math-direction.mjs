@@ -33,6 +33,11 @@ for(const input of ['Q-20260907401','الوحدة الأولى','محمد']){
   if(!/[0-9٠-٩]/.test(input)&&html!==input)throw new Error(`Non-math text changed unexpectedly: ${input}`);
 }
 
+for(const input of ["B şehri UTC-4&#39;tür.", 'A &amp; B', 'Quote: &#x27;test&#x27;']){
+  const html=api.isolateMathHtml(input);
+  if(html!==input)throw new Error(`HTML entities must remain intact during math isolation: ${input} -> ${html}`);
+}
+
 const once=api.isolateMathHtml('احسب: 19 - (-7)');
 const twice=api.isolateMathHtml(once);
 if(once!==twice)throw new Error('Math isolation must be idempotent.');
