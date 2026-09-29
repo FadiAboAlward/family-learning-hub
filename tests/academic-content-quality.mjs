@@ -352,6 +352,27 @@ compactUnitReasoning.blueprint[1].reasoning_signature = 'اجمع 8kg + 9kg';
 const compactUnitReasoningResult = validateAcademicPackage(compactUnitReasoning);
 assert.ok(compactUnitReasoningResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Compact unit-bearing numeric operands must normalize as the same reasoning form');
 
+const duplicateVisibleHint = read('valid-package.json');
+duplicateVisibleHint.questions[0].hints[1].content = duplicateVisibleHint.questions[0].hints[0].content;
+duplicateVisibleHint.questions[0].hints[1].steps = ['خطوة مختلفة أولى.', 'خطوة مختلفة ثانية.', 'خطوة مختلفة ثالثة.'];
+duplicateVisibleHint.questions[0].hints[1].expanded_steps = ['تفصيل مختلف 1.', 'تفصيل مختلف 2.', 'تفصيل مختلف 3.', 'تفصيل مختلف 4.', 'تفصيل مختلف 5.', 'تفصيل مختلف 6.'];
+const duplicateVisibleHintResult = validateAcademicPackage(duplicateVisibleHint);
+assert.ok(duplicateVisibleHintResult.errors.some(x => x.code === 'DUPLICATE_HINT_CONTENT' && x.path === 'questions[0].hints[1].content'), 'Learner-visible hint content must be unique even when hidden step arrays differ');
+
+const symlinkCliDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flh-academic-qa-symlink-'));
+try {
+  const realScript = path.resolve(fileURLToPath(new URL('../scripts/academic-content-quality.mjs', import.meta.url)));
+  const linkedScript = path.join(symlinkCliDir, 'academic-quality-link.mjs');
+  const invalidPackage = path.join(symlinkCliDir, 'invalid.json');
+  fs.symlinkSync(realScript, linkedScript);
+  fs.writeFileSync(invalidPackage, '{}\n', 'utf8');
+  const symlinkRun = spawnSync(process.execPath, [linkedScript, invalidPackage], { encoding: 'utf8' });
+  assert.equal(symlinkRun.status, 1, 'CLI must execute validation when invoked through a symlink');
+  assert.match(symlinkRun.stdout, /PACKAGE_OBJECT_REQUIRED|ACADEMIC_CONTEXT_REQUIRED|BLUEPRINT_REQUIRED/u, 'Symlinked CLI invocation must emit validation output');
+} finally {
+  fs.rmSync(symlinkCliDir, { recursive: true, force: true });
+}
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -364,4 +385,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit and Arabic-percent answer-leak prevention including spacing variants, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit and Arabic-percent answer-leak prevention including spacing variants, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
