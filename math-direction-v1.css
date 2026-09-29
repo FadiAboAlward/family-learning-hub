@@ -1,1 +1,2 @@
 .flh-math-ltr{direction:ltr;unicode-bidi:isolate;display:inline-block;text-align:left;font-variant-numeric:tabular-nums}.flh-math-input,input[inputmode="numeric"],input[inputmode="decimal"],input[type="number"],[data-math-input]{direction:ltr;unicode-bidi:isolate;text-align:left}
+.question[dir],.answers[dir],.answer-grid[dir]{unicode-bidi:isolate}.question[dir="ltr"]{text-align:left}.question[dir="rtl"]{text-align:right}
