@@ -27,6 +27,7 @@ const canonicalMath = value => preserveSuperscripts(text(value)).normalize('NFKC
   .replace(/\p{Cf}/gu, '')
   .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
+  .replace(/(\d)٬(?=\d)/gu, '$1')
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
   .replace(/[÷⁄∕]/g, '/')
