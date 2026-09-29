@@ -16,7 +16,7 @@ const SOURCE_DEPENDENCY_PATTERNS = [
   /\b(?:in|from|according\s+to|refer\s+to)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
   /\b(?:open|look\s+at|see|check|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
   /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)(?:\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding|same)?\s*page)?\b/iu,
-  /\bon\s+(?:the\s+)?(?:previous|next|following|preceding|same|page\s+\d+)|\bon\s+page\s+\d+\b/iu,
+  /\bon\s+(?:the\s+)?(?:(?:previous|next|following|preceding|same)\s+page|page\s+\d+)\b/iu,
   /(?:في|من|راجع|ارجع\s+إلى|بالرجوع\s+إلى)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
 ];
