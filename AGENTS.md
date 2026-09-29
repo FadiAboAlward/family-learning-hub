@@ -11,6 +11,7 @@ Before making a non-trivial product, data, security, quiz, exam, learner, parent
 - `docs/feature-spec-workflow.md` — Drive Feature Spec pinning and Codex/TestSprite handoff protocol.
 - `docs/math-rendering-invariant.md` — mandatory RTL/LTR math-rendering invariant for learner-facing math surfaces.
 - `docs/paper-exam-workflow.md` — canonical workflow for generating, approving, printing, scanning, and ingesting paper exams into learner history.
+- `docs/academic-content-quality.md` — mandatory authoring/QA contract for new assessment packages, learner-state grounding, difficulty, distractors, progressive hints, mode boundaries, and optional external-tool use.
 - `docs/pdf-generation-standard.md` — canonical fixed-layout PDF authoring and render-QA standard for exams, worksheets, and other printable artifacts.
 
 If implementation and documentation disagree, do not silently choose one. Verify the live architecture and update the stale side in the same change when appropriate.
@@ -50,6 +51,8 @@ For every behavior change, explicitly choose the smallest useful test layer(s). 
 - **No-test changes:** documentation-only, copy-only, or trivial pass-through changes may legitimately need no new test, but the PR must state why.
 
 Prefer a few high-value deterministic tests over broad brittle tests. Never weaken an assertion merely to make CI pass.
+
+For newly authored academic assessment content, package-specific validation is mandatory before any migration, seed/import payload, backend registration, printable artifact, or other publication artifact is created or updated. Materialize the exact candidate package in a non-published working location, run `node scripts/academic-content-quality.mjs <academic-package.json>`, stop on errors, disposition warnings, and record the package-specific validation result in the PR/Issue handoff. Fixture-only CI coverage does not replace this pre-publication validation, and real Aya/Mohammad attempts must not be copied into committed regression fixtures.
 
 Convention-based unit tests belong under `tests/*.unit.mjs`; GitHub Actions discovers and runs them automatically.
 
