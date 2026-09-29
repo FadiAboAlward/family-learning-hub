@@ -8,12 +8,15 @@ const PROMPT_LANGUAGES = new Set(['ar', 'tr', 'en']);
 const HTML_ENTITY_RE = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/iu;
 const RAW_HTML_TAG_RE = /<\/?[a-z][^>]*>/iu;
 const SOURCE_DEPENDENCY_PATTERNS = [
-  /\bkitap(?:ta|taki|tan)\b/iu,
-  /\bkitaba\s+g[oö]re\b/iu,
-  /\bsayfa(?:da|daki|dan)\b/iu,
-  /\bkayna(?:kta|ktaki|[gğ]a\s+g[oö]re)\b/iu,
+  /\bkitap(?:ta|taki|tan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkitaba\s+(?:g[oö]re|bak(?:arak)?|ba[sş]vur(?:arak)?)\b/iu,
+  /\bsayfa(?:da|daki|dan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkayna(?:kta|ktaki)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkayna[gğ]a\s+g[oö]re\b/iu,
   /\b(?:in|from|according\s+to|refer\s+to)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
-  /\bon\s+page\s+\d+\b/iu,
+  /\b(?:open|look\s+at|see|check|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)(?:\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding|same)?\s*page)?\b/iu,
+  /\bon\s+(?:the\s+)?(?:previous|next|following|preceding|same|page\s+\d+)|\bon\s+page\s+\d+\b/iu,
   /(?:في|من|راجع|ارجع\s+إلى|بالرجوع\s+إلى)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
 ];
