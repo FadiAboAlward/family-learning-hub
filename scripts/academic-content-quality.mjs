@@ -111,7 +111,7 @@ function answerLeak(hintText, answer) {
     const leftNegativeContinuation = unsignedNumber && leftNonSpace === '-';
     const rightNonSpaceMatch = h.slice(end).match(/^\s*(\S)/u);
     const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
-    const rightArithmeticContinuation = unsignedNumber && /[+\-*/^]/u.test(rightNonSpace);
+    const rightArithmeticContinuation = unsignedNumber && /[+\-*/^%]/u.test(rightNonSpace);
     const prefix = h.slice(0, start);
     const leftOperatorMatch = prefix.match(/([+*/^])\s*$/u);
     const beforeLeftOperator = leftOperatorMatch ? prefix.slice(0, leftOperatorMatch.index) : '';
@@ -234,6 +234,7 @@ export function validateAcademicPackage(pkg) {
     if (opts.length < 4 || opts.length > 6) issue(errors, 'OPTION_COUNT_OUT_OF_RANGE', p + '.options', 'single_choice questions require 4 to 6 options.');
 
     const normalizedOptions = new Map();
+    const optionPositions = new Map();
     let correctCount = 0;
     let correctContent = '';
 
@@ -245,6 +246,15 @@ export function validateAcademicPackage(pkg) {
       if (!content) issue(errors, 'OPTION_CONTENT_REQUIRED', op + '.content', 'Option content is required.');
       else if (normalizedOptions.has(n)) issue(errors, 'DUPLICATE_OPTION_CONTENT', op + '.content', 'Duplicate option content with ' + normalizedOptions.get(n) + '.');
       else normalizedOptions.set(n, op);
+
+      const position = o && o.position;
+      if (!Number.isInteger(position) || position < 1) {
+        issue(errors, 'OPTION_POSITION_INVALID', op + '.position', 'Option position must be a positive integer.');
+      } else if (optionPositions.has(position)) {
+        issue(errors, 'DUPLICATE_OPTION_POSITION', op + '.position', 'Option position duplicates ' + optionPositions.get(position) + '.');
+      } else {
+        optionPositions.set(position, op);
+      }
 
       if (o && o.is_correct === true) {
         correctCount++;
@@ -301,7 +311,9 @@ export function validateAcademicPackage(pkg) {
         hintContentTexts.push(contentKey);
         hintPayloadTexts.push(payloadKey);
 
-        if (h && typeof h.decomposable === 'boolean' && typeof q.decomposable === 'boolean' && h.decomposable !== q.decomposable) {
+        if (h && Object.prototype.hasOwnProperty.call(h, 'decomposable') && typeof h.decomposable !== 'boolean') {
+          issue(errors, 'HINT_DECOMPOSABLE_INVALID', hp + '.decomposable', 'Hint decomposable flag, when present, must be boolean.');
+        } else if (h && typeof h.decomposable === 'boolean' && typeof q.decomposable === 'boolean' && h.decomposable !== q.decomposable) {
           issue(errors, 'HINT_DECOMPOSABLE_MISMATCH', hp + '.decomposable', 'Hint decomposable flag must match the Learning question classification.');
         }
         if (q && q.decomposable === true) {
