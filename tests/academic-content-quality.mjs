@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
 
 const read = name => JSON.parse(fs.readFileSync(new URL('./fixtures/academic-content-quality/' + name, import.meta.url), 'utf8'));
@@ -235,6 +238,56 @@ for (const [answer, hint] of [
   assert.ok(inequalityLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Equivalent Unicode/ASCII inequality answer leak must be detected for ' + answer);
 }
 
+const invisibleRequiredText = read('valid-package.json');
+invisibleRequiredText.academic_context.next_target = '\u200e';
+invisibleRequiredText.questions[0].prompt = '\u200e';
+invisibleRequiredText.questions[0].options[0].content = '\u200e';
+invisibleRequiredText.questions[0].hints[0].content = '\u200e';
+invisibleRequiredText.questions[0].hints[0].steps[0] = '\u200e';
+invisibleRequiredText.questions[0].hints[0].expanded_steps[0] = '\u200e';
+const invisibleRequiredTextResult = validateAcademicPackage(invisibleRequiredText);
+const invisibleCodes = new Set(invisibleRequiredTextResult.errors.map(x => x.code));
+for (const code of ['ACADEMIC_CONTEXT_FIELD_REQUIRED', 'PROMPT_REQUIRED', 'OPTION_CONTENT_REQUIRED', 'HINT_CONTENT_REQUIRED', 'HINT_THREE_STEP_SHAPE', 'HINT_SIX_STEP_SHAPE']) {
+  assert.ok(invisibleCodes.has(code), 'Invisible format-only required text must be rejected with ' + code);
+}
+
+const turkishCaseLeak = read('valid-package.json');
+turkishCaseLeak.questions[0].options[0].content = 'İstanbul';
+turkishCaseLeak.questions[0].hints[0].content = 'Cevap istanbul.';
+const turkishCaseLeakResult = validateAcademicPackage(turkishCaseLeak);
+assert.ok(turkishCaseLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Turkish dotted-I case variants must not bypass answer-leak detection');
+
+const unaryPlusLeak = read('valid-package.json');
+unaryPlusLeak.questions[0].options[0].content = '4';
+unaryPlusLeak.questions[0].hints[0].content = 'الإجابة +4';
+const unaryPlusLeakResult = validateAcademicPackage(unaryPlusLeak);
+assert.ok(unaryPlusLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Unary plus must not disguise an unsigned answer leak');
+
+const unicodeExponentReasoning = read('valid-package.json');
+unicodeExponentReasoning.blueprint[0].reasoning_signature = 'simplify x²';
+unicodeExponentReasoning.blueprint[1].reasoning_signature = 'simplify x³';
+const unicodeExponentReasoningResult = validateAcademicPackage(unicodeExponentReasoning);
+assert.ok(!unicodeExponentReasoningResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Unicode superscript exponents must remain semantically distinct');
+
+const unicodeExponentLeak = read('valid-package.json');
+unicodeExponentLeak.questions[0].options[0].content = 'x²';
+unicodeExponentLeak.questions[0].hints[0].content = 'الناتج النهائي هو x^2.';
+const unicodeExponentLeakResult = validateAcademicPackage(unicodeExponentLeak);
+assert.ok(unicodeExponentLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Unicode superscript and caret exponent forms must compare equivalently for leak detection');
+
+const cliDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flh academic qa '));
+try {
+  const cliScript = path.join(cliDir, 'academic content quality.mjs');
+  const invalidPackage = path.join(cliDir, 'invalid package.json');
+  fs.copyFileSync(new URL('../scripts/academic-content-quality.mjs', import.meta.url), cliScript);
+  fs.writeFileSync(invalidPackage, '{}\n', 'utf8');
+  const cliRun = spawnSync(process.execPath, [cliScript, invalidPackage], { encoding: 'utf8' });
+  assert.equal(cliRun.status, 1, 'CLI must execute validation and fail invalid packages even when its path contains spaces');
+  assert.match(cliRun.stdout, /PACKAGE_OBJECT_REQUIRED|ACADEMIC_CONTEXT_REQUIRED|BLUEPRINT_REQUIRED/u, 'CLI must emit validation output from a spaced path');
+} finally {
+  fs.rmSync(cliDir, { recursive: true, force: true });
+}
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -247,4 +300,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction, symbolic, and equivalent inequality operator leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and analogous addition fragments, period/comma-decimal-preserving hint comparison, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction, unary-plus handling, and analogous addition fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths, and duplicate reasoning guards are enforced.');
