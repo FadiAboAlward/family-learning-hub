@@ -27,6 +27,7 @@ const canonicalMath = value => preserveSuperscripts(text(value)).normalize('NFKC
   .replace(/\p{Cf}/gu, '')
   .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
+  .replace(/\b\d{1,3}(?:,\d{3})+\b/gu, grouped => grouped.replace(/,/g, ''))
   .replace(/(\d)٬(?=\d)/gu, '$1')
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
@@ -44,10 +45,10 @@ const normalizeHint = value => caseFold(canonicalMath(value))
   .replace(/\uE001/gu, ',');
 const abstractOperandNumbers = value => value.replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
   const before = source.slice(0, offset);
-  const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
   const suffix = source.slice(offset + number.length);
   const semanticDimension = /^[dD](?!\p{L})/u.test(suffix);
-  const semanticNumber = prevNonSpace === '^' || semanticDimension;
+  const exponentContext = /\^\s*[+\-]?\s*$/u.test(before);
+  const semanticNumber = exponentContext || semanticDimension;
   return semanticNumber ? number : '#';
 });
 const normalizeReasoning = value => abstractOperandNumbers(caseFold(canonicalMath(value)))
