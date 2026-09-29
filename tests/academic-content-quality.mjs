@@ -179,6 +179,38 @@ for (const subtractionHint of ['مثال مشابه: 5 - 4', 'مثال مشاب�
   assert.ok(!negativeInsideSubtractionResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Negative answer must not match a binary subtraction fragment: ' + subtractionHint);
 }
 
+const spacedUnitReasoning = read('valid-package.json');
+spacedUnitReasoning.blueprint[0].reasoning_signature = 'اجمع 2 تفاحات';
+spacedUnitReasoning.blueprint[1].reasoning_signature = 'اجمع 8 تفاحات';
+const spacedUnitReasoningResult = validateAcademicPackage(spacedUnitReasoning);
+assert.ok(spacedUnitReasoningResult.errors.some(x => x.code === 'DUPLICATE_REASONING_SIGNATURE'), 'Concrete operands before spaced unit names must still normalize as the same reasoning form');
+
+const signedProseLeak = read('valid-package.json');
+signedProseLeak.questions[0].options[0].content = '-4';
+signedProseLeak.questions[0].hints[0].content = 'Choose -4';
+const signedProseLeakResult = validateAcademicPackage(signedProseLeak);
+assert.ok(signedProseLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Signed answers revealed after ordinary prose words must be detected');
+
+const missingDecompositionClassification = read('valid-package.json');
+delete missingDecompositionClassification.questions[0].decomposable;
+for (const hint of missingDecompositionClassification.questions[0].hints) {
+  delete hint.decomposable;
+  delete hint.steps;
+  delete hint.expanded_steps;
+}
+const missingDecompositionClassificationResult = validateAcademicPackage(missingDecompositionClassification);
+assert.ok(missingDecompositionClassificationResult.errors.some(x => x.code === 'DECOMPOSABLE_CLASSIFICATION_REQUIRED'), 'Learning questions must explicitly classify decomposition before step checks can be skipped');
+
+const nonDecomposableLearning = read('valid-package.json');
+nonDecomposableLearning.questions[0].decomposable = false;
+for (const hint of nonDecomposableLearning.questions[0].hints) {
+  hint.decomposable = false;
+  delete hint.steps;
+  delete hint.expanded_steps;
+}
+const nonDecomposableLearningResult = validateAcademicPackage(nonDecomposableLearning);
+assert.ok(!nonDecomposableLearningResult.errors.some(x => ['DECOMPOSABLE_CLASSIFICATION_REQUIRED','HINT_DECOMPOSABLE_MISMATCH','HINT_THREE_STEP_SHAPE','HINT_SIX_STEP_SHAPE'].includes(x.code)), 'Explicitly non-decomposable Learning questions may omit 3/6-step arrays');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -191,4 +223,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction distinction, decimal-preserving hint comparison, single-question difficulty justification, canonical Learning/Exam hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction and prose distinction, decimal-preserving hint comparison, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, and duplicate reasoning guards are enforced.');
