@@ -211,6 +211,30 @@ for (const hint of nonDecomposableLearning.questions[0].hints) {
 const nonDecomposableLearningResult = validateAcademicPackage(nonDecomposableLearning);
 assert.ok(!nonDecomposableLearningResult.errors.some(x => ['DECOMPOSABLE_CLASSIFICATION_REQUIRED','HINT_DECOMPOSABLE_MISMATCH','HINT_THREE_STEP_SHAPE','HINT_SIX_STEP_SHAPE'].includes(x.code)), 'Explicitly non-decomposable Learning questions may omit 3/6-step arrays');
 
+const commaDecimalHintDistinction = read('valid-package.json');
+commaDecimalHintDistinction.questions[0].options[0].content = '99';
+commaDecimalHintDistinction.questions[0].hints[0] = { level: 1, role: 'nudge', content: 'قارن 3,5', decomposable: false };
+commaDecimalHintDistinction.questions[0].hints[1] = { level: 2, role: 'guide', content: 'قارن 35', decomposable: false };
+const commaDecimalHintDistinctionResult = validateAcademicPackage(commaDecimalHintDistinction);
+assert.ok(!commaDecimalHintDistinctionResult.errors.some(x => x.code === 'DUPLICATE_HINT_CONTENT' && x.path === 'questions[0].hints[1]'), 'Hint normalization must preserve comma decimal separators between digits');
+
+const additionFragmentHint = read('valid-package.json');
+additionFragmentHint.questions[0].options[0].content = '4';
+additionFragmentHint.questions[0].hints[0].content = 'مثال مشابه: 5 + 4';
+const additionFragmentHintResult = validateAcademicPackage(additionFragmentHint);
+assert.ok(!additionFragmentHintResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Unsigned answer must not match the right operand of an analogous addition example');
+
+for (const [answer, hint] of [
+  ['x ≤ 3', 'العلاقة النهائية هي x <= 3.'],
+  ['x ≥ 3', 'العلاقة النهائية هي x >= 3.']
+]) {
+  const inequalityLeak = read('valid-package.json');
+  inequalityLeak.questions[0].options[0].content = answer;
+  inequalityLeak.questions[0].hints[0].content = hint;
+  const inequalityLeakResult = validateAcademicPackage(inequalityLeak);
+  assert.ok(inequalityLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Equivalent Unicode/ASCII inequality answer leak must be detected for ' + answer);
+}
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -223,4 +247,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction and symbolic operator-spacing leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction and prose distinction, decimal-preserving hint comparison, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction, symbolic, and equivalent inequality operator leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and analogous addition fragments, period/comma-decimal-preserving hint comparison, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, and duplicate reasoning guards are enforced.');
