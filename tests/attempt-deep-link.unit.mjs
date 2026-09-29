@@ -74,7 +74,9 @@ assert.equal(exam.replaced, '/#student', 'quiz route parameters should still be 
 
 assert.match(historySource, /openAttemptHistoryAttempt=openAttempt/, 'attempt history must expose the deep-link opener');
 assert.match(historySource, /attemptIdOk/, 'attempt history must validate attempt IDs before opening');
-assert.match(indexSource, /deep-link-v1\.js\?v=20260910-attempt1/, 'deep-link asset must be cache-busted');
-assert.match(indexSource, /attempt-history-v1\.js\?v=20260910-attempt1/, 'attempt-history asset must be cache-busted');
+const build=indexSource.match(/<body[^>]*data-build="([^"]+)"/)?.[1];
+assert.ok(build,'index must declare the unified data-build cache key');
+assert.ok(indexSource.includes(`deep-link-v1.js?v=${build}`),'deep-link asset must use the unified cache-bust key');
+assert.ok(indexSource.includes(`attempt-history-v1.js?v=${build}`),'attempt-history asset must use the unified cache-bust key');
 
 console.log('Attempt deep-link unit tests passed.');
