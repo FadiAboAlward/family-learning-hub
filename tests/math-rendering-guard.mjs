@@ -135,7 +135,7 @@ const surfaceContracts={
     ['review prompt',"renderMath(r.prompt||'')"],
     ['review selected answer',"renderMath(selected||String(r.response?.option_position||''))"],
     ['review correct answer',"renderMath(correct||String(r.correct_answer?.option_position||''))"],
-    ['review explanation steps','steps.map(s=>`<li>${renderMath(s)}</li>`)']
+    ['review explanation steps','steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`)']
   ],
   'attempt-history-v1.js':[
     ['shared helper','const mth='],
