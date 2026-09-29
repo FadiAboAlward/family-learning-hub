@@ -205,7 +205,7 @@ if(yamlJobCondition(staticJob)!==null)fail('Static quality job must be unconditi
 if(!qa.includes("find scripts -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check"))fail('Static quality must syntax-check academic authoring scripts.');
 if(yamlJobCondition(browserJob)!==null)fail('Browser smoke job must be unconditional.');
 for(const command of ['node tests/static-qa.mjs','node tests/academic-content-quality.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/content-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
-for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/content-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality.');
 const screenshotUpload=yamlNamedSafeStep(browserJob,'Upload Playwright screenshots',{allowAlways:true});
 if(!screenshotUpload)fail('Playwright screenshot upload step is missing or has an unsafe condition.');
