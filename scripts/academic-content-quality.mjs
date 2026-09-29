@@ -32,7 +32,8 @@ const canonicalMath = value => preserveSuperscripts(text(value)).normalize('NFKC
   .replace(/[÷⁄∕]/g, '/')
   .replace(/≤/g, '<=')
   .replace(/≥/g, '>=')
-  .replace(/٫/g, '.');
+  .replace(/٫/g, '.')
+  .replace(/٪/g, '%');
 const normalizeHint = value => caseFold(canonicalMath(value))
   .replace(/(\d)\.(?=\d)/gu, '$1\uE000')
   .replace(/(\d),(?=\d)/gu, '$1\uE001')
@@ -40,14 +41,14 @@ const normalizeHint = value => caseFold(canonicalMath(value))
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '')
   .replace(/\uE000/gu, '.')
   .replace(/\uE001/gu, ',');
-const normalizeReasoning = value => caseFold(canonicalMath(value))
-  .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
-    const before = source.slice(0, offset);
-    const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
-    const nextChar = source[offset + number.length] || '';
-    const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextChar);
-    return semanticNumber ? number : '#';
-  })
+const abstractOperandNumbers = value => value.replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
+  const before = source.slice(0, offset);
+  const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
+  const nextChar = source[offset + number.length] || '';
+  const semanticNumber = prevNonSpace === '^' || /\p{L}/u.test(nextChar);
+  return semanticNumber ? number : '#';
+});
+const normalizeReasoning = value => abstractOperandNumbers(caseFold(canonicalMath(value)))
   .replace(/\s+/g, '')
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '');
 
@@ -77,7 +78,7 @@ const flexibleAnswerPattern = value => {
   return pattern;
 };
 const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/^=<>])\s*/g, '$1').replace(/\s+/g, ' ');
-const normalizePrompt = value => caseFold(canonicalMath(value)).replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
+const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(value))).replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
   const h = caseFold(canonicalMath(hintText));
