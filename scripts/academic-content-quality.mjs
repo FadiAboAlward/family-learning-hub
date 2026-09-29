@@ -1,12 +1,29 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 
-const text = value => typeof value === 'string' ? value.trim() : '';
-const canonicalMath = value => text(value).normalize('NFKC')
+const text = value => typeof value === 'string' ? value.replace(/\p{Cf}/gu, '').trim() : '';
+const caseFold = value => value
+  .toLocaleLowerCase('und')
+  .normalize('NFD')
+  .replace(/\u0307/gu, '')
+  .normalize('NFC');
+const SUPERSCRIPT_DIGITS = new Map([
+  ['⁰', '0'], ['¹', '1'], ['²', '2'], ['³', '3'], ['⁴', '4'],
+  ['⁵', '5'], ['⁶', '6'], ['⁷', '7'], ['⁸', '8'], ['⁹', '9']
+]);
+const preserveSuperscripts = value => value.replace(/[⁺⁻]?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/gu, seq => {
+  const chars = [...seq];
+  let sign = '';
+  if (chars[0] === '⁺' || chars[0] === '⁻') sign = chars.shift() === '⁻' ? '-' : '+';
+  return '^' + sign + chars.map(ch => SUPERSCRIPT_DIGITS.get(ch) || ch).join('');
+});
+const canonicalMath = value => preserveSuperscripts(text(value)).normalize('NFKC')
   .replace(/\p{Cf}/gu, '')
   .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
   .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
@@ -16,16 +33,14 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/≤/g, '<=')
   .replace(/≥/g, '>=')
   .replace(/٫/g, '.');
-const normalizeHint = value => canonicalMath(value)
-  .toLocaleLowerCase('en-US')
+const normalizeHint = value => caseFold(canonicalMath(value))
   .replace(/(\d)\.(?=\d)/gu, '$1\uE000')
   .replace(/(\d),(?=\d)/gu, '$1\uE001')
   .replace(/\s+/g, '')
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '')
   .replace(/\uE000/gu, '.')
   .replace(/\uE001/gu, ',');
-const normalizeReasoning = value => canonicalMath(value)
-  .toLocaleLowerCase('en-US')
+const normalizeReasoning = value => caseFold(canonicalMath(value))
   .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
     const before = source.slice(0, offset);
     const prevNonSpace = before.match(/(\S)\s*$/u)?.[1] || '';
@@ -61,12 +76,12 @@ const flexibleAnswerPattern = value => {
   }
   return pattern;
 };
-const normalizeOption = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
-const normalizePrompt = value => canonicalMath(value).toLocaleLowerCase('en-US').replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
+const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/=<>])\s*/g, '$1').replace(/\s+/g, ' ');
+const normalizePrompt = value => caseFold(canonicalMath(value)).replace(/\p{N}+(?:[.,]\p{N}+)?/gu, '#').replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
 
 function answerLeak(hintText, answer) {
-  const h = canonicalMath(hintText).toLocaleLowerCase('en-US');
-  const a = canonicalMath(answer).toLocaleLowerCase('en-US');
+  const h = caseFold(canonicalMath(hintText));
+  const a = caseFold(canonicalMath(answer));
   if (!h || !a) return false;
 
   const phrase = flexibleAnswerPattern(a);
@@ -94,9 +109,13 @@ function answerLeak(hintText, answer) {
     const rightNonSpaceMatch = h.slice(end).match(/^\s*(\S)/u);
     const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
     const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
-    const leftArithmeticContinuation = unsignedNumber && /[+*/]/u.test(leftNonSpace);
+    const prefix = h.slice(0, start);
+    const leftOperatorMatch = prefix.match(/([+*/])\s*$/u);
+    const beforeLeftOperator = leftOperatorMatch ? prefix.slice(0, leftOperatorMatch.index) : '';
+    const hasLeftOperandBeforeOperator = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(beforeLeftOperator);
+    const leftArithmeticContinuation = unsignedNumber && !!leftOperatorMatch && hasLeftOperandBeforeOperator;
     const signedNumber = /^[+\-]\d+(?:[.,]\d+)?$/u.test(a);
-    const leftArithmeticOperand = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(h.slice(0, start));
+    const leftArithmeticOperand = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(prefix);
     const signedBinaryContinuation = signedNumber && leftArithmeticOperand;
 
     if (!leftWordAdjacent && !rightWordAdjacent && !leftDecimalContinuation && !rightDecimalContinuation &&
@@ -301,4 +320,9 @@ function main() {
   if (!result.ok) process.exit(1);
 }
 
-if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) main();
+const modulePath = path.resolve(fileURLToPath(import.meta.url));
+const entryPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const sameEntrypoint = process.platform === 'win32'
+  ? entryPath.toLocaleLowerCase('en-US') === modulePath.toLocaleLowerCase('en-US')
+  : entryPath === modulePath;
+if (entryPath && sameEntrypoint) main();
