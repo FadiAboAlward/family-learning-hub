@@ -6,6 +6,7 @@
   const safe=(s='')=>typeof esc==='function'?esc(s):String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const normalizeText=(s='')=>globalThis.FLHContentDirection?.normalizeText?.(s)??String(s);
   const contentAttrs=lang=>globalThis.FLHContentDirection?.attrs?.(lang)||'dir="auto"';
+  const questionAttrs=q=>contentAttrs(q?.prompt_language);
   const renderMath=(s='')=>typeof math==='function'?math(safe(normalizeText(s))):safe(normalizeText(s));
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const optionLabel=pos=>{const i=Math.max(0,Number(pos)-1);return OPTION_LABELS[i]||(i<26?String.fromCharCode(65+i):String(pos));};
@@ -35,7 +36,7 @@
       try{
         const d=await call('finish_quiz',{attempt_id:session.attempt_id,duration_seconds:Math.max(1,Math.round((Date.now()-started)/1000))});
         await refreshProfile();
-        const review=(d.review||[]).map((r,i)=>`<details class="exam-review"><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}</summary><div class="question" ${contentAttrs(r.prompt_language)}>${renderMath(r.prompt||'')}</div>${r.explanation?`<div class="muted">${renderMath(r.explanation)}</div>`:''}</details>`).join('');
+        const review=(d.review||[]).map((r,i)=>`<details class="exam-review"><summary>${r.is_correct?'✅':'❌'} السؤال ${i+1}</summary><div class="question" ${questionAttrs(r)}>${renderMath(r.prompt||'')}</div>${r.explanation?`<div class="muted">${renderMath(r.explanation)}</div>`:''}</details>`).join('');
         const award=d.award?.already_awarded?'<div class="muted">مكافأة هذا التدريب محسوبة سابقًا.</div>':`<div class="award-pop">🎉 +${Number(d.award?.xp||0)} XP &nbsp; 🪙 +${Number(d.award?.reward_points||0)} نقطة</div>`;
         qshell(`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">من أول مرة<b>${Number(d.first_try_correct||0)}</b></div><div class="stat">التلميحات<b>${Number(d.hints_used||0)}</b></div></div>${award}<div class="section-title">مراجعة</div>${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="flh-sticky-action"><button class="btn btn-primary" id="learnHome">رجوع لمكتبتي</button></div></section>`);
         document.getElementById('learnHome')?.addEventListener('click',home);
@@ -50,7 +51,7 @@
       const restored=session.resumed?'<div class="flh-resume-note">↩️ رجعناك لنفس التدريب، وكل ما حفظته موجود.</div>':'';
       const hintBox=currentHint?.content?`<div class="flh-hint-card"><b>💡 تلميح ${Number(currentHint.hint_level||row.hint_level_requested||1)}</b><div>${renderMath(currentHint.content)}</div></div>`:(Number(row.hint_level_requested||0)>0?`<div class="muted">استخدمت ${Number(row.hint_level_requested)} تلميح/تلميحات سابقًا في هذا السؤال.</div>`:'');
       const status=busy?'جارٍ إرسال الإجابة…':selected?'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.':'اختر جوابك.';
-      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${contentAttrs(q.prompt_language)}><b>${renderMath(q.prompt)}</b></div><div class="flh-instruction">اختر جوابك، ثم أكّده عندما تتأكد.</div><div class="answer-grid answer-layout-v8" ${contentAttrs(q.prompt_language)}>${opts}</div><div id="flhLearnStatus" class="muted">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!selected||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div><div class="flh-instruction">اختر جوابك، ثم أكّده عندما تتأكد.</div><div class="answer-grid answer-layout-v8" ${questionAttrs(q)}>${opts}</div><div id="flhLearnStatus" class="muted">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!selected||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
       document.getElementById('flhLearnExit')?.addEventListener('click',home);
       document.getElementById('flhHelp')?.addEventListener('click',help);
       document.getElementById('flhConfirmAnswer')?.addEventListener('click',confirmAnswer);
@@ -95,7 +96,7 @@
         busy=false;
         const ni=nextIndex();
         const feedback=`${d.is_correct?'<div class="award-pop">✅ ممتاز!</div>':'<div class="error">خلصت المحاولات لهذا السؤال.</div>'}${d.explanation?`<div class="flh-explanation"><b>الشرح</b><div>${renderMath(d.explanation)}</div></div>`:''}<div class="flh-sticky-action"><button class="btn btn-primary flh-next-big" id="flhLearnNext">${ni>=0?'السؤال التالي':'إنهاء التدريب'}</button></div>`;
-        qshell(`<section class="panel flh-touch-quiz"><div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">تم</span></div><div class="question" ${contentAttrs(row.question?.prompt_language)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}</section>`);
+        qshell(`<section class="panel flh-touch-quiz"><div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">تم</span></div><div class="question" ${questionAttrs(row.question)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}</section>`);
         document.getElementById('flhLearnNext')?.addEventListener('click',()=>{if(ni>=0){index=ni;render();}else finish();});
         if(ni>=0)preloadQuestion(queue[ni]?.question);
       }catch{busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">صار خطأ بالحفظ. جرّب مرة ثانية.</div>';}
