@@ -13,13 +13,17 @@ const canonicalMath = value => text(value).normalize('NFKC')
   .replace(/[−–—]/g, '-')
   .replace(/[×✕·]/g, '*')
   .replace(/÷/g, '/')
+  .replace(/≤/g, '<=')
+  .replace(/≥/g, '>=')
   .replace(/٫/g, '.');
 const normalizeHint = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
   .replace(/(\d)\.(?=\d)/gu, '$1\uE000')
+  .replace(/(\d),(?=\d)/gu, '$1\uE001')
   .replace(/\s+/g, '')
   .replace(/["'`“”‘’….,،؛;:!?؟_]+/gu, '')
-  .replace(/\uE000/gu, '.');
+  .replace(/\uE000/gu, '.')
+  .replace(/\uE001/gu, ',');
 const normalizeReasoning = value => canonicalMath(value)
   .toLocaleLowerCase('en-US')
   .replace(/\p{N}+(?:[.,]\p{N}+)?/gu, (number, offset, source) => {
@@ -90,7 +94,7 @@ function answerLeak(hintText, answer) {
     const rightNonSpaceMatch = h.slice(end).match(/^\s*(\S)/u);
     const rightNonSpace = rightNonSpaceMatch ? rightNonSpaceMatch[1] : '';
     const rightArithmeticContinuation = unsignedNumber && /[+\-*/]/u.test(rightNonSpace);
-    const leftArithmeticContinuation = unsignedNumber && /[*/]/u.test(leftNonSpace);
+    const leftArithmeticContinuation = unsignedNumber && /[+*/]/u.test(leftNonSpace);
     const signedNumber = /^[+\-]\d+(?:[.,]\d+)?$/u.test(a);
     const leftArithmeticOperand = /(?:^|[\s(])(?:\p{L}|\d+(?:[.,]\d+)?|[)\]}])\s*$/u.test(h.slice(0, start));
     const signedBinaryContinuation = signedNumber && leftArithmeticOperand;
