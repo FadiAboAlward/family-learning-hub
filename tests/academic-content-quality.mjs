@@ -314,6 +314,24 @@ exponentSpacingLeak.questions[0].hints[0].content = 'الناتج النهائي
 const exponentSpacingLeakResult = validateAcademicPackage(exponentSpacingLeak);
 assert.ok(exponentSpacingLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Exponent operator spacing must not bypass answer-leak detection');
 
+const semanticExponentPrompts = read('valid-package.json');
+semanticExponentPrompts.questions[0].prompt = 'بسّط x²';
+semanticExponentPrompts.questions[1].prompt = 'بسّط x³';
+const semanticExponentPromptsResult = validateAcademicPackage(semanticExponentPrompts);
+assert.ok(!semanticExponentPromptsResult.errors.some(x => x.code === 'NORMALIZED_PROMPT_DUPLICATE'), 'Prompt fingerprints must preserve semantic exponent values');
+
+const arabicPercentLeak = read('valid-package.json');
+arabicPercentLeak.questions[0].options[0].content = '50%';
+arabicPercentLeak.questions[0].hints[0].content = 'الإجابة النهائية ٥٠٪.';
+const arabicPercentLeakResult = validateAcademicPackage(arabicPercentLeak);
+assert.ok(arabicPercentLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK' && x.path === 'questions[0].hints[0]'), 'Arabic percent sign must canonicalize to ASCII percent for leak detection');
+
+const arabicPercentDuplicate = read('valid-package.json');
+arabicPercentDuplicate.questions[0].options[0].content = '50%';
+arabicPercentDuplicate.questions[0].options[1].content = '٥٠٪';
+const arabicPercentDuplicateResult = validateAcademicPackage(arabicPercentDuplicate);
+assert.ok(arabicPercentDuplicateResult.errors.some(x => x.code === 'DUPLICATE_OPTION_CONTENT'), 'Arabic and ASCII percent notation must be treated as duplicate option content');
+
 const malformedExamHints = read('valid-package.json');
 malformedExamHints.questions[1].hints = { content: 'الإجابة 3' };
 const malformedExamHintsResult = validateAcademicPackage(malformedExamHints);
@@ -326,4 +344,4 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth, 3/6-step shape, short/symbolic and Arabic-script digit and Arabic-percent answer-leak prevention, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced-unit operands, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths, and duplicate reasoning guards are enforced.');
