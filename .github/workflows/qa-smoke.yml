@@ -101,6 +101,8 @@ jobs:
         run: node tests/learning-start-rpc.concurrency.mjs
       - name: Verify Learning finish RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-finish-rpc.contract.sql
+      - name: Verify prompt language runtime contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/prompt-language-rpc.contract.sql
       - name: Verify Learning finish concurrency and idempotency
         run: node tests/learning-finish-rpc.concurrency.mjs
       - name: Verify paper unanswered Exam contract
