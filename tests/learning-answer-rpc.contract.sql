@@ -31,6 +31,7 @@ declare
   v_attempt_h constant uuid := '20000000-0000-4000-8000-000000000008';
   v_attempt_i constant uuid := '20000000-0000-4000-8000-000000000009';
   v_attempt_j constant uuid := '20000000-0000-4000-8000-000000000010';
+  v_attempt_k constant uuid := '20000000-0000-4000-8000-000000000011';
   v_misconception constant uuid := '30000000-0000-4000-8000-000000000001';
   v_misconception_two constant uuid := '30000000-0000-4000-8000-000000000002';
   v_explanation_set constant uuid := '40000000-0000-4000-8000-000000000001';
@@ -340,6 +341,33 @@ begin
   set status = 'active'
   where id = v_explanation_set and workspace_id = v_workspace;
 
+  -- A finalized mapped wrong answer is idempotent: the same-option replay
+  -- returns cached evidence without duplicating the answer attempt or event.
+  update public.quiz_questions
+  set max_attempts = 1
+  where id = v_q_one and workspace_id = v_workspace;
+
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_k, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_k, 1, v_q_one, v_concept_one, 3, 'active');
+
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_k, v_q_one, 1);
+  v_retry := public.flh_learning_answer(v_workspace, v_learner, v_attempt_k, v_q_one, 1);
+  reset role;
+  if v_result <> v_retry
+     or v_result->>'finalized' <> 'true'
+     or (select count(*) from public.quiz_answer_attempts where quiz_attempt_id = v_attempt_k and question_id = v_q_one) <> 1
+     or (select count(*) from public.adaptive_events where quiz_attempt_id = v_attempt_k and event_type = 'misconception_detected') <> 1 then
+    raise exception 'LEARNING_RPC_MAPPED_FINAL_REPLAY_NOT_IDEMPOTENT';
+  end if;
+
+  update public.quiz_questions
+  set max_attempts = 4
+  where id = v_q_one and workspace_id = v_workspace;
+
   -- Ambiguous mappings must not be guessed.
   insert into public.misconceptions(id, workspace_id, concept_id, code, title)
   values (v_misconception_two, v_workspace, v_concept_two, 'qa-rpc-distractor-alt', 'Alternative mapped distractor');
@@ -551,7 +579,7 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j, v_attempt_k);
   delete from public.quizzes where id = v_quiz;
   delete from public.learning_concepts where id in (v_concept_one, v_concept_two, v_concept_three);
   delete from public.subjects where id = v_subject;
