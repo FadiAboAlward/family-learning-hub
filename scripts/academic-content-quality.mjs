@@ -24,6 +24,14 @@ const SOURCE_DEPENDENCY_PATTERNS = [
 ];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
+const CONCEPT_STATES = new Set(['MASTERED', 'DEVELOPING', 'NEEDS_REINFORCEMENT', 'UNKNOWN_BASELINE']);
+const DIFFICULTY_ROLES = new Set(['support', 'target', 'transfer']);
+const DEFAULT_TARGET_DIFFICULTY = new Map([
+  ['UNKNOWN_BASELINE', 2],
+  ['NEEDS_REINFORCEMENT', 2],
+  ['DEVELOPING', 3],
+  ['MASTERED', 4]
+]);
 
 const text = value => typeof value === 'string' ? value.replace(/\p{Cf}/gu, '').trim() : '';
 const caseFold = value => value
@@ -100,6 +108,8 @@ const flexibleAnswerPattern = value => {
 };
 const normalizeOption = value => caseFold(canonicalMath(value)).replace(/\s*([+\-*/^=<>%])\s*/g, '$1').replace(/\s+/g, ' ');
 const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(value))).replace(/[\s"'`“”‘’….,،؛;:!?؟]+/gu, '');
+
+const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
 function answerLeak(hintText, answer) {
   const h = caseFold(canonicalMath(hintText));
@@ -188,6 +198,7 @@ export function validateAcademicPackage(pkg) {
     };
   }
 
+  const conceptTargetsByCode = new Map();
   const ctx = pkg.academic_context;
   if (!ctx || typeof ctx !== 'object') {
     issue(errors, 'ACADEMIC_CONTEXT_REQUIRED', 'academic_context', 'academic_context is required.');
@@ -197,6 +208,30 @@ export function validateAcademicPackage(pkg) {
     }
     if (!Array.isArray(ctx.evidence_refs) || ctx.evidence_refs.length === 0 || ctx.evidence_refs.some(x => !text(x))) {
       issue(errors, 'EVIDENCE_REFS_REQUIRED', 'academic_context.evidence_refs', 'At least one evidence reference is required; baseline packages should record an explicit baseline/no-live-evidence reference.');
+    }
+
+    const conceptTargets = Array.isArray(ctx.concept_targets) ? ctx.concept_targets : [];
+    if (!conceptTargets.length) {
+      issue(errors, 'CONCEPT_TARGETS_REQUIRED', 'academic_context.concept_targets', 'New targeted packages require at least one concept target grounded in learner evidence.');
+    }
+    for (const [i, target] of conceptTargets.entries()) {
+      const p = 'academic_context.concept_targets[' + i + ']';
+      const conceptCode = text(target && target.concept_code);
+      const state = text(target && target.state);
+      if (!conceptCode) issue(errors, 'CONCEPT_TARGET_CODE_REQUIRED', p + '.concept_code', 'concept_code is required.');
+      else if (conceptTargetsByCode.has(conceptCode)) issue(errors, 'DUPLICATE_CONCEPT_TARGET', p + '.concept_code', 'Duplicate concept target ' + conceptCode + '.');
+      else conceptTargetsByCode.set(conceptCode, target);
+      if (!CONCEPT_STATES.has(state)) issue(errors, 'INVALID_CONCEPT_STATE', p + '.state', 'state must be MASTERED, DEVELOPING, NEEDS_REINFORCEMENT, or UNKNOWN_BASELINE.');
+      if (!Number.isInteger(target && target.target_difficulty) || target.target_difficulty < 1 || target.target_difficulty > 5) {
+        issue(errors, 'TARGET_DIFFICULTY_OUT_OF_RANGE', p + '.target_difficulty', 'target_difficulty must be an integer from 1 to 5.');
+      }
+      if (!Array.isArray(target && target.evidence_refs) || target.evidence_refs.length === 0 || target.evidence_refs.some(x => !text(x))) {
+        issue(errors, 'CONCEPT_TARGET_EVIDENCE_REQUIRED', p + '.evidence_refs', 'Each concept target requires authoritative evidence references or an explicit baseline/no-live-evidence marker.');
+      }
+      const defaultDifficulty = DEFAULT_TARGET_DIFFICULTY.get(state);
+      if (defaultDifficulty && Number.isInteger(target && target.target_difficulty) && target.target_difficulty !== defaultDifficulty && !text(target && target.target_difficulty_justification)) {
+        issue(errors, 'TARGET_DIFFICULTY_OVERRIDE_UNJUSTIFIED', p + '.target_difficulty_justification', 'A target difficulty that differs from the default concept-state centre requires an evidence-based justification.');
+      }
     }
   }
 
@@ -223,8 +258,21 @@ export function validateAcademicPackage(pkg) {
     else blueByCode.set(code, b);
 
     if (!SURFACES.has(b && b.delivery_surface)) issue(errors, 'INVALID_DELIVERY_SURFACE', p + '.delivery_surface', 'delivery_surface must be learning, exam, or paper; practice is not a canonical mode.');
-    if (!text(b && b.concept_code)) issue(errors, 'CONCEPT_REQUIRED', p + '.concept_code', 'concept_code is required.');
+    const conceptCode = text(b && b.concept_code);
+    if (!conceptCode) issue(errors, 'CONCEPT_REQUIRED', p + '.concept_code', 'concept_code is required.');
     if (!Number.isInteger(b && b.difficulty_level) || b.difficulty_level < 1 || b.difficulty_level > 5) issue(errors, 'DIFFICULTY_OUT_OF_RANGE', p + '.difficulty_level', 'difficulty_level must be an integer from 1 to 5.');
+    const difficultyRole = text(b && b.difficulty_role);
+    if (!DIFFICULTY_ROLES.has(difficultyRole)) issue(errors, 'INVALID_DIFFICULTY_ROLE', p + '.difficulty_role', 'difficulty_role must be support, target, or transfer.');
+    const conceptTarget = conceptTargetsByCode.get(conceptCode);
+    if (conceptCode && !conceptTarget) {
+      issue(errors, 'BLUEPRINT_CONCEPT_TARGET_REQUIRED', p + '.concept_code', 'Blueprint concept ' + conceptCode + ' has no matching academic_context.concept_targets entry.');
+    } else if (conceptTarget && DIFFICULTY_ROLES.has(difficultyRole) && Number.isInteger(b && b.difficulty_level)) {
+      const centre = conceptTarget.target_difficulty;
+      const expectedDifficulty = difficultyRole === 'support' ? Math.max(1, centre - 1) : difficultyRole === 'transfer' ? Math.min(5, centre + 1) : centre;
+      if (b.difficulty_level !== expectedDifficulty && !text(b && b.difficulty_override_reason)) {
+        issue(errors, 'DIFFICULTY_ROLE_MISMATCH', p + '.difficulty_level', 'difficulty_level does not match the concept target and difficulty_role; add a learner-evidence-based difficulty_override_reason for an intentional exception.');
+      }
+    }
     if (!ORIGINS.has(b && b.origin)) issue(errors, 'INVALID_ORIGIN', p + '.origin', 'origin must be BOOK_DERIVED or GENERATED_SIMILAR.');
     if (!text(b && b.source_ref)) issue(errors, 'SOURCE_REF_REQUIRED', p + '.source_ref', 'source_ref is required.');
 
@@ -237,6 +285,16 @@ export function validateAcademicPackage(pkg) {
   const difficulties = new Set(blueprint.map(x => x && x.difficulty_level).filter(Number.isInteger));
   if (blueprint.length > 0 && difficulties.size === 1 && !text(ctx && ctx.single_difficulty_justification)) {
     issue(errors, 'SINGLE_DIFFICULTY_UNJUSTIFIED', 'academic_context.single_difficulty_justification', 'A one-level package needs an explicit academic justification.');
+  }
+
+  for (const surface of SURFACES) {
+    const rows = blueprint.filter(x => x && x.delivery_surface === surface);
+    if (rows.length !== 20 || text(ctx && ctx.difficulty_distribution_justification)) continue;
+    const roleCounts = { support: 0, target: 0, transfer: 0 };
+    for (const row of rows) if (DIFFICULTY_ROLES.has(row.difficulty_role)) roleCounts[row.difficulty_role]++;
+    if (roleCounts.support !== 4 || roleCounts.target !== 12 || roleCounts.transfer !== 4) {
+      issue(errors, 'DIFFICULTY_DISTRIBUTION_MISMATCH', 'blueprint', 'A standard 20-question ' + surface + ' surface requires 4 support, 12 target, and 4 transfer items unless academic_context.difficulty_distribution_justification is provided.');
+    }
   }
 
   const seenQuestionCodes = new Set();
@@ -291,6 +349,7 @@ export function validateAcademicPackage(pkg) {
 
     const normalizedOptions = new Map();
     const optionPositions = new Map();
+    const distractorRationales = new Map();
     let correctCount = 0;
     let correctContent = '';
 
@@ -316,12 +375,24 @@ export function validateAcademicPackage(pkg) {
         correctCount++;
         correctContent = content;
         if (text(o.misconception_code)) issue(errors, 'CORRECT_OPTION_MISCONCEPTION', op + '.misconception_code', 'Correct option cannot carry a misconception_code.');
-      } else if (!text(o && o.distractor_rationale)) {
-        issue(errors, 'DISTRACTOR_RATIONALE_REQUIRED', op + '.distractor_rationale', 'Every wrong option needs a concise rationale explaining why it is a plausible distractor.');
+      } else {
+        const rationale = text(o && o.distractor_rationale);
+        if (!rationale) {
+          issue(errors, 'DISTRACTOR_RATIONALE_REQUIRED', op + '.distractor_rationale', 'Every wrong option needs a concise rationale explaining why it is a plausible distractor.');
+        } else {
+          const rationaleKey = normalizeRationale(rationale);
+          if (distractorRationales.has(rationaleKey)) issue(errors, 'DUPLICATE_DISTRACTOR_RATIONALE', op + '.distractor_rationale', 'Distractor rationale duplicates ' + distractorRationales.get(rationaleKey) + ' instead of describing a distinct plausible error.');
+          else distractorRationales.set(rationaleKey, op + '.distractor_rationale');
+        }
       }
     }
 
     if (correctCount !== 1) issue(errors, 'SINGLE_CORRECT_OPTION_REQUIRED', p + '.options', 'Expected exactly one correct option; found ' + correctCount + '.');
+
+    const misconceptionTarget = text(b && b.misconception_target);
+    if (misconceptionTarget && !opts.some(o => o && o.is_correct !== true && text(o.misconception_code) === misconceptionTarget)) {
+      issue(errors, 'MISCONCEPTION_TARGET_UNMAPPED', p + '.options', 'Blueprint misconception_target ' + misconceptionTarget + ' is not mapped to any wrong option.');
+    }
 
     if (correctCount === 1 && opts.length >= 4) {
       const correctLen = text(correctContent).length;
@@ -340,6 +411,7 @@ export function validateAcademicPackage(pkg) {
 
       const hintContentTexts = [];
       const hintPayloadTexts = [];
+      let previousHintPayloadSize = 0;
       for (const [j, h] of hints.entries()) {
         const hp = p + '.hints[' + j + ']';
         const expected = j + 1;
@@ -353,6 +425,11 @@ export function validateAcademicPackage(pkg) {
           ...(Array.isArray(h && h.steps) ? h.steps : []),
           ...(Array.isArray(h && h.expanded_steps) ? h.expanded_steps : [])
         ].map(text).filter(Boolean).join(' ');
+        const hintPayloadSize = text(combined).replace(/\s+/gu, ' ').length;
+        if (j > 0 && previousHintPayloadSize > 0 && hintPayloadSize < previousHintPayloadSize * 0.75) {
+          issue(warnings, 'HINT_DEPTH_REGRESSION', hp, 'Later hint payload is materially smaller than the previous level; review that support depth and informational payload really increased.');
+        }
+        previousHintPayloadSize = hintPayloadSize;
 
         if (correctCount === 1 && answerLeak(combined, correctContent)) issue(errors, 'HINT_ANSWER_LEAK', hp, 'Hint exposes the correct option/final answer before finalization.');
 

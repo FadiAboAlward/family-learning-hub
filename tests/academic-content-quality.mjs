@@ -556,4 +556,111 @@ delete singleQuestionPackage.academic_context.single_difficulty_justification;
 const singleQuestionPackageResult = validateAcademicPackage(singleQuestionPackage);
 assert.ok(singleQuestionPackageResult.errors.some(x => x.code === 'SINGLE_DIFFICULTY_UNJUSTIFIED'), 'Single-question packages still need a single-difficulty academic justification');
 
+
+const missingConceptTargets = read('valid-package.json');
+delete missingConceptTargets.academic_context.concept_targets;
+const missingConceptTargetsResult = validateAcademicPackage(missingConceptTargets);
+assert.ok(missingConceptTargetsResult.errors.some(x => x.code === 'CONCEPT_TARGETS_REQUIRED'), 'Targeted packages must declare concept_targets');
+
+
+const duplicateConceptTarget = read('valid-package.json');
+duplicateConceptTarget.academic_context.concept_targets.push({ ...duplicateConceptTarget.academic_context.concept_targets[0] });
+const duplicateConceptTargetResult = validateAcademicPackage(duplicateConceptTarget);
+assert.ok(duplicateConceptTargetResult.errors.some(x => x.code === 'DUPLICATE_CONCEPT_TARGET'), 'Duplicate concept targets must be rejected');
+
+const missingConceptTargetEvidence = read('valid-package.json');
+missingConceptTargetEvidence.academic_context.concept_targets[0].evidence_refs = [];
+const missingConceptTargetEvidenceResult = validateAcademicPackage(missingConceptTargetEvidence);
+assert.ok(missingConceptTargetEvidenceResult.errors.some(x => x.code === 'CONCEPT_TARGET_EVIDENCE_REQUIRED'), 'Every concept target must retain authoritative evidence references');
+
+const missingBlueprintConceptTarget = read('valid-package.json');
+missingBlueprintConceptTarget.blueprint[0].concept_code = 'missing-concept-target';
+const missingBlueprintConceptTargetResult = validateAcademicPackage(missingBlueprintConceptTarget);
+assert.ok(missingBlueprintConceptTargetResult.errors.some(x => x.code === 'BLUEPRINT_CONCEPT_TARGET_REQUIRED'), 'Every blueprint concept must map to a declared concept target');
+
+const invalidConceptState = read('valid-package.json');
+invalidConceptState.academic_context.concept_targets[0].state = 'WEAK';
+const invalidConceptStateResult = validateAcademicPackage(invalidConceptState);
+assert.ok(invalidConceptStateResult.errors.some(x => x.code === 'INVALID_CONCEPT_STATE'), 'Concept state must use the canonical four-state vocabulary');
+
+const unjustifiedTargetDifficulty = read('valid-package.json');
+unjustifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty = 3;
+const unjustifiedTargetDifficultyResult = validateAcademicPackage(unjustifiedTargetDifficulty);
+assert.ok(unjustifiedTargetDifficultyResult.errors.some(x => x.code === 'TARGET_DIFFICULTY_OVERRIDE_UNJUSTIFIED'), 'Non-default concept target difficulty needs evidence-based justification');
+
+const justifiedTargetDifficulty = read('valid-package.json');
+justifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty = 3;
+justifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty_justification = 'Recent learner evidence supports the higher centre.';
+justifiedTargetDifficulty.academic_context.single_difficulty_justification = 'This focused fixture isolates acceptance of the evidence-justified target difficulty override.';
+justifiedTargetDifficulty.blueprint[0].difficulty_level = 3;
+justifiedTargetDifficulty.questions[0].difficulty_level = 3;
+const justifiedTargetDifficultyResult = validateAcademicPackage(justifiedTargetDifficulty);
+assert.equal(justifiedTargetDifficultyResult.ok, true, JSON.stringify(justifiedTargetDifficultyResult, null, 2));
+assert.ok(!justifiedTargetDifficultyResult.errors.some(x => x.code === 'TARGET_DIFFICULTY_OVERRIDE_UNJUSTIFIED'), 'Evidence-based target difficulty override should be accepted');
+
+const roleMismatch = read('valid-package.json');
+roleMismatch.blueprint[0].difficulty_role = 'transfer';
+const roleMismatchResult = validateAcademicPackage(roleMismatch);
+assert.ok(roleMismatchResult.errors.some(x => x.code === 'DIFFICULTY_ROLE_MISMATCH'), 'Difficulty role must map to the relative concept target level');
+
+const invalidDifficultyRole = read('valid-package.json');
+invalidDifficultyRole.blueprint[0].difficulty_role = 'hard';
+const invalidDifficultyRoleResult = validateAcademicPackage(invalidDifficultyRole);
+assert.ok(invalidDifficultyRoleResult.errors.some(x => x.code === 'INVALID_DIFFICULTY_ROLE'), 'Difficulty role must use support/target/transfer');
+
+const flatTwenty = read('valid-package.json');
+flatTwenty.academic_context.single_difficulty_justification = 'Fixture isolates the distribution guard.';
+flatTwenty.blueprint = Array.from({ length: 20 }, (_, i) => ({
+  ...flatTwenty.blueprint[0],
+  question_code: 'DIST-FLAT-' + String(i + 1).padStart(2, '0'),
+  reasoning_signature: 'distribution-flat-form-' + String.fromCharCode(65 + i),
+  difficulty_role: 'target',
+  difficulty_level: 2
+}));
+const flatTwentyResult = validateAcademicPackage(flatTwenty);
+assert.ok(flatTwentyResult.errors.some(x => x.code === 'DIFFICULTY_DISTRIBUTION_MISMATCH'), 'Standard 20-question surface must use 4/12/4 role distribution unless justified');
+
+const balancedTwenty = read('valid-package.json');
+balancedTwenty.blueprint = Array.from({ length: 20 }, (_, i) => {
+  const role = i < 4 ? 'support' : i < 16 ? 'target' : 'transfer';
+  return {
+    ...balancedTwenty.blueprint[0],
+    question_code: 'DIST-OK-' + String(i + 1).padStart(2, '0'),
+    reasoning_signature: 'distribution-balanced-form-' + String.fromCharCode(65 + i),
+    difficulty_role: role,
+    difficulty_level: role === 'support' ? 1 : role === 'transfer' ? 3 : 2
+  };
+});
+const balancedTwentyResult = validateAcademicPackage(balancedTwenty);
+assert.ok(!balancedTwentyResult.errors.some(x => x.code === 'DIFFICULTY_DISTRIBUTION_MISMATCH'), 'Canonical 4/12/4 distribution should satisfy the standard 20-question role gate');
+
+const justifiedDistribution = read('valid-package.json');
+justifiedDistribution.academic_context.single_difficulty_justification = 'Focused diagnostic package.';
+justifiedDistribution.academic_context.difficulty_distribution_justification = 'Focused remediation intentionally stays at the learner target centre.';
+justifiedDistribution.blueprint = flatTwenty.blueprint;
+const justifiedDistributionResult = validateAcademicPackage(justifiedDistribution);
+assert.ok(!justifiedDistributionResult.errors.some(x => x.code === 'DIFFICULTY_DISTRIBUTION_MISMATCH'), 'A documented diagnostic/remediation/challenge distribution override should be accepted');
+
+const duplicateDistractorRationale = read('valid-package.json');
+duplicateDistractorRationale.questions[0].options[2].distractor_rationale = duplicateDistractorRationale.questions[0].options[1].distractor_rationale;
+const duplicateDistractorRationaleResult = validateAcademicPackage(duplicateDistractorRationale);
+assert.ok(duplicateDistractorRationaleResult.errors.some(x => x.code === 'DUPLICATE_DISTRACTOR_RATIONALE'), 'Wrong options need distinct plausible error rationales rather than duplicated filler');
+
+const unmappedMisconceptionTarget = read('valid-package.json');
+unmappedMisconceptionTarget.blueprint[0].misconception_target = 'unmapped-known-misconception';
+const unmappedMisconceptionTargetResult = validateAcademicPackage(unmappedMisconceptionTarget);
+assert.ok(unmappedMisconceptionTargetResult.errors.some(x => x.code === 'MISCONCEPTION_TARGET_UNMAPPED'), 'Declared misconception target must map to a wrong option');
+
+const hintDepthRegression = read('valid-package.json');
+hintDepthRegression.questions[0].decomposable = false;
+for (const hint of hintDepthRegression.questions[0].hints) {
+  hint.decomposable = false;
+  delete hint.steps;
+  delete hint.expanded_steps;
+}
+hintDepthRegression.questions[0].hints[0].content = 'ركّز أولاً على اتجاه الحركة من الصفر وعلى العلاقة بين جهة اليسار وإشارة العدد، ثم لاحظ أن مقدار الحركة يجب أن يبقى كما هو دون مضاعفة أو تبديل.';
+hintDepthRegression.questions[0].hints[1].content = 'فكّر بالاتجاه.';
+const hintDepthRegressionResult = validateAcademicPackage(hintDepthRegression);
+assert.ok(hintDepthRegressionResult.warnings.some(x => x.code === 'HINT_DEPTH_REGRESSION'), 'A materially smaller later hint payload should be flagged for depth review');
+
 console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
