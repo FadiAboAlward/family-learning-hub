@@ -69,14 +69,14 @@ begin
 
   insert into public.quiz_questions(
     id, workspace_id, quiz_version_id, position, question_type, prompt, points,
-    difficulty_level, max_attempts, remediation_after_attempt, delivery_role, question_code
+    difficulty_level, max_attempts, remediation_after_attempt, delivery_role, question_code, prompt_language
   ) values
-    (v_q_one, v_workspace, v_version, 1, 'single_choice', 'Core one', 2, 3, 4, 3, 'core', 'Q-91300001'),
-    (v_q_two, v_workspace, v_version, 2, 'single_choice', 'Core two', 1, 2, 2, 2, 'core', 'Q-91300002'),
-    (v_q_rem_one, v_workspace, v_version, 3, 'single_choice', 'Remediation one', 1, 3, 4, 3, 'remediation_pool', 'Q-91300003'),
-    (v_q_end, v_workspace, v_version, 4, 'single_choice', 'End question', 1, 1, 4, 3, 'core', 'Q-91300004'),
-    (v_q_outside, v_workspace, v_version, 5, 'single_choice', 'Outside queue', 1, 1, 4, 3, 'challenge_pool', 'Q-91300005'),
-    (v_q_rem_two, v_workspace, v_version, 6, 'single_choice', 'Remediation two', 1, 2, 2, 2, 'remediation_pool', 'Q-91300006');
+    (v_q_one, v_workspace, v_version, 1, 'single_choice', 'Core one', 2, 3, 4, 3, 'core', 'Q-91300001', 'tr'),
+    (v_q_two, v_workspace, v_version, 2, 'single_choice', 'Core two', 1, 2, 2, 2, 'core', 'Q-91300002', 'tr'),
+    (v_q_rem_one, v_workspace, v_version, 3, 'single_choice', 'Remediation one', 1, 3, 4, 3, 'remediation_pool', 'Q-91300003', 'ar'),
+    (v_q_end, v_workspace, v_version, 4, 'single_choice', 'End question', 1, 1, 4, 3, 'core', 'Q-91300004', 'en'),
+    (v_q_outside, v_workspace, v_version, 5, 'single_choice', 'Outside queue', 1, 1, 4, 3, 'challenge_pool', 'Q-91300005', 'en'),
+    (v_q_rem_two, v_workspace, v_version, 6, 'single_choice', 'Remediation two', 1, 2, 2, 2, 'remediation_pool', 'Q-91300006', 'tr');
 
   insert into public.quiz_question_options(workspace_id, question_id, position, label, content)
   select v_workspace, q.question_id, option_row.position, option_row.label, option_row.content
@@ -208,6 +208,7 @@ begin
      or v_result->>'finalized' <> 'false'
      or v_result->'remediation_added'->>'question_id' <> v_q_rem_one::text
      or v_result->'remediation_added'->'question'->>'question_code' <> 'Q-91300003'
+     or v_result->'remediation_added'->'question'->>'prompt_language' <> 'ar'
      or v_result->'remediation_added'->'question'->'options' is null
      or v_result->'remediation_added'->'question'->'assets' <> '[]'::jsonb then
     raise exception 'LEARNING_RPC_REMEDIATION_PAYLOAD_INVALID:%', v_result;
@@ -244,7 +245,8 @@ begin
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_c, v_q_two, 1);
   reset role;
   if v_result @> '{"is_correct":false,"attempt_no":2,"finalized":true,"hint":null,"hint_level":null,"hints_used":1,"explanation":"final incorrect explanation","correct_option_position":2}'::jsonb is not true
-     or v_result->'remediation_added'->>'question_id' <> v_q_rem_two::text then
+     or v_result->'remediation_added'->>'question_id' <> v_q_rem_two::text
+     or v_result->'remediation_added'->'question'->>'prompt_language' <> 'tr' then
     raise exception 'LEARNING_RPC_FINAL_INCORRECT_INVALID:%', v_result;
   end if;
   if not exists (
