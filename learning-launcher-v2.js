@@ -105,8 +105,8 @@
 
     async function help(){
       if(busy)return;busy=true;render();const row=queue[index];
-      try{const d=await call('request_hint',{attempt_id:session.attempt_id,question_id:row.question_id});if(d.hint){row.hint_level_requested=Number(d.hint_level||row.hint_level_requested||0);currentHint=d.hint;}else if(d.exhausted){row.hint_level_requested=Math.max(4,Number(row.hint_level_requested||0));currentHint={hint_level:4,content:'وصلت لآخر مستوى من التلميحات. جرّب تفكر بالخطوات اللي أخذناها.'};}}
-      catch{currentHint={hint_level:row.hint_level_requested||0,content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'};}
+      try{const d=await call('request_hint',{attempt_id:session.attempt_id,question_id:row.question_id});if(d.hint){row.hint_level_requested=Number(d.hint_level||row.hint_level_requested||0);currentHint=d.hint;}else if(d.exhausted){row.hint_level_requested=Math.max(4,Number(row.hint_level_requested||0));currentHint={hint_level:4,language:'ar',content:'وصلت لآخر مستوى من التلميحات. جرّب تفكر بالخطوات اللي أخذناها.'};}}
+      catch{currentHint={hint_level:row.hint_level_requested||0,language:'ar',content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'};}
       finally{busy=false;render();}
     }
 
