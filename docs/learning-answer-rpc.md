@@ -31,9 +31,7 @@ stores `detected_misconception_id` plus a small allowlisted
 transaction emits a `misconception_detected` adaptive event. When an active
 `incorrect_attempt` explanation set for that misconception is eligible for the
 same workspace, question/concept, attempt number, learner grade, difficulty,
-and learner language, the answer-attempt row also records its
-`explanation_set_id`; otherwise the existing generic feedback/explanation path
-remains unchanged. Correct answers, unmapped distractors, and ambiguous mappings
+and learner language, the answer-attempt row records its `explanation_set_id` and uses the ordered text blocks as persisted `feedback_text`; otherwise the existing generic feedback/explanation path remains unchanged. Correct answers, unmapped distractors, and ambiguous mappings
 are not classified; the RPC never infers a misconception from wrongness alone.
 Finalized same-option retries
 return the cached result before creating any additional attempt evidence, so
