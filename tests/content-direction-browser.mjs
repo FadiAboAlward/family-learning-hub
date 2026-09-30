@@ -7,6 +7,43 @@ const browser=await chromium.launch({headless:true});
 async function installRoutes(page){
   await page.route('**/functions/v1/question-reference-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"codes":{}}'}));
 
+  await page.route('**/functions/v1/attempt-history-api',async r=>{
+    let body={};
+    try{body=JSON.parse(r.request().postData()||'{}')}catch{}
+    if(body.action==='attempt_detail'){
+      return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+        attempt:{
+          id:'11111111-1111-4111-8111-111111111111',
+          delivery_mode:'exam',
+          submitted_at:'2026-09-30T12:00:00Z',
+          percentage:50,
+          wrong_count:1,
+          duration_seconds:90,
+          context:{quiz:{title:'Geçmiş deneme'}}
+        },
+        review:[{
+          sequence_no:1,
+          question_id:'history-tr',
+          question_code:'QA-DIR-HISTORY-TR',
+          prompt:"B şehri UTC-4&amp;#39;tür. B&amp;#39;den fark nedir?",
+          prompt_language:'tr',
+          selected_option:{position:2,label:'B',content:'6 saat'},
+          correct_option:{position:1,label:'A',content:'4 saat'},
+          is_correct:false,
+          points_awarded:0,
+          max_points:1,
+          attempts_used:1,
+          hints_used:0,
+          first_try_correct:false,
+          explanation:'Saat dilimlerini sayı doğrusunda karşılaştır.',
+          assets:[]
+        }]
+      })});
+    }
+    if(body.action==='list_attempts')return r.fulfill({status:200,contentType:'application/json',body:'{"items":[],"has_more":false,"next_cursor":null,"mode":"all"}'});
+    return r.fulfill({status:200,contentType:'application/json',body:'{"error":"UNKNOWN_ACTION"}'});
+  });
+
   await page.route('**/functions/v1/learning-api',async r=>{
     let body={};
     try{body=JSON.parse(r.request().postData()||'{}')}catch{}
@@ -131,7 +168,7 @@ async function probe(width,height){
     await installRoutes(page);
     await page.goto(APP_URL,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function'&&typeof window.FLH?.startExamQuiz==='function');
-    await page.evaluate(()=>localStorage.setItem('learner_session','qa-direction-session'));
+    await page.evaluate(()=>localStorage.setItem('learner_session','qa.direction'));
 
     assert.equal(await page.evaluate(()=>document.documentElement.dir),'rtl');
 
@@ -148,7 +185,11 @@ async function probe(width,height){
 
     await page.locator('#flhHelp').click();
     await page.locator('.flh-hint-card').waitFor({state:'visible',timeout:5000});
-    const learningHint=await computedDirection(page.locator('.flh-hint-card'));
+    const hintCard=await computedDirection(page.locator('.flh-hint-card'));
+    const hintHeading=await computedDirection(page.locator('.flh-hint-card > b'));
+    const learningHint=await computedDirection(page.locator('.flh-hint-content'));
+    assert.equal(hintCard.dir,'rtl');
+    assert.equal(hintHeading.dir,'rtl');
     assert.equal(learningHint.dir,'ltr');
     assert.equal(learningHint.lang,'tr');
     assert.match(learningHint.text,/Tam sayılarda/);
@@ -195,6 +236,23 @@ async function probe(width,height){
     assert.equal(trExplanation.dir,'ltr');
     assert.equal(arExplanation.dir,'rtl');
 
+    await page.evaluate(()=>{
+      location.hash='#student';
+      document.getElementById('app').innerHTML='<section class="hero"><h1>أهلًا اختبار</h1></section><section data-student-library></section>';
+    });
+    await page.waitForFunction(()=>typeof window.FLH?.openAttemptHistoryAttempt==='function');
+    const historyOpened=await page.evaluate(()=>window.FLH.openAttemptHistoryAttempt('11111111-1111-4111-8111-111111111111'));
+    assert.equal(historyOpened,true);
+    await page.locator('.flh-history-review').first().waitFor({state:'visible',timeout:5000});
+    const historyPrompt=await computedDirection(page.locator('.flh-history-review .question').first());
+    const historySelected=await computedDirection(page.locator('.flh-history-review .flh-review-answer b').first());
+    assert.equal(historyPrompt.dir,'ltr');
+    assert.equal(historyPrompt.lang,'tr');
+    assert.equal(historySelected.dir,'ltr');
+    assert.equal(historySelected.lang,'tr');
+    assert.match(historyPrompt.text,/UTC-4'tür/);
+    assert.match(historyPrompt.text,/B'den/);
+
     assert.equal(
       await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),
       false,
@@ -208,7 +266,7 @@ async function probe(width,height){
 try{
   await probe(1280,800);
   await probe(390,844);
-  console.log('Content direction browser regression passed through real Learning, Exam, hint, and review renderers at desktop and 390x844.');
+  console.log('Content direction browser regression passed through real Learning, Exam, hint, live review, and attempt-history review renderers at desktop and 390x844.');
 }finally{
   await browser.close();
 }
