@@ -445,7 +445,7 @@ begin
   insert into public.quiz_assignments(
     id, workspace_id, learner_id, quiz_version_id, status, learner_program_enrollment_id
   ) values (
-    v_assignment, v_workspace, v_other_learner, v_version, 'in_progress', v_enrollment
+    v_assignment, v_workspace, v_other_learner, v_version, 'assigned', v_enrollment
   );
 
   insert into public.explanation_sets(
