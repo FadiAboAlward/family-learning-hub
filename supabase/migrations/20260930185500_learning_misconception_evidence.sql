@@ -183,8 +183,9 @@ begin
   v_is_correct := coalesce(p_option_position = v_correct_option_position, false);
 
   -- A selected distractor is diagnostic evidence only when the authored option
-  -- has exactly one misconception mapping for the active concept. Never infer
-  -- or guess a misconception from a wrong answer alone.
+  -- has exactly one misconception mapping in this workspace, and that sole
+  -- mapping belongs to the active concept. Multiple mappings are authoring-data
+  -- ambiguity and are never guessed, even when only one matches the concept.
   if not v_is_correct and v_queue.concept_id is not null then
     select count(*)::integer
     into v_misconception_mapping_count
@@ -193,8 +194,7 @@ begin
       on m.id = qom.misconception_id
      and m.workspace_id = qom.workspace_id
     where qom.workspace_id = p_workspace_id
-      and qom.option_id = v_option_id
-      and m.concept_id = v_queue.concept_id;
+      and qom.option_id = v_option_id;
 
     if v_misconception_mapping_count = 1 then
       select m.id, m.code, qom.confidence
@@ -208,54 +208,56 @@ begin
         and m.concept_id = v_queue.concept_id
       limit 1;
 
-      v_error_classification := jsonb_build_object(
-        'source', 'mapped_distractor',
-        'option_id', v_option_id,
-        'misconception_code', v_misconception_code,
-        'confidence', v_misconception_confidence
-      );
+      if found then
+        v_error_classification := jsonb_build_object(
+          'source', 'mapped_distractor',
+          'option_id', v_option_id,
+          'misconception_code', v_misconception_code,
+          'confidence', v_misconception_confidence
+        );
 
-      -- Reuse an already-authored active misconception explanation when it
-      -- is eligible for this question/concept, attempt, grade, difficulty,
-      -- and learner language. Persisting the set id keeps the response
-      -- contract unchanged while making the selected support auditable.
-      select es.id
-      into v_explanation_set_id
-      from public.explanation_sets es
-      left join public.learner_instruction_profiles lip
-        on lip.workspace_id = p_workspace_id
-       and lip.learner_id = p_learner_id
-      join public.learners learner
-        on learner.id = p_learner_id
-       and learner.workspace_id = p_workspace_id
-      where es.workspace_id = p_workspace_id
-        and es.misconception_id = v_misconception_id
-        and es.status = 'active'
-        and es.trigger_kind = 'incorrect_attempt'
-        and (es.question_id is null or es.question_id = p_question_id)
-        and (es.concept_id is null or es.concept_id = v_queue.concept_id)
-        and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
-        and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
-        and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
-        and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
-        and (es.min_grade is null or learner.grade_level is not null and es.min_grade <= learner.grade_level)
-        and (es.max_grade is null or learner.grade_level is not null and es.max_grade >= learner.grade_level)
-        and es.language = coalesce(lip.primary_language, 'ar')
-      order by
-        case when es.question_id = p_question_id then 0 else 1 end,
-        case when es.concept_id = v_queue.concept_id then 0 else 1 end,
-        coalesce(es.min_attempt_no, 0) desc,
-        es.id
-      limit 1;
+        -- Reuse an already-authored active misconception explanation when it
+        -- is eligible for this question/concept, attempt, grade, difficulty,
+        -- and learner language. Persisting the set id keeps the response
+        -- contract unchanged while making the selected support auditable.
+        select es.id
+        into v_explanation_set_id
+        from public.explanation_sets es
+        left join public.learner_instruction_profiles lip
+          on lip.workspace_id = p_workspace_id
+         and lip.learner_id = p_learner_id
+        join public.learners learner
+          on learner.id = p_learner_id
+         and learner.workspace_id = p_workspace_id
+        where es.workspace_id = p_workspace_id
+          and es.misconception_id = v_misconception_id
+          and es.status = 'active'
+          and es.trigger_kind = 'incorrect_attempt'
+          and (es.question_id is null or es.question_id = p_question_id)
+          and (es.concept_id is null or es.concept_id = v_queue.concept_id)
+          and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
+          and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
+          and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
+          and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
+          and (es.min_grade is null or learner.grade_level is not null and es.min_grade <= learner.grade_level)
+          and (es.max_grade is null or learner.grade_level is not null and es.max_grade >= learner.grade_level)
+          and es.language = coalesce(lip.primary_language, 'ar')
+        order by
+          case when es.question_id = p_question_id then 0 else 1 end,
+          case when es.concept_id = v_queue.concept_id then 0 else 1 end,
+          coalesce(es.min_attempt_no, 0) desc,
+          es.id
+        limit 1;
 
-      if v_explanation_set_id is not null then
-        select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
-        into v_misconception_feedback_text
-        from public.explanation_blocks eb
-        where eb.workspace_id = p_workspace_id
-          and eb.explanation_set_id = v_explanation_set_id
-          and eb.block_type = 'text'
-          and nullif(btrim(eb.content->>'text'), '') is not null;
+        if v_explanation_set_id is not null then
+          select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
+          into v_misconception_feedback_text
+          from public.explanation_blocks eb
+          where eb.workspace_id = p_workspace_id
+            and eb.explanation_set_id = v_explanation_set_id
+            and eb.block_type = 'text'
+            and nullif(btrim(eb.content->>'text'), '') is not null;
+        end if;
       end if;
     end if;
   end if;
