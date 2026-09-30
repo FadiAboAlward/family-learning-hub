@@ -19,6 +19,12 @@ assert.match(migration, /detected_misconception_id/i);
 assert.match(migration, /'misconception_detected'/i);
 assert.match(migration, /'mapped_distractor'/i);
 assert.match(migration, /m\.concept_id = v_queue\.concept_id/i);
+assert.match(migration, /qom\.workspace_id = p_workspace_id/i);
+assert.match(migration, /v_misconception_mapping_count = 1/i);
+assert.match(migration, /public\.explanation_sets/i);
+assert.match(migration, /es\.misconception_id = v_misconception_id/i);
+assert.match(migration, /explanation_set_id/i);
+assert.match(migration, /error_classification/i);
 
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
 assert.match(answerFunction, /trace\.measure\("answer\.rpc",\{dbOperations:1\}/);
