@@ -80,10 +80,11 @@ finalized answer. The new Edge path makes one RPC operation; telemetry records
 that actual count as `1`. This is a structural result, not a Production latency
 claim.
 
-The migration is additive. If behavior regresses after a later Production
-release, redeploy the previous `learning-api` source. Its table-based answer path
-remains compatible, while the unused RPC and its internal retry metadata are
-harmless. Dropping the RPC is not required for rollback.
+The migration is forward-only. If this behavior must be rolled back after a
+future release, create a new corrective migration that restores the previous
+`flh_learning_answer` definition; do not rewrite or delete either historical
+migration. The Edge contract and RPC signature stay unchanged, so rollback does
+not require a UI or client change.
 
 The exact migration identity for release and reconciliation is
 `supabase/migrations/20260930185500_learning_misconception_evidence.sql` for the current RPC definition; the original `20260913145055_learning_answer_rpc.sql` remains immutable history. This feature does not
