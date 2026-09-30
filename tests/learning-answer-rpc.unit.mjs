@@ -28,6 +28,15 @@ assert.match(migration, /public\.explanation_blocks/i);
 assert.match(migration, /v_misconception_feedback_text/i);
 assert.match(migration, /feedback_text/i);
 assert.match(migration, /error_classification/i);
+assert.match(migration, /pedagogy\.misconception_policy/i);
+assert.match(migration, /detect_from_multiple_choice_distractors/i);
+assert.match(migration, /count\(\*\) over\(\)::integer as mapping_count/i);
+assert.match(migration, /v_misconception_concept_id = v_queue\.concept_id/i);
+assert.match(migration, /public\.quiz_assignments/i);
+assert.match(migration, /public\.learner_program_enrollments/i);
+assert.match(migration, /public\.learning_programs/i);
+assert.match(migration, /v_effective_grade/i);
+assert.match(migration, /jsonb_set\(\s*v_hint,\s*'\{content\}'/i);
 
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
 assert.match(answerFunction, /trace\.measure\("answer\.rpc",\{dbOperations:1\}/);
