@@ -30,6 +30,8 @@ assert.match(migration, /feedback_text/i);
 assert.match(migration, /error_classification/i);
 assert.match(migration, /pedagogy\.misconception_policy/i);
 assert.match(migration, /detect_from_multiple_choice_distractors/i);
+assert.match(migration, /prefer_misconception_specific_explanation/i);
+assert.match(migration, /misconception_explanation/i);
 assert.match(migration, /count\(\*\) over\(\)::integer as mapping_count/i);
 assert.match(migration, /v_misconception_concept_id = v_queue\.concept_id/i);
 assert.match(migration, /public\.quiz_assignments/i);
