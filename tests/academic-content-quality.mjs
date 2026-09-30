@@ -455,6 +455,22 @@ delete missingConceptTargets.academic_context.concept_targets;
 const missingConceptTargetsResult = validateAcademicPackage(missingConceptTargets);
 assert.ok(missingConceptTargetsResult.errors.some(x => x.code === 'CONCEPT_TARGETS_REQUIRED'), 'Targeted packages must declare concept_targets');
 
+
+const duplicateConceptTarget = read('valid-package.json');
+duplicateConceptTarget.academic_context.concept_targets.push({ ...duplicateConceptTarget.academic_context.concept_targets[0] });
+const duplicateConceptTargetResult = validateAcademicPackage(duplicateConceptTarget);
+assert.ok(duplicateConceptTargetResult.errors.some(x => x.code === 'DUPLICATE_CONCEPT_TARGET'), 'Duplicate concept targets must be rejected');
+
+const missingConceptTargetEvidence = read('valid-package.json');
+missingConceptTargetEvidence.academic_context.concept_targets[0].evidence_refs = [];
+const missingConceptTargetEvidenceResult = validateAcademicPackage(missingConceptTargetEvidence);
+assert.ok(missingConceptTargetEvidenceResult.errors.some(x => x.code === 'CONCEPT_TARGET_EVIDENCE_REQUIRED'), 'Every concept target must retain authoritative evidence references');
+
+const missingBlueprintConceptTarget = read('valid-package.json');
+missingBlueprintConceptTarget.blueprint[0].concept_code = 'missing-concept-target';
+const missingBlueprintConceptTargetResult = validateAcademicPackage(missingBlueprintConceptTarget);
+assert.ok(missingBlueprintConceptTargetResult.errors.some(x => x.code === 'BLUEPRINT_CONCEPT_TARGET_REQUIRED'), 'Every blueprint concept must map to a declared concept target');
+
 const invalidConceptState = read('valid-package.json');
 invalidConceptState.academic_context.concept_targets[0].state = 'WEAK';
 const invalidConceptStateResult = validateAcademicPackage(invalidConceptState);
@@ -471,6 +487,7 @@ justifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty_
 justifiedTargetDifficulty.blueprint[0].difficulty_level = 3;
 justifiedTargetDifficulty.questions[0].difficulty_level = 3;
 const justifiedTargetDifficultyResult = validateAcademicPackage(justifiedTargetDifficulty);
+assert.equal(justifiedTargetDifficultyResult.ok, true, JSON.stringify(justifiedTargetDifficultyResult, null, 2));
 assert.ok(!justifiedTargetDifficultyResult.errors.some(x => x.code === 'TARGET_DIFFICULTY_OVERRIDE_UNJUSTIFIED'), 'Evidence-based target difficulty override should be accepted');
 
 const roleMismatch = read('valid-package.json');
