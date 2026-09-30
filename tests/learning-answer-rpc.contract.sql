@@ -311,7 +311,7 @@ begin
     where quiz_attempt_id = v_attempt_b
       and question_id = v_q_one
       and detected_misconception_id = v_misconception
-  ) <> array[1,2,3]
+  ) <> array[1,2,3]::smallint[]
   or (
     select count(*)
     from public.adaptive_events
