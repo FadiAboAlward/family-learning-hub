@@ -493,7 +493,8 @@ begin
   -- A finalized mapped wrong answer is idempotent: the same-option replay
   -- returns cached evidence without duplicating the answer attempt or event.
   update public.quiz_questions
-  set max_attempts = 1
+  set max_attempts = 1,
+      remediation_after_attempt = 1
   where id = v_q_one and workspace_id = v_workspace;
 
   insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
@@ -515,7 +516,8 @@ begin
   end if;
 
   update public.quiz_questions
-  set max_attempts = 4
+  set max_attempts = 4,
+      remediation_after_attempt = 3
   where id = v_q_one and workspace_id = v_workspace;
 
   -- Ambiguous mappings must not be guessed.
