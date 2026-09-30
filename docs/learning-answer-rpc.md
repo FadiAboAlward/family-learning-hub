@@ -23,19 +23,31 @@ The RPC preserves those rules and the existing response keys:
 - `remediation_added` with the same queue/question payload shape;
 - `explanation` and `correct_option_position`, disclosed only at finalization.
 
-The Learning answer RPC now records a misconception only when an incorrect
-selected option has exactly one authored option-to-misconception mapping for
-the active concept in the same workspace. In that case the answer-attempt row
-stores `detected_misconception_id` plus a small allowlisted
-`error_classification` payload with source `mapped_distractor`, and the same
-transaction emits a `misconception_detected` adaptive event. When an active
-`incorrect_attempt` explanation set for that misconception is eligible for the
-same workspace, question/concept, attempt number, learner grade, difficulty,
-and learner language, the answer-attempt row records its `explanation_set_id` and uses the ordered text blocks as persisted `feedback_text`; otherwise the existing generic feedback/explanation path remains unchanged. Correct answers, unmapped distractors, and ambiguous mappings
-are not classified; the RPC never infers a misconception from wrongness alone.
-Finalized same-option retries
-return the cached result before creating any additional attempt evidence, so
-the diagnostic event is not duplicated by HTTP retry.
+The Learning answer RPC now records a misconception only when the workspace
+`pedagogy.misconception_policy.detect_from_multiple_choice_distractors` switch
+allows it and an incorrect selected option has exactly one authored
+option-to-misconception mapping in the same workspace whose misconception
+matches the active concept. Mapping uniqueness is resolved in one database
+statement snapshot, so ambiguous concurrent mappings are not guessed. In that
+case the answer-attempt row stores `detected_misconception_id` plus a small
+allowlisted `error_classification` payload with source `mapped_distractor`,
+and the same transaction emits a `misconception_detected` adaptive event.
+
+When an active `incorrect_attempt` explanation set for that misconception is
+eligible for the same workspace, question/concept, attempt number, effective
+grade, difficulty, and learner language, the RPC records its
+`explanation_set_id` and uses its ordered text blocks as the learner feedback.
+For non-final attempts that text replaces only the content of the existing hint
+payload, preserving its level and progression; for a finalized incorrect answer
+it becomes the returned explanation. If no usable modeled text exists, the RPC
+keeps the existing generic hint/final-explanation fallback. Effective grade is
+resolved first from the attempt's assignment/enrolled program, then from a
+matching primary or unambiguous active program, and only then from
+`learners.grade_level` as a display/default fallback. Correct answers, unmapped
+distractors, disabled detection, and ambiguous mappings are not classified; the
+RPC never infers a misconception from wrongness alone. Finalized same-option
+retries return the cached result before creating any additional attempt
+evidence, so the diagnostic event is not duplicated by HTTP retry.
 
 Mastery is updated only when a question is finalized, using the same weighted
 evidence calculation and first-try counter as before. Hint counters now reflect
