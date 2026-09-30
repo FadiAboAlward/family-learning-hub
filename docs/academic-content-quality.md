@@ -66,6 +66,17 @@ Wrong options must carry a short distractor_rationale explaining why a learner c
 
 The deterministic gate cannot prove every semantic property of a distractor. It therefore combines machine checks with author responsibility: plausibility, age-appropriate language, source fidelity, and lack of grammatical/visual answer giveaways still require content review. The validator emits a warning when the correct option is unusually long compared with distractors.
 
+## Self-contained learner text and language
+
+Every newly authored question must declare `prompt_language` using a supported learner language code. The current supported set is `ar`, `tr`, and `en`.
+
+Every learner-facing authored question must be self-contained. A generated or book-derived assessment item may use the assigned Project Book as its authoring source, but its prompt, options, hints, steps, and feedback must not tell the learner to open or consult “the book”, a page, a source, or a reference unless the required material is embedded in that same question payload.
+
+Learner-facing authored strings are plain text. Store apostrophes and symbols directly; do not store HTML entities such as `&#39;` or raw HTML tags as question content. The runtime may normalize legacy encoded text defensively before escaping, but new packages must pass the validator without relying on that compatibility layer.
+
+The Arabic application shell remains RTL. Question prose direction follows `prompt_language`: Arabic is RTL, Turkish and English are LTR, while mathematical runs remain logical LTR with bidi isolation.
+
+
 ## Progressive hint contract
 
 The existing four-level hint contract remains authoritative:
@@ -130,6 +141,8 @@ Do not place real learner attempts into repository regression fixtures merely to
 If a future centralized authoring/import/publishing command is added to the repository, that command must invoke `validateAcademicPackage` before any persistence or publication write. Until such a centralized writer exists, the agent authoring boundary above is mandatory for every content-publication path.
 
 A package is not academically ready when the validator reports errors. Warnings require human review/disposition but do not automatically fail validation.
+
+Routine content-only assessment creation should stay lightweight: author the package, run this deterministic validator, resolve its findings, then publish and verify the requested delivery links/artifacts. TestSprite and browser QA are not required for every ordinary package when platform/runtime code is unchanged. Use the Platform Development & QA gate when code, rendering, contracts, persistence, or other runtime behavior changes.
 
 This gate is necessary but not sufficient: source correctness, visual-authoritative math verification, learner-state reconciliation, and the existing QA/security rules still apply.
 

@@ -4,6 +4,27 @@ import { fileURLToPath } from 'node:url';
 
 const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
+const PROMPT_LANGUAGES = new Set(['ar', 'tr', 'en']);
+const HTML_ENTITY_RE = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/iu;
+const RAW_HTML_TAG_RE = /<\/?[a-z][a-z0-9-]*(?:\s+(?:(?:disabled|selected|checked|readonly|required|multiple|autofocus|hidden|open)|[a-z_:][-a-z0-9_:.]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)))*\s*\/?>/iu;
+const SOURCE_DEPENDENCY_PATTERNS = [
+  /\bkitap(?:ta|taki|tan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkitaba\s+(?:g[oö]re|bak(?:arak)?|ba[sş]vur(?:arak)?)\b/iu,
+  /\bkitab[ıiuü]\s+(?:a[cç](?:ıp|arak)?|incele(?:yerek)?|kullan(?:arak)?)\b/iu,
+  /\bsayfaya\s+(?:bak(?:arak)?|git(?:erek)?|ba[sş]vur(?:arak)?|d[oö]n(?:erek)?)\b/iu,
+  /\bsayfa(?:da|daki|dan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkayna(?:kta|ktaki)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
+  /\bkayna[gğ]a\s+g[oö]re\b/iu,
+  /\b(?:according\s+to|refer\s+to|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\b(?:open|look\s+at|see|check)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\buse\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b(?!\s+(?:below|above|following)\b)/iu,
+  /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding)\s+page\b/iu,
+  /\bon\s+(?:the\s+)?(?:previous|next|following|preceding)\s+page\b/iu,
+  /(?:راجع|افتح)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /(?:انظر|ارجع)\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /بالرجوع\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
+];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 const CONCEPT_STATES = new Set(['MASTERED', 'DEVELOPING', 'NEEDS_REINFORCEMENT', 'UNKNOWN_BASELINE']);
@@ -144,6 +165,30 @@ function issue(list, code, path, message) {
   list.push({ code, path, message });
 }
 
+function learnerVisibleFields(q, basePath) {
+  const fields = [];
+  for (const key of ['prompt', 'explanation', 'correct_explanation', 'final_incorrect_explanation', 'feedback']) {
+    if (typeof q?.[key] === 'string') fields.push({ path: basePath + '.' + key, value: q[key] });
+  }
+  for (const [i, option] of (Array.isArray(q?.options) ? q.options : []).entries()) {
+    if (typeof option?.content === 'string') fields.push({ path: basePath + '.options[' + i + '].content', value: option.content });
+  }
+  for (const [i, hint] of (Array.isArray(q?.hints) ? q.hints : []).entries()) {
+    if (typeof hint?.content === 'string') fields.push({ path: basePath + '.hints[' + i + '].content', value: hint.content });
+    for (const key of ['steps', 'expanded_steps']) {
+      for (const [j, value] of (Array.isArray(hint?.[key]) ? hint[key] : []).entries()) {
+        if (typeof value === 'string') fields.push({ path: basePath + '.hints[' + i + '].' + key + '[' + j + ']', value });
+      }
+    }
+  }
+  return fields;
+}
+
+function sourceDependency(value) {
+  const normalized = caseFold(text(value));
+  return normalized && SOURCE_DEPENDENCY_PATTERNS.some(re => re.test(normalized));
+}
+
 export function validateAcademicPackage(pkg) {
   const errors = [];
   const warnings = [];
@@ -274,6 +319,19 @@ export function validateAcademicPackage(pkg) {
     if (!Number.isInteger(q && q.difficulty_level) || q.difficulty_level < 1 || q.difficulty_level > 5) issue(errors, 'DIFFICULTY_OUT_OF_RANGE', p + '.difficulty_level', 'difficulty_level must be an integer from 1 to 5.');
     if (!ORIGINS.has(q && q.origin)) issue(errors, 'INVALID_ORIGIN', p + '.origin', 'origin must be BOOK_DERIVED or GENERATED_SIMILAR.');
     if (!text(q && q.source_ref)) issue(errors, 'SOURCE_REF_REQUIRED', p + '.source_ref', 'source_ref is required.');
+
+    const promptLanguage = text(q && q.prompt_language).toLocaleLowerCase('en-US');
+    if (!promptLanguage) issue(errors, 'PROMPT_LANGUAGE_REQUIRED', p + '.prompt_language', 'prompt_language is required for newly authored questions.');
+    else if (!PROMPT_LANGUAGES.has(promptLanguage)) issue(errors, 'PROMPT_LANGUAGE_UNSUPPORTED', p + '.prompt_language', 'prompt_language must currently be ar, tr, or en.');
+
+    for (const field of learnerVisibleFields(q, p)) {
+      if (HTML_ENTITY_RE.test(field.value) || RAW_HTML_TAG_RE.test(field.value)) {
+        issue(errors, 'LEARNER_TEXT_MARKUP_FORBIDDEN', field.path, 'Learner-visible authored text must be plain text; store apostrophes and symbols directly, not HTML/entity markup.');
+      }
+      if (sourceDependency(field.value)) {
+        issue(errors, 'EXTERNAL_SOURCE_DEPENDENCY', field.path, 'Learner-visible authored text must be self-contained and must not send the learner back to a book, page, source, or reference.');
+      }
+    }
 
     if (b) {
       for (const key of ['delivery_surface', 'concept_code', 'difficulty_level', 'origin', 'source_ref']) {

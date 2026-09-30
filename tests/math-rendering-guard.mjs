@@ -135,7 +135,7 @@ const surfaceContracts={
     ['review prompt',"renderMath(r.prompt||'')"],
     ['review selected answer',"renderMath(selected||String(r.response?.option_position||''))"],
     ['review correct answer',"renderMath(correct||String(r.correct_answer?.option_position||''))"],
-    ['review explanation steps','steps.map(s=>`<li>${renderMath(s)}</li>`)']
+    ['review explanation steps','steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`)']
   ],
   'attempt-history-v1.js':[
     ['shared helper','const mth='],
@@ -151,7 +151,7 @@ for(const [file,contracts] of Object.entries(surfaceContracts)){
   for(const [label,needle] of contracts)if(!source.includes(needle))fail(`${file} bypasses the shared math renderer for ${label}.`);
 }
 
-const rawInterpolation=/\$\{([^}]*(?:\.prompt|\.explanation)[^}]*)\}/g;
+const rawInterpolation=/\$\{([^}]*(?:\.prompt(?![A-Za-z0-9_])|\.explanation(?![A-Za-z0-9_]))[^}]*)\}/g;
 for(const file of scripts){
   if(!fs.existsSync(path.join(ROOT,file)))continue;
   const source=read(file);

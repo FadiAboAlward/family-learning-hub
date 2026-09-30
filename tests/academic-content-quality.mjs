@@ -12,6 +12,145 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+const sourceDependent = read('valid-package.json');
+sourceDependent.questions[1].prompt_language = 'tr';
+sourceDependent.questions[1].prompt = 'Kitapta verilen kurala göre doğru seçenek hangisidir?';
+const sourceDependentResult = validateAcademicPackage(sourceDependent);
+assert.ok(sourceDependentResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'), 'Generated learner questions must not depend on the textbook/page/reference.');
+
+for (const prompt of [
+  'Open the book to page 5 and answer the question.',
+  'Look at page 5 before choosing your answer.',
+  'Use the diagram on the previous page to solve the problem.',
+  'Use the reference from the previous page to answer.'
+]) {
+  const directExternalInstruction = read('valid-package.json');
+  directExternalInstruction.questions[1].prompt_language = 'en';
+  directExternalInstruction.questions[1].prompt = prompt;
+  const directExternalInstructionResult = validateAcademicPackage(directExternalInstruction);
+  assert.ok(
+    directExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'Direct instruction to consult external material must be rejected: ' + prompt
+  );
+}
+
+const selfContainedBookProblem = read('valid-package.json');
+selfContainedBookProblem.questions[1].prompt_language = 'tr';
+selfContainedBookProblem.questions[1].prompt = 'Bir kitapta 120 sayfa vardır. Ali 30 sayfa okudu. Kaç sayfa kaldı?';
+const selfContainedBookProblemResult = validateAcademicPackage(selfContainedBookProblem);
+assert.ok(
+  !selfContainedBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained word problem may mention a book as the problem object.'
+);
+
+const selfContainedEnglishBookProblem = read('valid-package.json');
+selfContainedEnglishBookProblem.questions[1].prompt_language = 'en';
+selfContainedEnglishBookProblem.questions[1].prompt = 'There are 120 pages in the book. Ali reads 30 pages. How many remain?';
+const selfContainedEnglishBookProblemResult = validateAcademicPackage(selfContainedEnglishBookProblem);
+assert.ok(
+  !selfContainedEnglishBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained English word problem may mention a book as the problem object.'
+);
+
+const embeddedTableInstruction = read('valid-package.json');
+embeddedTableInstruction.questions[1].prompt_language = 'en';
+embeddedTableInstruction.questions[1].prompt = 'Use the table below to answer: Monday 4, Tuesday 6. Which day has the larger value?';
+const embeddedTableInstructionResult = validateAcademicPackage(embeddedTableInstruction);
+assert.ok(
+  !embeddedTableInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'An instruction may reference material embedded in the same learner payload.'
+);
+
+const embeddedReferenceInstruction = read('valid-package.json');
+embeddedReferenceInstruction.questions[1].prompt_language = 'en';
+embeddedReferenceInstruction.questions[1].prompt = 'Use the reference below: speed = distance / time. Which formula finds distance?';
+const embeddedReferenceInstructionResult = validateAcademicPackage(embeddedReferenceInstruction);
+assert.ok(
+  !embeddedReferenceInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A reference embedded directly in the same prompt must remain self-contained.'
+);
+
+const turkishExternalInstruction = read('valid-package.json');
+turkishExternalInstruction.questions[1].prompt_language = 'tr';
+turkishExternalInstruction.questions[1].prompt = 'Kitabı açıp 5. sayfaya bakarak soruyu cevapla.';
+const turkishExternalInstructionResult = validateAcademicPackage(turkishExternalInstruction);
+assert.ok(
+  turkishExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'Direct Turkish instructions to open the book or look at a page must be rejected.'
+);
+
+for (const prompt of [
+  'افتح الكتاب على الصفحة 5 ثم أجب عن السؤال.',
+  'انظر إلى الصفحة ثم اختر الإجابة الصحيحة.'
+]) {
+  const arabicExternalInstruction = read('valid-package.json');
+  arabicExternalInstruction.questions[1].prompt_language = 'ar';
+  arabicExternalInstruction.questions[1].prompt = prompt;
+  const arabicExternalInstructionResult = validateAcademicPackage(arabicExternalInstruction);
+  assert.ok(
+    arabicExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'Direct Arabic instruction to consult external material must be rejected: ' + prompt
+  );
+}
+
+const selfContainedArabicBookProblem = read('valid-package.json');
+selfContainedArabicBookProblem.questions[1].prompt_language = 'ar';
+selfContainedArabicBookProblem.questions[1].prompt = 'في كتاب 120 صفحة. قرأ علي 30 صفحة. كم صفحة بقيت؟';
+const selfContainedArabicBookProblemResult = validateAcademicPackage(selfContainedArabicBookProblem);
+assert.ok(
+  !selfContainedArabicBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained Arabic word problem may mention a book as the problem object.'
+);
+
+const entityArtifact = read('valid-package.json');
+entityArtifact.questions[1].prompt_language = 'tr';
+entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
+const entityArtifactResult = validateAcademicPackage(entityArtifact);
+assert.ok(entityArtifactResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Encoded HTML entities must be rejected from learner-visible authored text.');
+
+const rawMarkup = read('valid-package.json');
+rawMarkup.questions[1].prompt = 'احسب <b>2 + 3</b>';
+const rawMarkupResult = validateAcademicPackage(rawMarkup);
+assert.ok(rawMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Raw HTML-like markup must be rejected from learner-visible authored text.');
+
+for (const prompt of [
+  'Choose <input disabled> to continue.',
+  'Choose <option selected> to continue.'
+]) {
+  const booleanMarkup = read('valid-package.json');
+  booleanMarkup.questions[1].prompt_language = 'en';
+  booleanMarkup.questions[1].prompt = prompt;
+  const booleanMarkupResult = validateAcademicPackage(booleanMarkup);
+  assert.ok(
+    booleanMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'),
+    'HTML tags with boolean attributes must be rejected: ' + prompt
+  );
+}
+
+const compactInequality = read('valid-package.json');
+compactInequality.questions[1].prompt_language = 'en';
+compactInequality.questions[1].prompt = 'If a<b and c>d, which comparison is true?';
+const compactInequalityResult = validateAcademicPackage(compactInequality);
+assert.ok(
+  !compactInequalityResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'),
+  'Compact inequalities must not be mistaken for HTML markup.'
+);
+
+const pageArithmetic = read('valid-package.json');
+pageArithmetic.questions[1].prompt_language = 'en';
+pageArithmetic.questions[1].prompt = 'A story begins on page 5 and ends on page 12. How many pages does it span?';
+const pageArithmeticResult = validateAcademicPackage(pageArithmetic);
+assert.ok(
+  !pageArithmeticResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'Page numbers used as self-contained problem data must remain valid.'
+);
+
+const safeTurkishApostrophe = read('valid-package.json');
+safeTurkishApostrophe.questions[1].prompt_language = 'tr';
+safeTurkishApostrophe.questions[1].prompt = "A şehrinin saat dilimi UTC+2, B şehrinin saat dilimi UTC-4'tür. A şehri B'den kaç saat ileridedir?";
+const safeTurkishApostropheResult = validateAcademicPackage(safeTurkishApostrophe);
+assert.ok(!safeTurkishApostropheResult.errors.some(x => ['LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY','PROMPT_LANGUAGE_UNSUPPORTED'].includes(x.code)), 'Normal Turkish apostrophes and UTC +/- notation must remain valid plain text.');
+
 const invalid = validateAcademicPackage(read('invalid-package.json'));
 assert.equal(invalid.ok, false);
 const codes = new Set(invalid.errors.map(x => x.code));
@@ -27,7 +166,8 @@ for (const code of [
   'HINT_ANSWER_LEAK',
   'HINT_THREE_STEP_SHAPE',
   'HINT_SIX_STEP_SHAPE',
-  'NON_LEARNING_HINTS_FORBIDDEN'
+  'NON_LEARNING_HINTS_FORBIDDEN',
+  'PROMPT_LANGUAGE_REQUIRED'
 ]) {
   assert.ok(codes.has(code), 'missing expected validation error ' + code);
 }

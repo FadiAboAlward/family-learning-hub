@@ -64,7 +64,7 @@
     else fallback(text,done);
   }
   function fallback(text,done){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch{}t.remove()}
-  function chip(code){const b=document.createElement('button');b.type='button';b.className='question-ref-chip';b.textContent=`🔖 ${code}`;b.title='اضغط لنسخ رمز السؤال';b.setAttribute('aria-label',`نسخ رمز السؤال ${code}`);b.addEventListener('click',()=>copyText(code,b));return b}
+  function chip(code){const b=document.createElement('button');b.type='button';b.className='question-ref-chip';b.dir='ltr';b.lang='en';b.textContent=`🔖 ${code}`;b.title='اضغط لنسخ رمز السؤال';b.setAttribute('aria-label',`نسخ رمز السؤال ${code}`);b.addEventListener('click',()=>copyText(code,b));return b}
 
   function currentIndex(panel){
     const txt=panel.querySelector('.exam-status .topline b')?.textContent||panel.querySelector('.topline b')?.textContent||'';
@@ -84,7 +84,7 @@
     });
   }
   function syncUi(){syncCurrent();syncReview()}
-  const observer=new MutationObserver(()=>queueMicrotask(syncUi));observer.observe(document.documentElement,{childList:true,subtree:true});
+  const appRoot=document.getElementById('app');if(appRoot){const observer=new MutationObserver(()=>queueMicrotask(syncUi));observer.observe(appRoot,{childList:true,subtree:true});}
   document.addEventListener('DOMContentLoaded',syncUi);window.addEventListener('hashchange',()=>{if(location.hash!=='#student'){stateRef.attemptId='';stateRef.questionIds=[];stateRef.reviewIds=[];stateRef.codes={}}});
   window.FLH=window.FLH||{};window.FLH.questionReferenceState=stateRef;
 })();

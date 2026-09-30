@@ -252,7 +252,7 @@ async function attemptDetail(learnerId: string, body: any) {
 
   const [{ data: questions }, { data: options }, { data: keys }, { data: questionAssets }] = await Promise.all([
     questionIds.length
-      ? admin.from("quiz_questions").select("id,question_code,position,prompt,points,source_page_start,source_page_end").eq("workspace_id", WORKSPACE_ID).in("id", questionIds)
+      ? admin.from("quiz_questions").select("id,question_code,position,prompt,prompt_language,points,source_page_start,source_page_end").eq("workspace_id", WORKSPACE_ID).in("id", questionIds)
       : Promise.resolve({ data: [] }),
     questionIds.length
       ? admin.from("quiz_question_options").select("question_id,position,label,content").eq("workspace_id", WORKSPACE_ID).in("question_id", questionIds).order("position")
@@ -318,6 +318,7 @@ async function attemptDetail(learnerId: string, body: any) {
       question_id: questionId,
       question_code: q.question_code || null,
       prompt: q.prompt || "",
+      prompt_language: q.prompt_language || null,
       source_page_start: q.source_page_start || null,
       source_page_end: q.source_page_end || null,
       source_role: qrow.source_role || null,

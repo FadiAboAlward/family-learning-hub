@@ -97,16 +97,22 @@ const localRefs=[...index.matchAll(/(?:src|href)=["']\.\/([^"'?]+)(?:\?[^"']*)?[
 for(const ref of localRefs){if(!exists(ref))fail(`index.html references missing file: ${ref}`);}
 const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 for(const f of ['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'])if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);
-for(const f of ['app.js','math-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+for(const f of ['app.js','math-direction-v1.js','content-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','attempt-history-v1.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
 if(loadedScripts.indexOf('math-direction-v1.js')<loadedScripts.indexOf('app.js'))fail('Math direction runtime must load after app.js so it can wrap the shared math renderer.');
 if(loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js'))fail('Math direction runtime must load before Learning and Exam renderers.');
+if(loadedScripts.indexOf('content-direction-v1.js')<loadedScripts.indexOf('math-direction-v1.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('attempt-history-v1.js'))fail('Content direction runtime must load after math direction and before Learning/Exam/history renderers.');
 
 const learning=read('learning-launcher-v2.js');
 const exam=read('program-exam-v3.js');
 const history=read('attempt-history-v1.js');
+const attemptHistoryApi=read('supabase/functions/attempt-history-api/index.ts');
+const interactivePracticeHtml=read('interactive-practice.html');
+const interactivePractice=read('interactive-practice-v1.js');
 const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
+const contentDirection=read('content-direction-v1.js');
+const questionReference=read('question-reference-ui-v1.js');
 const mathDirectionCss=read('math-direction-v1.css');
 const mathGuard=read('tests/math-rendering-guard.mjs');
 const screenshotEvidence=read('tests/screenshot-evidence.mjs');
@@ -116,8 +122,8 @@ const academicValidator=read('scripts/academic-content-quality.mjs');
 const academicTests=read('tests/academic-content-quality.mjs');
 const agents=read('AGENTS.md');
 
-for(const phrase of ['Student Academic State','runtime_external_dependencies','nudge','near_solution','Brisk Teaching','Snorkl'])if(!academicContract.includes(phrase))fail(`Academic quality contract missing protected rule: ${phrase}`);
-for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
+for(const phrase of ['Student Academic State','runtime_external_dependencies','nudge','near_solution','Brisk Teaching','Snorkl','prompt_language','self-contained'])if(!academicContract.includes(phrase))fail(`Academic quality contract missing protected rule: ${phrase}`);
+for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN','PROMPT_LANGUAGE_REQUIRED','LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
 for(const code of ['HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN'])if(!academicTests.includes(code))fail(`Academic content regression missing: ${code}`);
 if(!agents.includes('docs/academic-content-quality.md'))fail('AGENTS.md must pin the academic content quality contract.');
 
@@ -138,6 +144,25 @@ if(!layout.includes("const appRoot = document.getElementById('app');"))fail('Ans
 if(layout.includes("observer.observe(document.documentElement"))fail('Answer observer must not scan the whole document.');
 if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer must not re-scan on every click.');
 if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
+if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
+if(!learning.includes('class="flh-hint-content" ${hintAttrs(currentHint,q)}'))fail('Learning authored hint content must use the hint language with question-language fallback.');
+if(learning.includes('class="flh-hint-card" ${hintAttrs(currentHint,q)}'))fail('Arabic hint chrome must not inherit the authored hint language boundary.');
+if(!learning.includes("language:'ar',content:'وصلت لآخر مستوى من التلميحات")||!learning.includes("language:'ar',content:'تعذر تحميل التلميح الآن"))fail('Synthesized Arabic Learning hints must declare Arabic language metadata.');
+if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
+if(!exam.includes('<li dir="auto">'))fail('Exam review explanation steps must isolate their own prose direction.');
+if(!history.includes('contentAttrs(x.prompt_language)'))fail('Attempt history prompt/answer review must use prompt_language direction.');
+if(!history.includes("globalThis.FLHContentDirection?.normalizeText"))fail('Attempt history must normalize legacy encoded learner text before safe escaping.');
+if(!attemptHistoryApi.includes('prompt,prompt_language,points')||!attemptHistoryApi.includes('prompt_language: q.prompt_language || null'))fail('Attempt history API must return prompt_language with learner-facing review prompts.');
+if(!interactivePracticeHtml.includes('content-direction-v1.js?v=20260930-quality1')||interactivePracticeHtml.indexOf('content-direction-v1.js')>interactivePracticeHtml.indexOf('interactive-practice-v1.js'))fail('Interactive practice must load the shared content-direction helper before its renderer.');
+if(!interactivePractice.includes('contentAttrs(q.prompt_language)')||!interactivePractice.includes('hintAttrs(currentHint,q)')||!interactivePractice.includes('contentAttrs(r.prompt_language)'))fail('Interactive practice prompt/options/hints/review must honor language direction metadata.');
+if(!interactivePractice.includes("language:'ar',content:'تعذر تحميل التلميح الآن"))fail('Interactive practice synthesized Arabic hint errors must declare Arabic language metadata.');
+if(!learning.includes('questionAttrs(r)')||!exam.includes('questionAttrs(r)'))fail('Learning and Exam reviews must preserve prompt_language direction.');
+if(learning.includes('flh-code-inline')||exam.includes('flh-code-inline'))fail('Question code must have one visible owner; Learning/Exam must not render duplicate inline codes.');
+if(!questionReference.includes("b.dir='ltr'")||!questionReference.includes("b.lang='en'"))fail('Question reference chips must isolate the code as LTR.');
+if(!questionReference.includes("document.getElementById('app')")||questionReference.includes('observe(document.documentElement'))fail('Question reference observer must be scoped to #app.');
+if(!contentDirection.includes("['ar','rtl']")||!contentDirection.includes("['tr','ltr']")||!contentDirection.includes("['en','ltr']"))fail('Content direction helper must map ar/tr/en explicitly.');
+if(!contentDirection.includes('normalizeText'))fail('Content direction helper must normalize legacy encoded learner text before safe escaping.');
+if(!mathDirectionCss.includes('.question[dir],.answers[dir],.answer-grid[dir]'))fail('Question/answer language direction boundaries must use bidi isolation.');
 if(!/@media \(max-width:719px\)[\s\S]*grid-template-columns:minmax\(0,1fr\)/.test(css))fail('Mobile answer layout must force one column.');
 if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(css))fail('Math choices must retain LTR isolation.');
 
@@ -157,7 +182,7 @@ const protectedSurfaces={
     'renderMath(q.prompt)','renderMath(o.content)','renderMath(currentHint.content)','renderMath(d.explanation)',"renderMath(r.prompt||'')",'renderMath(r.explanation)'
   ],
   'program-exam-v3.js':[
-    'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li>${renderMath(s)}</li>`)'
+    'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`)'
   ],
   'attempt-history-v1.js':[
     "mth(x.prompt||'')",'mth(sel)','mth(cor)','mth(x.explanation)'
@@ -193,8 +218,8 @@ for(const requiredTest of ['signed null learner payload','array action is reject
 if(yamlJobCondition(staticJob)!==null)fail('Static quality job must be unconditional.');
 if(!qa.includes("find scripts -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check"))fail('Static quality must syntax-check academic authoring scripts.');
 if(yamlJobCondition(browserJob)!==null)fail('Browser smoke job must be unconditional.');
-for(const command of ['node tests/static-qa.mjs','node tests/academic-content-quality.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
-for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
+for(const command of ['node tests/static-qa.mjs','node tests/academic-content-quality.mjs','node tests/math-rendering-guard.mjs','node tests/math-direction.mjs','node tests/content-direction.mjs','node tests/exam-v2-api.mjs'])if(!yamlHasDirectRequiredCommand(staticJob,command))fail(`Static quality missing direct unconditional command: ${command}`);
+for(const command of ['node tests/smoke.mjs','node tests/math-direction-browser.mjs','node tests/content-direction-browser.mjs','node tests/screenshot-evidence.mjs','node tests/performance.mjs','node tests/copy-smoke.mjs'])if(!yamlHasDirectRequiredCommand(browserJob,command))fail(`Browser smoke missing direct unconditional command: ${command}`);
 if(yamlJobNeeds(browserJob)!=='static-quality')fail('Browser smoke must structurally depend on Static quality.');
 const screenshotUpload=yamlNamedSafeStep(browserJob,'Upload Playwright screenshots',{allowAlways:true});
 if(!screenshotUpload)fail('Playwright screenshot upload step is missing or has an unsafe condition.');

@@ -193,7 +193,8 @@
             "اختر الخيار المطابق لما كوّنته."
           ]
         }
-      ]
+      ],
+      "prompt_language": "ar"
     },
     {
       "question_code": "QA-E-001",
@@ -236,7 +237,8 @@
           "distractor_rationale": "يتوقف عند مقدار البداية أو يسيء تمثيل الصفر."
         }
       ],
-      "hints": []
+      "hints": [],
+      "prompt_language": "ar"
     },
     {
       "question_code": "QA-P-001",
@@ -279,7 +281,8 @@
           "distractor_rationale": "يعكس الترتيب ويستخدم الجمع بدل الطرح."
         }
       ],
-      "hints": []
+      "hints": [],
+      "prompt_language": "ar"
     }
   ]
 }
