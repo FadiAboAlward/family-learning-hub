@@ -33,6 +33,7 @@ declare
   v_misconception_mapping_count integer := 0;
   v_error_classification jsonb := '{}'::jsonb;
   v_explanation_set_id uuid := null;
+  v_misconception_feedback_text text := null;
   v_next_queue_id uuid;
   v_attempt_no integer;
   v_max_attempts integer;
@@ -246,6 +247,16 @@ begin
         coalesce(es.min_attempt_no, 0) desc,
         es.id
       limit 1;
+
+      if v_explanation_set_id is not null then
+        select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
+        into v_misconception_feedback_text
+        from public.explanation_blocks eb
+        where eb.workspace_id = p_workspace_id
+          and eb.explanation_set_id = v_explanation_set_id
+          and eb.block_type = 'text'
+          and nullif(btrim(eb.content->>'text'), '') is not null;
+      end if;
     end if;
   end if;
 
@@ -311,6 +322,7 @@ begin
 
   v_feedback_text := case
     when v_is_correct then coalesce(v_key.correct_explanation, v_key.explanation)
+    when v_misconception_feedback_text is not null then v_misconception_feedback_text
     when v_finalized then coalesce(v_key.final_incorrect_explanation, v_key.explanation)
     else v_hint->>'content'
   end;
