@@ -94,6 +94,24 @@ rawMarkup.questions[1].prompt = 'احسب <b>2 + 3</b>';
 const rawMarkupResult = validateAcademicPackage(rawMarkup);
 assert.ok(rawMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Raw HTML-like markup must be rejected from learner-visible authored text.');
 
+const compactInequality = read('valid-package.json');
+compactInequality.questions[1].prompt_language = 'en';
+compactInequality.questions[1].prompt = 'If a<b and c>d, which comparison is true?';
+const compactInequalityResult = validateAcademicPackage(compactInequality);
+assert.ok(
+  !compactInequalityResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'),
+  'Compact inequalities must not be mistaken for HTML markup.'
+);
+
+const pageArithmetic = read('valid-package.json');
+pageArithmetic.questions[1].prompt_language = 'en';
+pageArithmetic.questions[1].prompt = 'A story begins on page 5 and ends on page 12. How many pages does it span?';
+const pageArithmeticResult = validateAcademicPackage(pageArithmetic);
+assert.ok(
+  !pageArithmeticResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'Page numbers used as self-contained problem data must remain valid.'
+);
+
 const safeTurkishApostrophe = read('valid-package.json');
 safeTurkishApostrophe.questions[1].prompt_language = 'tr';
 safeTurkishApostrophe.questions[1].prompt = "A şehrinin saat dilimi UTC+2, B şehrinin saat dilimi UTC-4'tür. A şehri B'den kaç saat ileridedir?";
