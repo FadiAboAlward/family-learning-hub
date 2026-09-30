@@ -24,6 +24,9 @@ assert.match(migration, /v_misconception_mapping_count = 1/i);
 assert.match(migration, /public\.explanation_sets/i);
 assert.match(migration, /es\.misconception_id = v_misconception_id/i);
 assert.match(migration, /explanation_set_id/i);
+assert.match(migration, /public\.explanation_blocks/i);
+assert.match(migration, /v_misconception_feedback_text/i);
+assert.match(migration, /feedback_text/i);
 assert.match(migration, /error_classification/i);
 
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
