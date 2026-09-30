@@ -34,6 +34,8 @@ declare
   v_attempt_k constant uuid := '20000000-0000-4000-8000-000000000011';
   v_attempt_l constant uuid := '20000000-0000-4000-8000-000000000012';
   v_attempt_m constant uuid := '20000000-0000-4000-8000-000000000013';
+  v_attempt_n constant uuid := '20000000-0000-4000-8000-000000000014';
+  v_attempt_o constant uuid := '20000000-0000-4000-8000-000000000015';
   v_misconception constant uuid := '30000000-0000-4000-8000-000000000001';
   v_misconception_two constant uuid := '30000000-0000-4000-8000-000000000002';
   v_explanation_set constant uuid := '40000000-0000-4000-8000-000000000001';
@@ -426,6 +428,117 @@ begin
     where workspace_id = v_workspace and key = 'pedagogy.misconception_policy';
   end if;
 
+  -- The preference flag disables only misconception-specific explanation
+  -- delivery; evidence detection and event recording remain active.
+  insert into public.workspace_settings(workspace_id, key, value, description)
+  values (
+    v_workspace,
+    'pedagogy.misconception_policy',
+    '{"detect_from_multiple_choice_distractors":true,"prefer_misconception_specific_explanation":false}'::jsonb,
+    'QA override'
+  )
+  on conflict (workspace_id, key) do update
+  set value = jsonb_set(
+        jsonb_set(
+          coalesce(public.workspace_settings.value, '{}'::jsonb),
+          '{detect_from_multiple_choice_distractors}',
+          'true'::jsonb,
+          true
+        ),
+        '{prefer_misconception_specific_explanation}',
+        'false'::jsonb,
+        true
+      ),
+      updated_at = now();
+
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_n, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_n, 1, v_q_one, v_concept_one, 3, 'active');
+
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_n, v_q_one, 1);
+  reset role;
+  if v_result->'hint'->>'content' <> 'hint one'
+     or not exists (
+       select 1 from public.quiz_answer_attempts
+       where quiz_attempt_id = v_attempt_n and question_id = v_q_one and attempt_no = 1
+         and detected_misconception_id = v_misconception
+         and explanation_set_id is null
+         and feedback_text = 'hint one'
+     )
+     or (
+       select count(*) from public.adaptive_events
+       where quiz_attempt_id = v_attempt_n
+         and event_type = 'misconception_detected'
+         and output_state->>'misconception_id' = v_misconception::text
+     ) <> 1 then
+    raise exception 'LEARNING_RPC_EXPLANATION_PREFERENCE_NOT_HONORED:%', v_result;
+  end if;
+
+  -- When a normal hint row is missing, eligible misconception-specific text is
+  -- still delivered without advancing ordinary hint progression.
+  update public.workspace_settings
+  set value = jsonb_set(
+        jsonb_set(
+          coalesce(value, '{}'::jsonb),
+          '{detect_from_multiple_choice_distractors}',
+          'true'::jsonb,
+          true
+        ),
+        '{prefer_misconception_specific_explanation}',
+        'true'::jsonb,
+        true
+      ),
+      updated_at = now()
+  where workspace_id = v_workspace and key = 'pedagogy.misconception_policy';
+
+  delete from public.quiz_question_hints
+  where workspace_id = v_workspace
+    and question_id = v_q_one
+    and hint_level = 1;
+
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_o, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_o, 1, v_q_one, v_concept_one, 3, 'active');
+
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_o, v_q_one, 1);
+  reset role;
+  if v_result->'hint'->>'content' <> 'mapped misconception feedback'
+     or v_result->'hint'->>'pedagogical_role' <> 'misconception_explanation'
+     or v_result->>'hint_level' is not null
+     or v_result->>'hints_used' <> '0'
+     or not exists (
+       select 1 from public.quiz_answer_attempts
+       where quiz_attempt_id = v_attempt_o and question_id = v_q_one and attempt_no = 1
+         and detected_misconception_id = v_misconception
+         and explanation_set_id = v_explanation_set
+         and feedback_text = 'mapped misconception feedback'
+         and hint_level_shown is null
+     ) then
+    raise exception 'LEARNING_RPC_SPARSE_HINT_MODELED_FEEDBACK_INVALID:%', v_result;
+  end if;
+
+  insert into public.quiz_question_hints(
+    workspace_id, question_id, hint_level, pedagogical_role, content, language, terminology_display_mode
+  ) values (
+    v_workspace, v_q_one, 1, 'nudge', 'hint one', 'ar', 'inherit'
+  );
+
+  if v_policy_existed then
+    update public.workspace_settings
+    set value = v_original_misconception_policy,
+        updated_at = now()
+    where workspace_id = v_workspace and key = 'pedagogy.misconception_policy';
+  else
+    delete from public.workspace_settings
+    where workspace_id = v_workspace and key = 'pedagogy.misconception_policy';
+  end if;
+
   -- Explanation grade eligibility uses the enrolled program attached to the
   -- attempt assignment, not the learner's optional account grade hint.
   update public.explanation_sets
@@ -731,7 +844,7 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j, v_attempt_k, v_attempt_l, v_attempt_m);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j, v_attempt_k, v_attempt_l, v_attempt_m, v_attempt_n, v_attempt_o);
   delete from public.quiz_assignments where id = v_assignment;
   delete from public.learner_program_enrollments where id = v_enrollment;
   delete from public.learning_programs where id = v_program;
