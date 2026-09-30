@@ -131,10 +131,10 @@ begin
      or v_result->'award' <> '{"already_awarded":false,"xp":65,"reward_points":10,"badges":["first-try","keep-going","concept-master"]}'::jsonb
      or jsonb_array_length(v_result->'review') <> 4
      or v_result->'review'->0->>'question_code' <> 'Q-91500001'
-     or v_result->'review'->0->>'prompt_language' <> 'ar'
-     or v_result->'review'->1->>'prompt_language' <> 'tr'
-     or v_result->'review'->2->>'prompt_language' <> 'en'
-     or v_result->'review'->3->>'prompt_language' <> 'ar'
+     or v_result->'review'->0->>'prompt_language' is distinct from 'ar'
+     or v_result->'review'->1->>'prompt_language' is distinct from 'tr'
+     or v_result->'review'->2->>'prompt_language' is distinct from 'en'
+     or v_result->'review'->3->>'prompt_language' is distinct from 'ar'
      or v_result->'review'->0->>'explanation' <> 'correct one'
      or v_result->'review'->3->>'explanation' <> 'final incorrect four'
      or v_result->'review'->3->'correct_answer'->>'sentinel' <> 'FINISH_KEY_FOUR'
