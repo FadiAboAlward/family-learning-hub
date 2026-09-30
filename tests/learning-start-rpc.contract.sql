@@ -69,11 +69,11 @@ begin
   insert into public.quiz_questions(
     id, workspace_id, quiz_version_id, position, question_type, prompt, origin,
     source_page_start, source_page_end, source_metadata, points,
-    difficulty_level, max_attempts, remediation_after_attempt, delivery_role
+    difficulty_level, max_attempts, remediation_after_attempt, delivery_role, prompt_language
   ) values
-    (v_question_two, v_workspace, v_version_program, 2, 'single_choice', 'second prompt', 'generated', 12, 13, '{"source":"qa"}', 2, 4, 5, 3, 'core'),
-    (v_question_one, v_workspace, v_version_program, 1, 'single_choice', 'first prompt', 'book_adapted', 10, 10, '{"source":"book"}', 1, 2, 4, 2, 'core'),
-    (v_question_remediation, v_workspace, v_version_program, 3, 'single_choice', 'remediation prompt', 'generated', null, null, '{}', 1, 1, 4, 2, 'remediation_pool');
+    (v_question_two, v_workspace, v_version_program, 2, 'single_choice', 'second prompt', 'generated', 12, 13, '{"source":"qa"}', 2, 4, 5, 3, 'core', 'en'),
+    (v_question_one, v_workspace, v_version_program, 1, 'single_choice', 'first prompt', 'book_adapted', 10, 10, '{"source":"book"}', 1, 2, 4, 2, 'core', 'tr'),
+    (v_question_remediation, v_workspace, v_version_program, 3, 'single_choice', 'remediation prompt', 'generated', null, null, '{}', 1, 1, 4, 2, 'remediation_pool', 'ar');
   update public.quiz_questions
   set question_code = case id
     when v_question_one then 'Q-91400001'
@@ -120,7 +120,7 @@ begin
      or v_result->'queue'->0->>'concept_id' <> v_concept::text then
     raise exception 'LEARNING_START_QUEUE_ORDER_OR_STATE_INVALID:%', v_result;
   end if;
-  if v_result->'queue'->0->'question' @> '{"question_code":"Q-91400001","position":1,"question_type":"single_choice","prompt":"first prompt","origin":"book_adapted","source_page_start":10,"source_page_end":10,"source_metadata":{"source":"book"},"points":1,"difficulty_level":2,"max_attempts":4,"remediation_after_attempt":2,"delivery_role":"core"}'::jsonb is not true
+  if v_result->'queue'->0->'question' @> '{"question_code":"Q-91400001","position":1,"question_type":"single_choice","prompt":"first prompt","prompt_language":"tr","origin":"book_adapted","source_page_start":10,"source_page_end":10,"source_metadata":{"source":"book"},"points":1,"difficulty_level":2,"max_attempts":4,"remediation_after_attempt":2,"delivery_role":"core"}'::jsonb is not true
      or v_result->'queue'->0->'question'->'options'->0 @> '{"position":1,"label":"A","content":"option one"}'::jsonb is not true
      or v_result->'queue'->0->'question'->'options'->1 @> '{"position":2,"label":"B","content":"option two"}'::jsonb is not true
      or v_result->'queue'->0->'question'->'assets'->0 @> '{"position":1,"purpose":"prompt","alt_text":"QA image","kind":"image","mime_type":"image/png","url":"https://example.test/start.png","storage_bucket":"qa-assets","storage_path":"learning/start.png"}'::jsonb is not true
@@ -166,6 +166,7 @@ begin
      or v_resume->'queue'->1 @> '{"status":"active","draft_option_position":1,"hint_level_requested":2}'::jsonb is not true
      or v_resume->'queue'->2 @> '{"source_role":"remediation","status":"pending"}'::jsonb is not true
      or v_resume->'queue'->2->'question'->>'delivery_role' <> 'remediation_pool'
+     or v_resume->'queue'->2->'question'->>'prompt_language' <> 'ar'
      or (select count(*) from public.quiz_attempts where learner_id = v_learner and quiz_version_id = v_version_program and status = 'in_progress' and delivery_mode = 'learning') <> 1
      or (select count(*) from public.quiz_attempt_question_queue where quiz_attempt_id = v_attempt) <> 3 then
     raise exception 'LEARNING_START_RESUME_INVALID:%', v_resume;
