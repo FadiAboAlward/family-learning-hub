@@ -30,6 +30,7 @@ declare
   v_attempt_g constant uuid := '20000000-0000-4000-8000-000000000007';
   v_attempt_h constant uuid := '20000000-0000-4000-8000-000000000008';
   v_attempt_i constant uuid := '20000000-0000-4000-8000-000000000009';
+  v_attempt_j constant uuid := '20000000-0000-4000-8000-000000000010';
   v_misconception constant uuid := '30000000-0000-4000-8000-000000000001';
   v_misconception_two constant uuid := '30000000-0000-4000-8000-000000000002';
   v_explanation_set constant uuid := '40000000-0000-4000-8000-000000000001';
@@ -138,6 +139,13 @@ begin
     ), 'ar'),
     'Mapped distractor explanation', 'active', v_misconception;
 
+  insert into public.explanation_blocks(
+    workspace_id, explanation_set_id, position, block_type, content
+  ) values (
+    v_workspace, v_explanation_set, 1, 'text',
+    '{"text":"mapped misconception feedback","audience":"learner","style":"guided"}'::jsonb
+  );
+
   -- First-try correct, final persistence, mastery, next activation, and exact
   -- same-option retry without duplicate side effects.
   insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
@@ -229,6 +237,7 @@ begin
          and attempt_no = 1
          and detected_misconception_id = v_misconception
          and explanation_set_id = v_explanation_set
+         and feedback_text = 'mapped misconception feedback'
          and error_classification = jsonb_build_object(
            'source', 'mapped_distractor',
            'option_id', v_wrong_option,
@@ -301,6 +310,35 @@ begin
       and attempt_no = 4
       and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
   ) then raise exception 'LEARNING_RPC_FINAL_CORRECT_SIDE_EFFECT_INVALID'; end if;
+
+  -- A mapped distractor with no eligible active explanation keeps generic
+  -- feedback while preserving the misconception evidence.
+  update public.explanation_sets
+  set status = 'archived'
+  where id = v_explanation_set and workspace_id = v_workspace;
+
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_j, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_j, 1, v_q_one, v_concept_one, 3, 'active');
+
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_j, v_q_one, 1);
+  reset role;
+  if not exists (
+    select 1 from public.quiz_answer_attempts
+    where quiz_attempt_id = v_attempt_j and question_id = v_q_one and attempt_no = 1
+      and detected_misconception_id = v_misconception
+      and explanation_set_id is null
+      and feedback_text = 'hint one'
+  ) then
+    raise exception 'LEARNING_RPC_MISCONCEPTION_EXPLANATION_FALLBACK_INVALID';
+  end if;
+
+  update public.explanation_sets
+  set status = 'active'
+  where id = v_explanation_set and workspace_id = v_workspace;
 
   -- Ambiguous mappings must not be guessed.
   insert into public.misconceptions(id, workspace_id, concept_id, code, title)
@@ -513,7 +551,7 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j);
   delete from public.quizzes where id = v_quiz;
   delete from public.learning_concepts where id in (v_concept_one, v_concept_two, v_concept_three);
   delete from public.subjects where id = v_subject;
