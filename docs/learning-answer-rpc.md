@@ -23,10 +23,26 @@ The RPC preserves those rules and the existing response keys:
 - `remediation_added` with the same queue/question payload shape;
 - `explanation` and `correct_option_position`, disclosed only at finalization.
 
-The existing Learning implementation does not currently classify or write a
-misconception for a selected distractor. The RPC therefore leaves
-`quiz_answer_attempts.detected_misconception_id` and `error_classification` at
-their existing defaults instead of inventing new pedagogy in a performance PR.
+The Learning answer RPC now records a misconception only when the workspace
+`pedagogy.misconception_policy.detect_from_multiple_choice_distractors` switch
+allows it and an incorrect selected option has exactly one authored
+option-to-misconception mapping in the same workspace whose misconception
+matches the active concept. Mapping uniqueness is resolved in one database
+statement snapshot, so ambiguous concurrent mappings are not guessed. In that
+case the answer-attempt row stores `detected_misconception_id` plus a small
+allowlisted `error_classification` payload with source `mapped_distractor`,
+and the same transaction emits a `misconception_detected` adaptive event.
+
+When the workspace policy `prefer_misconception_specific_explanation` is enabled and an active `incorrect_attempt` explanation set for that misconception is eligible for the same workspace, question/concept, attempt number, effective grade, difficulty, and learner language, the RPC records its `explanation_set_id` and uses its ordered text blocks as the learner feedback. When that preference is disabled, misconception evidence is still recorded but generic feedback remains authoritative.
+For non-final attempts that text replaces only the content of the existing hint payload, preserving its level and progression. If the ordinary hint row is missing, the RPC returns the modeled text in a support-style hint payload without incrementing normal hint progression or `hints_used`. For a finalized incorrect answer the modeled text becomes the returned explanation. If no usable modeled text exists, the RPC keeps the existing generic hint/final-explanation fallback. Effective grade is
+resolved first from the attempt's assignment/enrolled program, then from a
+matching primary or unambiguous active program, and only then from
+`learners.grade_level` as a display/default fallback. Correct answers, unmapped
+distractors, disabled detection, and ambiguous mappings are not classified; the
+RPC never infers a misconception from wrongness alone. Finalized same-option
+retries return the cached result before creating any additional attempt
+evidence, so the diagnostic event is not duplicated by HTTP retry.
+
 Mastery is updated only when a question is finalized, using the same weighted
 evidence calculation and first-try counter as before. Hint counters now reflect
 the highest hint level actually delivered, so a sparse or missing hint row is
@@ -70,13 +86,14 @@ finalized answer. The new Edge path makes one RPC operation; telemetry records
 that actual count as `1`. This is a structural result, not a Production latency
 claim.
 
-The migration is additive. If behavior regresses after a later Production
-release, redeploy the previous `learning-api` source. Its table-based answer path
-remains compatible, while the unused RPC and its internal retry metadata are
-harmless. Dropping the RPC is not required for rollback.
+The migration is forward-only. If this behavior must be rolled back after a
+future release, create a new corrective migration that restores the previous
+`flh_learning_answer` definition; do not rewrite or delete either historical
+migration. The Edge contract and RPC signature stay unchanged, so rollback does
+not require a UI or client change.
 
 The exact migration identity for release and reconciliation is
-`supabase/migrations/20260913145055_learning_answer_rpc.sql`. This PR does not
+`supabase/migrations/20260930185500_learning_misconception_evidence.sql` for the current RPC definition; the original `20260913145055_learning_answer_rpc.sql` remains immutable history. This feature does not
 deploy the Edge function, apply or reconcile that migration in Production, or
 claim Production verification. After merge, the release record must identify
 that migration, record the `learning-api` deployment, reconcile the remote
