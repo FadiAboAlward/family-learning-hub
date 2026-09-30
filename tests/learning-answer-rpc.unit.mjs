@@ -50,7 +50,7 @@ const configuredFunctions = [...config.matchAll(/^\[functions\.([^\]]+)\]\s*\r?\
   .sort();
 assert.deepEqual(configuredFunctions, ['exam-v2-api', 'family-api', 'learning-api', 'student-library-api']);
 
-assert.match(rollbackDoc, /redeploy the previous `learning-api` source/i);
-assert.match(rollbackDoc, /Dropping the RPC is not required for rollback/i);
+assert.match(rollbackDoc, /new corrective migration that restores the previous/i);
+assert.match(rollbackDoc, /do not rewrite or delete either historical migration/i);
 
 console.log('Learning answer RPC structure, telemetry, auth config, and rollback guards passed.');
