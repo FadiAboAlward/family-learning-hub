@@ -7,53 +7,279 @@
     "book_code": "TR-MATH-G7-2026-2027",
     "confirmed_scope": "K1 — Tam Sayılar",
     "learner_state_ref": "student-academic-state:test-fixture",
-    "evidence_refs": ["assessment:test-fixture-2026-09-28"],
-    "next_target": "signed integer operations and number-line direction"
+    "evidence_refs": [
+      "assessment:test-fixture-2026-09-28"
+    ],
+    "next_target": "signed integer operations and number-line direction",
+    "concept_targets": [
+      {
+        "concept_code": "integer-direction",
+        "state": "NEEDS_REINFORCEMENT",
+        "target_difficulty": 2,
+        "evidence_refs": [
+          "assessment:test-fixture-2026-09-28"
+        ],
+        "recurring_misconception_code": "direction-sign-reversal"
+      },
+      {
+        "concept_code": "integer-addition",
+        "state": "DEVELOPING",
+        "target_difficulty": 3,
+        "evidence_refs": [
+          "assessment:test-fixture-2026-09-28"
+        ]
+      },
+      {
+        "concept_code": "integer-subtraction",
+        "state": "DEVELOPING",
+        "target_difficulty": 3,
+        "evidence_refs": [
+          "assessment:test-fixture-2026-09-28"
+        ]
+      }
+    ]
   },
   "runtime_external_dependencies": [],
   "blueprint": [
-    {"question_code":"QA-L-001","delivery_surface":"learning","concept_code":"integer-direction","difficulty_level":2,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P017","reasoning_signature":"number-line-direction-one-step"},
-    {"question_code":"QA-E-001","delivery_surface":"exam","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P062","reasoning_signature":"signed-addition-context"},
-    {"question_code":"QA-P-001","delivery_surface":"paper","concept_code":"integer-subtraction","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P064","reasoning_signature":"signed-subtraction-translation"}
+    {
+      "question_code": "QA-L-001",
+      "delivery_surface": "learning",
+      "concept_code": "integer-direction",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P017",
+      "reasoning_signature": "number-line-direction-one-step",
+      "difficulty_role": "target",
+      "misconception_target": "direction-sign-reversal"
+    },
+    {
+      "question_code": "QA-E-001",
+      "delivery_surface": "exam",
+      "concept_code": "integer-addition",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P062",
+      "reasoning_signature": "signed-addition-context",
+      "difficulty_role": "target"
+    },
+    {
+      "question_code": "QA-P-001",
+      "delivery_surface": "paper",
+      "concept_code": "integer-subtraction",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P064",
+      "reasoning_signature": "signed-subtraction-translation",
+      "difficulty_role": "target"
+    }
   ],
   "questions": [
     {
-      "question_code":"QA-L-001","delivery_surface":"learning","question_type":"single_choice","decomposable":true,"prompt":"ابدأ من الصفر وتحرك 4 وحدات إلى اليسار. أين تصل؟","concept_code":"integer-direction","difficulty_level":2,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P017",
-      "options":[
-        {"position":1,"content":"-4","is_correct":true},
-        {"position":2,"content":"4","is_correct":false,"misconception_code":"direction-sign-reversal","distractor_rationale":"يعكس المتعلم معنى اليسار ويختار الموجب."},
-        {"position":3,"content":"0","is_correct":false,"distractor_rationale":"يتجاهل المتعلم مقدار الحركة ويبقى عند نقطة البداية."},
-        {"position":4,"content":"-8","is_correct":false,"distractor_rationale":"يضاعف المتعلم مقدار الحركة بدل تطبيقه مرة واحدة."},
-        {"position":5,"content":"8","is_correct":false,"distractor_rationale":"يجمع بين عكس الإشارة ومضاعفة مقدار الحركة."}
+      "question_code": "QA-L-001",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": true,
+      "prompt": "ابدأ من الصفر وتحرك 4 وحدات إلى اليسار. أين تصل؟",
+      "concept_code": "integer-direction",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P017",
+      "options": [
+        {
+          "position": 1,
+          "content": "-4",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "4",
+          "is_correct": false,
+          "misconception_code": "direction-sign-reversal",
+          "distractor_rationale": "يعكس المتعلم معنى اليسار ويختار الموجب."
+        },
+        {
+          "position": 3,
+          "content": "0",
+          "is_correct": false,
+          "distractor_rationale": "يتجاهل المتعلم مقدار الحركة ويبقى عند نقطة البداية."
+        },
+        {
+          "position": 4,
+          "content": "-8",
+          "is_correct": false,
+          "distractor_rationale": "يضاعف المتعلم مقدار الحركة بدل تطبيقه مرة واحدة."
+        },
+        {
+          "position": 5,
+          "content": "8",
+          "is_correct": false,
+          "distractor_rationale": "يجمع بين عكس الإشارة ومضاعفة مقدار الحركة."
+        }
       ],
-      "hints":[
-        {"level":1,"role":"nudge","decomposable":true,"content":"ركّز على اتجاه الحركة من نقطة البداية.","steps":["حدّد نقطة البداية.","انتبه إلى كلمة اليسار.","فكّر في إشارة الأعداد يسار الصفر."],"expanded_steps":["ابدأ من الصفر.","تخيّل خط الأعداد.","حدّد جهة اليسار.","تذكّر نوع الأعداد في هذه الجهة.","تحرك مقدار السؤال فقط.","اختر العدد الذي يطابق الموضع."]},
-        {"level":2,"role":"guide","decomposable":true,"content":"على خط الأعداد، الحركة إلى اليسار تقود إلى القيم السالبة.","steps":["ضع الصفر أمامك.","اعتبر كل خطوة يسارًا قيمة أقل.","اربط جهة اليسار بالإشارة السالبة."],"expanded_steps":["ارسم خطًا بسيطًا ذهنيًا.","ضع الصفر في الوسط.","راقب الأعداد يمين الصفر.","راقب الأعداد يسار الصفر.","اختر جهة السؤال.","احتفظ بمقدار الحركة كما هو."]},
-        {"level":3,"role":"strong_guide","decomposable":true,"content":"مثال مشابه: خطوتان إلى اليسار من الصفر تعني قيمة سالبة مقدارها وحدتان.","steps":["استعمل المثال المشابه.","بدّل مقدار المثال بمقدار السؤال.","لا تغيّر اتجاه اليسار."],"expanded_steps":["ابدأ بمثال أصغر.","اربط اليسار بالسالب.","لاحظ أن المقدار يساوي عدد الخطوات.","ارجع إلى مقدار السؤال.","طبّق الاتجاه نفسه.","اختر الناتج المطابق دون تغيير المقدار."]},
-        {"level":4,"role":"near_solution","decomposable":true,"content":"أنت تبحث عن عدد سالب، وقيمته المطلقة تساوي عدد الوحدات التي تحركتها.","steps":["الإشارة المطلوبة سالبة.","القيمة المطلقة تأتي من عدد الوحدات.","كوّن العدد من الإشارة والمقدار بنفسك."],"expanded_steps":["ثبّت أن الاتجاه يسار.","حوّل الاتجاه إلى إشارة سالبة.","خذ عدد الوحدات من السؤال.","اجعله قيمة مطلقة.","اجمع الإشارة مع المقدار ذهنيًا.","اختر الخيار المطابق لما كوّنته."]}
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": true,
+          "content": "ركّز على اتجاه الحركة من نقطة البداية.",
+          "steps": [
+            "حدّد نقطة البداية.",
+            "انتبه إلى كلمة اليسار.",
+            "فكّر في إشارة الأعداد يسار الصفر."
+          ],
+          "expanded_steps": [
+            "ابدأ من الصفر.",
+            "تخيّل خط الأعداد.",
+            "حدّد جهة اليسار.",
+            "تذكّر نوع الأعداد في هذه الجهة.",
+            "تحرك مقدار السؤال فقط.",
+            "اختر العدد الذي يطابق الموضع."
+          ]
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": true,
+          "content": "على خط الأعداد، الحركة إلى اليسار تقود إلى القيم السالبة.",
+          "steps": [
+            "ضع الصفر أمامك.",
+            "اعتبر كل خطوة يسارًا قيمة أقل.",
+            "اربط جهة اليسار بالإشارة السالبة."
+          ],
+          "expanded_steps": [
+            "ارسم خطًا بسيطًا ذهنيًا.",
+            "ضع الصفر في الوسط.",
+            "راقب الأعداد يمين الصفر.",
+            "راقب الأعداد يسار الصفر.",
+            "اختر جهة السؤال.",
+            "احتفظ بمقدار الحركة كما هو."
+          ]
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": true,
+          "content": "مثال مشابه: خطوتان إلى اليسار من الصفر تعني قيمة سالبة مقدارها وحدتان.",
+          "steps": [
+            "استعمل المثال المشابه.",
+            "بدّل مقدار المثال بمقدار السؤال.",
+            "لا تغيّر اتجاه اليسار."
+          ],
+          "expanded_steps": [
+            "ابدأ بمثال أصغر.",
+            "اربط اليسار بالسالب.",
+            "لاحظ أن المقدار يساوي عدد الخطوات.",
+            "ارجع إلى مقدار السؤال.",
+            "طبّق الاتجاه نفسه.",
+            "اختر الناتج المطابق دون تغيير المقدار."
+          ]
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": true,
+          "content": "أنت تبحث عن عدد سالب، وقيمته المطلقة تساوي عدد الوحدات التي تحركتها.",
+          "steps": [
+            "الإشارة المطلوبة سالبة.",
+            "القيمة المطلقة تأتي من عدد الوحدات.",
+            "كوّن العدد من الإشارة والمقدار بنفسك."
+          ],
+          "expanded_steps": [
+            "ثبّت أن الاتجاه يسار.",
+            "حوّل الاتجاه إلى إشارة سالبة.",
+            "خذ عدد الوحدات من السؤال.",
+            "اجعله قيمة مطلقة.",
+            "اجمع الإشارة مع المقدار ذهنيًا.",
+            "اختر الخيار المطابق لما كوّنته."
+          ]
+        }
       ]
     },
     {
-      "question_code":"QA-E-001","delivery_surface":"exam","question_type":"single_choice","prompt":"كانت درجة الحرارة -2 ثم ارتفعت 5 درجات. ما الدرجة الجديدة؟","concept_code":"integer-addition","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P062",
-      "options":[
-        {"position":1,"content":"3","is_correct":true},
-        {"position":2,"content":"-7","is_correct":false,"misconception_code":"same-sign-addition","distractor_rationale":"يجمع المقدارين ويبقي السالب رغم أن التغير موجب."},
-        {"position":3,"content":"7","is_correct":false,"distractor_rationale":"يتجاهل إشارة درجة البداية ويجمع القيم المطلقة فقط."},
-        {"position":4,"content":"-3","is_correct":false,"distractor_rationale":"يطرح مقدار الارتفاع من القيمة المطلقة بطريقة معكوسة."},
-        {"position":5,"content":"2","is_correct":false,"distractor_rationale":"يتوقف عند مقدار البداية أو يسيء تمثيل الصفر."}
+      "question_code": "QA-E-001",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "كانت درجة الحرارة -2 ثم ارتفعت 5 درجات. ما الدرجة الجديدة؟",
+      "concept_code": "integer-addition",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P062",
+      "options": [
+        {
+          "position": 1,
+          "content": "3",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "-7",
+          "is_correct": false,
+          "misconception_code": "same-sign-addition",
+          "distractor_rationale": "يجمع المقدارين ويبقي السالب رغم أن التغير موجب."
+        },
+        {
+          "position": 3,
+          "content": "7",
+          "is_correct": false,
+          "distractor_rationale": "يتجاهل إشارة درجة البداية ويجمع القيم المطلقة فقط."
+        },
+        {
+          "position": 4,
+          "content": "-3",
+          "is_correct": false,
+          "distractor_rationale": "يطرح مقدار الارتفاع من القيمة المطلقة بطريقة معكوسة."
+        },
+        {
+          "position": 5,
+          "content": "2",
+          "is_correct": false,
+          "distractor_rationale": "يتوقف عند مقدار البداية أو يسيء تمثيل الصفر."
+        }
       ],
-      "hints":[]
+      "hints": []
     },
     {
-      "question_code":"QA-P-001","delivery_surface":"paper","question_type":"single_choice","prompt":"أي تعبير يمثل نقصًا مقداره 6 من العدد 2؟","concept_code":"integer-subtraction","difficulty_level":3,"origin":"GENERATED_SIMILAR","source_ref":"TR-MATH-G7-K1-P064",
-      "options":[
-        {"position":1,"content":"2 - 6","is_correct":true},
-        {"position":2,"content":"2 + 6","is_correct":false,"misconception_code":"operation-word-confusion","distractor_rationale":"يفسر كلمة نقص على أنها إضافة."},
-        {"position":3,"content":"6 - 2","is_correct":false,"distractor_rationale":"يعكس ترتيب الكميتين في الطرح."},
-        {"position":4,"content":"-2 - 6","is_correct":false,"distractor_rationale":"يحوّل العدد الابتدائي نفسه إلى سالب دون مبرر."},
-        {"position":5,"content":"6 + 2","is_correct":false,"distractor_rationale":"يعكس الترتيب ويستخدم الجمع بدل الطرح."}
+      "question_code": "QA-P-001",
+      "delivery_surface": "paper",
+      "question_type": "single_choice",
+      "prompt": "أي تعبير يمثل نقصًا مقداره 6 من العدد 2؟",
+      "concept_code": "integer-subtraction",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-K1-P064",
+      "options": [
+        {
+          "position": 1,
+          "content": "2 - 6",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "2 + 6",
+          "is_correct": false,
+          "misconception_code": "operation-word-confusion",
+          "distractor_rationale": "يفسر كلمة نقص على أنها إضافة."
+        },
+        {
+          "position": 3,
+          "content": "6 - 2",
+          "is_correct": false,
+          "distractor_rationale": "يعكس ترتيب الكميتين في الطرح."
+        },
+        {
+          "position": 4,
+          "content": "-2 - 6",
+          "is_correct": false,
+          "distractor_rationale": "يحوّل العدد الابتدائي نفسه إلى سالب دون مبرر."
+        },
+        {
+          "position": 5,
+          "content": "6 + 2",
+          "is_correct": false,
+          "distractor_rationale": "يعكس الترتيب ويستخدم الجمع بدل الطرح."
+        }
       ],
-      "hints":[]
+      "hints": []
     }
   ]
 }
