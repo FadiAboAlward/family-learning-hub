@@ -21,7 +21,8 @@ assert.ok(sourceDependentResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEP
 for (const prompt of [
   'Open the book to page 5 and answer the question.',
   'Look at page 5 before choosing your answer.',
-  'Use the diagram on the previous page to solve the problem.'
+  'Use the diagram on the previous page to solve the problem.',
+  'Use the reference from the previous page to answer.'
 ]) {
   const directExternalInstruction = read('valid-package.json');
   directExternalInstruction.questions[1].prompt_language = 'en';
@@ -60,6 +61,24 @@ assert.ok(
   'An instruction may reference material embedded in the same learner payload.'
 );
 
+const embeddedReferenceInstruction = read('valid-package.json');
+embeddedReferenceInstruction.questions[1].prompt_language = 'en';
+embeddedReferenceInstruction.questions[1].prompt = 'Use the reference below: speed = distance / time. Which formula finds distance?';
+const embeddedReferenceInstructionResult = validateAcademicPackage(embeddedReferenceInstruction);
+assert.ok(
+  !embeddedReferenceInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A reference embedded directly in the same prompt must remain self-contained.'
+);
+
+const turkishExternalInstruction = read('valid-package.json');
+turkishExternalInstruction.questions[1].prompt_language = 'tr';
+turkishExternalInstruction.questions[1].prompt = 'Kitabı açıp 5. sayfaya bakarak soruyu cevapla.';
+const turkishExternalInstructionResult = validateAcademicPackage(turkishExternalInstruction);
+assert.ok(
+  turkishExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'Direct Turkish instructions to open the book or look at a page must be rejected.'
+);
+
 for (const prompt of [
   'افتح الكتاب على الصفحة 5 ثم أجب عن السؤال.',
   'انظر إلى الصفحة ثم اختر الإجابة الصحيحة.'
@@ -93,6 +112,20 @@ const rawMarkup = read('valid-package.json');
 rawMarkup.questions[1].prompt = 'احسب <b>2 + 3</b>';
 const rawMarkupResult = validateAcademicPackage(rawMarkup);
 assert.ok(rawMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'), 'Raw HTML-like markup must be rejected from learner-visible authored text.');
+
+for (const prompt of [
+  'Choose <input disabled> to continue.',
+  'Choose <option selected> to continue.'
+]) {
+  const booleanMarkup = read('valid-package.json');
+  booleanMarkup.questions[1].prompt_language = 'en';
+  booleanMarkup.questions[1].prompt = prompt;
+  const booleanMarkupResult = validateAcademicPackage(booleanMarkup);
+  assert.ok(
+    booleanMarkupResult.errors.some(x => x.code === 'LEARNER_TEXT_MARKUP_FORBIDDEN'),
+    'HTML tags with boolean attributes must be rejected: ' + prompt
+  );
+}
 
 const compactInequality = read('valid-package.json');
 compactInequality.questions[1].prompt_language = 'en';
