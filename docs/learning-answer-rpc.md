@@ -28,9 +28,14 @@ selected option has exactly one authored option-to-misconception mapping for
 the active concept in the same workspace. In that case the answer-attempt row
 stores `detected_misconception_id` plus a small allowlisted
 `error_classification` payload with source `mapped_distractor`, and the same
-transaction emits a `misconception_detected` adaptive event. Correct answers,
-unmapped distractors, and ambiguous mappings are not classified; the RPC never
-infers a misconception from wrongness alone. Finalized same-option retries
+transaction emits a `misconception_detected` adaptive event. When an active
+`incorrect_attempt` explanation set for that misconception is eligible for the
+same workspace, question/concept, attempt number, learner grade, difficulty,
+and learner language, the answer-attempt row also records its
+`explanation_set_id`; otherwise the existing generic feedback/explanation path
+remains unchanged. Correct answers, unmapped distractors, and ambiguous mappings
+are not classified; the RPC never infers a misconception from wrongness alone.
+Finalized same-option retries
 return the cached result before creating any additional attempt evidence, so
 the diagnostic event is not duplicated by HTTP retry.
 
