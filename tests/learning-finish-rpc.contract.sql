@@ -55,12 +55,12 @@ begin
   values (v_version, v_workspace, v_quiz, 1, 'published');
   insert into public.quiz_questions(
     id, workspace_id, quiz_version_id, position, question_type, prompt, points,
-    difficulty_level, max_attempts, remediation_after_attempt, delivery_role, question_code
+    difficulty_level, max_attempts, remediation_after_attempt, delivery_role, question_code, prompt_language
   ) values
-    (v_q1, v_workspace, v_version, 1, 'single_choice', 'finish prompt one', 2, 2, 4, 3, 'core', 'Q-91500001'),
-    (v_q2, v_workspace, v_version, 2, 'single_choice', 'finish prompt two', 2, 2, 4, 3, 'core', 'Q-91500002'),
-    (v_q3, v_workspace, v_version, 3, 'single_choice', 'finish prompt three', 2, 3, 4, 3, 'core', 'Q-91500003'),
-    (v_q4, v_workspace, v_version, 4, 'single_choice', 'finish prompt four', 1, 3, 4, 3, 'core', 'Q-91500004');
+    (v_q1, v_workspace, v_version, 1, 'single_choice', 'finish prompt one', 2, 2, 4, 3, 'core', 'Q-91500001', 'ar'),
+    (v_q2, v_workspace, v_version, 2, 'single_choice', 'finish prompt two', 2, 2, 4, 3, 'core', 'Q-91500002', 'tr'),
+    (v_q3, v_workspace, v_version, 3, 'single_choice', 'finish prompt three', 2, 3, 4, 3, 'core', 'Q-91500003', 'en'),
+    (v_q4, v_workspace, v_version, 4, 'single_choice', 'finish prompt four', 1, 3, 4, 3, 'core', 'Q-91500004', 'ar');
   insert into public.quiz_question_options(workspace_id, question_id, position, content)
   select v_workspace, question_id, 1, 'answer'
   from unnest(array[v_q1, v_q2, v_q3, v_q4]) question_id;
@@ -131,6 +131,10 @@ begin
      or v_result->'award' <> '{"already_awarded":false,"xp":65,"reward_points":10,"badges":["first-try","keep-going","concept-master"]}'::jsonb
      or jsonb_array_length(v_result->'review') <> 4
      or v_result->'review'->0->>'question_code' <> 'Q-91500001'
+     or v_result->'review'->0->>'prompt_language' <> 'ar'
+     or v_result->'review'->1->>'prompt_language' <> 'tr'
+     or v_result->'review'->2->>'prompt_language' <> 'en'
+     or v_result->'review'->3->>'prompt_language' <> 'ar'
      or v_result->'review'->0->>'explanation' <> 'correct one'
      or v_result->'review'->3->>'explanation' <> 'final incorrect four'
      or v_result->'review'->3->'correct_answer'->>'sentinel' <> 'FINISH_KEY_FOUR'
