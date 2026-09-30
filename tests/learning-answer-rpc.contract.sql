@@ -208,7 +208,7 @@ begin
      or v_result->>'finalized' <> 'false'
      or v_result->'remediation_added'->>'question_id' <> v_q_rem_one::text
      or v_result->'remediation_added'->'question'->>'question_code' <> 'Q-91300003'
-     or v_result->'remediation_added'->'question'->>'prompt_language' <> 'ar'
+     or v_result->'remediation_added'->'question'->>'prompt_language' is distinct from 'ar'
      or v_result->'remediation_added'->'question'->'options' is null
      or v_result->'remediation_added'->'question'->'assets' <> '[]'::jsonb then
     raise exception 'LEARNING_RPC_REMEDIATION_PAYLOAD_INVALID:%', v_result;
@@ -246,7 +246,7 @@ begin
   reset role;
   if v_result @> '{"is_correct":false,"attempt_no":2,"finalized":true,"hint":null,"hint_level":null,"hints_used":1,"explanation":"final incorrect explanation","correct_option_position":2}'::jsonb is not true
      or v_result->'remediation_added'->>'question_id' <> v_q_rem_two::text
-     or v_result->'remediation_added'->'question'->>'prompt_language' <> 'tr' then
+     or v_result->'remediation_added'->'question'->>'prompt_language' is distinct from 'tr' then
     raise exception 'LEARNING_RPC_FINAL_INCORRECT_INVALID:%', v_result;
   end if;
   if not exists (
