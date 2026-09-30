@@ -484,6 +484,7 @@ assert.ok(unjustifiedTargetDifficultyResult.errors.some(x => x.code === 'TARGET_
 const justifiedTargetDifficulty = read('valid-package.json');
 justifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty = 3;
 justifiedTargetDifficulty.academic_context.concept_targets[0].target_difficulty_justification = 'Recent learner evidence supports the higher centre.';
+justifiedTargetDifficulty.academic_context.single_difficulty_justification = 'This focused fixture isolates acceptance of the evidence-justified target difficulty override.';
 justifiedTargetDifficulty.blueprint[0].difficulty_level = 3;
 justifiedTargetDifficulty.questions[0].difficulty_level = 3;
 const justifiedTargetDifficultyResult = validateAcademicPackage(justifiedTargetDifficulty);
