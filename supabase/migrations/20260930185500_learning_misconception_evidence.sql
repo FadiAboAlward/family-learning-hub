@@ -33,9 +33,11 @@ declare
   v_misconception_mapping_count integer := 0;
   v_misconception_concept_id uuid := null;
   v_detect_mapped_distractors boolean := true;
+  v_prefer_misconception_specific_explanation boolean := true;
   v_effective_grade smallint := null;
   v_error_classification jsonb := '{}'::jsonb;
   v_explanation_set_id uuid := null;
+  v_explanation_language text := null;
   v_misconception_feedback_text text := null;
   v_next_queue_id uuid;
   v_attempt_no integer;
@@ -185,20 +187,32 @@ begin
 
   v_is_correct := coalesce(p_option_position = v_correct_option_position, false);
 
-  -- Respect the existing workspace-level pedagogy switch. Missing or malformed
-  -- settings preserve the historical enabled behavior.
-  select coalesce((
-    select case
-      when jsonb_typeof(ws.value->'detect_from_multiple_choice_distractors') = 'boolean'
-        then (ws.value->>'detect_from_multiple_choice_distractors')::boolean
-      else true
-    end
-    from public.workspace_settings ws
-    where ws.workspace_id = p_workspace_id
-      and ws.key = 'pedagogy.misconception_policy'
-    limit 1
-  ), true)
-  into v_detect_mapped_distractors;
+  -- Respect the existing workspace-level pedagogy switches. Missing or
+  -- malformed settings preserve the historical enabled behavior.
+  select
+    coalesce((
+      select case
+        when jsonb_typeof(ws.value->'detect_from_multiple_choice_distractors') = 'boolean'
+          then (ws.value->>'detect_from_multiple_choice_distractors')::boolean
+        else true
+      end
+      from public.workspace_settings ws
+      where ws.workspace_id = p_workspace_id
+        and ws.key = 'pedagogy.misconception_policy'
+      limit 1
+    ), true),
+    coalesce((
+      select case
+        when jsonb_typeof(ws.value->'prefer_misconception_specific_explanation') = 'boolean'
+          then (ws.value->>'prefer_misconception_specific_explanation')::boolean
+        else true
+      end
+      from public.workspace_settings ws
+      where ws.workspace_id = p_workspace_id
+        and ws.key = 'pedagogy.misconception_policy'
+      limit 1
+    ), true)
+  into v_detect_mapped_distractors, v_prefer_misconception_specific_explanation;
 
   -- A selected distractor is diagnostic evidence only when the authored option
   -- has exactly one misconception mapping in this workspace, and that sole
@@ -247,117 +261,120 @@ begin
         'confidence', v_misconception_confidence
       );
 
-      -- Grade eligibility follows the attempt's enrolled program context when
-      -- it exists. A primary program carrying this quiz is the next fallback;
-      -- if there is exactly one matching active program grade, use it. The
-      -- learner-level grade remains only the final display/default fallback.
-      select coalesce(
-        (
-          select lp.grade_level
-          from public.quiz_assignments qa
-          join public.learner_program_enrollments lpe
-            on lpe.id = qa.learner_program_enrollment_id
-           and lpe.workspace_id = qa.workspace_id
-           and lpe.learner_id = qa.learner_id
-          join public.learning_programs lp
-            on lp.id = lpe.program_id
-           and lp.workspace_id = lpe.workspace_id
-          where qa.id = v_attempt.assignment_id
-            and qa.workspace_id = p_workspace_id
-            and qa.learner_id = p_learner_id
-          limit 1
-        ),
-        (
-          select lp.grade_level
-          from public.learner_program_enrollments lpe
-          join public.learning_programs lp
-            on lp.id = lpe.program_id
-           and lp.workspace_id = lpe.workspace_id
-          join public.program_quizzes pq
-            on pq.workspace_id = lp.workspace_id
-           and pq.program_id = lp.id
-           and pq.availability = 'available'
-          join public.quiz_versions qv
-            on qv.id = v_attempt.quiz_version_id
-           and qv.workspace_id = p_workspace_id
-           and qv.quiz_id = pq.quiz_id
-          where lpe.workspace_id = p_workspace_id
-            and lpe.learner_id = p_learner_id
-            and lpe.status = 'active'
-            and lpe.is_primary
-            and lp.status = 'active'
-          order by lpe.started_at desc nulls last, lpe.id
-          limit 1
-        ),
-        (
-          select case
-            when count(distinct lp.grade_level) = 1 then max(lp.grade_level)
-            else null
-          end
-          from public.learner_program_enrollments lpe
-          join public.learning_programs lp
-            on lp.id = lpe.program_id
-           and lp.workspace_id = lpe.workspace_id
-          join public.program_quizzes pq
-            on pq.workspace_id = lp.workspace_id
-           and pq.program_id = lp.id
-           and pq.availability = 'available'
-          join public.quiz_versions qv
-            on qv.id = v_attempt.quiz_version_id
-           and qv.workspace_id = p_workspace_id
-           and qv.quiz_id = pq.quiz_id
-          where lpe.workspace_id = p_workspace_id
-            and lpe.learner_id = p_learner_id
-            and lpe.status = 'active'
-            and lp.status = 'active'
-            and lp.grade_level is not null
-        ),
-        (
-          select learner.grade_level
-          from public.learners learner
-          where learner.id = p_learner_id
-            and learner.workspace_id = p_workspace_id
+      if v_prefer_misconception_specific_explanation then
+        -- Grade eligibility follows the attempt's enrolled program context when
+        -- it exists. A primary program carrying this quiz is the next fallback;
+        -- if there is exactly one matching active program grade, use it. The
+        -- learner-level grade remains only the final display/default fallback.
+        select coalesce(
+          (
+            select lp.grade_level
+            from public.quiz_assignments qa
+            join public.learner_program_enrollments lpe
+              on lpe.id = qa.learner_program_enrollment_id
+             and lpe.workspace_id = qa.workspace_id
+             and lpe.learner_id = qa.learner_id
+            join public.learning_programs lp
+              on lp.id = lpe.program_id
+             and lp.workspace_id = lpe.workspace_id
+            where qa.id = v_attempt.assignment_id
+              and qa.workspace_id = p_workspace_id
+              and qa.learner_id = p_learner_id
+            limit 1
+          ),
+          (
+            select lp.grade_level
+            from public.learner_program_enrollments lpe
+            join public.learning_programs lp
+              on lp.id = lpe.program_id
+             and lp.workspace_id = lpe.workspace_id
+            join public.program_quizzes pq
+              on pq.workspace_id = lp.workspace_id
+             and pq.program_id = lp.id
+             and pq.availability = 'available'
+            join public.quiz_versions qv
+              on qv.id = v_attempt.quiz_version_id
+             and qv.workspace_id = p_workspace_id
+             and qv.quiz_id = pq.quiz_id
+            where lpe.workspace_id = p_workspace_id
+              and lpe.learner_id = p_learner_id
+              and lpe.status = 'active'
+              and lpe.is_primary
+              and lp.status = 'active'
+            order by lpe.started_at desc nulls last, lpe.id
+            limit 1
+          ),
+          (
+            select case
+              when count(distinct lp.grade_level) = 1 then max(lp.grade_level)
+              else null
+            end
+            from public.learner_program_enrollments lpe
+            join public.learning_programs lp
+              on lp.id = lpe.program_id
+             and lp.workspace_id = lpe.workspace_id
+            join public.program_quizzes pq
+              on pq.workspace_id = lp.workspace_id
+             and pq.program_id = lp.id
+             and pq.availability = 'available'
+            join public.quiz_versions qv
+              on qv.id = v_attempt.quiz_version_id
+             and qv.workspace_id = p_workspace_id
+             and qv.quiz_id = pq.quiz_id
+            where lpe.workspace_id = p_workspace_id
+              and lpe.learner_id = p_learner_id
+              and lpe.status = 'active'
+              and lp.status = 'active'
+              and lp.grade_level is not null
+          ),
+          (
+            select learner.grade_level
+            from public.learners learner
+            where learner.id = p_learner_id
+              and learner.workspace_id = p_workspace_id
+          )
         )
-      )
-      into v_effective_grade;
+        into v_effective_grade;
 
-      -- Reuse an already-authored active misconception explanation when it is
-      -- eligible for this question/concept, attempt, effective grade,
-      -- difficulty, and learner language.
-      select es.id, deliverable.feedback_text
-      into v_explanation_set_id, v_misconception_feedback_text
-      from public.explanation_sets es
-      join lateral (
-        select string_agg(eb.content->>'text', E'\n\n' order by eb.position) as feedback_text
-        from public.explanation_blocks eb
-        where eb.workspace_id = p_workspace_id
-          and eb.explanation_set_id = es.id
-          and eb.block_type = 'text'
-          and nullif(btrim(eb.content->>'text'), '') is not null
-      ) deliverable
-        on deliverable.feedback_text is not null
-      left join public.learner_instruction_profiles lip
-        on lip.workspace_id = p_workspace_id
-       and lip.learner_id = p_learner_id
-      where es.workspace_id = p_workspace_id
-        and es.misconception_id = v_misconception_id
-        and es.status = 'active'
-        and es.trigger_kind = 'incorrect_attempt'
-        and (es.question_id is null or es.question_id = p_question_id)
-        and (es.concept_id is null or es.concept_id = v_queue.concept_id)
-        and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
-        and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
-        and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
-        and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
-        and (es.min_grade is null or (v_effective_grade is not null and es.min_grade <= v_effective_grade))
-        and (es.max_grade is null or (v_effective_grade is not null and es.max_grade >= v_effective_grade))
-        and es.language = coalesce(lip.primary_language, 'ar')
-      order by
-        case when es.question_id = p_question_id then 0 else 1 end,
-        case when es.concept_id = v_queue.concept_id then 0 else 1 end,
-        coalesce(es.min_attempt_no, 0) desc,
-        es.id
-      limit 1;
+        -- Reuse an already-authored active misconception explanation when it is
+        -- eligible for this question/concept, attempt, effective grade,
+        -- difficulty, and learner language.
+        select es.id, es.language, deliverable.feedback_text
+        into v_explanation_set_id, v_explanation_language, v_misconception_feedback_text
+        from public.explanation_sets es
+        join lateral (
+          select string_agg(eb.content->>'text', E'\n\n' order by eb.position) as feedback_text
+          from public.explanation_blocks eb
+          where eb.workspace_id = p_workspace_id
+            and eb.explanation_set_id = es.id
+            and eb.block_type = 'text'
+            and nullif(btrim(eb.content->>'text'), '') is not null
+        ) deliverable
+          on deliverable.feedback_text is not null
+        left join public.learner_instruction_profiles lip
+          on lip.workspace_id = p_workspace_id
+         and lip.learner_id = p_learner_id
+        where es.workspace_id = p_workspace_id
+          and es.misconception_id = v_misconception_id
+          and es.status = 'active'
+          and es.trigger_kind = 'incorrect_attempt'
+          and (es.question_id is null or es.question_id = p_question_id)
+          and (es.concept_id is null or es.concept_id = v_queue.concept_id)
+          and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
+          and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
+          and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
+          and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
+          and (es.min_grade is null or (v_effective_grade is not null and es.min_grade <= v_effective_grade))
+          and (es.max_grade is null or (v_effective_grade is not null and es.max_grade >= v_effective_grade))
+          and es.language = coalesce(lip.primary_language, 'ar')
+        order by
+          case when es.question_id = p_question_id then 0 else 1 end,
+          case when es.concept_id = v_queue.concept_id then 0 else 1 end,
+          coalesce(es.min_attempt_no, 0) desc,
+          es.id
+        limit 1;
+
+      end if;
     else
       v_misconception_id := null;
       v_misconception_code := null;
@@ -429,14 +446,26 @@ begin
 
   if not v_is_correct
      and not v_finalized
-     and v_misconception_feedback_text is not null
-     and jsonb_typeof(v_hint) = 'object' then
-    v_hint := jsonb_set(
-      v_hint,
-      '{content}',
-      to_jsonb(v_misconception_feedback_text),
-      true
-    );
+     and v_misconception_feedback_text is not null then
+    if jsonb_typeof(v_hint) = 'object' then
+      v_hint := jsonb_set(
+        v_hint,
+        '{content}',
+        to_jsonb(v_misconception_feedback_text),
+        true
+      );
+    else
+      -- Modeled misconception feedback is learner-visible even when the
+      -- ordinary hint row is sparse/missing. This support object does not
+      -- advance normal hint progression or inflate hints_used.
+      v_hint := jsonb_build_object(
+        'hint_level', null,
+        'pedagogical_role', 'misconception_explanation',
+        'content', v_misconception_feedback_text,
+        'language', coalesce(v_explanation_language, 'ar'),
+        'terminology_display_mode', 'inherit'
+      );
+    end if;
   end if;
 
   v_feedback_text := case
