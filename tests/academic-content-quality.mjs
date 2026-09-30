@@ -42,6 +42,47 @@ assert.ok(
   'A self-contained word problem may mention a book as the problem object.'
 );
 
+const selfContainedEnglishBookProblem = read('valid-package.json');
+selfContainedEnglishBookProblem.questions[1].prompt_language = 'en';
+selfContainedEnglishBookProblem.questions[1].prompt = 'There are 120 pages in the book. Ali reads 30 pages. How many remain?';
+const selfContainedEnglishBookProblemResult = validateAcademicPackage(selfContainedEnglishBookProblem);
+assert.ok(
+  !selfContainedEnglishBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained English word problem may mention a book as the problem object.'
+);
+
+const embeddedTableInstruction = read('valid-package.json');
+embeddedTableInstruction.questions[1].prompt_language = 'en';
+embeddedTableInstruction.questions[1].prompt = 'Use the table below to answer: Monday 4, Tuesday 6. Which day has the larger value?';
+const embeddedTableInstructionResult = validateAcademicPackage(embeddedTableInstruction);
+assert.ok(
+  !embeddedTableInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'An instruction may reference material embedded in the same learner payload.'
+);
+
+for (const prompt of [
+  'افتح الكتاب على الصفحة 5 ثم أجب عن السؤال.',
+  'انظر إلى الصفحة ثم اختر الإجابة الصحيحة.'
+]) {
+  const arabicExternalInstruction = read('valid-package.json');
+  arabicExternalInstruction.questions[1].prompt_language = 'ar';
+  arabicExternalInstruction.questions[1].prompt = prompt;
+  const arabicExternalInstructionResult = validateAcademicPackage(arabicExternalInstruction);
+  assert.ok(
+    arabicExternalInstructionResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'Direct Arabic instruction to consult external material must be rejected: ' + prompt
+  );
+}
+
+const selfContainedArabicBookProblem = read('valid-package.json');
+selfContainedArabicBookProblem.questions[1].prompt_language = 'ar';
+selfContainedArabicBookProblem.questions[1].prompt = 'في كتاب 120 صفحة. قرأ علي 30 صفحة. كم صفحة بقيت؟';
+const selfContainedArabicBookProblemResult = validateAcademicPackage(selfContainedArabicBookProblem);
+assert.ok(
+  !selfContainedArabicBookProblemResult.errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+  'A self-contained Arabic word problem may mention a book as the problem object.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
