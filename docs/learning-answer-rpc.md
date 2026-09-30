@@ -33,14 +33,8 @@ case the answer-attempt row stores `detected_misconception_id` plus a small
 allowlisted `error_classification` payload with source `mapped_distractor`,
 and the same transaction emits a `misconception_detected` adaptive event.
 
-When an active `incorrect_attempt` explanation set for that misconception is
-eligible for the same workspace, question/concept, attempt number, effective
-grade, difficulty, and learner language, the RPC records its
-`explanation_set_id` and uses its ordered text blocks as the learner feedback.
-For non-final attempts that text replaces only the content of the existing hint
-payload, preserving its level and progression; for a finalized incorrect answer
-it becomes the returned explanation. If no usable modeled text exists, the RPC
-keeps the existing generic hint/final-explanation fallback. Effective grade is
+When the workspace policy `prefer_misconception_specific_explanation` is enabled and an active `incorrect_attempt` explanation set for that misconception is eligible for the same workspace, question/concept, attempt number, effective grade, difficulty, and learner language, the RPC records its `explanation_set_id` and uses its ordered text blocks as the learner feedback. When that preference is disabled, misconception evidence is still recorded but generic feedback remains authoritative.
+For non-final attempts that text replaces only the content of the existing hint payload, preserving its level and progression. If the ordinary hint row is missing, the RPC returns the modeled text in a support-style hint payload without incrementing normal hint progression or `hints_used`. For a finalized incorrect answer the modeled text becomes the returned explanation. If no usable modeled text exists, the RPC keeps the existing generic hint/final-explanation fallback. Effective grade is
 resolved first from the attempt's assignment/enrolled program, then from a
 matching primary or unambiguous active program, and only then from
 `learners.grade_level` as a display/default fallback. Correct answers, unmapped
