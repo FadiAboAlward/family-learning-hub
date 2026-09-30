@@ -18,7 +18,7 @@ assert.match(migration, /question_option_misconceptions/i);
 assert.match(migration, /detected_misconception_id/i);
 assert.match(migration, /'misconception_detected'/i);
 assert.match(migration, /'mapped_distractor'/i);
-assert.match(migration, /m\.concept_id = v_queue\.concept_id/i);
+assert.match(migration, /v_misconception_concept_id = v_queue\.concept_id/i);
 assert.match(migration, /qom\.workspace_id = p_workspace_id/i);
 assert.match(migration, /v_misconception_mapping_count = 1/i);
 assert.match(migration, /public\.explanation_sets/i);
