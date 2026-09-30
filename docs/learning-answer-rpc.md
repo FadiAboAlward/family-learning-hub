@@ -23,10 +23,17 @@ The RPC preserves those rules and the existing response keys:
 - `remediation_added` with the same queue/question payload shape;
 - `explanation` and `correct_option_position`, disclosed only at finalization.
 
-The existing Learning implementation does not currently classify or write a
-misconception for a selected distractor. The RPC therefore leaves
-`quiz_answer_attempts.detected_misconception_id` and `error_classification` at
-their existing defaults instead of inventing new pedagogy in a performance PR.
+The Learning answer RPC now records a misconception only when an incorrect
+selected option has exactly one authored option-to-misconception mapping for
+the active concept in the same workspace. In that case the answer-attempt row
+stores `detected_misconception_id` plus a small allowlisted
+`error_classification` payload with source `mapped_distractor`, and the same
+transaction emits a `misconception_detected` adaptive event. Correct answers,
+unmapped distractors, and ambiguous mappings are not classified; the RPC never
+infers a misconception from wrongness alone. Finalized same-option retries
+return the cached result before creating any additional attempt evidence, so
+the diagnostic event is not duplicated by HTTP retry.
+
 Mastery is updated only when a question is finalized, using the same weighted
 evidence calculation and first-try counter as before. Hint counters now reflect
 the highest hint level actually delivered, so a sparse or missing hint row is
@@ -76,7 +83,7 @@ remains compatible, while the unused RPC and its internal retry metadata are
 harmless. Dropping the RPC is not required for rollback.
 
 The exact migration identity for release and reconciliation is
-`supabase/migrations/20260913145055_learning_answer_rpc.sql`. This PR does not
+`supabase/migrations/20260930185500_learning_misconception_evidence.sql` for the current RPC definition; the original `20260913145055_learning_answer_rpc.sql` remains immutable history. This feature does not
 deploy the Edge function, apply or reconcile that migration in Production, or
 claim Production verification. After merge, the release record must identify
 that migration, record the `learning-api` deployment, reconcile the remote
