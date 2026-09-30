@@ -342,7 +342,7 @@ begin
 
   -- Ambiguous mappings must not be guessed.
   insert into public.misconceptions(id, workspace_id, concept_id, code, title)
-  values (v_misconception_two, v_workspace, v_concept_one, 'qa-rpc-distractor-alt', 'Alternative mapped distractor');
+  values (v_misconception_two, v_workspace, v_concept_two, 'qa-rpc-distractor-alt', 'Alternative mapped distractor');
   insert into public.question_option_misconceptions(workspace_id, option_id, misconception_id)
   values (v_workspace, v_wrong_option, v_misconception_two);
 
