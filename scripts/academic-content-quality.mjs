@@ -13,11 +13,13 @@ const SOURCE_DEPENDENCY_PATTERNS = [
   /\bsayfa(?:da|daki|dan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkayna(?:kta|ktaki)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkayna[gğ]a\s+g[oö]re\b/iu,
-  /\b(?:in|from|according\s+to|refer\s+to)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
-  /\b(?:open|look\s+at|see|check|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
-  /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)(?:\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding|same)?\s*page)?\b/iu,
-  /\bon\s+(?:the\s+)?(?:(?:previous|next|following|preceding|same)\s+page|page\s+\d+)\b/iu,
-  /(?:في|من|راجع|ارجع\s+إلى|بالرجوع\s+إلى)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /\b(?:according\s+to|refer\s+to|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\b(?:open|look\s+at|see|check)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding)\s+page\b/iu,
+  /\bon\s+(?:the\s+)?(?:(?:previous|next|following|preceding)\s+page|page\s+\d+)\b/iu,
+  /(?:راجع|افتح)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /(?:انظر|ارجع)\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
+  /بالرجوع\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
 ];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
