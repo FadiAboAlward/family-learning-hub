@@ -97,14 +97,15 @@ const localRefs=[...index.matchAll(/(?:src|href)=["']\.\/([^"'?]+)(?:\?[^"']*)?[
 for(const ref of localRefs){if(!exists(ref))fail(`index.html references missing file: ${ref}`);}
 const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 for(const f of ['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'])if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);
-for(const f of ['app.js','math-direction-v1.js','content-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+for(const f of ['app.js','math-direction-v1.js','content-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','attempt-history-v1.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
 if(loadedScripts.indexOf('math-direction-v1.js')<loadedScripts.indexOf('app.js'))fail('Math direction runtime must load after app.js so it can wrap the shared math renderer.');
 if(loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js'))fail('Math direction runtime must load before Learning and Exam renderers.');
-if(loadedScripts.indexOf('content-direction-v1.js')<loadedScripts.indexOf('math-direction-v1.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js'))fail('Content direction runtime must load after math direction and before Learning/Exam renderers.');
+if(loadedScripts.indexOf('content-direction-v1.js')<loadedScripts.indexOf('math-direction-v1.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('attempt-history-v1.js'))fail('Content direction runtime must load after math direction and before Learning/Exam/history renderers.');
 
 const learning=read('learning-launcher-v2.js');
 const exam=read('program-exam-v3.js');
 const history=read('attempt-history-v1.js');
+const attemptHistoryApi=read('supabase/functions/attempt-history-api/index.ts');
 const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
@@ -142,9 +143,13 @@ if(layout.includes("observer.observe(document.documentElement"))fail('Answer obs
 if(layout.includes("document.addEventListener('click'"))fail('Answer enhancer must not re-scan on every click.');
 if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must cover both Exam .answers and Learning .answer-grid.');
 if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
-if(!learning.includes('hintAttrs(currentHint,q)'))fail('Learning hints must use the hint language with question-language fallback.');
+if(!learning.includes('class="flh-hint-content" ${hintAttrs(currentHint,q)}'))fail('Learning authored hint content must use the hint language with question-language fallback.');
+if(learning.includes('class="flh-hint-card" ${hintAttrs(currentHint,q)}'))fail('Arabic hint chrome must not inherit the authored hint language boundary.');
 if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
 if(!exam.includes('<li dir="auto">'))fail('Exam review explanation steps must isolate their own prose direction.');
+if(!history.includes('contentAttrs(x.prompt_language)'))fail('Attempt history prompt/answer review must use prompt_language direction.');
+if(!history.includes("globalThis.FLHContentDirection?.normalizeText"))fail('Attempt history must normalize legacy encoded learner text before safe escaping.');
+if(!attemptHistoryApi.includes('prompt,prompt_language,points')||!attemptHistoryApi.includes('prompt_language: q.prompt_language || null'))fail('Attempt history API must return prompt_language with learner-facing review prompts.');
 if(!learning.includes('questionAttrs(r)')||!exam.includes('questionAttrs(r)'))fail('Learning and Exam reviews must preserve prompt_language direction.');
 if(learning.includes('flh-code-inline')||exam.includes('flh-code-inline'))fail('Question code must have one visible owner; Learning/Exam must not render duplicate inline codes.');
 if(!questionReference.includes("b.dir='ltr'")||!questionReference.includes("b.lang='en'"))fail('Question reference chips must isolate the code as LTR.');
