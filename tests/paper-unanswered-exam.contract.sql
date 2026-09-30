@@ -92,10 +92,52 @@ begin
       where id=v_assignment;
     end if;
 
-    -- Generic interactive Exam remains strict and cannot accept unanswered markers.
+    -- Generic interactive Exam must return prompt language metadata in both
+    -- start and submitted review payloads.
     v_generic := public.flh_exam_start(v_workspace,v_test,v_slug);
     if nullif(v_generic->>'attempt_id','') is null then
       raise exception 'CONTRACT_GENERIC_START_FAILED';
+    end if;
+    v_generic_attempt := (v_generic->>'attempt_id')::uuid;
+    if exists (
+      select 1
+      from jsonb_array_elements(v_generic->'questions') item
+      where coalesce(item->'question'->>'prompt_language','') not in ('ar','tr','en')
+    ) then
+      raise exception 'CONTRACT_GENERIC_START_PROMPT_LANGUAGE_MISSING:%',v_generic;
+    end if;
+
+    for r in
+      select qq.question_id,(k.correct_answer->>'option_position')::integer as option_position
+      from public.quiz_attempt_question_queue qq
+      join public.quiz_question_answer_keys k
+        on k.workspace_id=qq.workspace_id and k.question_id=qq.question_id
+      where qq.workspace_id=v_workspace and qq.quiz_attempt_id=v_generic_attempt
+      order by qq.sequence_no
+    loop
+      v_saved := public.flh_exam_save_answer(
+        v_workspace,v_test,v_generic_attempt,r.question_id,r.option_position
+      );
+      if coalesce((v_saved->>'ok')::boolean,false) is not true then
+        raise exception 'CONTRACT_GENERIC_LANGUAGE_SAVE_FAILED:%',v_saved;
+      end if;
+    end loop;
+
+    v_generic_submit := public.flh_exam_submit(v_workspace,v_test,v_generic_attempt);
+    if coalesce((v_generic_submit->>'ok')::boolean,false) is not true
+       or exists (
+         select 1
+         from jsonb_array_elements(v_generic_submit->'review') item
+         where coalesce(item->>'prompt_language','') not in ('ar','tr','en')
+       ) then
+      raise exception 'CONTRACT_GENERIC_SUBMIT_PROMPT_LANGUAGE_MISSING:%',v_generic_submit;
+    end if;
+
+    -- Start a fresh generic attempt and preserve the existing strict unanswered
+    -- contract: interactive Exam cannot accept paper-style blank markers.
+    v_generic := public.flh_exam_start(v_workspace,v_test,v_slug);
+    if nullif(v_generic->>'attempt_id','') is null then
+      raise exception 'CONTRACT_GENERIC_STRICT_START_FAILED';
     end if;
     v_generic_attempt := (v_generic->>'attempt_id')::uuid;
 
