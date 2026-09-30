@@ -324,9 +324,18 @@ begin
       -- Reuse an already-authored active misconception explanation when it is
       -- eligible for this question/concept, attempt, effective grade,
       -- difficulty, and learner language.
-      select es.id
-      into v_explanation_set_id
+      select es.id, deliverable.feedback_text
+      into v_explanation_set_id, v_misconception_feedback_text
       from public.explanation_sets es
+      join lateral (
+        select string_agg(eb.content->>'text', E'\n\n' order by eb.position) as feedback_text
+        from public.explanation_blocks eb
+        where eb.workspace_id = p_workspace_id
+          and eb.explanation_set_id = es.id
+          and eb.block_type = 'text'
+          and nullif(btrim(eb.content->>'text'), '') is not null
+      ) deliverable
+        on deliverable.feedback_text is not null
       left join public.learner_instruction_profiles lip
         on lip.workspace_id = p_workspace_id
        and lip.learner_id = p_learner_id
@@ -349,20 +358,6 @@ begin
         coalesce(es.min_attempt_no, 0) desc,
         es.id
       limit 1;
-
-      if v_explanation_set_id is not null then
-        select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
-        into v_misconception_feedback_text
-        from public.explanation_blocks eb
-        where eb.workspace_id = p_workspace_id
-          and eb.explanation_set_id = v_explanation_set_id
-          and eb.block_type = 'text'
-          and nullif(btrim(eb.content->>'text'), '') is not null;
-
-        if v_misconception_feedback_text is null then
-          v_explanation_set_id := null;
-        end if;
-      end if;
     else
       v_misconception_id := null;
       v_misconception_code := null;
