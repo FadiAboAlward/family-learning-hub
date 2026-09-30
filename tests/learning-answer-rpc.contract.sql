@@ -192,13 +192,32 @@ begin
      or v_result->'hint'->>'content' <> 'hint one' then
     raise exception 'LEARNING_RPC_INCORRECT_HINT_ONE_INVALID:%', v_result;
   end if;
-  if exists (select 1 from public.quiz_attempt_answers where attempt_id = v_attempt_b)
-     or exists (select 1 from public.adaptive_events where quiz_attempt_id = v_attempt_b)
-     or exists (
+  if exists (select 1 from public.quiz_attempt_answers where attempt_id = v_attempt_b) then
+    raise exception 'LEARNING_RPC_NONFINAL_ANSWER_PERSISTED';
+  end if;
+  if not exists (
        select 1 from public.quiz_answer_attempts
        where quiz_attempt_id = v_attempt_b
-         and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
-     ) then raise exception 'LEARNING_RPC_NONFINAL_OR_MISCONCEPTION_PARITY_INVALID'; end if;
+         and question_id = v_q_one
+         and attempt_no = 1
+         and detected_misconception_id = v_misconception
+         and error_classification->>'source' = 'mapped_distractor'
+         and error_classification->>'misconception_code' = 'qa-rpc-distractor'
+     ) then
+    raise exception 'LEARNING_RPC_MAPPED_DISTRACTOR_NOT_CLASSIFIED';
+  end if;
+  if (
+       select count(*)
+       from public.adaptive_events
+       where quiz_attempt_id = v_attempt_b
+         and learner_id = v_learner
+         and concept_id = v_concept_one
+         and event_type = 'misconception_detected'
+         and reason = 'mapped_distractor'
+         and output_state->>'misconception_id' = v_misconception::text
+     ) <> 1 then
+    raise exception 'LEARNING_RPC_MISCONCEPTION_EVENT_INVALID';
+  end if;
 
   set local role service_role;
   perform public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
@@ -231,6 +250,12 @@ begin
   ) or not exists (
     select 1 from public.quiz_attempt_question_queue
     where quiz_attempt_id = v_attempt_b and question_id = v_q_rem_one and status = 'active'
+  ) or exists (
+    select 1 from public.quiz_answer_attempts
+    where quiz_attempt_id = v_attempt_b
+      and question_id = v_q_one
+      and attempt_no = 4
+      and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
   ) then raise exception 'LEARNING_RPC_FINAL_CORRECT_SIDE_EFFECT_INVALID'; end if;
 
   -- Incorrect finalization at max attempts and same-transaction remediation.
@@ -294,8 +319,13 @@ begin
        select 1 from public.quiz_attempt_question_queue
        where quiz_attempt_id = v_attempt_h and question_id = v_q_end
          and draft_option_position is null
+     ) or exists (
+       select 1 from public.quiz_answer_attempts
+       where quiz_attempt_id = v_attempt_h
+         and question_id = v_q_end
+         and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
      ) then
-    raise exception 'LEARNING_RPC_MISSING_HINT_REPORTED_AS_DELIVERED:%', v_result;
+    raise exception 'LEARNING_RPC_MISSING_HINT_OR_UNMAPPED_CLASSIFICATION_INVALID:%', v_result;
   end if;
 
   -- A missing, malformed, or non-existent correct option is a data error, not
