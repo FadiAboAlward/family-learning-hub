@@ -8,6 +8,11 @@
   const learnerToken=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+  const normalizeText=(s='')=>globalThis.FLHContentDirection?.normalizeText?.(s)??String(s);
+  const contentAttrs=lang=>globalThis.FLHContentDirection?.attrs?.(lang)||'dir="auto"';
+  const hintAttrs=(hint,q)=>contentAttrs(hint?.language||q?.prompt_language);
+  const safeText=(s='')=>esc(normalizeText(s));
+
   async function call(action,payload={}){
     const token=learnerToken();
     if(!token) throw new Error('AUTH_REQUIRED');
@@ -97,9 +102,9 @@
     const progress=Math.min(100,Math.round((completedCount()/Math.max(1,queue.length))*100));
     const options=(q.options||[]).map(o=>{
       const pos=Number(o.position),isSelected=selected===pos;
-      return `<button type="button" class="answer ${isSelected?'selected':''}" data-answer="${pos}" ${busy?'disabled':''}><span class="answer-index">${isSelected?'✓':pos}</span><span>${esc(o.content)}</span></button>`;
+      return `<button type="button" class="answer ${isSelected?'selected':''}" data-answer="${pos}" ${busy?'disabled':''}><span class="answer-index">${isSelected?'✓':pos}</span><span ${contentAttrs(q.prompt_language)}>${safeText(o.content)}</span></button>`;
     }).join('');
-    root.innerHTML=`<section class="practice-card"><div class="practice-head"><div><div class="practice-title">🧠 ${esc(session.quiz.title)}</div><div class="muted">${row.source_role==='remediation'?'تدريب مساعد لنفس الفكرة':'تحدّي أساسي'} · سؤال ${index+1}</div></div><a class="btn btn-soft" href="./#student">خروج</a></div><div class="progress"><span style="width:${progress}%"></span></div>${visualHtml(q)}<div class="question"><b>${esc(q.prompt)}</b></div><div class="answers">${options}</div><div class="status">${message||(!selected?'اختاري جوابًا، وبعدها اضغطي تأكيد.':'اختيارك محفوظ محليًا؛ أكّديه عندما تتأكدي.')}</div>${currentHint?.content?`<div class="hint"><b>💡 تلميح ${Number(currentHint.hint_level||1)}</b><div>${esc(currentHint.content)}</div></div>`:''}<div class="toolbar"><button class="btn btn-primary" id="confirmAnswer" ${busy||!selected?'disabled':''}>تأكيد الإجابة</button><button class="btn btn-soft" id="askHint" ${busy?'disabled':''}>💡 ساعدني</button></div></section>`;
+    root.innerHTML=`<section class="practice-card"><div class="practice-head"><div><div class="practice-title">🧠 ${esc(session.quiz.title)}</div><div class="muted">${row.source_role==='remediation'?'تدريب مساعد لنفس الفكرة':'تحدّي أساسي'} · سؤال ${index+1}</div></div><a class="btn btn-soft" href="./#student">خروج</a></div><div class="progress"><span style="width:${progress}%"></span></div>${visualHtml(q)}<div class="question" ${contentAttrs(q.prompt_language)}><b>${safeText(q.prompt)}</b></div><div class="answers">${options}</div><div class="status">${message||(!selected?'اختاري جوابًا، وبعدها اضغطي تأكيد.':'اختيارك محفوظ محليًا؛ أكّديه عندما تتأكدي.')}</div>${currentHint?.content?`<div class="hint"><b>💡 تلميح ${Number(currentHint.hint_level||1)}</b><div class="hint-content" ${hintAttrs(currentHint,q)}>${safeText(currentHint.content)}</div></div>`:''}<div class="toolbar"><button class="btn btn-primary" id="confirmAnswer" ${busy||!selected?'disabled':''}>تأكيد الإجابة</button><button class="btn btn-soft" id="askHint" ${busy?'disabled':''}>💡 ساعدني</button></div></section>`;
     bindVisuals();
     document.querySelectorAll('[data-answer]').forEach(btn=>btn.addEventListener('click',()=>choose(Number(btn.dataset.answer))));
     document.getElementById('confirmAnswer')?.addEventListener('click',confirmAnswer);
@@ -123,8 +128,8 @@
       const row=currentRow();
       const d=await call('request_hint',{attempt_id:session.attempt_id,question_id:row.question_id});
       if(d.hint) currentHint=d.hint;
-      else currentHint={hint_level:d.hint_level||4,content:'جرّبي تقسيم المسألة إلى خطوة أصغر، ثم ارجعي للجواب.'};
-    }catch{currentHint={hint_level:1,content:'تعذر تحميل التلميح الآن. جرّبي مرة ثانية.'};}
+      else currentHint={hint_level:d.hint_level||4,language:'ar',content:'جرّبي تقسيم المسألة إلى خطوة أصغر، ثم ارجعي للجواب.'};
+    }catch{currentHint={hint_level:1,language:'ar',content:'تعذر تحميل التلميح الآن. جرّبي مرة ثانية.'};}
     finally{busy=false;renderQuestion();}
   }
 
@@ -145,7 +150,7 @@
       if(d.remediation_added?.question) queue.push(d.remediation_added);
       selected=null;currentHint=null;busy=false;
       const next=findNext();
-      root.innerHTML=`<section class="practice-card"><div class="feedback ${d.is_correct?'good':'bad'}"><b>${d.is_correct?'✅ ممتاز! فهمتي الفكرة.':'🌱 خلصت محاولات هذا السؤال، ومنكمل نتدرّب.'}</b>${d.explanation?`<div>${esc(d.explanation)}</div>`:''}</div><div class="toolbar"><button class="btn btn-primary" id="nextQuestion">${next>=0?'السؤال التالي':'شوفي النتيجة'}</button></div></section>`;
+      root.innerHTML=`<section class="practice-card"><div class="feedback ${d.is_correct?'good':'bad'}"><b>${d.is_correct?'✅ ممتاز! فهمتي الفكرة.':'🌱 خلصت محاولات هذا السؤال، ومنكمل نتدرّب.'}</b>${d.explanation?`<div dir="auto">${safeText(d.explanation)}</div>`:''}</div><div class="toolbar"><button class="btn btn-primary" id="nextQuestion">${next>=0?'السؤال التالي':'شوفي النتيجة'}</button></div></section>`;
       document.getElementById('nextQuestion')?.addEventListener('click',()=>{if(next>=0){index=next;renderQuestion();}else finishQuiz();});
     }catch{
       busy=false;renderQuestion('صار خطأ بالحفظ، وإجابتك ما ضاعت. جرّبي التأكيد مرة ثانية.');
@@ -156,7 +161,7 @@
     root.innerHTML='<section class="practice-card loading-card">عم نجمع نتيجتك ونحفظ التقدّم…</section>';
     try{
       const d=await call('finish_quiz',{attempt_id:session.attempt_id,duration_seconds:Math.max(1,Math.round((Date.now()-startedAt)/1000))});
-      const review=(d.review||[]).map((r,i)=>`<div class="review"><b>${r.is_correct?'✅':'❌'} سؤال ${i+1}</b><div>${esc(r.prompt||'')}</div>${r.explanation?`<div class="muted">${esc(r.explanation)}</div>`:''}</div>`).join('');
+      const review=(d.review||[]).map((r,i)=>`<div class="review"><b>${r.is_correct?'✅':'❌'} سؤال ${i+1}</b><div class="review-prompt" ${contentAttrs(r.prompt_language)}>${safeText(r.prompt||'')}</div>${r.explanation?`<div class="muted" dir="auto">${safeText(r.explanation)}</div>`:''}</div>`).join('');
       root.innerHTML=`<section class="practice-card"><div class="practice-title">🎉 خلص التدريب!</div><p class="muted">النتيجة انحفظت على حساب الطالب، ومعها أدلة الإتقان لكل مفهوم.</p><div class="finish-stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">صح من أول مرة<b>${Number(d.first_try_correct||0)}</b></div><div class="stat">التلميحات<b>${Number(d.hints_used||0)}</b></div></div>${review}<div class="toolbar"><a class="btn btn-primary" href="./#student">رجوع للمكتبة</a><button class="btn btn-soft" id="repeatPractice">أتمرّن مرة ثانية</button></div></section>`;
       document.getElementById('repeatPractice')?.addEventListener('click',()=>location.reload());
     }catch{
