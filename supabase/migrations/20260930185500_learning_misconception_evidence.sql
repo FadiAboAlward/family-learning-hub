@@ -31,6 +31,9 @@ declare
   v_misconception_code text := null;
   v_misconception_confidence numeric := null;
   v_misconception_mapping_count integer := 0;
+  v_misconception_concept_id uuid := null;
+  v_detect_mapped_distractors boolean := true;
+  v_effective_grade smallint := null;
   v_error_classification jsonb := '{}'::jsonb;
   v_explanation_set_id uuid := null;
   v_misconception_feedback_text text := null;
@@ -182,83 +185,190 @@ begin
 
   v_is_correct := coalesce(p_option_position = v_correct_option_position, false);
 
+  -- Respect the existing workspace-level pedagogy switch. Missing or malformed
+  -- settings preserve the historical enabled behavior.
+  select coalesce((
+    select case
+      when jsonb_typeof(ws.value->'detect_from_multiple_choice_distractors') = 'boolean'
+        then (ws.value->>'detect_from_multiple_choice_distractors')::boolean
+      else true
+    end
+    from public.workspace_settings ws
+    where ws.workspace_id = p_workspace_id
+      and ws.key = 'pedagogy.misconception_policy'
+    limit 1
+  ), true)
+  into v_detect_mapped_distractors;
+
   -- A selected distractor is diagnostic evidence only when the authored option
   -- has exactly one misconception mapping in this workspace, and that sole
-  -- mapping belongs to the active concept. Multiple mappings are authoring-data
-  -- ambiguity and are never guessed, even when only one matches the concept.
-  if not v_is_correct and v_queue.concept_id is not null then
-    select count(*)::integer
-    into v_misconception_mapping_count
-    from public.question_option_misconceptions qom
-    join public.misconceptions m
-      on m.id = qom.misconception_id
-     and m.workspace_id = qom.workspace_id
-    where qom.workspace_id = p_workspace_id
-      and qom.option_id = v_option_id;
-
-    if v_misconception_mapping_count = 1 then
-      select m.id, m.code, qom.confidence
-      into v_misconception_id, v_misconception_code, v_misconception_confidence
+  -- mapping belongs to the active concept. Candidate + count are read in one
+  -- statement snapshot so a concurrent mapping edit cannot turn a proven
+  -- unique mapping into an arbitrary LIMIT 1 choice.
+  if not v_is_correct
+     and v_queue.concept_id is not null
+     and v_detect_mapped_distractors then
+    select
+      candidate.mapping_count,
+      candidate.misconception_id,
+      candidate.misconception_code,
+      candidate.confidence,
+      candidate.concept_id
+    into
+      v_misconception_mapping_count,
+      v_misconception_id,
+      v_misconception_code,
+      v_misconception_confidence,
+      v_misconception_concept_id
+    from (
+      select
+        count(*) over()::integer as mapping_count,
+        m.id as misconception_id,
+        m.code as misconception_code,
+        qom.confidence,
+        m.concept_id
       from public.question_option_misconceptions qom
       join public.misconceptions m
         on m.id = qom.misconception_id
        and m.workspace_id = qom.workspace_id
       where qom.workspace_id = p_workspace_id
         and qom.option_id = v_option_id
-        and m.concept_id = v_queue.concept_id
+    ) candidate
+    order by candidate.misconception_id
+    limit 1;
+
+    if found
+       and v_misconception_mapping_count = 1
+       and v_misconception_concept_id = v_queue.concept_id then
+      v_error_classification := jsonb_build_object(
+        'source', 'mapped_distractor',
+        'option_id', v_option_id,
+        'misconception_code', v_misconception_code,
+        'confidence', v_misconception_confidence
+      );
+
+      -- Grade eligibility follows the attempt's enrolled program context when
+      -- it exists. A primary program carrying this quiz is the next fallback;
+      -- if there is exactly one matching active program grade, use it. The
+      -- learner-level grade remains only the final display/default fallback.
+      select coalesce(
+        (
+          select lp.grade_level
+          from public.quiz_assignments qa
+          join public.learner_program_enrollments lpe
+            on lpe.id = qa.learner_program_enrollment_id
+           and lpe.workspace_id = qa.workspace_id
+           and lpe.learner_id = qa.learner_id
+          join public.learning_programs lp
+            on lp.id = lpe.program_id
+           and lp.workspace_id = lpe.workspace_id
+          where qa.id = v_attempt.assignment_id
+            and qa.workspace_id = p_workspace_id
+            and qa.learner_id = p_learner_id
+          limit 1
+        ),
+        (
+          select lp.grade_level
+          from public.learner_program_enrollments lpe
+          join public.learning_programs lp
+            on lp.id = lpe.program_id
+           and lp.workspace_id = lpe.workspace_id
+          join public.program_quizzes pq
+            on pq.workspace_id = lp.workspace_id
+           and pq.program_id = lp.id
+           and pq.availability = 'available'
+          join public.quiz_versions qv
+            on qv.id = v_attempt.quiz_version_id
+           and qv.workspace_id = p_workspace_id
+           and qv.quiz_id = pq.quiz_id
+          where lpe.workspace_id = p_workspace_id
+            and lpe.learner_id = p_learner_id
+            and lpe.status = 'active'
+            and lpe.is_primary
+            and lp.status = 'active'
+          order by lpe.started_at desc nulls last, lpe.id
+          limit 1
+        ),
+        (
+          select case
+            when count(distinct lp.grade_level) = 1 then max(lp.grade_level)
+            else null
+          end
+          from public.learner_program_enrollments lpe
+          join public.learning_programs lp
+            on lp.id = lpe.program_id
+           and lp.workspace_id = lpe.workspace_id
+          join public.program_quizzes pq
+            on pq.workspace_id = lp.workspace_id
+           and pq.program_id = lp.id
+           and pq.availability = 'available'
+          join public.quiz_versions qv
+            on qv.id = v_attempt.quiz_version_id
+           and qv.workspace_id = p_workspace_id
+           and qv.quiz_id = pq.quiz_id
+          where lpe.workspace_id = p_workspace_id
+            and lpe.learner_id = p_learner_id
+            and lpe.status = 'active'
+            and lp.status = 'active'
+            and lp.grade_level is not null
+        ),
+        (
+          select learner.grade_level
+          from public.learners learner
+          where learner.id = p_learner_id
+            and learner.workspace_id = p_workspace_id
+        )
+      )
+      into v_effective_grade;
+
+      -- Reuse an already-authored active misconception explanation when it is
+      -- eligible for this question/concept, attempt, effective grade,
+      -- difficulty, and learner language.
+      select es.id
+      into v_explanation_set_id
+      from public.explanation_sets es
+      left join public.learner_instruction_profiles lip
+        on lip.workspace_id = p_workspace_id
+       and lip.learner_id = p_learner_id
+      where es.workspace_id = p_workspace_id
+        and es.misconception_id = v_misconception_id
+        and es.status = 'active'
+        and es.trigger_kind = 'incorrect_attempt'
+        and (es.question_id is null or es.question_id = p_question_id)
+        and (es.concept_id is null or es.concept_id = v_queue.concept_id)
+        and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
+        and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
+        and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
+        and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
+        and (es.min_grade is null or (v_effective_grade is not null and es.min_grade <= v_effective_grade))
+        and (es.max_grade is null or (v_effective_grade is not null and es.max_grade >= v_effective_grade))
+        and es.language = coalesce(lip.primary_language, 'ar')
+      order by
+        case when es.question_id = p_question_id then 0 else 1 end,
+        case when es.concept_id = v_queue.concept_id then 0 else 1 end,
+        coalesce(es.min_attempt_no, 0) desc,
+        es.id
       limit 1;
 
-      if found then
-        v_error_classification := jsonb_build_object(
-          'source', 'mapped_distractor',
-          'option_id', v_option_id,
-          'misconception_code', v_misconception_code,
-          'confidence', v_misconception_confidence
-        );
+      if v_explanation_set_id is not null then
+        select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
+        into v_misconception_feedback_text
+        from public.explanation_blocks eb
+        where eb.workspace_id = p_workspace_id
+          and eb.explanation_set_id = v_explanation_set_id
+          and eb.block_type = 'text'
+          and nullif(btrim(eb.content->>'text'), '') is not null;
 
-        -- Reuse an already-authored active misconception explanation when it
-        -- is eligible for this question/concept, attempt, grade, difficulty,
-        -- and learner language. Persisting the set id keeps the response
-        -- contract unchanged while making the selected support auditable.
-        select es.id
-        into v_explanation_set_id
-        from public.explanation_sets es
-        left join public.learner_instruction_profiles lip
-          on lip.workspace_id = p_workspace_id
-         and lip.learner_id = p_learner_id
-        join public.learners learner
-          on learner.id = p_learner_id
-         and learner.workspace_id = p_workspace_id
-        where es.workspace_id = p_workspace_id
-          and es.misconception_id = v_misconception_id
-          and es.status = 'active'
-          and es.trigger_kind = 'incorrect_attempt'
-          and (es.question_id is null or es.question_id = p_question_id)
-          and (es.concept_id is null or es.concept_id = v_queue.concept_id)
-          and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
-          and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
-          and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
-          and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
-          and (es.min_grade is null or learner.grade_level is not null and es.min_grade <= learner.grade_level)
-          and (es.max_grade is null or learner.grade_level is not null and es.max_grade >= learner.grade_level)
-          and es.language = coalesce(lip.primary_language, 'ar')
-        order by
-          case when es.question_id = p_question_id then 0 else 1 end,
-          case when es.concept_id = v_queue.concept_id then 0 else 1 end,
-          coalesce(es.min_attempt_no, 0) desc,
-          es.id
-        limit 1;
-
-        if v_explanation_set_id is not null then
-          select string_agg(eb.content->>'text', E'\n\n' order by eb.position)
-          into v_misconception_feedback_text
-          from public.explanation_blocks eb
-          where eb.workspace_id = p_workspace_id
-            and eb.explanation_set_id = v_explanation_set_id
-            and eb.block_type = 'text'
-            and nullif(btrim(eb.content->>'text'), '') is not null;
+        if v_misconception_feedback_text is null then
+          v_explanation_set_id := null;
         end if;
       end if;
+    else
+      v_misconception_id := null;
+      v_misconception_code := null;
+      v_misconception_confidence := null;
+      v_misconception_concept_id := null;
+      v_misconception_mapping_count := 0;
     end if;
   end if;
 
@@ -320,6 +430,18 @@ begin
     update public.quiz_attempt_question_queue
     set draft_option_position = null
     where id = v_queue.id;
+  end if;
+
+  if not v_is_correct
+     and not v_finalized
+     and v_misconception_feedback_text is not null
+     and jsonb_typeof(v_hint) = 'object' then
+    v_hint := jsonb_set(
+      v_hint,
+      '{content}',
+      to_jsonb(v_misconception_feedback_text),
+      true
+    );
   end if;
 
   v_feedback_text := case
@@ -622,6 +744,7 @@ begin
     'explanation', case
       when not v_finalized then null
       when v_is_correct then coalesce(v_key.correct_explanation, v_key.explanation)
+      when v_misconception_feedback_text is not null then v_misconception_feedback_text
       else coalesce(v_key.final_incorrect_explanation, v_key.explanation)
     end,
     'correct_option_position', case when v_finalized then v_correct_option_position else null end
