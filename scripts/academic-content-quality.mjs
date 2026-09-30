@@ -6,7 +6,7 @@ const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
 const PROMPT_LANGUAGES = new Set(['ar', 'tr', 'en']);
 const HTML_ENTITY_RE = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/iu;
-const RAW_HTML_TAG_RE = /<\/?[a-z][^>]*>/iu;
+const RAW_HTML_TAG_RE = /<\/?[a-z][a-z0-9-]*(?:\s+[a-z_:][-a-z0-9_:.]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))*\s*\/?>/iu;
 const SOURCE_DEPENDENCY_PATTERNS = [
   /\bkitap(?:ta|taki|tan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkitaba\s+(?:g[oö]re|bak(?:arak)?|ba[sş]vur(?:arak)?)\b/iu,
@@ -14,9 +14,9 @@ const SOURCE_DEPENDENCY_PATTERNS = [
   /\bkayna(?:kta|ktaki)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkayna[gğ]a\s+g[oö]re\b/iu,
   /\b(?:according\s+to|refer\s+to|consult)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
-  /\b(?:open|look\s+at|see|check)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
+  /\b(?:open|look\s+at|see|check|use)\s+(?:the\s+)?(?:book|textbook|page|source|reference)\b/iu,
   /\buse\s+(?:the\s+)?(?:diagram|figure|table|chart|image)\s+(?:on|from)\s+(?:the\s+)?(?:previous|next|following|preceding)\s+page\b/iu,
-  /\bon\s+(?:the\s+)?(?:(?:previous|next|following|preceding)\s+page|page\s+\d+)\b/iu,
+  /\bon\s+(?:the\s+)?(?:previous|next|following|preceding)\s+page\b/iu,
   /(?:راجع|افتح)\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /(?:انظر|ارجع)\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /بالرجوع\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
