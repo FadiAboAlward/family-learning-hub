@@ -15,6 +15,7 @@ declare
   v_generic_attempt uuid;
   v_generic_submit jsonb;
   v_generic_question uuid;
+  v_generic_queue_count integer;
   v_started jsonb;
   v_attempt uuid;
   v_submitted jsonb;
@@ -99,6 +100,14 @@ begin
       raise exception 'CONTRACT_GENERIC_START_FAILED';
     end if;
     v_generic_attempt := (v_generic->>'attempt_id')::uuid;
+    select count(*) into v_generic_queue_count
+    from public.quiz_attempt_question_queue
+    where workspace_id=v_workspace and quiz_attempt_id=v_generic_attempt;
+    if jsonb_typeof(v_generic->'questions') is distinct from 'array'
+       or v_generic_queue_count <= 0
+       or jsonb_array_length(v_generic->'questions') <> v_generic_queue_count then
+      raise exception 'CONTRACT_GENERIC_START_QUESTION_CARDINALITY:%',v_generic;
+    end if;
     if exists (
       select 1
       from jsonb_array_elements(v_generic->'questions') item
@@ -125,6 +134,9 @@ begin
 
     v_generic_submit := public.flh_exam_submit(v_workspace,v_test,v_generic_attempt);
     if coalesce((v_generic_submit->>'ok')::boolean,false) is not true
+       or jsonb_typeof(v_generic_submit->'review') is distinct from 'array'
+       or v_generic_queue_count <= 0
+       or jsonb_array_length(v_generic_submit->'review') <> v_generic_queue_count
        or exists (
          select 1
          from jsonb_array_elements(v_generic_submit->'review') item
