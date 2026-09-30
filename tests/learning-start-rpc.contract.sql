@@ -166,7 +166,7 @@ begin
      or v_resume->'queue'->1 @> '{"status":"active","draft_option_position":1,"hint_level_requested":2}'::jsonb is not true
      or v_resume->'queue'->2 @> '{"source_role":"remediation","status":"pending"}'::jsonb is not true
      or v_resume->'queue'->2->'question'->>'delivery_role' <> 'remediation_pool'
-     or v_resume->'queue'->2->'question'->>'prompt_language' <> 'ar'
+     or v_resume->'queue'->2->'question'->>'prompt_language' is distinct from 'ar'
      or (select count(*) from public.quiz_attempts where learner_id = v_learner and quiz_version_id = v_version_program and status = 'in_progress' and delivery_mode = 'learning') <> 1
      or (select count(*) from public.quiz_attempt_question_queue where quiz_attempt_id = v_attempt) <> 3 then
     raise exception 'LEARNING_START_RESUME_INVALID:%', v_resume;
