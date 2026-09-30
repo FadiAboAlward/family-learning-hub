@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const migration = fs.readFileSync('supabase/migrations/20260913145055_learning_answer_rpc.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20260930185500_learning_misconception_evidence.sql', 'utf8');
 const learningApi = fs.readFileSync('supabase/functions/learning-api/index.ts', 'utf8');
 const config = fs.readFileSync('supabase/config.toml', 'utf8');
 const rollbackDoc = fs.readFileSync('docs/learning-answer-rpc.md', 'utf8');
@@ -14,6 +14,11 @@ assert.match(migration, /security invoker\s+set search_path = ''/i);
 assert.match(migration, /revoke all on function public\.flh_learning_answer\(uuid,uuid,uuid,uuid,integer\) from public/i);
 assert.match(migration, /revoke all on function public\.flh_learning_answer\(uuid,uuid,uuid,uuid,integer\) from anon, authenticated/i);
 assert.match(migration, /grant execute on function public\.flh_learning_answer\(uuid,uuid,uuid,uuid,integer\) to service_role/i);
+assert.match(migration, /question_option_misconceptions/i);
+assert.match(migration, /detected_misconception_id/i);
+assert.match(migration, /'misconception_detected'/i);
+assert.match(migration, /'mapped_distractor'/i);
+assert.match(migration, /m\.concept_id = v_queue\.concept_id/i);
 
 const answerFunction = learningApi.match(/async function answerQuestion[\s\S]*?\n}/)?.[0] ?? '';
 assert.match(answerFunction, /trace\.measure\("answer\.rpc",\{dbOperations:1\}/);
