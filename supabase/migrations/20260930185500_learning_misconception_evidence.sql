@@ -32,6 +32,7 @@ declare
   v_misconception_confidence numeric := null;
   v_misconception_mapping_count integer := 0;
   v_error_classification jsonb := '{}'::jsonb;
+  v_explanation_set_id uuid := null;
   v_next_queue_id uuid;
   v_attempt_no integer;
   v_max_attempts integer;
@@ -212,6 +213,39 @@ begin
         'misconception_code', v_misconception_code,
         'confidence', v_misconception_confidence
       );
+
+      -- Reuse an already-authored active misconception explanation when it
+      -- is eligible for this question/concept, attempt, grade, difficulty,
+      -- and learner language. Persisting the set id keeps the response
+      -- contract unchanged while making the selected support auditable.
+      select es.id
+      into v_explanation_set_id
+      from public.explanation_sets es
+      left join public.learner_instruction_profiles lip
+        on lip.workspace_id = p_workspace_id
+       and lip.learner_id = p_learner_id
+      join public.learners learner
+        on learner.id = p_learner_id
+       and learner.workspace_id = p_workspace_id
+      where es.workspace_id = p_workspace_id
+        and es.misconception_id = v_misconception_id
+        and es.status = 'active'
+        and es.trigger_kind = 'incorrect_attempt'
+        and (es.question_id is null or es.question_id = p_question_id)
+        and (es.concept_id is null or es.concept_id = v_queue.concept_id)
+        and (es.min_attempt_no is null or es.min_attempt_no <= v_attempt_no)
+        and (es.max_attempt_no is null or es.max_attempt_no >= v_attempt_no)
+        and (es.min_difficulty is null or es.min_difficulty <= v_question.difficulty_level)
+        and (es.max_difficulty is null or es.max_difficulty >= v_question.difficulty_level)
+        and (es.min_grade is null or learner.grade_level is not null and es.min_grade <= learner.grade_level)
+        and (es.max_grade is null or learner.grade_level is not null and es.max_grade >= learner.grade_level)
+        and es.language = coalesce(lip.primary_language, 'ar')
+      order by
+        case when es.question_id = p_question_id then 0 else 1 end,
+        case when es.concept_id = v_queue.concept_id then 0 else 1 end,
+        coalesce(es.min_attempt_no, 0) desc,
+        es.id
+      limit 1;
     end if;
   end if;
 
@@ -292,7 +326,8 @@ begin
     hint_level_shown,
     score_fraction,
     detected_misconception_id,
-    error_classification
+    error_classification,
+    explanation_set_id
   ) values (
     p_workspace_id,
     p_attempt_id,
@@ -304,7 +339,8 @@ begin
     v_hint_level,
     v_score_fraction,
     v_misconception_id,
-    v_error_classification
+    v_error_classification,
+    v_explanation_set_id
   )
   returning id into v_answer_attempt_id;
 
