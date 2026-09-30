@@ -29,7 +29,10 @@ declare
   v_attempt_f constant uuid := '20000000-0000-4000-8000-000000000006';
   v_attempt_g constant uuid := '20000000-0000-4000-8000-000000000007';
   v_attempt_h constant uuid := '20000000-0000-4000-8000-000000000008';
+  v_attempt_i constant uuid := '20000000-0000-4000-8000-000000000009';
   v_misconception constant uuid := '30000000-0000-4000-8000-000000000001';
+  v_misconception_two constant uuid := '30000000-0000-4000-8000-000000000002';
+  v_explanation_set constant uuid := '40000000-0000-4000-8000-000000000001';
   v_wrong_option uuid;
   v_result jsonb;
   v_retry jsonb;
@@ -120,6 +123,21 @@ begin
   insert into public.question_option_misconceptions(workspace_id, option_id, misconception_id)
   values (v_workspace, v_wrong_option, v_misconception);
 
+  insert into public.explanation_sets(
+    id, workspace_id, question_id, concept_id, trigger_kind,
+    min_attempt_no, max_attempt_no, min_difficulty, max_difficulty,
+    language, title, status, misconception_id
+  )
+  select
+    v_explanation_set, v_workspace, v_q_one, v_concept_one, 'incorrect_attempt',
+    1, 4, 3, 3,
+    coalesce((
+      select lip.primary_language
+      from public.learner_instruction_profiles lip
+      where lip.workspace_id = v_workspace and lip.learner_id = v_learner
+    ), 'ar'),
+    'Mapped distractor explanation', 'active', v_misconception;
+
   -- First-try correct, final persistence, mastery, next activation, and exact
   -- same-option retry without duplicate side effects.
   insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
@@ -145,6 +163,15 @@ begin
     where attempt_id = v_attempt_a and question_id = v_q_one
       and is_correct and points_awarded = 2 and attempts_used = 1
       and hints_used = 0 and first_try_correct and mastery_result = 'mastered'
+  ) or exists (
+    select 1 from public.quiz_answer_attempts
+    where quiz_attempt_id = v_attempt_a and question_id = v_q_one
+      and (detected_misconception_id is not null
+        or error_classification <> '{}'::jsonb
+        or explanation_set_id is not null)
+  ) or exists (
+    select 1 from public.adaptive_events
+    where quiz_attempt_id = v_attempt_a and event_type = 'misconception_detected'
   ) then raise exception 'LEARNING_RPC_FINAL_ANSWER_INVALID'; end if;
   if not exists (
     select 1 from public.quiz_attempt_question_queue
@@ -201,8 +228,13 @@ begin
          and question_id = v_q_one
          and attempt_no = 1
          and detected_misconception_id = v_misconception
-         and error_classification->>'source' = 'mapped_distractor'
-         and error_classification->>'misconception_code' = 'qa-rpc-distractor'
+         and explanation_set_id = v_explanation_set
+         and error_classification = jsonb_build_object(
+           'source', 'mapped_distractor',
+           'option_id', v_wrong_option,
+           'misconception_code', 'qa-rpc-distractor',
+           'confidence', 1
+         )
      ) then
     raise exception 'LEARNING_RPC_MAPPED_DISTRACTOR_NOT_CLASSIFIED';
   end if;
@@ -237,6 +269,18 @@ begin
   if v_result @> '{"is_correct":true,"attempt_no":4,"finalized":true,"hints_used":3,"explanation":"correct explanation","correct_option_position":2}'::jsonb is not true then
     raise exception 'LEARNING_RPC_FINAL_CORRECT_INVALID:%', v_result;
   end if;
+  if (
+    select count(*)
+    from public.adaptive_events
+    where quiz_attempt_id = v_attempt_b and event_type = 'misconception_detected'
+  ) <> (
+    select count(*)
+    from public.quiz_answer_attempts
+    where quiz_attempt_id = v_attempt_b and detected_misconception_id = v_misconception
+  ) then
+    raise exception 'LEARNING_RPC_MISCONCEPTION_EVENT_NOT_ONE_PER_EVIDENCE';
+  end if;
+
   if not exists (
     select 1 from public.quiz_attempt_answers
     where attempt_id = v_attempt_b and question_id = v_q_one
@@ -257,6 +301,39 @@ begin
       and attempt_no = 4
       and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
   ) then raise exception 'LEARNING_RPC_FINAL_CORRECT_SIDE_EFFECT_INVALID'; end if;
+
+  -- Ambiguous mappings must not be guessed.
+  insert into public.misconceptions(id, workspace_id, concept_id, code, title)
+  values (v_misconception_two, v_workspace, v_concept_one, 'qa-rpc-distractor-alt', 'Alternative mapped distractor');
+  insert into public.question_option_misconceptions(workspace_id, option_id, misconception_id)
+  values (v_workspace, v_wrong_option, v_misconception_two);
+
+  insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+  values (v_attempt_i, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_attempt_i, 1, v_q_one, v_concept_one, 3, 'active');
+
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_i, v_q_one, 1);
+  reset role;
+  if not exists (
+    select 1 from public.quiz_answer_attempts
+    where quiz_attempt_id = v_attempt_i and question_id = v_q_one and attempt_no = 1
+      and detected_misconception_id is null
+      and error_classification = '{}'::jsonb
+      and explanation_set_id is null
+  ) or exists (
+    select 1 from public.adaptive_events
+    where quiz_attempt_id = v_attempt_i and event_type = 'misconception_detected'
+  ) then
+    raise exception 'LEARNING_RPC_AMBIGUOUS_MAPPING_WAS_GUESSED';
+  end if;
+
+  delete from public.question_option_misconceptions
+  where workspace_id = v_workspace and misconception_id = v_misconception_two;
+  delete from public.misconceptions
+  where workspace_id = v_workspace and id = v_misconception_two;
 
   -- Incorrect finalization at max attempts and same-transaction remediation.
   insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
@@ -323,7 +400,7 @@ begin
        select 1 from public.quiz_answer_attempts
        where quiz_attempt_id = v_attempt_h
          and question_id = v_q_end
-         and (detected_misconception_id is not null or error_classification <> '{}'::jsonb)
+         and (detected_misconception_id is not null or error_classification <> '{}'::jsonb or explanation_set_id is not null)
      ) then
     raise exception 'LEARNING_RPC_MISSING_HINT_OR_UNMAPPED_CLASSIFICATION_INVALID:%', v_result;
   end if;
@@ -436,7 +513,7 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i);
   delete from public.quizzes where id = v_quiz;
   delete from public.learning_concepts where id in (v_concept_one, v_concept_two, v_concept_three);
   delete from public.subjects where id = v_subject;
