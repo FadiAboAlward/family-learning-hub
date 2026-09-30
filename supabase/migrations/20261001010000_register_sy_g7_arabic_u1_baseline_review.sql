@@ -22,7 +22,7 @@ declare
   v_items jsonb := $json$
 [
   {
-    "code": "MOH-AR7-U1-BL-20261001-L01",
+    "code": "Q-202610019201",
     "pos": 1,
     "role": "core",
     "learning_set": 1,
@@ -69,7 +69,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L02",
+    "code": "Q-202610019202",
     "pos": 2,
     "role": "core",
     "learning_set": 1,
@@ -116,7 +116,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L03",
+    "code": "Q-202610019203",
     "pos": 3,
     "role": "core",
     "learning_set": 1,
@@ -163,7 +163,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L04",
+    "code": "Q-202610019204",
     "pos": 4,
     "role": "core",
     "learning_set": 1,
@@ -210,7 +210,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L05",
+    "code": "Q-202610019205",
     "pos": 5,
     "role": "core",
     "learning_set": 1,
@@ -257,7 +257,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L06",
+    "code": "Q-202610019206",
     "pos": 6,
     "role": "core",
     "learning_set": 1,
@@ -304,7 +304,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L07",
+    "code": "Q-202610019207",
     "pos": 7,
     "role": "core",
     "learning_set": 1,
@@ -351,7 +351,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L08",
+    "code": "Q-202610019208",
     "pos": 8,
     "role": "core",
     "learning_set": 1,
@@ -398,7 +398,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L09",
+    "code": "Q-202610019209",
     "pos": 9,
     "role": "core",
     "learning_set": 1,
@@ -445,7 +445,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L10",
+    "code": "Q-202610019210",
     "pos": 10,
     "role": "core",
     "learning_set": 1,
@@ -492,7 +492,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L11",
+    "code": "Q-202610019211",
     "pos": 11,
     "role": "core",
     "learning_set": 2,
@@ -539,7 +539,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L12",
+    "code": "Q-202610019212",
     "pos": 12,
     "role": "core",
     "learning_set": 2,
@@ -586,7 +586,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L13",
+    "code": "Q-202610019213",
     "pos": 13,
     "role": "core",
     "learning_set": 2,
@@ -633,7 +633,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L14",
+    "code": "Q-202610019214",
     "pos": 14,
     "role": "core",
     "learning_set": 2,
@@ -680,7 +680,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L15",
+    "code": "Q-202610019215",
     "pos": 15,
     "role": "core",
     "learning_set": 2,
@@ -727,7 +727,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L16",
+    "code": "Q-202610019216",
     "pos": 16,
     "role": "core",
     "learning_set": 2,
@@ -774,7 +774,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L17",
+    "code": "Q-202610019217",
     "pos": 17,
     "role": "core",
     "learning_set": 2,
@@ -821,7 +821,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L18",
+    "code": "Q-202610019218",
     "pos": 18,
     "role": "core",
     "learning_set": 2,
@@ -868,7 +868,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L19",
+    "code": "Q-202610019219",
     "pos": 19,
     "role": "core",
     "learning_set": 2,
@@ -915,7 +915,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-L20",
+    "code": "Q-202610019220",
     "pos": 20,
     "role": "core",
     "learning_set": 2,
@@ -962,7 +962,7 @@ declare
     ]
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E01",
+    "code": "Q-202610019221",
     "pos": 201,
     "role": "exam_pool",
     "learning_set": null,
@@ -984,7 +984,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E02",
+    "code": "Q-202610019222",
     "pos": 202,
     "role": "exam_pool",
     "learning_set": null,
@@ -1006,7 +1006,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E03",
+    "code": "Q-202610019223",
     "pos": 203,
     "role": "exam_pool",
     "learning_set": null,
@@ -1028,7 +1028,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E04",
+    "code": "Q-202610019224",
     "pos": 204,
     "role": "exam_pool",
     "learning_set": null,
@@ -1050,7 +1050,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E05",
+    "code": "Q-202610019225",
     "pos": 205,
     "role": "exam_pool",
     "learning_set": null,
@@ -1072,7 +1072,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E06",
+    "code": "Q-202610019226",
     "pos": 206,
     "role": "exam_pool",
     "learning_set": null,
@@ -1094,7 +1094,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E07",
+    "code": "Q-202610019227",
     "pos": 207,
     "role": "exam_pool",
     "learning_set": null,
@@ -1116,7 +1116,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E08",
+    "code": "Q-202610019228",
     "pos": 208,
     "role": "exam_pool",
     "learning_set": null,
@@ -1138,7 +1138,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E09",
+    "code": "Q-202610019229",
     "pos": 209,
     "role": "exam_pool",
     "learning_set": null,
@@ -1160,7 +1160,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E10",
+    "code": "Q-202610019230",
     "pos": 210,
     "role": "exam_pool",
     "learning_set": null,
@@ -1182,7 +1182,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E11",
+    "code": "Q-202610019231",
     "pos": 211,
     "role": "exam_pool",
     "learning_set": null,
@@ -1204,7 +1204,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E12",
+    "code": "Q-202610019232",
     "pos": 212,
     "role": "exam_pool",
     "learning_set": null,
@@ -1226,7 +1226,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E13",
+    "code": "Q-202610019233",
     "pos": 213,
     "role": "exam_pool",
     "learning_set": null,
@@ -1248,7 +1248,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E14",
+    "code": "Q-202610019234",
     "pos": 214,
     "role": "exam_pool",
     "learning_set": null,
@@ -1270,7 +1270,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E15",
+    "code": "Q-202610019235",
     "pos": 215,
     "role": "exam_pool",
     "learning_set": null,
@@ -1292,7 +1292,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E16",
+    "code": "Q-202610019236",
     "pos": 216,
     "role": "exam_pool",
     "learning_set": null,
@@ -1314,7 +1314,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E17",
+    "code": "Q-202610019237",
     "pos": 217,
     "role": "exam_pool",
     "learning_set": null,
@@ -1336,7 +1336,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E18",
+    "code": "Q-202610019238",
     "pos": 218,
     "role": "exam_pool",
     "learning_set": null,
@@ -1358,7 +1358,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E19",
+    "code": "Q-202610019239",
     "pos": 219,
     "role": "exam_pool",
     "learning_set": null,
@@ -1380,7 +1380,7 @@ declare
     "hints": []
   },
   {
-    "code": "MOH-AR7-U1-BL-20261001-E20",
+    "code": "Q-202610019240",
     "pos": 220,
     "role": "exam_pool",
     "learning_set": null,
