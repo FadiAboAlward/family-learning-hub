@@ -166,7 +166,7 @@ async function probe(width,height){
   const page=await browser.newPage({viewport:{width,height}});
   try{
     await installRoutes(page);
-    await page.goto(APP_URL,{waitUntil:'domcontentloaded'});
+    await page.goto(APP_URL+'#student',{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function'&&typeof window.FLH?.startExamQuiz==='function');
     await page.evaluate(()=>localStorage.setItem('learner_session','qa.direction'));
 
@@ -237,7 +237,6 @@ async function probe(width,height){
     assert.equal(arExplanation.dir,'rtl');
 
     await page.evaluate(()=>{
-      location.hash='#student';
       document.getElementById('app').innerHTML='<section class="hero"><h1>أهلًا اختبار</h1></section><section data-student-library></section>';
     });
     await page.waitForFunction(()=>typeof window.FLH?.openAttemptHistoryAttempt==='function');
