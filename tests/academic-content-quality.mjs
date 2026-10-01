@@ -758,6 +758,39 @@ unmappedMisconceptionTarget.blueprint[0].misconception_target = 'unmapped-known-
 const unmappedMisconceptionTargetResult = validateAcademicPackage(unmappedMisconceptionTarget);
 assert.ok(unmappedMisconceptionTargetResult.errors.some(x => x.code === 'MISCONCEPTION_TARGET_UNMAPPED'), 'Declared misconception target must map to a wrong option');
 
+const shortHint = read('valid-package.json');
+shortHint.questions[0].hints[0].content = [
+  '• ' + Array(10).fill('كلمة').join(' '),
+  '• ' + Array(10).fill('كلمة').join(' '),
+  '• ' + Array(9).fill('كلمة').join(' ')
+].join('\n');
+const shortHintResult = validateAcademicPackage(shortHint);
+assert.ok(shortHintResult.errors.some(x => x.code === 'HINT_MIN_WORDS'), 'Every authored Learning hint must contain at least 30 lexical words');
+
+const malformedHintBullets = read('valid-package.json');
+malformedHintBullets.questions[0].hints[0].content = malformedHintBullets.questions[0].hints[0].content.replace(/^• /mu, '');
+const malformedHintBulletsResult = validateAcademicPackage(malformedHintBullets);
+assert.ok(malformedHintBulletsResult.errors.some(x => x.code === 'HINT_BULLET_STRUCTURE'), 'Every authored Learning hint must use exactly three canonical bullet lines');
+
+const longHintBullet = read('valid-package.json');
+longHintBullet.questions[0].hints[0].content = [
+  '• ' + Array(25).fill('تدريب').join(' '),
+  '• راجع اتجاه الحركة بهدوء قبل الاختيار.',
+  '• قارن النتيجة بالخيارات ثم تحقق مرة أخيرة.'
+].join('\n');
+const longHintBulletResult = validateAcademicPackage(longHintBullet);
+assert.ok(longHintBulletResult.warnings.some(x => x.code === 'HINT_BULLET_TOO_LONG'), 'A bullet over 24 lexical words should be flagged for readability review');
+
+const arabicAnswerLeak = read('valid-package.json');
+arabicAnswerLeak.questions[0].options[0].content = 'مجرّد رباعي';
+arabicAnswerLeak.questions[0].hints[2].content = [
+  '• افحص بنية الفعل بهدوء وحدد عدد الحروف التي بقيت أصلية بعد المقارنة مع الصيغة الأساسية.',
+  '• جرّب حذف كل حرف على حدة، ولا تعتبر الحرف زائدًا إلا إذا بقي أصل الفعل ومعناه واضحين بعد الحذف.',
+  '• إذا وجدت أن الحروف الأربعة كلها أصلية فالتصنيف هو مجرّد رباعي، ثم طابق هذه النتيجة مع الخيارات.'
+].join('\n');
+const arabicAnswerLeakResult = validateAcademicPackage(arabicAnswerLeak);
+assert.ok(arabicAnswerLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEAK'), 'A long well-formatted hint must still fail when it reveals the exact correct option');
+
 const hintDepthRegression = read('valid-package.json');
 hintDepthRegression.questions[0].decomposable = false;
 for (const hint of hintDepthRegression.questions[0].hints) {
@@ -765,8 +798,16 @@ for (const hint of hintDepthRegression.questions[0].hints) {
   delete hint.steps;
   delete hint.expanded_steps;
 }
-hintDepthRegression.questions[0].hints[0].content = 'ركّز أولاً على اتجاه الحركة من الصفر وعلى العلاقة بين جهة اليسار وإشارة العدد، ثم لاحظ أن مقدار الحركة يجب أن يبقى كما هو دون مضاعفة أو تبديل.';
-hintDepthRegression.questions[0].hints[1].content = 'فكّر بالاتجاه.';
+hintDepthRegression.questions[0].hints[0].content = [
+  '• ركّز أولًا على اتجاه الحركة من الصفر، ولاحظ العلاقة بين جهة اليسار وإشارة العدد قبل النظر إلى أي خيار أو مقدار.',
+  '• احتفظ بمقدار الحركة كما هو تمامًا، ثم تخيل موضعك بعد كل خطوة على خط الأعداد من دون مضاعفة المسافة أو تبديل الاتجاه.',
+  '• بعد ذلك راجع الإشارة والمقدار كلًا على حدة، وقارن النتيجة المتوقعة بكل خيار، ثم استبعد ما يخالف أي جزء من المسار الذي بنيته.'
+].join('\n');
+hintDepthRegression.questions[0].hints[1].content = [
+  '• حدّد جهة الحركة أولًا وتذكّر ما تعنيه بالنسبة إلى الصفر.',
+  '• أبق مقدار الحركة كما هو، ثم كوّن الموضع المتوقع ذهنيًا.',
+  '• قارن الموضع بالخيارات ولا تثبت الإجابة قبل التحقق من الإشارة والمقدار.'
+].join('\n');
 const hintDepthRegressionResult = validateAcademicPackage(hintDepthRegression);
 assert.ok(hintDepthRegressionResult.warnings.some(x => x.code === 'HINT_DEPTH_REGRESSION'), 'A materially smaller later hint payload should be flagged for depth review');
 
