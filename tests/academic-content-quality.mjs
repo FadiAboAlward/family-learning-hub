@@ -201,6 +201,24 @@ assert.ok(
   'An Arabic source label followed immediately by the embedded quotation must remain valid.'
 );
 
+const missingArabicFollowingContext = read('valid-package.json');
+missingArabicFollowingContext.questions[1].prompt_language = 'ar';
+missingArabicFollowingContext.questions[1].prompt = 'في النص التالي، ما معنى كلمة «مُسبغ»؟';
+const missingArabicFollowingContextResult = validateAcademicPackage(missingArabicFollowingContext);
+assert.ok(
+  missingArabicFollowingContextResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+  'A following-text marker must not pass unless the referenced excerpt is actually embedded.'
+);
+
+const embeddedArabicFollowingContext = read('valid-package.json');
+embeddedArabicFollowingContext.questions[1].prompt_language = 'ar';
+embeddedArabicFollowingContext.questions[1].prompt = 'في النص التالي: «شارك سام طعامه مع طالب جديد». ما القيمة التي أظهرها سام؟';
+const embeddedArabicFollowingContextResult = validateAcademicPackage(embeddedArabicFollowingContext);
+assert.ok(
+  !embeddedArabicFollowingContextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A following-text marker with an actual embedded quotation must remain valid.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
