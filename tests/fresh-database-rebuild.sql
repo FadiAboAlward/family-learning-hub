@@ -270,6 +270,7 @@ begin
            from public.quiz_versions
            where id=v_sc_latest
              and settings->'self_contained_wording'->>'feature_id'='FLH-FEAT-2026-014'
+             and settings->'self_contained_wording'->>'spec_version'='1.1'
          ) then
         raise exception 'SELF_CONTAINED_WORDING_LATEST_VERSION_INVALID:%', v_sc_slug;
       end if;
