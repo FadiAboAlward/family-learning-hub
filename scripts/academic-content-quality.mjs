@@ -147,7 +147,9 @@ const ORDERING_INTENT_PATTERNS = {
     /\b(?:arrange|sort)\b/iu,
     /\border\s+(?:the\s+)?(?:numbers?|values?|readings?|items?|data|temperatures?|fractions?|decimals?|integers?|them)\b/iu,
     /\b(?:which|what)\s+(?:is\s+the\s+)?(?:correct\s+)?order\b/iu,
-    /\b(?:put|write|place)\b[\s\S]{0,120}\bin\s+(?:ascending|descending|increasing|decreasing)\s+order\b/iu
+    /\b(?:put|write|place)\b[\s\S]{0,120}\bin\s+(?:ascending|descending|increasing|decreasing)\s+order\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\b(?:from\s+)?(?:smallest|least)\s+to\s+(?:largest|greatest)\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\b(?:from\s+)?(?:largest|greatest)\s+to\s+(?:smallest|least)\b/iu
   ]
 };
 
@@ -169,12 +171,15 @@ function orderingDirection(value, language) {
   return '';
 }
 
-function candidateOrderingValues(value) {
+function candidateOrderingValues(value, language) {
   const normalized = canonicalMath(value);
-  const tokenRe = /[+\-]?\d+(?:[.,]\d+)?/gu;
+  const lang = text(language).toLocaleLowerCase('en-US');
+  const tokenRe = lang === 'tr'
+    ? /[+\-]?\d+(?:[.,]\d+)?/gu
+    : /[+\-]?\d+(?:\.\d+)?/gu;
   const tokens = [...normalized.matchAll(tokenRe)]
     .map(match => ({
-      value: Number(match[0].replace(',', '.')),
+      value: Number(lang === 'tr' ? match[0].replace(',', '.') : match[0]),
       start: match.index ?? 0,
       end: (match.index ?? 0) + match[0].length
     }))
@@ -204,7 +209,7 @@ function candidateOrderingValues(value) {
 function preSortedOrderingPrompt(value, language) {
   const direction = orderingDirection(value, language);
   if (!direction) return null;
-  const values = candidateOrderingValues(value);
+  const values = candidateOrderingValues(value, language);
   if (values.length < 3) return null;
   const alreadyOrdered = values.every((current, index) => {
     if (index === 0) return true;
