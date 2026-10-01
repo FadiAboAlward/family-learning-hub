@@ -358,6 +358,21 @@ assert.ok(
   'Repeated numeric values are mathematical data, not duplicate lexical wording.'
 );
 
+for (const prompt of [
+  'x + x = 2x. Which expression is equivalent?',
+  'a = a is always true. Which statement describes this?',
+  'س + س = ٢س. ما التعبير المكافئ؟'
+]) {
+  const repeatedMathIdentifier = read('valid-package.json');
+  repeatedMathIdentifier.questions[1].prompt_language = prompt.includes('ما التعبير') ? 'ar' : 'en';
+  repeatedMathIdentifier.questions[1].prompt = prompt;
+  const repeatedMathIdentifierResult = validateAcademicPackage(repeatedMathIdentifier);
+  assert.ok(
+    !repeatedMathIdentifierResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+    'Repeated identifiers separated by mathematical operators must remain valid: ' + prompt
+  );
+}
+
 const correctedTurkishWording = read('valid-package.json');
 correctedTurkishWording.questions[1].prompt_language = 'tr';
 correctedTurkishWording.questions[1].prompt = 'Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?';
