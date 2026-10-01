@@ -113,6 +113,12 @@ revoke insert, update, delete on public.gamification_rewards from authenticated;
 create or replace function public.flh_family_ledger_guard()
 returns trigger language plpgsql security invoker set search_path = '' as $$
 begin
+  -- Preserve existing FK cascades after an authorized learner/workspace deletion.
+  -- Trigger depth alone must never permit rewriting a surviving learner's ledger.
+  if tg_op = 'DELETE' and pg_catalog.pg_trigger_depth() > 1 and (
+    not exists(select 1 from public.learners where id=old.learner_id and workspace_id=old.workspace_id)
+    or not exists(select 1 from public.workspaces where id=old.workspace_id)
+  ) then return old; end if;
   if tg_op in ('UPDATE','DELETE') and old.source_type in ('family_behavior','reward_claim','manual_adjustment') then
     raise exception 'FAMILY_LEDGER_IMMUTABLE' using errcode = '23514';
   end if;

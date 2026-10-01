@@ -12,6 +12,11 @@ declare
   other_l constant uuid := '96000000-0000-4000-8000-000000000005';
   admin_id constant uuid := '96000000-0000-4000-8000-000000000006';
   inactive_l constant uuid := '96000000-0000-4000-8000-000000000007';
+  cascade_l constant uuid := '96000000-0000-4000-8000-000000000008';
+  cascade_category uuid;
+  cascade_rule uuid;
+  cascade_reward uuid;
+  cascade_claim uuid;
   category_id uuid;
   rule_id uuid;
   week_rule uuid;
@@ -57,7 +62,7 @@ begin
   update public.gamification_badges set is_active=false where id=v_badge_id;
   insert into public.learner_badges(workspace_id,learner_id,badge_id,award_reason) values(w,l,v_badge_id,'QA inactive earned badge') on conflict(learner_id,badge_id) do nothing;
   perform pg_temp.family_assert(not has_function_privilege('anon','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE') and not has_function_privilege('authenticated','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE'),'RPC must be service-role only');
-  perform pg_temp.family_assert(not has_table_privilege('authenticated','public.gamification_events','UPDATE') and not has_table_privilege('authenticated','public.learner_gamification_state','UPDATE') and not has_table_privilege('authenticated','public.reward_claims','UPDATE'),'financial writes cannot bypass server commands');
+  perform pg_temp.family_assert(not has_table_privilege('authenticated','public.gamification_events','UPDATE') and not has_table_privilege('authenticated','public.gamification_events','DELETE') and not has_table_privilege('authenticated','public.learner_gamification_state','UPDATE') and not has_table_privilege('authenticated','public.reward_claims','UPDATE'),'financial writes cannot bypass server commands');
   perform pg_temp.family_assert(not has_function_privilege('authenticated','public.flh_family_reward_eligibility(uuid,uuid,uuid)','EXECUTE'),'eligibility helper must not bypass learner isolation');
   perform pg_temp.family_assert(not has_function_privilege('authenticated','public.flh_family_reward_criteria_valid(jsonb)','EXECUTE'),'criteria helper remains service-role only');
   perform pg_temp.family_assert((select not prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid='public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)'::regprocedure),'RPC uses invoker and empty search_path');
@@ -329,6 +334,18 @@ begin
   perform pg_temp.family_assert(result->'inactive_scope_learners'='[]'::jsonb,'student catalog does not expose inactive scope learner names');
   begin update public.gamification_events set reason='silent rewrite' where id=eid; exception when check_violation then v_fk_rejected:=true; end;
   perform pg_temp.family_assert(v_fk_rejected,'family event immutable'); v_fk_rejected:=false;
+  begin delete from public.gamification_events where id=eid; exception when check_violation then v_fk_rejected:=true; end;
+  perform pg_temp.family_assert(v_fk_rejected and exists(select 1 from public.gamification_events where id=eid),'direct family event deletion remains forbidden'); v_fk_rejected:=false;
+  -- Unrelated nested triggers cannot use depth alone to erase a surviving learner's ledger.
+  create temporary table family_nested_delete_probe(event_id bigint) on commit drop;
+  execute $nested_definition$create or replace function pg_temp.family_nested_delete_probe() returns trigger
+    language plpgsql security invoker set search_path='' as $nested_body$begin
+      delete from public.gamification_events where id=new.event_id; return new;
+    end$nested_body$$nested_definition$;
+  create trigger family_nested_delete_probe after insert on family_nested_delete_probe
+    for each row execute function pg_temp.family_nested_delete_probe();
+  begin insert into family_nested_delete_probe(event_id) values(eid); exception when check_violation then v_fk_rejected:=true; end;
+  perform pg_temp.family_assert(v_fk_rejected and exists(select 1 from public.gamification_events where id=eid),'nested direct deletion with existing parents remains forbidden'); v_fk_rejected:=false;
   begin
     insert into public.gamification_events(workspace_id,learner_id,event_type,xp_delta,reward_points_delta,source_type,source_id,reason)
     values(w,l,'other',1,1,'family_behavior','qa-family-illegal-xp','QA reject non-academic XP');
@@ -344,6 +361,48 @@ begin
   set local role authenticated;
   perform pg_temp.family_assert(exists(select 1 from public.behavior_categories where id=category_id) and not exists(select 1 from public.behavior_categories where workspace_id=other_w),'owner RLS is workspace scoped');
   reset role;
+  -- Only disposable, explicitly marked test fixtures exercise the existing parent-delete lifecycle.
+  insert into public.learners(id,workspace_id,display_name,slug,metadata) values(cascade_l,other_w,'QA cascade test learner','qa-cascade-test','{"is_test":true}');
+  insert into public.gamification_events(workspace_id,learner_id,event_type,xp_delta,reward_points_delta,source_type,source_id,reason)
+    select other_w,cascade_l,'other',0,1,source_type,'qa-learner-cascade-'||source_type,'QA cascade boundary'
+    from (values('family_behavior'),('reward_claim'),('manual_adjustment')) sources(source_type);
+  perform set_config('request.jwt.claim.sub',outsider_id::text,true);
+  set local role authenticated;
+  delete from public.learners where id=cascade_l and workspace_id=other_w;
+  reset role;
+  perform pg_temp.family_assert(not exists(select 1 from public.learners where id=cascade_l) and not exists(select 1 from public.gamification_events where learner_id=cascade_l),'existing owner-authorized learner deletion cascades all family ledger source types');
+  perform pg_temp.family_assert(exists(select 1 from public.learners where id=other_l),'learner cascade preserves other test learners');
+  set local role service_role;
+  result := public.flh_family_rewards_command(other_w,outsider_id,null,'category_save','{"title":"QA cascade category"}');
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture creates an actual category');
+  cascade_category := (result->'category'->>'id')::uuid;
+  result := public.flh_family_rewards_command(other_w,outsider_id,null,'rule_save',jsonb_build_object('title','QA cascade rule','category_id',cascade_category,'base_points',2,'learner_scope','selected','learner_ids',jsonb_build_array(other_l),'cadence','unlimited'));
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture creates an actual scoped rule');
+  cascade_rule := (result->'rule'->>'id')::uuid;
+  result := public.flh_family_rewards_command(other_w,outsider_id,other_l,'behavior_record',jsonb_build_object('rule_id',cascade_rule,'reason','QA workspace cascade award','idempotency_key','qa-cascade-behavior'));
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture creates an approved submission and event');
+  result := public.flh_family_rewards_command(other_w,outsider_id,null,'reward_save',jsonb_build_object('title','QA cascade reward','reward_type','activity','required_reward_points',1,'learner_scope','selected','learner_ids',jsonb_build_array(other_l)));
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture creates an actual scoped reward');
+  cascade_reward := (result->'reward'->>'id')::uuid;
+  result := public.flh_family_rewards_command(other_w,null,other_l,'reward_request',jsonb_build_object('reward_id',cascade_reward,'idempotency_key','qa-cascade-claim'));
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture creates an actual reward claim');
+  cascade_claim := (result->'claim'->>'id')::uuid;
+  result := public.flh_family_rewards_command(other_w,outsider_id,null,'reward_review',jsonb_build_object('claim_id',cascade_claim,'decision','approved'));
+  perform pg_temp.family_assert(result->>'ok'='true','workspace cascade fixture approves its claim and spends once');
+  reset role;
+  insert into public.gamification_events(workspace_id,learner_id,event_type,xp_delta,reward_points_delta,source_type,source_id,reason)
+    select other_w,other_l,'other',0,1,source_type,'qa-workspace-cascade-'||source_type,'QA workspace cascade boundary'
+    from (values('family_behavior'),('reward_claim'),('manual_adjustment')) sources(source_type);
+  select count(*) into count_before from public.gamification_events where workspace_id=other_w;
+  set local role authenticated;
+  delete from public.workspaces where id=other_w;
+  reset role;
+  perform pg_temp.family_assert(exists(select 1 from public.workspaces where id=other_w) and (select count(*) from public.gamification_events where workspace_id=other_w)=count_before,'existing RLS still denies authenticated workspace deletion');
+  set local role service_role;
+  delete from public.workspaces where id=other_w;
+  reset role;
+  perform pg_temp.family_assert(not exists(select 1 from public.workspaces where id=other_w) and not exists(select 1 from public.learners where workspace_id=other_w) and not exists(select 1 from public.gamification_events where workspace_id=other_w),'existing privileged workspace deletion cascades all family ledger source types');
+  perform pg_temp.family_assert(not exists(select 1 from public.behavior_categories where workspace_id=other_w) and not exists(select 1 from public.behavior_rules where workspace_id=other_w) and not exists(select 1 from public.behavior_rule_learners where workspace_id=other_w) and not exists(select 1 from public.behavior_submissions where workspace_id=other_w) and not exists(select 1 from public.gamification_rewards where workspace_id=other_w) and not exists(select 1 from public.reward_learner_scopes where workspace_id=other_w) and not exists(select 1 from public.reward_claims where workspace_id=other_w),'workspace cascade removes the complete scoped family behavior/reward fixture');
   raise exception 'Family rewards contract passed; rollback disposable fixtures' using errcode='ZX001';
   exception when sqlstate 'ZX001' then null;
   end;

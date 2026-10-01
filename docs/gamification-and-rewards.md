@@ -86,7 +86,7 @@ Contract: `FEATURE_ID: FLH-FEAT-2026-010`, `SPEC_VERSION: 1.0`, `DRIVE_REVISION_
 
 XP is academic progression. Household habits, responsibilities, initiative and family-defined behaviors award Reward Points only. Both academic and approved behavior points remain spendable in the existing balance. Every new family ledger event records its source, learner, reason, actor/requester, reviewer and timestamps. Approved behavior snapshots include category/rule names, base points, initiative bonus and total. For example, tidying a room can produce one award of 8 points explained as 5 base + 3 initiative. Later rule/category edits do not rewrite that explanation.
 
-`gamification_events` remains the authoritative event ledger. Parent and learner pages can paginate its history and filter by category/source; parent totals aggregate the full history rather than just the displayed recent page. Legacy academic events retain their original data and are presented as academic sources. Manual corrections, reversals and refunds require a reason and append a compensating event with an actor. A reversal refers to the original event and can occur only once. Insufficient balances cannot be driven below zero. New family/spend/adjustment ledger rows are immutable, and their XP delta must be zero.
+`gamification_events` remains the authoritative event ledger. Parent and learner pages can paginate its history and filter by category/source; parent totals aggregate the full history rather than just the displayed recent page. Legacy academic events retain their original data and are presented as academic sources. Manual corrections, reversals and refunds require a reason and append a compensating event with an actor. A reversal refers to the original event and can occur only once. Insufficient balances cannot be driven below zero. New family/spend/adjustment ledger rows cannot be directly updated or deleted, and their XP delta must be zero. Existing authorized learner/workspace deletion still removes dependent events through the existing foreign-key cascade; this exception requires nested trigger execution and actual absence of the deleted parent. It adds no erasure endpoint, grants or ledger-edit bypass.
 
 The academic source filter and breakdown group include legacy null/empty sources and `academic`, `quiz`, `quiz_attempt`, `learning` and `exam`. Family behavior, reward spending and documented adjustments retain their separate filters. A successful command followed by a failed catalog refresh is reported as saved with a refresh-needed message; it must not invite a duplicate financial submission.
 
@@ -124,5 +124,29 @@ The service-role-only RPC uses `SECURITY INVOKER` and a fixed empty search path.
 All-real rules/rewards exclude test learners. A selected scope can include the dedicated `test` learner for an isolated test run. Parent catalogs normally exclude test learners; authenticated `test_only` reads support QA without mixing test summaries into real family reporting. QA uses synthetic fixtures or disposable local/CI databases and must not alter Aya/Mohammad production state.
 
 The forward-only migration is `20261001085355_family_rewards_and_behaviors.sql`. It adds categories/rules/scopes/submissions and idempotency/security boundaries, seeds editable categories, and preserves existing balances and academic history. Historical migrations are unchanged. Production migration and Edge deployment require separate explicit user approval; opening this PR does not authorize them.
+
+Before the separately approved Production migration, recheck both unique-index predicates on the actual target with an aggregate-only read. Each conflict count must be zero:
+
+```sql
+select 'family_source' as constraint_name, count(*) as conflicting_groups
+from (
+  select 1 from public.gamification_events
+  where source_type in ('family_behavior','reward_claim','manual_adjustment')
+    and source_id is not null
+  group by workspace_id, learner_id, source_type, source_id
+  having count(*) > 1
+) conflicts
+union all
+select 'reversal_once', count(*)
+from (
+  select 1 from public.gamification_events
+  where source_type = 'manual_adjustment'
+    and metadata->>'reversal_event_id' is not null
+  group by workspace_id, learner_id, (metadata->>'reversal_event_id')
+  having count(*) > 1
+) conflicts;
+```
+
+If either count is nonzero, stop deployment and prepare a separately reviewed forward reconciliation plan. Do not automatically delete duplicate financial events or change balances. Index creation itself fails closed if conflicting rows appear after preflight. The aggregate-only target snapshot on 2026-10-01 at 23:36 UTC found zero existing events for all three new source types and zero conflicts; that snapshot is evidence for this review, not a substitute for deployment-time verification.
 
 Deterministic coverage includes API identity/owner-admin unit tests, real PostgreSQL schema/RLS/transaction contracts and concurrency tests, and parent/Testing-learner browser flows at desktop and 390×844. Static quality must pass before Browser smoke. Screenshots are temporary CI artifacts with seven-day retention. TestSprite uses this exact revision and its AC-01 through AC-22; reproducible product defects receive deterministic regressions. QA Gate and CodeRabbit, including built-in/custom checks and Change Stack, must cover the exact PR-head SHA.
