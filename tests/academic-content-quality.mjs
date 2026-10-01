@@ -696,4 +696,68 @@ hintDepthRegression.questions[0].hints[1].content = 'فكّر بالاتجاه.'
 const hintDepthRegressionResult = validateAcademicPackage(hintDepthRegression);
 assert.ok(hintDepthRegressionResult.warnings.some(x => x.code === 'HINT_DEPTH_REGRESSION'), 'A materially smaller later hint payload should be flagged for depth review');
 
+
+const missingCoveragePlan = read('valid-package.json');
+delete missingCoveragePlan.academic_context.coverage_plan;
+const missingCoveragePlanResult = validateAcademicPackage(missingCoveragePlan);
+assert.ok(missingCoveragePlanResult.errors.some(x => x.code === 'COVERAGE_PLAN_REQUIRED'), 'New targeted packages must declare a sequential curriculum coverage plan');
+
+const nonForwardAdvance = read('valid-package.json');
+nonForwardAdvance.academic_context.coverage_plan.decision = 'ADVANCE';
+nonForwardAdvance.academic_context.coverage_plan.next_sequential_target = 'next ordered skill';
+nonForwardAdvance.academic_context.coverage_plan.next_target_order = nonForwardAdvance.academic_context.coverage_plan.cursor_order;
+const nonForwardAdvanceResult = validateAcademicPackage(nonForwardAdvance);
+assert.ok(nonForwardAdvanceResult.errors.some(x => x.code === 'COVERAGE_ADVANCE_NOT_SEQUENTIAL'), 'ADVANCE must move to the immediately next skill in the ordered curriculum map');
+
+const skippedAdvance = read('valid-package.json');
+skippedAdvance.academic_context.coverage_plan.decision = 'ADVANCE';
+skippedAdvance.academic_context.coverage_plan.next_sequential_target = 'skipped later skill';
+skippedAdvance.academic_context.coverage_plan.next_target_order = skippedAdvance.academic_context.coverage_plan.cursor_order + 2;
+const skippedAdvanceResult = validateAcademicPackage(skippedAdvance);
+assert.ok(skippedAdvanceResult.errors.some(x => x.code === 'COVERAGE_ADVANCE_NOT_SEQUENTIAL'), 'ADVANCE must not skip an unverified assessable skill');
+
+const remediateCursorMismatch = read('valid-package.json');
+remediateCursorMismatch.academic_context.coverage_plan.next_target_order = remediateCursorMismatch.academic_context.coverage_plan.cursor_order + 1;
+const remediateCursorMismatchResult = validateAcademicPackage(remediateCursorMismatch);
+assert.ok(remediateCursorMismatchResult.errors.some(x => x.code === 'COVERAGE_REMEDIATE_CURSOR_MISMATCH'), 'REMEDIATE must stay on the current skill/subskill cursor');
+
+const invalidBaselineCoverage = read('valid-package.json');
+invalidBaselineCoverage.academic_context.coverage_plan.decision = 'BASELINE';
+const invalidBaselineCoverageResult = validateAcademicPackage(invalidBaselineCoverage);
+assert.ok(invalidBaselineCoverageResult.errors.some(x => x.code === 'COVERAGE_BASELINE_TARGET_INVALID'), 'BASELINE must include at least one UNKNOWN_BASELINE primary target');
+
+const masteredPrimaryTarget = read('valid-package.json');
+masteredPrimaryTarget.academic_context.concept_targets[0].state = 'MASTERED';
+masteredPrimaryTarget.academic_context.concept_targets[0].target_difficulty = 4;
+masteredPrimaryTarget.academic_context.coverage_plan.decision = 'ADVANCE';
+masteredPrimaryTarget.academic_context.coverage_plan.next_target_order = masteredPrimaryTarget.academic_context.coverage_plan.cursor_order + 1;
+const masteredPrimaryTargetResult = validateAcademicPackage(masteredPrimaryTarget);
+assert.ok(masteredPrimaryTargetResult.errors.some(x => x.code === 'MASTERED_PRIMARY_TARGET_UNJUSTIFIED'), 'A mastered concept must not remain the primary target without review/justification');
+
+const justifiedMasteredPrimaryTarget = read('valid-package.json');
+justifiedMasteredPrimaryTarget.academic_context.concept_targets[0].state = 'MASTERED';
+justifiedMasteredPrimaryTarget.academic_context.concept_targets[0].target_difficulty = 4;
+justifiedMasteredPrimaryTarget.academic_context.coverage_plan.decision = 'REVIEW_DUE';
+const justifiedMasteredPrimaryTargetResult = validateAcademicPackage(justifiedMasteredPrimaryTarget);
+assert.ok(!justifiedMasteredPrimaryTargetResult.errors.some(x => x.code === 'MASTERED_PRIMARY_TARGET_UNJUSTIFIED'), 'REVIEW_DUE may intentionally reuse mastered content as the primary target');
+
+const unknownCoveragePrimaryTarget = read('valid-package.json');
+unknownCoveragePrimaryTarget.academic_context.coverage_plan.primary_target_concepts = ['not-declared'];
+const unknownCoveragePrimaryTargetResult = validateAcademicPackage(unknownCoveragePrimaryTarget);
+assert.ok(unknownCoveragePrimaryTargetResult.errors.some(x => x.code === 'COVERAGE_PRIMARY_TARGET_UNKNOWN'), 'Coverage primary targets must resolve to declared concept targets');
+
+const unassessedCoveragePrimaryTarget = read('valid-package.json');
+unassessedCoveragePrimaryTarget.academic_context.concept_targets.push({
+  concept_code: 'unused-remediation-target',
+  state: 'NEEDS_REINFORCEMENT',
+  target_difficulty: 2,
+  evidence_refs: ['assessment:test-fixture-2026-09-28']
+});
+unassessedCoveragePrimaryTarget.academic_context.coverage_plan.primary_target_concepts = ['unused-remediation-target'];
+const unassessedCoveragePrimaryTargetResult = validateAcademicPackage(unassessedCoveragePrimaryTarget);
+assert.ok(
+  unassessedCoveragePrimaryTargetResult.errors.some(x => x.code === 'COVERAGE_PRIMARY_TARGET_UNASSESSED'),
+  'Declared primary coverage targets must be assessed by at least one blueprint item'
+);
+
 console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
