@@ -37,7 +37,21 @@
           "assessment:test-fixture-2026-09-28"
         ]
       }
-    ]
+    ],
+    "coverage_plan": {
+      "ordered_scope_ref": "TR-MATH-G7-2026-2027#K1-TAM-SAYILAR",
+      "coverage_cursor": "K1 — Tam Sayılar — integer direction and operations",
+      "cursor_order": 1,
+      "next_sequential_target": "K1 — Tam Sayılar — targeted remediation before advancement",
+      "next_target_order": 1,
+      "decision": "REMEDIATE",
+      "primary_target_concepts": [
+        "integer-direction"
+      ],
+      "evidence_refs": [
+        "assessment:test-fixture-2026-09-28"
+      ]
+    }
   },
   "runtime_external_dependencies": [],
   "blueprint": [
