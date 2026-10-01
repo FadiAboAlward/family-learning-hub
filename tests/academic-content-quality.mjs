@@ -739,4 +739,18 @@ unknownCoveragePrimaryTarget.academic_context.coverage_plan.primary_target_conce
 const unknownCoveragePrimaryTargetResult = validateAcademicPackage(unknownCoveragePrimaryTarget);
 assert.ok(unknownCoveragePrimaryTargetResult.errors.some(x => x.code === 'COVERAGE_PRIMARY_TARGET_UNKNOWN'), 'Coverage primary targets must resolve to declared concept targets');
 
+const unassessedCoveragePrimaryTarget = read('valid-package.json');
+unassessedCoveragePrimaryTarget.academic_context.concept_targets.push({
+  concept_code: 'unused-remediation-target',
+  state: 'NEEDS_REINFORCEMENT',
+  target_difficulty: 2,
+  evidence_refs: ['assessment:test-fixture-2026-09-28']
+});
+unassessedCoveragePrimaryTarget.academic_context.coverage_plan.primary_target_concepts = ['unused-remediation-target'];
+const unassessedCoveragePrimaryTargetResult = validateAcademicPackage(unassessedCoveragePrimaryTarget);
+assert.ok(
+  unassessedCoveragePrimaryTargetResult.errors.some(x => x.code === 'COVERAGE_PRIMARY_TARGET_UNASSESSED'),
+  'Declared primary coverage targets must be assessed by at least one blueprint item'
+);
+
 console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
