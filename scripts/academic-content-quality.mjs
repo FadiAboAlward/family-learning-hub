@@ -27,15 +27,18 @@ const SOURCE_DEPENDENCY_PATTERNS = [
 ];
 const SOFT_SOURCE_REFERENCE_PATTERNS = [
   /(?:في|من)\s+مفردات(?:\s+(?:درس|نص|الدرس|النص))?/u,
-  /في\s+(?:النص|الدرس|القصيدة)(?![\p{L}\p{N}_])(?!\s+(?:الآتي|التالي|أدناه))/u,
+  /في\s+(?:النص|الدرس|القصيدة)(?![\p{L}\p{N}_])(?!\s+(?:الآتي|التالي|أدناه))(?!(?:\s*[:：]\s*[«"'“]))/u,
   /(?:كما\s+)?ورد(?:ت)?\s+في\s+(?:وصف|مفردات|درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
   /كما\s+في\s+(?:درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
   /(?:الفكرة|المعنى|الموضوع|القيمة)[^؟.!]{0,90}\s+ل(?:قصيدة|نص|درس|مطالعة)\s+«[^»]+»/u,
   /في\s+أسئلة\s+الاستيعاب\s+ل(?:نص|درس|قصيدة|مطالعة)\s+«[^»]+»/u,
   /استحضر(?:ي)?\s+[^.؟!]{0,80}\s+في\s+(?:النص|الدرس|القصيدة)/u,
+  /(?:بحسب|وفقاً|وفقًا|وفقا)\s+(?:الدرس|النص|القصيدة)/u,
   /\b(?:derste|metinde|şiirde)\s+(?:geçen|kullanılan|yer\s+alan|verilen)\b/iu,
   /\b(?:dersin|metnin|şiirin)\s+(?:sözlüğünde|kelimelerinde|bağlamında)\b/iu,
+  /\b(?:derse|metne|şiire)\s+göre\b/iu,
   /\b(?:as\s+(?:used|stated|mentioned|defined)\s+in|from)\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
+  /\baccording\s+to\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
   /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!\s+(?:below|above|following))/iu
 ];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
