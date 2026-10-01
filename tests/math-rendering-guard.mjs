@@ -123,7 +123,7 @@ const surfaceContracts={
     ['shared helper','const renderMath='],
     ['question prompt','renderMath(q.prompt)'],
     ['answer option','renderMath(o.content)'],
-    ['hint content','renderMath(currentHint.content)'],
+    ['hint content','hintContentHtml(currentHint.content)'],
     ['answer feedback explanation','renderMath(d.explanation)'],
     ['completed review prompt',"renderMath(r.prompt||'')"],
     ['completed review explanation','renderMath(r.explanation)']
@@ -150,6 +150,9 @@ for(const [file,contracts] of Object.entries(surfaceContracts)){
   const source=read(file);
   for(const [label,needle] of contracts)if(!source.includes(needle))fail(`${file} bypasses the shared math renderer for ${label}.`);
 }
+
+const learningSource=read('learning-launcher-v2.js');
+if(!learningSource.includes("lines.map(x=>`<li>${renderMath(x.replace(/^•\\s+/u,''))}</li>`")||!learningSource.includes(':renderMath(s);'))fail('Structured Learning hints must route both bullet items and fallback content through renderMath.');
 
 const rawInterpolation=/\$\{([^}]*(?:\.prompt(?![A-Za-z0-9_])|\.explanation(?![A-Za-z0-9_]))[^}]*)\}/g;
 for(const file of scripts){
