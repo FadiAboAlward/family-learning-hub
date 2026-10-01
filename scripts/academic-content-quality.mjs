@@ -115,6 +115,19 @@ const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(v
 
 const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
+const canonicalOrderingText = value => preserveSuperscripts(text(value)).normalize('NFKC')
+  .replace(/\p{Cf}/gu, '')
+  .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
+  .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
+  .replace(/(\d)٬(?=\d)/gu, '$1')
+  .replace(/[−–—]/g, '-')
+  .replace(/[×✕·]/g, '*')
+  .replace(/[÷⁄∕]/g, '/')
+  .replace(/≤/g, '<=')
+  .replace(/≥/g, '>=')
+  .replace(/٫/g, '.')
+  .replace(/٪/g, '%');
+
 const ORDERING_DIRECTION_PATTERNS = {
   ascending: [
     /\b(?:en\s+)?küçükten\s+(?:en\s+)?büyüğe(?:\s+doğru)?\b/iu,
@@ -145,7 +158,8 @@ const ORDERING_INTENT_PATTERNS = {
   ],
   en: [
     /\b(?:arrange|sort)\b/iu,
-    /\border\s+(?:the\s+)?(?:numbers?|values?|readings?|items?|data|temperatures?|fractions?|decimals?|integers?|them)\b/iu,
+    /\border\s+(?:the\s+)?(?:following\s+)?(?:numbers?|values?|readings?|items?|data|temperatures?|fractions?|decimals?|integers?|them)\b/iu,
+    /\border\s+(?:(?:the\s+)?following\s*)?[:\-]?\s*(?=[+\-]?\d)/iu,
     /\b(?:which|what)\s+(?:is\s+the\s+)?(?:correct\s+)?order\b/iu,
     /\b(?:put|write|place)\b[\s\S]{0,120}\bin\s+(?:ascending|descending|increasing|decreasing)\s+order\b/iu,
     /\b(?:put|write|place)\b[\s\S]{0,120}\b(?:from\s+)?(?:smallest|least)\s+to\s+(?:largest|greatest)\b/iu,
@@ -155,16 +169,26 @@ const ORDERING_INTENT_PATTERNS = {
 
 const ORDERING_LIST_GAP_RE = /^[\s,،;؛]*(?:(?:(?:ve|and|ile|veya)\b|و)[\s,،;؛]*)?$/iu;
 
-function orderingIntent(value, language) {
-  const normalized = caseFold(canonicalMath(value));
+function orderingIntentMatch(value, language) {
+  const normalized = caseFold(canonicalOrderingText(value));
   const lang = text(language).toLocaleLowerCase('en-US');
   const patterns = ORDERING_INTENT_PATTERNS[lang] || [];
-  return normalized && patterns.some(re => re.test(normalized));
+  let best = null;
+  for (const re of patterns) {
+    const match = re.exec(normalized);
+    if (!match) continue;
+    const candidate = {
+      start: match.index ?? 0,
+      end: (match.index ?? 0) + match[0].length
+    };
+    if (!best || candidate.start < best.start) best = candidate;
+  }
+  return best;
 }
 
 function orderingDirection(value, language) {
-  const normalized = caseFold(canonicalMath(value));
-  if (!normalized || !orderingIntent(normalized, language)) return '';
+  const normalized = caseFold(canonicalOrderingText(value));
+  if (!normalized || !orderingIntentMatch(normalized, language)) return '';
   for (const [direction, patterns] of Object.entries(ORDERING_DIRECTION_PATTERNS)) {
     if (patterns.some(re => re.test(normalized))) return direction;
   }
@@ -172,21 +196,27 @@ function orderingDirection(value, language) {
 }
 
 function candidateOrderingValues(value, language) {
-  const normalized = canonicalMath(value);
+  const normalized = canonicalOrderingText(value);
   const lang = text(language).toLocaleLowerCase('en-US');
   const tokenRe = lang === 'tr'
-    ? /[+\-]?\d+(?:[.,]\d+)?/gu
-    : /[+\-]?\d+(?:\.\d+)?/gu;
+    ? /[+\-]?(?:(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)/gu
+    : /[+\-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)/gu;
   const tokens = [...normalized.matchAll(tokenRe)]
-    .map(match => ({
-      value: Number(lang === 'tr' ? match[0].replace(',', '.') : match[0]),
-      start: match.index ?? 0,
-      end: (match.index ?? 0) + match[0].length
-    }))
+    .map(match => {
+      const raw = match[0];
+      const numeric = lang === 'tr'
+        ? raw.replace(/\./gu, '').replace(',', '.')
+        : raw.replace(/,/gu, '');
+      return {
+        value: Number(numeric),
+        start: match.index ?? 0,
+        end: (match.index ?? 0) + raw.length
+      };
+    })
     .filter(token => Number.isFinite(token.value));
   if (tokens.length < 3) return [];
 
-  let best = [];
+  const runs = [];
   let current = [];
   for (const token of tokens) {
     if (!current.length) {
@@ -198,12 +228,31 @@ function candidateOrderingValues(value, language) {
     if (ORDERING_LIST_GAP_RE.test(gap)) {
       current.push(token);
     } else {
-      if (current.length > best.length) best = current;
+      if (current.length >= 3) runs.push(current);
       current = [token];
     }
   }
-  if (current.length > best.length) best = current;
-  return best.length >= 3 ? best.map(token => token.value) : [];
+  if (current.length >= 3) runs.push(current);
+  if (!runs.length) return [];
+
+  const intent = orderingIntentMatch(normalized, language);
+  if (!intent) return [];
+  const distanceToIntent = run => {
+    const runStart = run[0].start;
+    const runEnd = run[run.length - 1].end;
+    if (runEnd < intent.start) return intent.start - runEnd;
+    if (runStart > intent.end) return runStart - intent.end;
+    return 0;
+  };
+
+  runs.sort((a, b) => {
+    const distance = distanceToIntent(a) - distanceToIntent(b);
+    if (distance !== 0) return distance;
+    const endPreference = b[b.length - 1].end - a[a.length - 1].end;
+    if (endPreference !== 0) return endPreference;
+    return b.length - a.length;
+  });
+  return runs[0].map(token => token.value);
 }
 
 function preSortedOrderingPrompt(value, language) {
