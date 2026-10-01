@@ -50,6 +50,7 @@ begin
       where workspace_id = v_workspace
         and quiz_id = v_quiz.id
         and settings->'self_contained_wording'->>'feature_id' = 'FLH-FEAT-2026-014'
+      and settings->'self_contained_wording'->>'spec_version' = '1.1'
     ) then
       continue;
     end if;
@@ -106,7 +107,7 @@ begin
         'self_contained_wording',
         jsonb_build_object(
           'feature_id', 'FLH-FEAT-2026-014',
-          'spec_version', '1.0',
+          'spec_version', '1.1',
           'source_version_id', v_source_version.id,
           'source_version_no', v_source_version.version_no
         )
