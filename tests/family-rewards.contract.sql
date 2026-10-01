@@ -1,8 +1,6 @@
--- FLH-FEAT-2026-010 v1.0 rev 3. Disposable database only; all fixture writes roll back.
+-- FLH-FEAT-2026-010 v1.0 rev 3. One prepared-compatible DO statement.
+-- A dedicated caught success code rolls back every fixture; assertion errors propagate.
 -- Active authenticated learner activity targets the seeded dedicated test learner.
-begin;
-create function pg_temp.family_assert(p_ok boolean, p_message text) returns void
-language plpgsql as $$ begin if p_ok is distinct from true then raise exception 'Family rewards contract: %',p_message; end if; end $$;
 do $contract$
 declare
   w uuid;
@@ -32,7 +30,15 @@ declare
   v_fk_rejected boolean := false;
   v_badge_id uuid;
   v_badge_code text;
+  v_old_approved uuid;
+  v_matrix record;
+  v_matrix_reward uuid;
+  v_matrix_claim uuid;
+  v_missing_badge text := 'qa-family-required-badge';
 begin
+  execute $assert_definition$create or replace function pg_temp.family_assert(p_ok boolean,p_message text) returns void
+    language plpgsql as $assert_body$begin if p_ok is distinct from true then raise exception 'Family rewards contract: %',p_message; end if; end$assert_body$$assert_definition$;
+  begin
   select id into strict w from public.workspaces where slug='family-learning-hub';
   select id into strict l from public.learners where workspace_id=w and slug='test' and is_active and coalesce((metadata->>'is_test')::boolean,false);
   insert into auth.users(id,email) values(owner_id,'qa-family-owner@example.invalid'),(teacher_id,'qa-family-teacher@example.invalid'),(outsider_id,'qa-family-outsider@example.invalid');
@@ -41,7 +47,7 @@ begin
   insert into public.workspace_members(workspace_id,user_id,role) values(other_w,outsider_id,'owner');
   insert into public.learners(id,workspace_id,display_name,slug,metadata) values(other_l,other_w,'QA isolated test','test','{"is_test":true}');
   insert into public.learner_gamification_state(workspace_id,learner_id,xp,reward_points,current_streak,longest_streak) values(w,l,240,20,2,3)
-    on conflict(learner_id) do update set xp=240,reward_points=20,current_streak=2,longest_streak=3;
+    on conflict(learner_id) do update set xp=240,reward_points=20,current_level=1,current_streak=2,longest_streak=3;
   select xp,reward_points into xp_before,points_before from public.learner_gamification_state where learner_id=l;
   select id,code into strict v_badge_id,v_badge_code from public.gamification_badges where workspace_id=w limit 1;
   update public.gamification_badges set is_active=false where id=v_badge_id;
@@ -112,6 +118,37 @@ begin
   perform pg_temp.family_assert(result->>'ok'='true','parent reward create'); reward_id := (result->'reward'->>'id')::uuid;
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||'{"criteria":{"unknown":1}}');
   perform pg_temp.family_assert(result->>'error'='INVALID_CRITERIA','unknown reward criteria cannot silently pass');
+  result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||'{"criteria":{"min_xp":2147483648}}');
+  perform pg_temp.family_assert(result->>'error'='INVALID_CRITERIA','oversized eligibility integer is rejected before persistence');
+  second := public.flh_family_rewards_command(w,null,l,'student_catalog','{}');
+  perform pg_temp.family_assert(second->>'ok'='true','rejected oversized criterion cannot brick learner dashboard');
+  insert into public.gamification_badges(workspace_id,code,title) values(w,v_missing_badge,'QA required unearned badge');
+  for v_matrix in select * from (values
+    ('level','{"required_level":2}'::jsonb,'LEVEL_REQUIRED'),
+    ('xp','{"criteria":{"min_xp":241}}'::jsonb,'XP_REQUIRED'),
+    ('current-streak','{"criteria":{"current_streak":3}}'::jsonb,'STREAK_REQUIRED'),
+    ('longest-streak','{"criteria":{"longest_streak":4}}'::jsonb,'STREAK_REQUIRED'),
+    ('badge',jsonb_build_object('criteria',jsonb_build_object('required_badge_codes',jsonb_build_array(v_missing_badge))),'BADGE_REQUIRED'),
+    ('selected-scope','{}'::jsonb,'REWARD_SCOPE_FORBIDDEN')
+  ) eligibility_case(code,restriction,expected_error) loop
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('title','QA eligibility '||v_matrix.code));
+    v_matrix_reward := (result->'reward'->>'id')::uuid;
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('id',v_matrix_reward,'title','QA eligibility '||v_matrix.code)||v_matrix.restriction);
+    if v_matrix.code='selected-scope' then delete from public.reward_learner_scopes scopes where scopes.reward_id=v_matrix_reward and scopes.workspace_id=w; end if;
+    result := public.flh_family_rewards_command(w,null,l,'reward_request',jsonb_build_object('reward_id',v_matrix_reward,'idempotency_key','qa-matrix-blocked-'||v_matrix.code));
+    perform pg_temp.family_assert(result->>'error'=v_matrix.expected_error,'request enforces '||v_matrix.code);
+    perform pg_temp.family_assert(not exists(select 1 from public.reward_claims claims where claims.reward_id=v_matrix_reward),'ineligible request persists no claim');
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('id',v_matrix_reward,'title','QA eligibility '||v_matrix.code));
+    result := public.flh_family_rewards_command(w,null,l,'reward_request',jsonb_build_object('reward_id',v_matrix_reward,'idempotency_key','qa-matrix-pending-'||v_matrix.code));
+    perform pg_temp.family_assert(result->'claim'->>'status'='pending','valid request precedes changed criterion');
+    v_matrix_claim := (result->'claim'->>'id')::uuid;
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('id',v_matrix_reward,'title','QA eligibility '||v_matrix.code)||v_matrix.restriction);
+    if v_matrix.code='selected-scope' then delete from public.reward_learner_scopes scopes where scopes.reward_id=v_matrix_reward and scopes.workspace_id=w; end if;
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',v_matrix_claim,'decision','approved'));
+    perform pg_temp.family_assert(result->>'error'=v_matrix.expected_error,'approval revalidates '||v_matrix.code);
+    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=38 and not exists(select 1 from public.gamification_events where source_type='reward_claim' and source_id=v_matrix_claim::text),'failed eligibility approval changes no points or spend event');
+    result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',v_matrix_claim,'decision','rejected'));
+  end loop;
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('title','QA inactive badge criterion','criteria',jsonb_build_object('required_badge_codes',jsonb_build_array(v_badge_code))));
   perform pg_temp.family_assert(result->>'ok'='true' and result->'reward'->'criteria'->'required_badge_codes'=jsonb_build_array(v_badge_code),'inactive badge criterion can be preserved when editing');
   second := public.flh_family_reward_eligibility(w,l,(result->'reward'->>'id')::uuid);
@@ -168,6 +205,10 @@ begin
     result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust',jsonb_build_object('delta',1,'reason','QA pagination','idempotency_key','qa-family-page-'||n));
     perform pg_temp.family_assert(result->>'ok'='true','pagination fixture award');
   end loop;
+  insert into public.reward_claims(workspace_id,learner_id,reward_id,status,requested_at,reviewed_at,reviewed_by,points_spent,metadata)
+  values(w,l,other_reward,'approved',now()-interval '2 days',now()-interval '1 day',owner_id,0,'{"reward_title":"QA old undelivered reward"}') returning id into v_old_approved;
+  insert into public.reward_claims(workspace_id,learner_id,reward_id,status,requested_at,reviewed_at,reviewed_by)
+  select w,l,other_reward,'rejected',now(),now(),owner_id from generate_series(1,205);
   result := public.flh_family_rewards_command(w,null,l,'student_catalog','{}');
   perform pg_temp.family_assert(jsonb_array_length(result->'learners')=1 and result->'learners'->0->>'id'=l::text and jsonb_array_length(result->'ledger')=100,'learner sees own recent history only');
   perform pg_temp.family_assert((select sum((x->>'points')::integer) from jsonb_array_elements(result->'breakdown') x)=(select sum(reward_points_delta) from public.gamification_events where workspace_id=w and learner_id=l),'breakdown includes full history beyond latest100');
@@ -179,6 +220,7 @@ begin
   perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'learners') x where x->>'id'=l::text) and not exists(select 1 from jsonb_array_elements(result->'ledger') x where x->>'learner_id'=l::text),'normal parent summaries exclude test rewards');
   result := public.flh_family_rewards_command(w,owner_id,null,'parent_catalog','{"test_only":true}');
   perform pg_temp.family_assert(jsonb_array_length(result->'learners')=1 and result->'learners'->0->>'id'=l::text,'explicit QA catalog isolates test learner');
+  perform pg_temp.family_assert(exists(select 1 from jsonb_array_elements(result->'claims') x where x->>'id'=v_old_approved::text and x->>'status'='approved'),'old approved undelivered reward remains actionable beyond200 terminal claims');
   reset role;
   perform pg_temp.family_assert((select xp from public.learner_gamification_state where learner_id=l)=xp_before,'every family path preserves XP');
   perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=133,'canonical balance matches awards/spend/adjustments');
@@ -202,5 +244,7 @@ begin
   set local role authenticated;
   perform pg_temp.family_assert(exists(select 1 from public.behavior_categories where id=category_id) and not exists(select 1 from public.behavior_categories where workspace_id=other_w),'owner RLS is workspace scoped');
   reset role;
+  raise exception 'Family rewards contract passed; rollback disposable fixtures' using errcode='ZX001';
+  exception when sqlstate 'ZX001' then null;
+  end;
 end $contract$;
-rollback;
