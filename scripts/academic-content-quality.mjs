@@ -56,6 +56,9 @@ const DEFAULT_TARGET_DIFFICULTY = new Map([
 ]);
 
 const text = value => typeof value === 'string' ? value.replace(/\p{Cf}/gu, '').trim() : '';
+const lexicalWords = value => text(value).replace(/^•\s*/gmu, '').match(/[\p{L}\p{M}\p{N}]+(?:['’ʼ-][\p{L}\p{M}\p{N}]+)*/gu) || [];
+const wordCount = value => lexicalWords(value).length;
+const hintBulletLines = value => text(value).split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
 const caseFold = value => value
   .toLocaleLowerCase('und')
   .normalize('NFD')
@@ -514,6 +517,21 @@ export function validateAcademicPackage(pkg) {
         if (!h || h.level !== expected) issue(errors, 'HINT_LEVEL_SEQUENCE', hp + '.level', 'Expected hint level ' + expected + '.');
         if (!h || h.role !== HINT_ROLES.get(expected)) issue(errors, 'HINT_ROLE_SEQUENCE', hp + '.role', 'Expected role ' + HINT_ROLES.get(expected) + ' at level ' + expected + '.');
         if (!text(h && h.content)) issue(errors, 'HINT_CONTENT_REQUIRED', hp + '.content', 'Hint content is required.');
+
+        const learnerHintContent = text(h && h.content);
+        const bulletLines = hintBulletLines(learnerHintContent);
+        if (learnerHintContent && wordCount(learnerHintContent) < 30) {
+          issue(errors, 'HINT_MIN_WORDS', hp + '.content', 'Every learner-visible Learning hint must contain at least 30 lexical words.');
+        }
+        if (learnerHintContent && (bulletLines.length !== 3 || bulletLines.some(line => !/^•\s+\S/u.test(line)))) {
+          issue(errors, 'HINT_BULLET_STRUCTURE', hp + '.content', 'Every learner-visible Learning hint must contain exactly three non-empty bullet lines beginning with “• ”.');
+        }
+        for (let bulletIndex = 0; bulletIndex < bulletLines.length; bulletIndex++) {
+          const bulletText = bulletLines[bulletIndex].replace(/^•\s+/u, '');
+          if (wordCount(bulletText) > 24) {
+            issue(warnings, 'HINT_BULLET_TOO_LONG', hp + '.content', 'Hint bullet ' + (bulletIndex + 1) + ' exceeds 24 lexical words; review readability for the learner age/grade.');
+          }
+        }
 
         const combined = [
           h && h.content,
