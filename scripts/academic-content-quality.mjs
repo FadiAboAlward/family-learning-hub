@@ -40,7 +40,7 @@ const SOFT_SOURCE_REFERENCE_PATTERNS = [
   /\b(?:derse|metne|şiire)\s+göre\b/iu,
   /\b(?:as\s+(?:used|stated|mentioned|defined)\s+in|from)\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
   /\baccording\s+to\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
-  /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!(?:\s+(?:below|above|following)\s*[,;:]?\s*(?:"[^"]{3,}"|“[^”]{3,}”|'[^']{3,}')))/iu
+  /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!(?:\s+(?:below|above|following)\s*[,;:]?\s*(?:"[^"]{3,}"|“[^”]{3,}”|'[^']{3,}')|\s*[:;,]\s*(?:"[^"]{3,}"|“[^”]{3,}”|'[^']{3,}')))/iu
 ];
 const ARABIC_SOURCE_LOCATOR_PATTERN = /في\s+(?:ال)?(?:نص|درس|قصيدة)(?![\p{L}\p{N}_])/u;
 const ARABIC_EMBEDDED_SOURCE_PATTERN = /في\s+(?:ال)?(?:نص|درس|قصيدة)(?:\s+(?:الآتي|التالي|أدناه))?(?:\s+«[^»]{1,80}»)?\s*[:：،,]\s*(?:«[^»]{3,}»|"[^"]{3,}"|“[^”]{3,}”)/u;
