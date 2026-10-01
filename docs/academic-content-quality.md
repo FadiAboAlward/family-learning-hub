@@ -40,6 +40,27 @@ For a standard 20-question delivery surface the default role mix is 4 support / 
 
 The SOP also guides concept allocation: verified weak concepts receive the greatest share, current/developing scope the next share, and mastered/prerequisite concepts are used for retrieval/transfer rather than score inflation. The validator checks the machine-verifiable difficulty contract; academic review remains responsible for whether the concept allocation fits the learner evidence.
 
+## Sequential curriculum coverage
+
+Every newly authored targeted package must include `academic_context.coverage_plan`. This is the durable authoring contract that turns repeated exercise requests into cumulative curriculum progression instead of repeated sampling of already-mastered material.
+
+The plan records:
+
+- `ordered_scope_ref`: the Project Source/book map used to determine sequence;
+- `coverage_cursor` and non-negative `cursor_order`: the current skill/subskill position;
+- `next_sequential_target` and non-negative `next_target_order`: the intended next primary target;
+- `decision`: `ADVANCE`, `REMEDIATE`, `BASELINE`, or `REVIEW_DUE`;
+- `primary_target_concepts`: concept codes that are the main purpose of the package;
+- `evidence_refs`: authoritative progress/mastery evidence or an explicit baseline/no-live-evidence marker.
+
+Decision rules are intentionally simple. `ADVANCE` must move to an order strictly greater than the current cursor. `REMEDIATE` stays on the same cursor and must target at least one `DEVELOPING` or `NEEDS_REINFORCEMENT` concept. `BASELINE` requires at least one `UNKNOWN_BASELINE` primary concept. `REVIEW_DUE` is the normal way to intentionally make previously mastered content primary again for spaced review.
+
+A concept in `MASTERED` state must not remain a primary target in ordinary progression. Reusing it as a primary target outside `REVIEW_DUE` requires `mastered_primary_target_justification`. Mastered content may still appear in a limited retrieval/transfer share without being a primary target.
+
+The validator does not independently reconstruct textbook ordering. The author must derive the ordering from the assigned Project Source/book map and record it through `ordered_scope_ref`, `cursor_order`, and `next_target_order`. This makes the choice inspectable while deterministically preventing a declared `ADVANCE` decision from remaining at or moving behind the current cursor.
+
+After meaningful verified learner evidence, update Student Academic State with the affected subject's coverage cursor, skill coverage status, and next sequential target before authoring the next package. Historical attempts remain evidence, but they do not automatically prove that every earlier book skill was covered.
+
 ## Assessment blueprint
 
 Every new package must include a machine-readable blueprint before the questions are published. Each blueprint row identifies:
