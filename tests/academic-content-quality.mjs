@@ -209,6 +209,30 @@ assert.ok(
   'Unrelated contextual numerals must not hide a pre-sorted candidate list.'
 );
 
+
+for (const prompt of [
+  'Write these numbers from smallest to largest: 1, 2, 3.',
+  'Sort 1,2,3 from smallest to largest.'
+]) {
+  const directEnglishOrdering = read('valid-package.json');
+  directEnglishOrdering.questions[1].prompt_language = 'en';
+  directEnglishOrdering.questions[1].prompt = prompt;
+  const directEnglishOrderingResult = validateAcademicPackage(directEnglishOrdering);
+  assert.ok(
+    directEnglishOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+    'Direct English ordering wording and compact comma-separated lists must be guarded: ' + prompt
+  );
+}
+
+const turkishDecimalOrdering = read('valid-package.json');
+turkishDecimalOrdering.questions[1].prompt_language = 'tr';
+turkishDecimalOrdering.questions[1].prompt = '1,2; 1,5; 2,0 sayılarını en küçükten en büyüğe sıralayınız.';
+const turkishDecimalOrderingResult = validateAcademicPackage(turkishDecimalOrdering);
+assert.ok(
+  turkishDecimalOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Turkish comma-decimal candidate lists must remain parseable while English commas act as list separators.'
+);
+
 const invalid = validateAcademicPackage(read('invalid-package.json'));
 assert.equal(invalid.ok, false);
 const codes = new Set(invalid.errors.map(x => x.code));
