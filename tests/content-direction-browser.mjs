@@ -204,7 +204,9 @@ async function probe(width,height){
     assert.match(learningHint.text,/saat dilimini/);
     assert.equal(await page.locator('.flh-hint-list > li').count(),3);
 
-    await page.locator('#flhHelp').click();
+    await page.locator('.flh-learn-answer').first().click();
+    await page.waitForFunction(()=>{const b=document.querySelector('#flhConfirmAnswer');return b&&!b.disabled;});
+    await page.locator('#flhConfirmAnswer').click();
     await page.locator('.flh-hint-notice').waitFor({state:'visible',timeout:5000});
     const retainedHint=await computedDirection(page.locator('.flh-hint-content'));
     const retainedHeading=await computedDirection(page.locator('.flh-hint-card > b'));
@@ -327,7 +329,7 @@ try{
   await probe(390,844);
   await probeInteractive(1280,800);
   await probeInteractive(390,844);
-  console.log('Content direction browser regression passed through Learning, structured authored hints, missing-hint exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
+  console.log('Content direction browser regression passed through Learning, structured authored hints, null-hint answer exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
 }finally{
   await browser.close();
 }
