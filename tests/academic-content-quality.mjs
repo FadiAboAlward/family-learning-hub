@@ -315,6 +315,86 @@ safeTurkishApostrophe.questions[1].prompt = "A şehrinin saat dilimi UTC+2, B ş
 const safeTurkishApostropheResult = validateAcademicPackage(safeTurkishApostrophe);
 assert.ok(!safeTurkishApostropheResult.errors.some(x => ['LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY','PROMPT_LANGUAGE_UNSUPPORTED'].includes(x.code)), 'Normal Turkish apostrophes and UTC +/- notation must remain valid plain text.');
 
+const duplicateTurkishPrompt = read('valid-package.json');
+duplicateTurkishPrompt.questions[1].prompt_language = 'tr';
+duplicateTurkishPrompt.questions[1].prompt = "Aşağıdaki sıralamalardan hangisi sayı doğrusunda -1, 0 ve +1'in soldan sağa doğru doğru yerleşimidir?";
+const duplicateTurkishPromptResult = validateAcademicPackage(duplicateTurkishPrompt);
+const duplicateTurkishPromptIssue = duplicateTurkishPromptResult.errors.find(x => x.code === 'ADJACENT_DUPLICATE_WORD');
+assert.ok(duplicateTurkishPromptIssue, 'The reproduced Turkish “doğru doğru” wording defect must be rejected.');
+assert.equal(duplicateTurkishPromptIssue.path, 'questions[1].prompt');
+assert.match(duplicateTurkishPromptIssue.message, /doğru/iu);
+
+const duplicatePunctuationPrompt = read('valid-package.json');
+duplicatePunctuationPrompt.questions[1].prompt_language = 'en';
+duplicatePunctuationPrompt.questions[1].prompt = 'Choose the best, best answer.';
+const duplicatePunctuationPromptResult = validateAcademicPackage(duplicatePunctuationPrompt);
+assert.ok(
+  duplicatePunctuationPromptResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+  'Punctuation must not bypass adjacent duplicate-word detection.'
+);
+
+for (const separator of ['-', '–', '—']) {
+  const dashDuplicatePrompt = read('valid-package.json');
+  dashDuplicatePrompt.questions[1].prompt_language = 'en';
+  dashDuplicatePrompt.questions[1].prompt = 'Choose the best' + separator + 'best answer.';
+  const dashDuplicatePromptResult = validateAcademicPackage(dashDuplicatePrompt);
+  assert.ok(
+    dashDuplicatePromptResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+    'Dash-separated repeated prose must be rejected: ' + separator
+  );
+}
+
+const duplicateOptionText = read('valid-package.json');
+duplicateOptionText.questions[1].options[1].content = 'yanlış yanlış';
+const duplicateOptionTextResult = validateAcademicPackage(duplicateOptionText);
+assert.ok(
+  duplicateOptionTextResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD' && x.path === 'questions[1].options[1].content'),
+  'Learner-visible option text must also be protected by the duplicate-word guard.'
+);
+
+const duplicateHintText = read('valid-package.json');
+duplicateHintText.questions[0].hints[0].content = 'ركّز ركّز على اتجاه الحركة.';
+const duplicateHintTextResult = validateAcademicPackage(duplicateHintText);
+assert.ok(
+  duplicateHintTextResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD' && x.path === 'questions[0].hints[0].content'),
+  'Learner-visible Learning hints must also be protected by the duplicate-word guard.'
+);
+
+const repeatedNumbersRemainValid = read('valid-package.json');
+repeatedNumbersRemainValid.questions[1].prompt_language = 'tr';
+repeatedNumbersRemainValid.questions[1].prompt = '2, 2 ve 3 sayılarından hangisi çifttir?';
+const repeatedNumbersRemainValidResult = validateAcademicPackage(repeatedNumbersRemainValid);
+assert.ok(
+  !repeatedNumbersRemainValidResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+  'Repeated numeric values are mathematical data, not duplicate lexical wording.'
+);
+
+for (const prompt of [
+  'x + x = 2x. Which expression is equivalent?',
+  'x × x = x². Which expression is equivalent?',
+  'x - x = 0. Which expression is equivalent?',
+  'a = a is always true. Which statement describes this?',
+  'س + س = ٢س. ما التعبير المكافئ؟'
+]) {
+  const repeatedMathIdentifier = read('valid-package.json');
+  repeatedMathIdentifier.questions[1].prompt_language = prompt.includes('ما التعبير') ? 'ar' : 'en';
+  repeatedMathIdentifier.questions[1].prompt = prompt;
+  const repeatedMathIdentifierResult = validateAcademicPackage(repeatedMathIdentifier);
+  assert.ok(
+    !repeatedMathIdentifierResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+    'Repeated identifiers separated by mathematical operators must remain valid: ' + prompt
+  );
+}
+
+const correctedTurkishWording = read('valid-package.json');
+correctedTurkishWording.questions[1].prompt_language = 'tr';
+correctedTurkishWording.questions[1].prompt = 'Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?';
+const correctedTurkishWordingResult = validateAcademicPackage(correctedTurkishWording);
+assert.ok(
+  !correctedTurkishWordingResult.errors.some(x => ['ADJACENT_DUPLICATE_WORD','ORDERING_PROMPT_PRE_SORTED_INPUT'].includes(x.code)),
+  'The corrected shuffled Turkish number-line formulation must pass both wording and ordering-leak guards.'
+);
+
 
 for (const [language, prompt] of [
   ['tr', 'Sayı doğrusunda -9, -4, 0 ve +2 sayıları vardır. Küçükten büyüğe doğru sıralama hangisidir?'],
@@ -1043,4 +1123,4 @@ assert.ok(
   'Declared primary coverage targets must be assessed by at least one blueprint item'
 );
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, ordering-question pre-sorted input protection across Turkish, Arabic, and English, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, ordering-question pre-sorted input protection across Turkish, Arabic, and English, adjacent duplicate-word protection across learner-visible text with numeric-data safety, and duplicate reasoning guards are enforced.');

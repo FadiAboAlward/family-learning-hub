@@ -128,7 +128,7 @@ const academicTests=read('tests/academic-content-quality.mjs');
 const agents=read('AGENTS.md');
 
 for(const phrase of ['Student Academic State','runtime_external_dependencies','nudge','near_solution','Brisk Teaching','Snorkl','prompt_language','self-contained'])if(!academicContract.includes(phrase))fail(`Academic quality contract missing protected rule: ${phrase}`);
-for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN','PROMPT_LANGUAGE_REQUIRED','LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
+for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN','PROMPT_LANGUAGE_REQUIRED','LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY','ADJACENT_DUPLICATE_WORD'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
 for(const code of ['HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN'])if(!academicTests.includes(code))fail(`Academic content regression missing: ${code}`);
 if(!agents.includes('docs/academic-content-quality.md'))fail('AGENTS.md must pin the academic content quality contract.');
 
