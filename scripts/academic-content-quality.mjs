@@ -203,6 +203,7 @@ export function validateAcademicPackage(pkg) {
   }
 
   const conceptTargetsByCode = new Map();
+  let coveragePrimaryTargets = [];
   const ctx = pkg.academic_context;
   if (!ctx || typeof ctx !== 'object') {
     issue(errors, 'ACADEMIC_CONTEXT_REQUIRED', 'academic_context', 'academic_context is required.');
@@ -258,6 +259,7 @@ export function validateAcademicPackage(pkg) {
         issue(errors, 'COVERAGE_DECISION_INVALID', cp + '.decision', 'decision must be ADVANCE, REMEDIATE, BASELINE, or REVIEW_DUE.');
       }
       const primaryTargets = Array.isArray(coverage.primary_target_concepts) ? coverage.primary_target_concepts.map(text).filter(Boolean) : [];
+      coveragePrimaryTargets = primaryTargets;
       if (!primaryTargets.length) {
         issue(errors, 'COVERAGE_PRIMARY_TARGETS_REQUIRED', cp + '.primary_target_concepts', 'At least one primary target concept is required.');
       }
@@ -340,6 +342,13 @@ export function validateAcademicPackage(pkg) {
     if (!sig) issue(errors, 'REASONING_SIGNATURE_REQUIRED', p + '.reasoning_signature', 'reasoning_signature is required for duplicate/near-duplicate protection.');
     else if (reasoning.has(sig)) issue(errors, 'DUPLICATE_REASONING_SIGNATURE', p + '.reasoning_signature', 'Reasoning form duplicates ' + reasoning.get(sig) + '.');
     else reasoning.set(sig, code || p);
+  }
+
+  const assessedConcepts = new Set(blueprint.map(row => text(row && row.concept_code)).filter(Boolean));
+  for (const [i, conceptCode] of coveragePrimaryTargets.entries()) {
+    if (conceptTargetsByCode.has(conceptCode) && !assessedConcepts.has(conceptCode)) {
+      issue(errors, 'COVERAGE_PRIMARY_TARGET_UNASSESSED', 'academic_context.coverage_plan.primary_target_concepts[' + i + ']', 'Primary target concept ' + conceptCode + ' must be assessed by at least one blueprint item.');
+    }
   }
 
   const difficulties = new Set(blueprint.map(x => x && x.difficulty_level).filter(Number.isInteger));
