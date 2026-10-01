@@ -143,6 +143,39 @@ assert.ok(
   'A book-derived question that embeds the needed excerpt directly must remain valid.'
 );
 
+
+for (const prompt of [
+  'ما الفكرة الأقرب إلى المعنى العام لقصيدة «يا شام»؟',
+  'في أسئلة الاستيعاب لنص «التعاون»، ما الفكرة العامة التي يوجّه إليها النص؟'
+]) {
+  const unseenNamedSource = read('valid-package.json');
+  unseenNamedSource.questions[1].prompt_language = 'ar';
+  unseenNamedSource.questions[1].prompt = prompt;
+  const unseenNamedSourceResult = validateAcademicPackage(unseenNamedSource);
+  assert.ok(
+    unseenNamedSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Named unseen source summaries must be rejected: ' + prompt
+  );
+}
+
+const embeddedNamedSourceQuote = read('valid-package.json');
+embeddedNamedSourceQuote.questions[1].prompt_language = 'ar';
+embeddedNamedSourceQuote.questions[1].prompt = 'قال الشاعر في نص «التعاون»: «أنا ما خُلِقتُ كي أعيشَ بمفردي». ما الفكرة التي يدلّ عليها هذا المعنى؟';
+const embeddedNamedSourceQuoteResult = validateAcademicPackage(embeddedNamedSourceQuote);
+assert.ok(
+  !embeddedNamedSourceQuoteResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'Naming a source remains valid when the needed excerpt is embedded directly in the prompt.'
+);
+
+const embeddedEnglishText = read('valid-package.json');
+embeddedEnglishText.questions[1].prompt_language = 'en';
+embeddedEnglishText.questions[1].prompt = 'In the text below, “Sam shares his lunch with a new student.” Which value does Sam show?';
+const embeddedEnglishTextResult = validateAcademicPackage(embeddedEnglishText);
+assert.ok(
+  !embeddedEnglishTextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A source locator that explicitly points to embedded text below must remain valid.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
