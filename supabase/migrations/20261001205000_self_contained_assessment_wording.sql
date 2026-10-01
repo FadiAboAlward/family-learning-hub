@@ -1,5 +1,5 @@
--- FLH-FEAT-2026-014 v1.0
--- SPEC_REVISION_ID: ANLCKQmIisrgAXjzfvTfkcTy0hPDWyxPqJTZ2F_ShckEvvdljpNb5pto47R1mWpFTA_FKCNoJqWOufSb_daKqzuWUc3sGsdkP06oY1y3MS8
+-- FLH-FEAT-2026-014 v1.1
+-- SPEC_REVISION_ID: ANLCKQmT8ZZ7ecsn9aCb6eIx4Gb0pGQaB_6xWpB_S77ZH6hhVIk5R0xnOgYUSB0M9yF6h0FrUfkDNWz0uZglmVTb5fWMsEwBK479VjmOewE
 -- Forward-only remediation for learner-facing soft source references.
 -- Historical published quiz versions remain immutable; future starts select the
 -- corrected higher published version through the existing latest-version rule.
