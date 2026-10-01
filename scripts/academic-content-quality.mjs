@@ -27,7 +27,6 @@ const SOURCE_DEPENDENCY_PATTERNS = [
 ];
 const SOFT_SOURCE_REFERENCE_PATTERNS = [
   /(?:في|من)\s+مفردات(?:\s+(?:درس|نص|الدرس|النص))?/u,
-  /في\s+(?:النص|الدرس|القصيدة)(?![\p{L}\p{N}_])(?!(?:\s+(?:الآتي|التالي|أدناه)\s*[:：]?\s*(?:«[^»]{3,}»|"[^"]{3,}"|“[^”]{3,}”)))(?!(?:\s*[:：]\s*(?:«[^»]{3,}»|"[^"]{3,}"|“[^”]{3,}”)))/u,
   /(?:كما\s+)?ورد(?:ت)?\s+في\s+(?:وصف|مفردات|درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
   /كما\s+في\s+(?:درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
   /(?:الفكرة|المعنى|الموضوع|القيمة)[^؟.!]{0,90}\s+ل(?:قصيدة|نص|درس|مطالعة)\s+«[^»]+»/u,
@@ -43,6 +42,8 @@ const SOFT_SOURCE_REFERENCE_PATTERNS = [
   /\baccording\s+to\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
   /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!(?:\s+(?:below|above|following)\s*[,;:]?\s*(?:"[^"]{3,}"|“[^”]{3,}”|'[^']{3,}')))/iu
 ];
+const ARABIC_SOURCE_LOCATOR_PATTERN = /في\s+(?:ال)?(?:نص|درس|قصيدة)(?![\p{L}\p{N}_])/u;
+const ARABIC_EMBEDDED_SOURCE_PATTERN = /في\s+(?:ال)?(?:نص|درس|قصيدة)(?:\s+(?:الآتي|التالي|أدناه))?(?:\s+«[^»]{1,80}»)?\s*[:：،,]\s*(?:«[^»]{3,}»|"[^"]{3,}"|“[^”]{3,}”)/u;
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 const CONCEPT_STATES = new Set(['MASTERED', 'DEVELOPING', 'NEEDS_REINFORCEMENT', 'UNKNOWN_BASELINE']);
@@ -210,7 +211,9 @@ function sourceDependency(value) {
 
 function softSourceReference(value) {
   const normalized = caseFold(text(value));
-  return normalized && SOFT_SOURCE_REFERENCE_PATTERNS.some(re => re.test(normalized));
+  if (!normalized) return false;
+  if (ARABIC_SOURCE_LOCATOR_PATTERN.test(normalized) && !ARABIC_EMBEDDED_SOURCE_PATTERN.test(normalized)) return true;
+  return SOFT_SOURCE_REFERENCE_PATTERNS.some(re => re.test(normalized));
 }
 
 export function validateAcademicPackage(pkg) {
