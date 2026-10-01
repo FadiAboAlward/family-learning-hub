@@ -14,11 +14,14 @@ declare
   v_q2_exam constant uuid := '94000000-0000-4000-8000-000000000008';
   v_learning_attempt constant uuid := '94000000-0000-4000-8000-000000000009';
   v_exam_attempt constant uuid := '94000000-0000-4000-8000-000000000010';
+  v_assignment constant uuid := '94000000-0000-4000-8000-000000000011';
   v_learner uuid;
   v_subject bigint;
   v_result jsonb;
   v_fresh_learning uuid;
   v_fresh_exam uuid;
+  v_assigned_learning uuid;
+  v_assigned_exam uuid;
 begin
   select id into v_learner
   from public.learners
@@ -153,9 +156,68 @@ begin
     raise exception 'VERSION_RESUME_FRESH_EXAM_NOT_LATEST:%', v_result;
   end if;
 
+  -- Remove the program-access path and prove that a still-valid assignment to
+  -- v1 remains actionable after v2 exists.
+  update public.quiz_attempts
+  set status='abandoned'
+  where workspace_id=v_workspace
+    and id in (v_fresh_learning,v_fresh_exam);
+
+  delete from public.learner_program_enrollments
+  where workspace_id=v_workspace
+    and learner_id=v_learner
+    and program_id=v_program;
+
+  insert into public.quiz_assignments(
+    id,workspace_id,learner_id,quiz_version_id,status,available_at,due_at
+  ) values (
+    v_assignment,v_workspace,v_learner,v_v1,'assigned',
+    now() - interval '1 hour',now() + interval '1 hour'
+  );
+
+  set local role service_role;
+  v_result := public.flh_learning_start(v_workspace,v_learner,'qa-version-resume-quiz');
+  reset role;
+  v_assigned_learning := (v_result->>'attempt_id')::uuid;
+
+  if v_result->>'error' is not null
+     or coalesce((v_result->>'resumed')::boolean,false) is true
+     or v_result->'queue'->0->'question'->>'prompt' <> 'old learning prompt'
+     or not exists (
+       select 1 from public.quiz_attempts
+       where id=v_assigned_learning
+         and workspace_id=v_workspace
+         and quiz_version_id=v_v1
+         and assignment_id=v_assignment
+         and delivery_mode='learning'
+     ) then
+    raise exception 'VERSION_RESUME_ASSIGNED_LEARNING_VERSION_LOST:%', v_result;
+  end if;
+
+  set local role service_role;
+  v_result := public.flh_exam_start(v_workspace,v_learner,'qa-version-resume-quiz');
+  reset role;
+  v_assigned_exam := (v_result->>'attempt_id')::uuid;
+
+  if v_result->>'error' is not null
+     or coalesce((v_result->>'resumed')::boolean,false) is true
+     or v_result->'questions'->0->'question'->>'prompt' <> 'old exam prompt'
+     or not exists (
+       select 1 from public.quiz_attempts
+       where id=v_assigned_exam
+         and workspace_id=v_workspace
+         and quiz_version_id=v_v1
+         and delivery_mode='exam'
+     ) then
+    raise exception 'VERSION_RESUME_ASSIGNED_EXAM_VERSION_LOST:%', v_result;
+  end if;
+
   delete from public.quiz_attempts
   where workspace_id=v_workspace
     and quiz_version_id in (v_v1,v_v2);
+
+  delete from public.quiz_assignments
+  where workspace_id=v_workspace and id=v_assignment;
 
   delete from public.learner_program_enrollments
   where workspace_id=v_workspace and program_id=v_program;
