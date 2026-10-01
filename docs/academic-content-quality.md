@@ -53,7 +53,7 @@ The plan records:
 - `primary_target_concepts`: concept codes that are the main purpose of the package;
 - `evidence_refs`: authoritative progress/mastery evidence or an explicit baseline/no-live-evidence marker.
 
-Decision rules are intentionally simple. `ADVANCE` must move to an order strictly greater than the current cursor. `REMEDIATE` stays on the same cursor and must target at least one `DEVELOPING` or `NEEDS_REINFORCEMENT` concept. `BASELINE` requires at least one `UNKNOWN_BASELINE` primary concept. `REVIEW_DUE` is the normal way to intentionally make previously mastered content primary again for spaced review.
+Decision rules are intentionally simple. `ADVANCE` must move to the immediately next assessable skill/subskill (`next_target_order = cursor_order + 1`), so an ordinary package cannot skip an uncovered curriculum target. If authoritative school/parent evidence shows an intervening skill was already covered, update Student Academic State/the cursor first rather than skipping it inside the new package. `REMEDIATE` stays on the same cursor and must target at least one `DEVELOPING` or `NEEDS_REINFORCEMENT` concept. `BASELINE` requires at least one `UNKNOWN_BASELINE` primary concept. `REVIEW_DUE` is the normal way to intentionally make previously mastered content primary again for spaced review.
 
 A concept in `MASTERED` state must not remain a primary target in ordinary progression. Reusing it as a primary target outside `REVIEW_DUE` requires `mastered_primary_target_justification`. Mastered content may still appear in a limited retrieval/transfer share without being a primary target.
 
