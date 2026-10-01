@@ -9,6 +9,7 @@ const NOW = '2026-10-01T09:00:00Z';
 const learner = { id: LEARNER_ID, slug: 'test', display_name: 'طالب الاختبار', grade_level: 7, is_test: true, avatar_emoji: '🧪' };
 const clone = value => structuredClone(value);
 const json = (route, value, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
+const academicSource = source => !source || ['academic', 'quiz', 'quiz_attempt', 'learning', 'exam'].includes(source);
 
 /** Isolated server fixtures exercise the real UI without touching any family data. */
 export function createRewardsFixture() {
@@ -42,7 +43,7 @@ export function createRewardsFixture() {
     const breakdown = new Map();
     for (const row of catalog.ledger) {
       const key = `${row.metadata?.category_id || ''}:${row.source_type}`;
-      if (!breakdown.has(key)) breakdown.set(key, { learner_id: LEARNER_ID, category_id: row.metadata?.category_id || null, category_title: row.metadata?.category_title || (row.source_type === 'quiz' ? 'التعلّم' : row.source_type === 'reward_claim' ? 'الجوائز' : 'تعديل موثّق'), source_type: row.source_type, points: 0 });
+      if (!breakdown.has(key)) breakdown.set(key, { learner_id: LEARNER_ID, category_id: row.metadata?.category_id || null, category_title: row.metadata?.category_title || (academicSource(row.source_type) ? 'التعلّم' : row.source_type === 'reward_claim' ? 'الجوائز' : 'تعديل موثّق'), source_type: row.source_type, points: 0 });
       breakdown.get(key).points += row.reward_points_delta;
     }
     value.breakdown = [...breakdown.values()];
@@ -152,7 +153,7 @@ export function createRewardsFixture() {
       if (action === 'student_login') return respond({ session: 'mock-rewards-testing-learner', profile: { learner, gamification: { ...state, badges: [], rewards: catalog.rewards } } });
       if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner'));
       if (action === 'parent_rewards_ledger' || action === 'student_rewards_ledger') {
-        const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || row.source_type === body.source_type));
+        const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || (body.source_type === 'academic' ? academicSource(row.source_type) : row.source_type === body.source_type)));
         return respond({ ledger: clone(ledger), next_cursor: null });
       }
       const key = `${action}:${body.idempotency_key || ''}`;
@@ -188,14 +189,14 @@ const responseFor = (page, action) => page.waitForResponse(response => {
   try { return response.request().postDataJSON()?.action === action; } catch { return false; }
 });
 
-async function perform(page, action, trigger, { status = 200, refresh = true } = {}) {
+async function perform(page, action, trigger, { status = 200, refresh = true, dashboardStatus = 200 } = {}) {
   const response = responseFor(page, action);
   const role = await page.locator('[data-family-rewards]').getAttribute('data-role');
   const dashboard = refresh ? responseFor(page, `${role}_rewards_dashboard`) : null;
   await trigger();
   assert.equal((await response).status(), status, `${action}: expected server status`);
   if (dashboard) {
-    assert.equal((await dashboard).status(), 200, `${action}: refreshed authoritative catalog`);
+    assert.equal((await dashboard).status(), dashboardStatus, `${action}: following dashboard status`);
     await page.waitForFunction(() => !document.querySelector('[data-family-rewards] [aria-busy="true"]'));
   } else if (status >= 400) await page.locator('[data-family-rewards] [role="alert"]').first().waitFor({ state: 'visible' });
   else await page.waitForFunction(() => !document.querySelector('[data-family-rewards] [aria-busy="true"]'));
@@ -462,9 +463,23 @@ async function runBrowserSuite() {
     await page.getByRole('alert').filter({ hasText: 'رصيد النقاط غير كافٍ' }).waitFor({ state: 'visible' });
     const claimRetryKey = server.last('reward_request').idempotency_key;
     await balance(page, 36);
-    await perform(page, 'reward_request', () => requestButton.click());
+    server.failBefore('student_rewards_dashboard');
+    await perform(page, 'reward_request', () => requestButton.click(), { dashboardStatus: 500 });
     assert.equal(server.last('reward_request').idempotency_key, claimRetryKey, 'reward request retry retains its key');
     assert.equal('learner_id' in server.last('reward_request'), false, 'reward request identity is session-derived');
+    await page.getByRole('status').filter({ hasText: /طلب الجائزة بانتظار موافقة الأهل.*تعذر تحديث العرض/s }).waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-family-rewards] [role="alert"]').count(), 0, 'a saved request with failed refresh is not reported as a failed action');
+    assert.equal(await requestButton.getAttribute('data-idempotency-key'), null, 'a confirmed request retires its action key before refresh');
+    assert.equal(await requestButton.isDisabled(), true, 'a saved request blocks another action until the dashboard refreshes');
+    assert.equal(await page.locator('[data-fr-refresh]').isDisabled(), false, 'global refresh remains available after the saved request');
+    const savedRequestCount = server.count('reward_request');
+    await requestButton.evaluate(button => button.click());
+    assert.equal(server.count('reward_request'), savedRequestCount, 'repeating the stale saved request sends no new command');
+    assert.equal(server.catalog.claims.length, 1, 'failed refresh does not duplicate the saved request');
+    await perform(page, 'student_rewards_dashboard', () => page.locator('[data-fr-refresh]').click(), { refresh: false });
+    await page.getByRole('status').filter({ hasText: /^طلب الجائزة بانتظار موافقة الأهل\.$/ }).waitFor({ state: 'visible' });
+    assert.equal(server.count('reward_request'), savedRequestCount, 'refresh retries only the dashboard, not the successful request');
+    assert.equal(await page.locator(`[data-fr-request-reward="${rewardId}"]`).isDisabled(), false, 'successful refresh restores current page controls');
     await balance(page, 36);
     const claimId = server.catalog.claims[0].id;
     await open(page, 'parent');
@@ -476,6 +491,7 @@ async function runBrowserSuite() {
     assert.equal(server.catalog.ledger.filter(row => row.source_type === 'reward_claim').length, 1, 'delivery does not display a second spend');
     await open(page, 'student');
     await perform(page, 'reward_request', () => page.locator(`[data-fr-request-reward="${rewardId}"]`).click());
+    assert.notEqual(server.last('reward_request').idempotency_key, claimRetryKey, 'a later intended request uses a fresh key after the earlier confirmed request');
     const rejectedClaimId = server.catalog.claims[0].id;
     await open(page, 'parent');
     await perform(page, 'reward_review', () => page.locator(`[data-fr-claim-reject="${rejectedClaimId}"]`).first().click());
@@ -489,7 +505,32 @@ async function runBrowserSuite() {
     await submit(page, '#frAdjustmentForm');
     assert.equal(server.count('points_adjust'), adjustmentCount, 'blank reason blocks an adjustment before transport');
     await page.locator('#frAdjustmentReason').fill('تصحيح موثّق <b>للسجل</b>');
-    await perform(page, 'points_adjust', () => submit(page, '#frAdjustmentForm'));
+    server.failBefore('parent_rewards_dashboard');
+    await perform(page, 'points_adjust', () => submit(page, '#frAdjustmentForm'), { dashboardStatus: 500 });
+    await page.locator('#frAdjustmentForm [role="status"]').filter({ hasText: /تم تسجيل الحركة التعويضية.*تعذر تحديث العرض/s }).waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-family-rewards] [role="alert"]').count(), 0, 'a successful adjustment is not reported as failed because its refresh failed');
+    assert.equal(server.state.reward_points, 24, 'the successful adjustment changed the authoritative balance once');
+    assert.equal(server.catalog.ledger.length, 5, 'the successful adjustment appended one event before the failed refresh');
+    assert.equal(await page.locator('#frAdjustmentForm button[type="submit"]').isDisabled(), true, 'the unchanged saved adjustment cannot be submitted again');
+    assert.equal(await page.locator('#frAdjustmentForm').getAttribute('data-idempotency-key'), null, 'the confirmed adjustment retires its action key before refresh');
+    const savedAdjustmentCount = server.count('points_adjust');
+    await page.locator('#frAdjustmentForm').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    assert.equal(server.count('points_adjust'), savedAdjustmentCount, 'even a programmatic stale-form submit cannot repeat the saved adjustment');
+    assert.equal(await page.locator('[data-fr-refresh]').isDisabled(), false, 'global refresh remains available while the saved adjustment is locked');
+    server.failBefore('parent_rewards_dashboard');
+    const failedRefresh = responseFor(page, 'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();
+    assert.equal((await failedRefresh).status(), 500, 'a repeated dashboard failure still does not undo the saved adjustment');
+    await page.locator('#frAdjustmentForm [role="status"]').filter({ hasText: /تم تسجيل الحركة التعويضية.*تعذر تحديث العرض/s }).waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-family-rewards] [role="alert"]').count(), 0, 'retrying refresh preserves the truthful saved status');
+    assert.equal(server.count('points_adjust'), savedAdjustmentCount, 'a failed refresh retry sends no financial command');
+    await perform(page, 'parent_rewards_dashboard', () => page.locator('[data-fr-refresh]').click(), { refresh: false });
+    await page.getByRole('status').filter({ hasText: /^تم تسجيل الحركة التعويضية في السجل\.$/ }).waitFor({ state: 'visible' });
+    assert.equal(server.count('points_adjust'), savedAdjustmentCount, 'refresh retries no financial command');
+    assert.equal(server.catalog.ledger.length, 5, 'refresh adds no duplicate adjustment event');
+    await showForm(page, '#frAdjustmentForm');
+    assert.equal(await page.locator('#frAdjustmentForm button[type="submit"]').isDisabled(), false, 'successful refresh restores a usable adjustment form');
+    assert.equal(await page.locator('#frAdjustmentDelta').inputValue(), '', 'successful refresh presents a fresh form for the next intended adjustment');
     await balance(page, 24);
     assert.equal(server.catalog.ledger.length, 5, 'adjustment appends a compensating event');
     const adjustment = page.locator(`[data-fr-event="${server.catalog.ledger[0].id}"]`);
@@ -512,6 +553,26 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('[data-fr-behavior-approve], [data-fr-claim-approve], #frCategoryForm').count(), 0, 'learner history offers no management controls');
     await assertLayout(page, `${device.name} completed learner`);
     await screenshot(page, `family-rewards-${device.name}-student`);
+
+    // One academic filter includes every legacy academic source without leaking family events.
+    for (const [index, source] of ['academic', 'quiz_attempt', 'learning', 'exam', null, ''].entries()) {
+      server.catalog.ledger.push({ id: `88888888-8888-4888-8888-${String(index).padStart(12, '0')}`, learner_id: LEARNER_ID, event_type: 'quiz_completed', reward_points_delta: 0, xp_delta: 0, source_type: source, source_id: `qa-academic-source-${index}`, reason: `تعلّم للاختبار ${index}`, metadata: { status: 'approved' }, created_at: NOW });
+    }
+    await open(page, 'parent');
+    assert.deepEqual(await page.locator('#frLedgerSource option').evaluateAll(options => options.filter(option => option.textContent === 'تعلّم أكاديمي').map(option => option.value)), ['academic'], 'academic sources have one distinct dropdown label and value');
+    const academicEventIds = server.catalog.ledger.filter(row => academicSource(row.source_type)).map(row => row.id).sort();
+    await perform(page, 'parent_rewards_ledger', () => page.locator('#frLedgerSource').selectOption('academic'), { refresh: false });
+    assert.equal(server.last('parent_rewards_ledger').source_type, 'academic', 'the academic option requests the aggregate server filter');
+    assert.deepEqual(await page.locator('[data-fr-ledger] [data-fr-event]').evaluateAll(rows => rows.map(row => row.dataset.frEvent).sort()), academicEventIds, 'academic filtering includes quiz and null/empty legacy events while excluding nonacademic events');
+    const legacyAcademicId = server.catalog.ledger.find(row => row.source_type === null).id;
+    assert.match(await page.locator(`[data-fr-event="${legacyAcademicId}"]`).innerText(), /تعلّم أكاديمي/, 'a legacy null source is displayed as academic learning');
+    await perform(page, 'parent_rewards_ledger', () => page.locator('#frLedgerSource').selectOption('family_behavior'), { refresh: false });
+    assert.deepEqual(await page.locator('[data-fr-ledger] [data-fr-event]').evaluateAll(rows => rows.map(row => row.dataset.frEvent).sort()), server.catalog.ledger.filter(row => row.source_type === 'family_behavior').map(row => row.id).sort(), 'nonacademic source filters retain their exact boundary');
+    // Older dashboard breakdowns can still expose quiz; drill-down uses the canonical academic option.
+    await perform(page, 'parent_rewards_ledger', () => page.locator('[data-fr-breakdown-source="quiz"]').click(), { refresh: false });
+    assert.equal(server.last('parent_rewards_ledger').source_type, 'academic', 'an academic breakdown source normalizes to the aggregate filter');
+    assert.equal(await page.locator('#frLedgerSource').inputValue(), 'academic', 'the academic breakdown leaves the matching option selected');
+    assert.deepEqual(await page.locator('[data-fr-ledger] [data-fr-event]').evaluateAll(rows => rows.map(row => row.dataset.frEvent).sort()), academicEventIds, 'academic drill-down includes the same legacy and modern academic history');
 
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();

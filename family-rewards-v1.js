@@ -2,7 +2,8 @@
   const safe = (value = '') => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
   const statusText = status => ({pending:'بانتظار موافقة الأهل',approved:'معتمد',rejected:'مرفوض',redeemed:'تم تسليم الجائزة',cancelled:'ملغى'})[status] || 'مسجّل';
-  const sourceText = source => ({behavior:'سلوك عائلي',behavior_occurrence:'سلوك عائلي',behavior_submission:'سلوك عائلي',family_behavior:'سلوك عائلي',reward_claim:'استبدال جائزة',reward_spend:'استبدال جائزة',manual_adjustment:'تعديل موثّق',adjustment:'تعديل موثّق',reversal:'عكس حركة',academic:'تعلّم أكاديمي',quiz:'تعلّم أكاديمي',quiz_attempt:'تعلّم أكاديمي',learning:'تعلّم أكاديمي',exam:'تعلّم أكاديمي'})[source] || 'مصدر آخر';
+  const sourceFilter = source => !source || ['academic','quiz','quiz_attempt','learning','exam'].includes(source) ? 'academic' : source;
+  const sourceText = source => ({behavior:'سلوك عائلي',behavior_occurrence:'سلوك عائلي',behavior_submission:'سلوك عائلي',family_behavior:'سلوك عائلي',reward_claim:'استبدال جائزة',reward_spend:'استبدال جائزة',manual_adjustment:'تعديل موثّق',adjustment:'تعديل موثّق',reversal:'عكس حركة',academic:'تعلّم أكاديمي'})[sourceFilter(source)] || 'مصدر آخر';
   const errorMessages = {
     AUTH_REQUIRED:'سجّل الدخول أولًا.',INVALID_SESSION:'انتهت جلسة الدخول. سجّل الدخول من جديد.',INVALID_PARENT_SESSION:'انتهت جلسة الأهل. سجّل الدخول من جديد.',
     NOT_A_PARENT_MEMBER:'هذا الحساب لا يملك صلاحية إدارة العائلة.',PARENT_MANAGEMENT_REQUIRED:'هذه الإدارة متاحة لمالك العائلة أو المشرف فقط.',PARENT_MANAGE_FORBIDDEN:'هذه الإدارة متاحة لمالك العائلة أو المشرف فقط.',NOT_REWARDS_ADMIN:'هذه الإدارة متاحة لمالك العائلة أو المشرف فقط.',FORBIDDEN:'لا يملك هذا الحساب صلاحية تنفيذ العملية.',
@@ -50,6 +51,12 @@
     const code = String(error?.message || 'SERVER_ERROR');
     const text = errorMessages[code] || (Number(error?.status) === 403 ? 'لا يملك هذا الحساب صلاحية تنفيذ العملية.' : Number(error?.status) === 400 ? 'تحقّق من الحقول المطلوبة والقيم المدخلة.' : 'تعذر إتمام العملية الآن. حاول مرة أخرى؛ رصيدك لم يتغيّر في هذه الصفحة.');
     host.innerHTML = `<div class="error" role="alert">${safe(text)}</div>`;
+  }
+  function savedRefreshNotice(view,host=view.root.querySelector('.fr-message')) {
+    if(!current(view))return;
+    view.refreshRequired=true;
+    if(host)host.innerHTML=`<div class="success">${safe(view.savedMessage)} تعذر تحديث العرض؛ اضغط «تحديث» لعرض أحدث البيانات.</div>`;
+    view.root.querySelectorAll('button,input,select,textarea').forEach(control=>control.disabled=true);
   }
   function value(form, id) { return form.querySelector(`#${id}`)?.value.trim() || ''; }
   function checked(form, id) { return !!form.querySelector(`#${id}`)?.checked; }
@@ -108,7 +115,8 @@
   }
 
   function ledgerSection(view) {
-    return `<section class="panel fr-section" data-fr-ledger-section><h2>سجل النقاط ومصدرها</h2><div class="fr-form-grid">${field('frLedgerCategory','الفئة',`<select id="frLedgerCategory"><option value="">كل الفئات</option>${(view.data.categories || []).map(category=>`<option value="${safe(category.id)}">${safe(category.title)}</option>`).join('')}</select>`)}${field('frLedgerSource','مصدر النقاط',`<select id="frLedgerSource"><option value="">كل المصادر</option>${[...new Set(['academic','quiz','family_behavior','reward_claim','manual_adjustment',...(view.data.ledger || []).map(row=>row.source_type),...(Array.isArray(view.data.breakdown)?view.data.breakdown:[]).map(row=>row.source_type)].filter(Boolean))].map(source=>`<option value="${safe(source)}">${safe(sourceText(source))}</option>`).join('')}</select>`)}</div><div data-fr-ledger class="fr-list">${ledgerRows(view)}</div><div class="actions"><button class="btn btn-soft" data-fr-ledger-all>عرض السجل الكامل</button><button class="btn btn-soft" data-fr-ledger-more hidden>تحميل حركات أقدم</button></div>${message('')}</section>`;
+    const sources=[...new Set(['academic','family_behavior','reward_claim','manual_adjustment',...(view.data.ledger || []).map(row=>row.source_type),...(Array.isArray(view.data.breakdown)?view.data.breakdown:[]).map(row=>row.source_type)].map(sourceFilter))];
+    return `<section class="panel fr-section" data-fr-ledger-section><h2>سجل النقاط ومصدرها</h2><div class="fr-form-grid">${field('frLedgerCategory','الفئة',`<select id="frLedgerCategory"><option value="">كل الفئات</option>${(view.data.categories || []).map(category=>`<option value="${safe(category.id)}">${safe(category.title)}</option>`).join('')}</select>`)}${field('frLedgerSource','مصدر النقاط',`<select id="frLedgerSource"><option value="">كل المصادر</option>${sources.map(source=>`<option value="${safe(source)}">${safe(sourceText(source))}</option>`).join('')}</select>`)}</div><div data-fr-ledger class="fr-list">${ledgerRows(view)}</div><div class="actions"><button class="btn btn-soft" data-fr-ledger-all>عرض السجل الكامل</button><button class="btn btn-soft" data-fr-ledger-more hidden>تحميل حركات أقدم</button></div>${message('')}</section>`;
   }
   function ledgerRows(view) { return (view.ledger || []).filter(row => !view.selectedLearner || row.learner_id === view.selectedLearner).map(row=>ledgerCard(view,row)).join('') || '<div class="empty">لا توجد حركات نقاط ضمن هذا الاختيار.</div>'; }
   function summary(view) {
@@ -129,16 +137,19 @@
     const parent = view.role === 'parent';
     view.root.innerHTML = `${success ? `<div class="success" role="status">${safe(success)}</div>` : ''}${summary(view)}${parent ? `<section class="panel fr-section"><h2>الطلبات والموافقات</h2>${field('frReviewReason','سبب القرار أو ملاحظة المراجعة (اختياري)',`<textarea id="frReviewReason" maxlength="1000" rows="2"></textarea>`)}<h3>السلوكيات بانتظار المراجعة</h3><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('') || '<div class="empty">لا توجد سلوكيات بانتظار المراجعة.</div>'}</div><h3>طلبات الجوائز</h3><div class="fr-card-grid">${claims.filter(row=>row.status==='pending'||row.status==='approved').map(row=>claimCard(view,row)).join('') || '<div class="empty">لا توجد طلبات جوائز تحتاج إجراءً.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view,view.selectedLearner)}</section>${categoryForm(view)}${ruleForm(view)}${rewardForm(view)}${adjustmentForm(view,view.selectedLearner)}` : `<section class="panel fr-section"><h2>جوائزك والتقدّم نحوها</h2><div class="fr-card-grid">${(view.data.rewards || []).map(reward=>rewardCard(view,reward)).join('') || '<div class="empty">لم يضف الأهل جوائز متاحة لك بعد.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view)}</section>`}${!parent ? `<section class="panel fr-section"><h2>سلوكياتك بانتظار موافقة الأهل</h2><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('') || '<div class="empty">لا توجد سلوكيات بانتظار الموافقة.</div>'}</div></section>` : ''}${ledgerSection(view)}<details class="fr-section"><summary>${parent?'سجل السلوكيات والجوائز':'سلوكياتك وطلبات جوائزك'}</summary><h3>السلوكيات</h3><div class="fr-card-grid" data-fr-submissions>${submissions.map(row=>submissionCard(view,row)).join('') || '<div class="empty">لم تُسجّل سلوكيات بعد.</div>'}</div><h3>طلبات الجوائز وسجل التسليم</h3><div class="fr-card-grid">${claims.map(row=>claimCard(view,row)).join('') || '<div class="empty">لم تُطلب جوائز بعد.</div>'}</div>${message('')}</details>`;
     bind(view);
+    if(view.refreshRequired)savedRefreshNotice(view);
   }
   async function refresh(view, success = '') {
     const data = await call(view, `${view.role}_rewards_dashboard`);
     if (!current(view)) return;
     view.data = data;
     if (view.role === 'parent' && view.selectedLearner && !learners(view).some(learner=>learner.id===view.selectedLearner)) view.selectedLearner='';
-    paint(view,success);
+    view.refreshRequired=false;
+    const savedMessage=success||view.savedMessage||'';delete view.savedMessage;
+    paint(view,savedMessage);
   }
   async function mutation(view, element, action, payload, success, keyHolder = element) {
-    if (!current(view) || element.dataset.frBusy === '1') return;
+    if (!current(view) || view.refreshRequired || element.dataset.frBusy === '1') return;
     const host = element.closest('form')?.querySelector('.fr-message') || element.closest('.fr-section')?.querySelector('.fr-message') || view.root.querySelector('.fr-message');
     element.dataset.frBusy = '1';
     const controls = element.tagName === 'FORM' ? [...element.querySelectorAll('button')] : [element];
@@ -152,14 +163,18 @@
     try {
       await call(view,action,payload);
       if (!current(view)) return;
-      await refresh(view,success);
+      // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
+      if(action==='reward_request')requestKeys.delete(`${view.token}:${payload.reward_id}`);
+      view.savedMessage=success;
+      try{await refresh(view,success);}
+      catch(error){savedRefreshNotice(view,host);}
     } catch(error) {
       if (current(view) && host) reportError(host,error);
     } finally {
       element.dataset.frBusy = '0';
       element.removeAttribute('aria-busy');
-      controls.forEach(control=>control.disabled=false);
+      controls.forEach(control=>control.disabled=!!view.refreshRequired);
     }
   }
   function datetime(raw) { return raw ? new Date(raw).toISOString() : null; }
@@ -206,7 +221,7 @@
     const root=view.root;
     root.querySelector('#frLearnerFilter')?.addEventListener('change',event=>{view.selectedLearner=event.target.value;paint(view);});
     root.querySelectorAll('[data-fr-select-learner]').forEach(button=>button.onclick=()=>{view.selectedLearner=button.dataset.frSelectLearner;paint(view);});
-    root.querySelectorAll('[data-fr-breakdown-category]').forEach(button=>button.onclick=()=>{if(button.dataset.frBreakdownLearner){view.selectedLearner=button.dataset.frBreakdownLearner;paint(view);}root.querySelector('#frLedgerCategory').value=button.dataset.frBreakdownCategory;root.querySelector('#frLedgerSource').value=button.dataset.frBreakdownSource;loadLedger(view);root.querySelector('[data-fr-ledger-section]').scrollIntoView({behavior:'smooth'});});
+    root.querySelectorAll('[data-fr-breakdown-category]').forEach(button=>button.onclick=()=>{if(button.dataset.frBreakdownLearner){view.selectedLearner=button.dataset.frBreakdownLearner;paint(view);}root.querySelector('#frLedgerCategory').value=button.dataset.frBreakdownCategory;root.querySelector('#frLedgerSource').value=sourceFilter(button.dataset.frBreakdownSource);loadLedger(view);root.querySelector('[data-fr-ledger-section]').scrollIntoView({behavior:'smooth'});});
     root.querySelectorAll('[data-fr-scope]').forEach(fieldset=>{const select=root.querySelector(`#${fieldset.dataset.frScope}Scope`);select.onchange=()=>fieldset.hidden=select.value!=='selected';});
     root.querySelector('#frRuleCadence')?.addEventListener('change',event=>syncCadence(event.target.form));
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
@@ -222,7 +237,7 @@
     bindForm(view,'frAdjustmentForm','points_adjust',form=>({learner_id:value(form,'frAdjustmentLearner'),delta:optionalNumber(form,'frAdjustmentDelta'),reason:value(form,'frAdjustmentReason'),...(value(form,'frAdjustmentReversal')?{reversal_event_id:value(form,'frAdjustmentReversal')}:{}),idempotency_key:true}),'تم تسجيل الحركة التعويضية في السجل.');
     for(const [kind,idField,action]of[['behavior','submission_id','behavior_review'],['claim','claim_id','reward_review']])for(const [suffix,decision]of[['approve','approved'],['reject','rejected']])root.querySelectorAll(`[data-fr-${kind}-${suffix}]`).forEach(button=>button.onclick=()=>mutation(view,button,action,{[idField]:button.getAttribute(`data-fr-${kind}-${suffix}`),decision,reason:root.querySelector('#frReviewReason')?.value.trim()||''},decision==='approved'?'تم الاعتماد وتحديث السجل.':'تم رفض الطلب دون تغيير النقاط.'));
     root.querySelectorAll('[data-fr-claim-redeem]').forEach(button=>button.onclick=()=>mutation(view,button,'reward_redeem',{claim_id:button.dataset.frClaimRedeem,reason:root.querySelector('#frReviewReason')?.value.trim()||''},'تم تسجيل تسليم الجائزة؛ لا يوجد خصم إضافي.'));
-    root.querySelectorAll('[data-fr-request-reward]').forEach(button=>button.onclick=()=>{const id=button.dataset.frRequestReward,key=`${view.token}:${id}`;if(requestKeys.has(key))button.dataset.idempotencyKey=requestKeys.get(key);else{button.dataset.idempotencyKey=crypto.randomUUID();requestKeys.set(key,button.dataset.idempotencyKey);}mutation(view,button,'reward_request',{reward_id:id,idempotency_key:true},'طلب الجائزة بانتظار موافقة الأهل.').then(()=>{if(!button.dataset.idempotencyKey)requestKeys.delete(key);});});
+    root.querySelectorAll('[data-fr-request-reward]').forEach(button=>button.onclick=()=>{const id=button.dataset.frRequestReward,key=`${view.token}:${id}`;if(requestKeys.has(key))button.dataset.idempotencyKey=requestKeys.get(key);else{button.dataset.idempotencyKey=crypto.randomUUID();requestKeys.set(key,button.dataset.idempotencyKey);}mutation(view,button,'reward_request',{reward_id:id,idempotency_key:true},'طلب الجائزة بانتظار موافقة الأهل.');});
     root.querySelector('#frLedgerCategory').onchange=()=>loadLedger(view);
     root.querySelector('#frLedgerSource').onchange=()=>loadLedger(view);
     root.querySelector('[data-fr-ledger-all]').onclick=()=>loadLedger(view);
@@ -238,7 +253,7 @@
     const view={role,token,generation,data:{},selectedLearner:'',ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
     shell(role==='parent'?'🎁 الجوائز والعادات':'🎁 جوائزي وعاداتي',role==='parent'?'نقاط واضحة، سلوكيات تشجّعها العائلة، وجوائز باعتماد الأهل.':'تقدّمك الشخصي ومصدر نقاطك، خطوة بخطوة.',`<div class="actions fr-page-actions"><a class="btn btn-soft" href="#${role==='parent'?'parents':'student'}">رجوع ${role==='parent'?'للوحة الأهل':'إلى صفحتي'}</a><button class="btn btn-soft" data-fr-refresh>تحديث</button></div><div data-family-rewards data-role="${role}"><div class="loading-card" role="status">جارٍ تحميل النقاط والجوائز…</div></div>`);
     view.root=document.querySelector('[data-family-rewards]');
-    document.querySelector('[data-fr-refresh]').onclick=async()=>{try{await refresh(view);}catch(error){if(current(view))reportError(view.root,error);}};
+    document.querySelector('[data-fr-refresh]').onclick=async()=>{try{await refresh(view);}catch(error){if(current(view)){if(view.refreshRequired)savedRefreshNotice(view);else reportError(view.root,error);}}};
     try{await refresh(view);}catch(error){if(current(view)){reportError(view.root,error);view.root.insertAdjacentHTML('beforeend','<div class="actions"><button class="btn btn-soft" data-fr-retry>إعادة المحاولة</button></div>');view.root.querySelector('[data-fr-retry]').onclick=route;}}
   }
   window.addEventListener('hashchange',()=>setTimeout(route,0));

@@ -275,6 +275,16 @@ begin
   perform pg_temp.family_assert(jsonb_array_length(page->'ledger')=50 and page->>'next_cursor' is not null,'paginated ledger first page');
   second := public.flh_family_rewards_command(w,null,l,'student_ledger',jsonb_build_object('page_size',50,'source_type','manual_adjustment','before_id',page->>'next_cursor'));
   perform pg_temp.family_assert((second->'ledger'->0->>'id')::bigint<(page->'ledger'->49->>'id')::bigint,'history cursor pages do not overlap');
+  -- One academic filter includes every supported historical academic source, including null.
+  insert into public.gamification_events(workspace_id,learner_id,event_type,xp_delta,reward_points_delta,source_type,source_id,reason)
+  select w,l,'other',0,0,x.source_type,'qa-family-academic-'||x.ordinality,'QA historical academic source'
+    from unnest(array[null,'','academic','quiz','quiz_attempt','learning','exam']::text[]) with ordinality x(source_type,ordinality);
+  page := public.flh_family_rewards_command(w,null,l,'student_ledger','{"source_type":"academic","page_size":100}');
+  perform pg_temp.family_assert((select count(*) from jsonb_array_elements(page->'ledger') x where x->>'source_id' like 'qa-family-academic-%')=7,'academic filter includes null and all historical academic sources');
+  perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(page->'ledger') x where coalesce(nullif(x->>'source_type',''),'academic') not in ('academic','quiz','quiz_attempt','learning','exam')),'academic filter excludes family awards/spends/adjustments');
+  result := public.flh_family_rewards_command(w,null,l,'student_catalog','{}');
+  perform pg_temp.family_assert(exists(select 1 from jsonb_array_elements(result->'breakdown') x where x->>'source_type'='academic' and x->>'category_title'='التعلّم') and not exists(select 1 from jsonb_array_elements(result->'breakdown') x where x->>'source_type' in ('quiz','quiz_attempt','learning','exam')),'academic breakdown is one correctly named source group');
+  perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'breakdown') x where x->>'source_type'='manual_adjustment' and x->>'category_title'<>'تعديل موثّق'),'manual adjustments keep their explicit category label');
   result := public.flh_family_rewards_command(w,owner_id,null,'parent_catalog','{}');
   perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'learners') x where x->>'id'=l::text) and not exists(select 1 from jsonb_array_elements(result->'ledger') x where x->>'learner_id'=l::text),'normal parent summaries exclude test rewards');
   result := public.flh_family_rewards_command(w,owner_id,null,'parent_catalog','{"test_only":true}');

@@ -88,6 +88,8 @@ XP is academic progression. Household habits, responsibilities, initiative and f
 
 `gamification_events` remains the authoritative event ledger. Parent and learner pages can paginate its history and filter by category/source; parent totals aggregate the full history rather than just the displayed recent page. Legacy academic events retain their original data and are presented as academic sources. Manual corrections, reversals and refunds require a reason and append a compensating event with an actor. A reversal refers to the original event and can occur only once. Insufficient balances cannot be driven below zero. New family/spend/adjustment ledger rows are immutable, and their XP delta must be zero.
 
+The academic source filter and breakdown group include legacy null/empty sources and `academic`, `quiz`, `quiz_attempt`, `learning` and `exam`. Family behavior, reward spending and documented adjustments retain their separate filters. A successful command followed by a failed catalog refresh is reported as saved with a refresh-needed message; it must not invite a duplicate financial submission.
+
 ### Categories, behavior rules and approval
 
 Parents can create, edit and disable categories and behavior rules. Editable defaults are learning, personal responsibility, initiative/independence, household contribution, habits/values, health/self-care and custom. There are no imposed religious or moral rules.
