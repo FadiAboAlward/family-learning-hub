@@ -29,6 +29,7 @@ const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4,
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 const CONCEPT_STATES = new Set(['MASTERED', 'DEVELOPING', 'NEEDS_REINFORCEMENT', 'UNKNOWN_BASELINE']);
 const DIFFICULTY_ROLES = new Set(['support', 'target', 'transfer']);
+const COVERAGE_DECISIONS = new Set(['ADVANCE', 'REMEDIATE', 'BASELINE', 'REVIEW_DUE']);
 const DEFAULT_TARGET_DIFFICULTY = new Map([
   ['UNKNOWN_BASELINE', 2],
   ['NEEDS_REINFORCEMENT', 2],
@@ -234,6 +235,62 @@ export function validateAcademicPackage(pkg) {
       const defaultDifficulty = DEFAULT_TARGET_DIFFICULTY.get(state);
       if (defaultDifficulty && Number.isInteger(target && target.target_difficulty) && target.target_difficulty !== defaultDifficulty && !text(target && target.target_difficulty_justification)) {
         issue(errors, 'TARGET_DIFFICULTY_OVERRIDE_UNJUSTIFIED', p + '.target_difficulty_justification', 'A target difficulty that differs from the default concept-state centre requires an evidence-based justification.');
+      }
+    }
+  }
+
+  if (ctx && typeof ctx === 'object') {
+    const coverage = ctx.coverage_plan;
+    const cp = 'academic_context.coverage_plan';
+    if (!coverage || typeof coverage !== 'object' || Array.isArray(coverage)) {
+      issue(errors, 'COVERAGE_PLAN_REQUIRED', cp, 'New targeted packages require an explicit sequential curriculum coverage plan.');
+    } else {
+      for (const key of ['ordered_scope_ref', 'coverage_cursor', 'next_sequential_target']) {
+        if (!text(coverage[key])) issue(errors, 'COVERAGE_PLAN_FIELD_REQUIRED', cp + '.' + key, key + ' is required.');
+      }
+      for (const key of ['cursor_order', 'next_target_order']) {
+        if (!Number.isInteger(coverage[key]) || coverage[key] < 0) {
+          issue(errors, 'COVERAGE_ORDER_INVALID', cp + '.' + key, key + ' must be a non-negative integer.');
+        }
+      }
+      const decision = text(coverage.decision);
+      if (!COVERAGE_DECISIONS.has(decision)) {
+        issue(errors, 'COVERAGE_DECISION_INVALID', cp + '.decision', 'decision must be ADVANCE, REMEDIATE, BASELINE, or REVIEW_DUE.');
+      }
+      const primaryTargets = Array.isArray(coverage.primary_target_concepts) ? coverage.primary_target_concepts.map(text).filter(Boolean) : [];
+      if (!primaryTargets.length) {
+        issue(errors, 'COVERAGE_PRIMARY_TARGETS_REQUIRED', cp + '.primary_target_concepts', 'At least one primary target concept is required.');
+      }
+      if (!Array.isArray(coverage.evidence_refs) || coverage.evidence_refs.length === 0 || coverage.evidence_refs.some(x => !text(x))) {
+        issue(errors, 'COVERAGE_EVIDENCE_REFS_REQUIRED', cp + '.evidence_refs', 'Coverage decisions require authoritative evidence references or an explicit baseline/no-live-evidence marker.');
+      }
+
+      const resolvedPrimaryTargets = [];
+      for (const [i, conceptCode] of primaryTargets.entries()) {
+        const target = conceptTargetsByCode.get(conceptCode);
+        if (!target) {
+          issue(errors, 'COVERAGE_PRIMARY_TARGET_UNKNOWN', cp + '.primary_target_concepts[' + i + ']', 'Primary target concept ' + conceptCode + ' is not declared in academic_context.concept_targets.');
+          continue;
+        }
+        resolvedPrimaryTargets.push(target);
+        if (text(target.state) === 'MASTERED' && decision !== 'REVIEW_DUE' && !text(coverage.mastered_primary_target_justification)) {
+          issue(errors, 'MASTERED_PRIMARY_TARGET_UNJUSTIFIED', cp + '.primary_target_concepts[' + i + ']', 'A MASTERED concept cannot remain a primary target unless the decision is REVIEW_DUE or an explicit justification is provided.');
+        }
+      }
+
+      if (decision === 'ADVANCE' && Number.isInteger(coverage.cursor_order) && Number.isInteger(coverage.next_target_order) && coverage.next_target_order <= coverage.cursor_order) {
+        issue(errors, 'COVERAGE_ADVANCE_NOT_FORWARD', cp + '.next_target_order', 'ADVANCE requires next_target_order to be strictly greater than cursor_order.');
+      }
+      if (decision === 'REMEDIATE') {
+        if (Number.isInteger(coverage.cursor_order) && Number.isInteger(coverage.next_target_order) && coverage.next_target_order !== coverage.cursor_order) {
+          issue(errors, 'COVERAGE_REMEDIATE_CURSOR_MISMATCH', cp + '.next_target_order', 'REMEDIATE must remain on the current coverage cursor.');
+        }
+        if (resolvedPrimaryTargets.length && !resolvedPrimaryTargets.some(target => ['DEVELOPING', 'NEEDS_REINFORCEMENT'].includes(text(target.state)))) {
+          issue(errors, 'COVERAGE_REMEDIATE_TARGET_INVALID', cp + '.primary_target_concepts', 'REMEDIATE requires at least one DEVELOPING or NEEDS_REINFORCEMENT primary target concept.');
+        }
+      }
+      if (decision === 'BASELINE' && resolvedPrimaryTargets.length && !resolvedPrimaryTargets.some(target => text(target.state) === 'UNKNOWN_BASELINE')) {
+        issue(errors, 'COVERAGE_BASELINE_TARGET_INVALID', cp + '.primary_target_concepts', 'BASELINE requires at least one UNKNOWN_BASELINE primary target concept.');
       }
     }
   }
