@@ -155,6 +155,8 @@ assert.ok(!safeTurkishApostropheResult.errors.some(x => ['LEARNER_TEXT_MARKUP_FO
 for (const [language, prompt] of [
   ['tr', 'Sayı doğrusunda -9, -4, 0 ve +2 sayıları vardır. Küçükten büyüğe doğru sıralama hangisidir?'],
   ['tr', 'Sayılar +6, 2, 0 ve -3 şeklindedir. Büyükten küçüğe doğru sıralama hangisidir?'],
+  ['tr', '1, 2, 3 sayılarını en küçükten en büyüğe sıralayınız.'],
+  ['tr', '6, 2, 0, -3 sayılarını en büyükten en küçüğe sıralayınız.'],
   ['ar', 'الأعداد هي -9، -4، 0، +2. ما الترتيب من الأصغر إلى الأكبر؟'],
   ['ar', 'الأعداد هي +6، 2، 0، -3. رتّب من الأكبر إلى الأصغر.'],
   ['en', 'The numbers are -9, -4, 0, +2. Which order is smallest to largest?'],
@@ -186,6 +188,25 @@ const nonOrderingSortedNumbersResult = validateAcademicPackage(nonOrderingSorted
 assert.ok(
   !nonOrderingSortedNumbersResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
   'Sorted-looking numeric data in a non-ordering question must not trigger the ordering guard.'
+);
+
+
+const descriptiveAscendingOrder = read('valid-package.json');
+descriptiveAscendingOrder.questions[1].prompt_language = 'en';
+descriptiveAscendingOrder.questions[1].prompt = 'The sequence 1, 2, 3 is in ascending order. What number comes next?';
+const descriptiveAscendingOrderResult = validateAcademicPackage(descriptiveAscendingOrder);
+assert.ok(
+  !descriptiveAscendingOrderResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Describing an existing ascending sequence must not be mistaken for an instruction to order values.'
+);
+
+const contextualNumberBeforeCandidateList = read('valid-package.json');
+contextualNumberBeforeCandidateList.questions[1].prompt_language = 'en';
+contextualNumberBeforeCandidateList.questions[1].prompt = 'On day 10, the readings were 1, 2, 3. Order the readings from smallest to largest.';
+const contextualNumberBeforeCandidateListResult = validateAcademicPackage(contextualNumberBeforeCandidateList);
+assert.ok(
+  contextualNumberBeforeCandidateListResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Unrelated contextual numerals must not hide a pre-sorted candidate list.'
 );
 
 const invalid = validateAcademicPackage(read('invalid-package.json'));
