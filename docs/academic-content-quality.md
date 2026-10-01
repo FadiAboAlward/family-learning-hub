@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007 and complements, rather than replaces, docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the Drive Adaptive Assessment SOP.
+This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016, and complements, rather than replaces, docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the Drive Adaptive Assessment SOP.
 
 The gate is an authoring/QA control. It does not add a live AI dependency to a learner attempt.
 
@@ -91,11 +91,25 @@ Wrong options must carry a short distractor_rationale explaining why a learner c
 
 The deterministic gate cannot prove every semantic property of a distractor. It therefore combines machine checks with author responsibility: plausibility, age-appropriate language, source fidelity, and lack of grammatical/visual answer giveaways still require content review. The validator emits a warning when the correct option is unusually long compared with distractors.
 
+Ordering questions must not disclose the requested order through the input itself. For supported Arabic, Turkish, and English prompts, the guard first requires explicit ordering intent, then isolates the contiguous candidate-number list instead of treating unrelated contextual numerals as values to order. Numeric tokenization follows learner-language conventions so compact English comma-separated integer lists remain lists while Turkish comma decimals remain decimals. When the candidate list contains at least three parseable values, the authoring validator rejects `ORDERING_PROMPT_PRE_SORTED_INPUT` if the candidates are already nondecreasing for an ascending task or nonincreasing for a descending task. Descriptive statements such as a sequence merely being “in ascending order” do not trigger the guard. Shuffle the displayed candidate values before publication so the learner must actually perform the ordering skill. This rule applies equally to Learning, Exam, and Paper surfaces.
+
+## Wording clarity review
+
+Before publication, review the candidate package once as a batch for learner-facing clarity. The review question is deliberately simple: can a learner at the stated age/language level understand each item on a normal first reading, and does the wording measure the intended academic skill rather than accidental language complexity? Use current curriculum terminology, avoid unnecessary technical synonyms, and rewrite awkward phrasing before publication. This is one package-level authoring review, not a per-item manual workflow for the parent and not a live AI dependency in learner runtime.
+
+The deterministic validator supplements that semantic review by rejecting immediately repeated lexical words in learner-visible authored strings with `ADJACENT_DUPLICATE_WORD`. Unicode letters are checked across Arabic, Turkish, and English learner text; punctuation does not bypass the guard, while repeated numeric values and repeated identifiers separated by mathematical operators (for example `x + x`, `x × x`, or `س + س`) remain valid mathematical data. Dash-like separators are treated as mathematical subtraction only for single-letter operands, so prose such as `best-best`, `best–best`, or `best—best` is still rejected. For example, the Turkish wording `soldan sağa doğru doğru` is rejected, while a clear non-leaking formulation such as `Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?` is acceptable to this guard.
+
+A deterministic wording guard cannot prove that every sentence is pedagogically natural. It is a low-cost defect catcher that works together with the curriculum terminology/question-clarity gate and the batch review above.
+
+If a wording defect is discovered only after learner exposure, classify the item as `ITEM_WORDING_DEFECT`. Do not use that response as evidence of weakness in the underlying academic concept. Preserve the historical attempt/version and remediate prospectively through the normal versioned assessment path rather than silently rewriting published history.
+
 ## Self-contained learner text and language
 
 Every newly authored question must declare `prompt_language` using a supported learner language code. The current supported set is `ar`, `tr`, and `en`.
 
 Every learner-facing authored question must be self-contained. A generated or book-derived assessment item may use the assigned Project Book as its authoring source, but its prompt, options, hints, steps, and feedback must not tell the learner to open or consult “the book”, a page, a source, or a reference unless the required material is embedded in that same question payload.
+
+Self-contained also forbids soft source-location wording that makes an unseen lesson, text, poem, or vocabulary list carry required context. Phrases such as “في مفردات درس…”, “كما ورد في النص…”, “بحسب الدرس…”, Turkish equivalents such as “derste geçen…” / “Derse göre…”, and English equivalents such as “as mentioned in the lesson…” / “According to the lesson…” must be rewritten so the necessary excerpt/data is embedded directly or the question stands independently without that source locator. A source label is still valid when it immediately supplies the material inside the same payload, for example “في النص: «…»”. Source metadata such as `source_ref` remains authoring/audit metadata and is not learner context.
 
 Learner-facing authored strings are plain text. Store apostrophes and symbols directly; do not store HTML entities such as `&#39;` or raw HTML tags as question content. The runtime may normalize legacy encoded text defensively before escaping, but new packages must pass the validator without relying on that compatibility layer.
 

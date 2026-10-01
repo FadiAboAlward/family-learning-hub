@@ -103,9 +103,9 @@ async function installRoutes(page){
             question:{
               id:'exam-tr',
               question_code:'QA-DIR-EXAM-TR',
-              prompt:"B şehri UTC-4'tür. Doğru saat farkını seç.",
+              prompt:'Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?',
               prompt_language:'tr',
-              options:[{position:1,content:'4 saat'},{position:2,content:'6 saat'}],
+              options:[{position:1,content:'-1, 0, +1'},{position:2,content:'0, -1, +1'}],
               assets:[]
             }
           },
@@ -138,7 +138,7 @@ async function installRoutes(page){
             question_id:'exam-tr',
             question_code:'QA-DIR-EXAM-TR',
             is_correct:false,
-            prompt:"B şehri UTC-4'tür. Doğru saat farkını seç.",
+            prompt:'Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?',
             prompt_language:'tr',
             response:{option_position:2},
             correct_answer:{option_position:1},
@@ -213,6 +213,14 @@ async function probe(width,height){
     const examTurkish=await computedDirection(page.locator('.question'));
     assert.equal(examTurkish.dir,'ltr');
     assert.equal(examTurkish.lang,'tr');
+    assert.match(examTurkish.text,/\+1, -1 ve 0/);
+
+    const examAnswers=await computedDirection(page.locator('#examV3Answers'));
+    assert.equal(examAnswers.dir,'ltr');
+    assert.equal(examAnswers.lang,'tr');
+    await page.waitForFunction(()=>document.querySelectorAll('.exam-v3-answer:first-child .flh-math-ltr').length===3);
+    const examMathRuns=await page.locator('.exam-v3-answer').first().locator('.flh-math-ltr').allTextContents();
+    assert.deepEqual(examMathRuns,['-1','0','+1']);
 
     await page.locator('.exam-v3-answer').nth(1).click();
     await page.locator('#examNext').click();

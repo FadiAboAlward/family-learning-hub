@@ -225,5 +225,179 @@ begin
         v_policy_contract.expression_name;
     end if;
   end loop;
+
+  <<self_contained_wording_contract>>
+  declare
+    v_sc_workspace uuid;
+    v_sc_slug text;
+    v_sc_quiz uuid;
+    v_sc_latest uuid;
+    v_sc_source uuid;
+    v_sc_latest_count integer;
+    v_sc_source_count integer;
+  begin
+    select id into v_sc_workspace
+    from public.workspaces
+    where slug='family-learning-hub'
+    limit 1;
+
+    foreach v_sc_slug in array array[
+      'sy-g7-arabic-u1-foundations-20260923-a',
+      'sy-g7-arabic-u1-baseline-20261001'
+    ] loop
+      select id into v_sc_quiz
+      from public.quizzes
+      where workspace_id=v_sc_workspace and slug=v_sc_slug
+      limit 1;
+
+      if v_sc_quiz is null then
+        raise exception 'SELF_CONTAINED_WORDING_QUIZ_MISSING:%', v_sc_slug;
+      end if;
+
+      select id,
+             (settings->'self_contained_wording'->>'source_version_id')::uuid
+        into v_sc_latest, v_sc_source
+      from public.quiz_versions
+      where workspace_id=v_sc_workspace
+        and quiz_id=v_sc_quiz
+        and state='published'
+      order by version_no desc
+      limit 1;
+
+      if v_sc_latest is null
+         or not exists (
+           select 1
+           from public.quiz_versions
+           where id=v_sc_latest
+             and settings->'self_contained_wording'->>'feature_id'='FLH-FEAT-2026-014'
+             and settings->'self_contained_wording'->>'spec_version'='1.2'
+         ) then
+        raise exception 'SELF_CONTAINED_WORDING_LATEST_VERSION_INVALID:%', v_sc_slug;
+      end if;
+
+      if v_sc_source is null then
+        raise exception 'SELF_CONTAINED_WORDING_SOURCE_VERSION_MISSING:%', v_sc_slug;
+      end if;
+
+      select count(*) into v_sc_latest_count
+      from public.quiz_questions
+      where workspace_id=v_sc_workspace and quiz_version_id=v_sc_latest;
+
+      select count(*) into v_sc_source_count
+      from public.quiz_questions
+      where workspace_id=v_sc_workspace and quiz_version_id=v_sc_source;
+
+      if v_sc_latest_count <> v_sc_source_count then
+        raise exception 'SELF_CONTAINED_WORDING_COUNT_MISMATCH:%:%:%',
+          v_sc_slug, v_sc_source_count, v_sc_latest_count;
+      end if;
+
+      if exists (
+        select 1
+        from public.quiz_questions
+        where workspace_id=v_sc_workspace
+          and quiz_version_id=v_sc_latest
+          and (
+            prompt like '%في مفردات%'
+            or prompt like '%كما ورد في مفردات%'
+            or prompt like '%كما في درس%'
+            or prompt like '%في أسئلة الاستيعاب لنص%'
+            or prompt like '%المعنى العام لقصيدة%'
+          )
+      ) then
+        raise exception 'SELF_CONTAINED_WORDING_SOFT_PROMPT_REMAINS:%', v_sc_slug;
+      end if;
+
+      if exists (
+        select 1
+        from public.quiz_question_hints h
+        join public.quiz_questions q
+          on q.workspace_id=h.workspace_id and q.id=h.question_id
+        where q.workspace_id=v_sc_workspace
+          and q.quiz_version_id=v_sc_latest
+          and (
+            h.content='الكلمة وردت في وصف نشر الحب.'
+            or h.content='استحضر وصف البحر في النص.'
+            or h.content like '%الطريقة التي يذكرها الدرس%'
+            or h.content like '%طريقتي الدرس%'
+          )
+      ) then
+        raise exception 'SELF_CONTAINED_WORDING_SOFT_HINT_REMAINS:%', v_sc_slug;
+      end if;
+
+      if exists (
+        select 1
+        from public.quiz_question_answer_keys k
+        join public.quiz_questions q
+          on q.workspace_id=k.workspace_id and q.id=k.question_id
+        where q.workspace_id=v_sc_workspace
+          and q.quiz_version_id=v_sc_latest
+          and (
+            coalesce(k.explanation,'') like '%في النص ضمن هذا السياق%'
+            or coalesce(k.correct_explanation,'') like '%في النص ضمن هذا السياق%'
+            or coalesce(k.final_incorrect_explanation,'') like '%في النص ضمن هذا السياق%'
+            or coalesce(k.explanation,'') like '%وفق أسئلة الاستيعاب والفهم في الدرس%'
+            or coalesce(k.correct_explanation,'') like '%وفق أسئلة الاستيعاب والفهم في الدرس%'
+            or coalesce(k.final_incorrect_explanation,'') like '%وفق أسئلة الاستيعاب والفهم في الدرس%'
+          )
+      ) then
+        raise exception 'SELF_CONTAINED_WORDING_SOFT_FEEDBACK_REMAINS:%', v_sc_slug;
+      end if;
+    end loop;
+
+    if not exists (
+      select 1
+      from public.quiz_questions q
+      join public.quiz_versions v on v.id=q.quiz_version_id and v.workspace_id=q.workspace_id
+      join public.quizzes z on z.id=v.quiz_id and z.workspace_id=v.workspace_id
+      where z.workspace_id=v_sc_workspace
+        and z.slug='sy-g7-arabic-u1-foundations-20260923-a'
+        and q.question_code='Q-20260923402'
+        and q.prompt='في مفردات درس «عَلَمُ بلادي»، ما معنى كلمة «مُسبِغ»؟'
+    ) then
+      raise exception 'SELF_CONTAINED_WORDING_HISTORICAL_VERSION_MUTATED';
+    end if;
+
+    select v.id into v_sc_latest
+    from public.quiz_versions v
+    join public.quizzes z on z.id=v.quiz_id and z.workspace_id=v.workspace_id
+    where z.workspace_id=v_sc_workspace
+      and z.slug='sy-g7-arabic-u1-foundations-20260923-a'
+      and v.state='published'
+    order by v.version_no desc
+    limit 1;
+
+    if not exists (
+      select 1
+      from public.quiz_questions
+      where workspace_id=v_sc_workspace
+        and quiz_version_id=v_sc_latest
+        and source_metadata->>'remediated_from_question_code'='Q-20260923402'
+        and prompt='ورد في البيت: «عَلَمي يا مُسبغَ الحبِّ على الأرضِ وشاحًا». ما معنى «مُسبغ»؟'
+    ) then
+      raise exception 'SELF_CONTAINED_WORDING_OBSERVED_QUESTION_NOT_FIXED';
+    end if;
+
+    select v.id into v_sc_latest
+    from public.quiz_versions v
+    join public.quizzes z on z.id=v.quiz_id and z.workspace_id=v.workspace_id
+    where z.workspace_id=v_sc_workspace
+      and z.slug='sy-g7-arabic-u1-baseline-20261001'
+      and v.state='published'
+    order by v.version_no desc
+    limit 1;
+
+    if not exists (
+      select 1
+      from public.quiz_questions
+      where workspace_id=v_sc_workspace
+        and quiz_version_id=v_sc_latest
+        and source_metadata->>'remediated_from_question_code'='Q-202610019231'
+        and prompt like 'قال الشاعر:%خابَ راقيهِ%مَن المقصود بـ«الرّاقي» في البيت؟'
+    ) then
+      raise exception 'SELF_CONTAINED_WORDING_CONTEXT_EMBEDDING_MISSING';
+    end if;
+  end self_contained_wording_contract;
+
 end;
 $contract$;
