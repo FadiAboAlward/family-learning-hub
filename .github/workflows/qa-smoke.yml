@@ -172,8 +172,17 @@ jobs:
           APP_URL: http://127.0.0.1:4173/
           PERF_SAVE_DELAY_MS: '2500'
         run: node tests/performance.mjs
+      - name: Run parent dashboard prefetch performance regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+          PARENT_DASHBOARD_DELAY_MS: '1500'
+          PARENT_SUMMARY_DELAY_MS: '2500'
+          PARENT_SUMMARY_VISIBLE_LIMIT_MS: '3200'
+        run: node tests/parent-prefetch-performance.mjs
       - name: Append performance summary
-        run: cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat parent-prefetch-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -183,6 +192,8 @@ jobs:
             smoke-debug.json
             performance-report.json
             performance-summary.md
+            parent-prefetch-performance-report.json
+            parent-prefetch-performance-summary.md
           if-no-files-found: ignore
       - name: Run rendered Arabic copy QA
         env:
