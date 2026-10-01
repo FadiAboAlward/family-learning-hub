@@ -134,6 +134,19 @@ const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(v
 
 const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
+function adjacentDuplicateWord(value) {
+  const source = text(value).normalize('NFKC');
+  const words = [...source.matchAll(/\p{L}[\p{L}\p{M}]*(?:[’'][\p{L}\p{M}]+)*/gu)];
+  for (let i = 1; i < words.length; i++) {
+    const previous = words[i - 1];
+    const current = words[i];
+    const between = source.slice((previous.index ?? 0) + previous[0].length, current.index ?? 0);
+    if (/[\p{L}\p{N}]/u.test(between)) continue;
+    if (caseFold(previous[0]) === caseFold(current[0])) return current[0];
+  }
+  return '';
+}
+
 const canonicalOrderingText = value => preserveSuperscripts(text(value)).normalize('NFKC')
   .replace(/\p{Cf}/gu, '')
   .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
@@ -588,6 +601,10 @@ export function validateAcademicPackage(pkg) {
       }
       if (softSourceReference(field.value)) {
         issue(errors, 'SOFT_SOURCE_REFERENCE', field.path, 'Learner-visible authored text must embed the needed context instead of locating it only in an unseen lesson, text, poem, or vocabulary list.');
+      }
+      const repeatedWord = adjacentDuplicateWord(field.value);
+      if (repeatedWord) {
+        issue(errors, 'ADJACENT_DUPLICATE_WORD', field.path, 'Learner-visible authored text repeats the adjacent word "' + repeatedWord + '"; rewrite the wording so the item is clear on first reading.');
       }
     }
 
