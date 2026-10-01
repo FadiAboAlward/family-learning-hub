@@ -233,6 +233,43 @@ assert.ok(
   'Turkish comma-decimal candidate lists must remain parseable while English commas act as list separators.'
 );
 
+
+const directOrderNumericList = read('valid-package.json');
+directOrderNumericList.questions[1].prompt_language = 'en';
+directOrderNumericList.questions[1].prompt = 'Order 1, 2, 3 from smallest to largest.';
+const directOrderNumericListResult = validateAcademicPackage(directOrderNumericList);
+assert.ok(
+  directOrderNumericListResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Imperative order followed directly by a numeric list must be recognized as ordering intent.'
+);
+
+const turkishThreeDigitDecimalOrdering = read('valid-package.json');
+turkishThreeDigitDecimalOrdering.questions[1].prompt_language = 'tr';
+turkishThreeDigitDecimalOrdering.questions[1].prompt = '1,100; 2,0; 3,0 sayılarını en küçükten en büyüğe sıralayınız.';
+const turkishThreeDigitDecimalOrderingResult = validateAcademicPackage(turkishThreeDigitDecimalOrdering);
+assert.ok(
+  turkishThreeDigitDecimalOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Turkish three-digit comma decimals must not be corrupted by thousands normalization.'
+);
+
+const tiedContextRunShuffledCandidates = read('valid-package.json');
+tiedContextRunShuffledCandidates.questions[1].prompt_language = 'en';
+tiedContextRunShuffledCandidates.questions[1].prompt = 'On days 1, 2, 3, the readings were 8, 5, 7. Order the readings from smallest to largest.';
+const tiedContextRunShuffledCandidatesResult = validateAcademicPackage(tiedContextRunShuffledCandidates);
+assert.ok(
+  !tiedContextRunShuffledCandidatesResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'When numeric runs tie in length, the run nearest the ordering instruction must be treated as the candidate list.'
+);
+
+const groupedThousandsOrdering = read('valid-package.json');
+groupedThousandsOrdering.questions[1].prompt_language = 'en';
+groupedThousandsOrdering.questions[1].prompt = 'Order 1,000, 2,000, 3,000 from smallest to largest.';
+const groupedThousandsOrderingResult = validateAcademicPackage(groupedThousandsOrdering);
+assert.ok(
+  groupedThousandsOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'English grouped-thousands values must remain single numeric candidates.'
+);
+
 const invalid = validateAcademicPackage(read('invalid-package.json'));
 assert.equal(invalid.ok, false);
 const codes = new Set(invalid.errors.map(x => x.code));
