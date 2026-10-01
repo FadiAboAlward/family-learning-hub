@@ -210,9 +210,11 @@ assert.equal(api.extractBuild('<body data-build="build-3">'), 'build-3');
 
   browser.document.hidden = false;
   await browser.document.dispatch('visibilitychange');
+  await tick();
   assert.equal(fetchCount, 2);
 
   await browser.window.dispatch('focus');
+  await tick();
   assert.equal(fetchCount, 3);
   assert.deepEqual(browser.navigations, []);
 }
