@@ -94,7 +94,16 @@
       try{
         const d=await call('answer',{attempt_id:session.attempt_id,question_id:row.question_id,option_position:pos});
         row.draft_option_position=null;if(d.hint_level)row.hint_level_requested=Math.max(Number(row.hint_level_requested||0),Number(d.hint_level));
-        if(!d.finalized){currentHint=d.hint||null;busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">مو هي الإجابة بعد. جرّب من جديد.</div>';return;}
+        if(!d.finalized){
+          row.hint_error_local=false;
+          if(d.hint){
+            row.hint_unavailable_local=false;
+            currentHint=d.hint;
+          }else{
+            row.hint_unavailable_local=true;
+          }
+          busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">مو هي الإجابة بعد. جرّب من جديد.</div>';return;
+        }
         row.status='completed';currentHint=null;if(d.remediation_added?.question)queue.push(d.remediation_added);
         busy=false;
         const ni=nextIndex();
