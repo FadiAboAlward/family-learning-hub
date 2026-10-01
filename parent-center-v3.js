@@ -11,20 +11,28 @@
   function bindNav(root=document){root.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.getAttribute('data-go')||'parents'}));root.querySelectorAll('[data-parent-logout]').forEach(b=>b.addEventListener('click',logout));}
 
   async function installDashboard(){if(location.hash!=='#parents'||!token())return;const hero=document.querySelector('.hero h1');if(!hero||(hero.textContent||'').includes('لوحة الأهل')===false)return;const oldDetail=[...document.querySelectorAll('#app .panel')].find(p=>(p.textContent||'').includes('تفاصيل المحاولات'));if(oldDetail)oldDetail.style.display='none';if(!document.querySelector('[data-parent-center-nav]')){const cards=document.querySelector('#app section:not(.hero)');if(cards)cards.insertAdjacentHTML('afterend',navHtml());else document.querySelector('.footer-links')?.insertAdjacentHTML('beforebegin',navHtml());bindNav();}
-    let report=document.getElementById('learningSessionReport');if(!report){report=document.createElement('section');report.id='learningSessionReport';report.className='panel';document.querySelector('.footer-links')?.insertAdjacentElement('beforebegin',report);}if(report.dataset.compactReady)return;report.dataset.compactReady='1';report.innerHTML='<div class="loading-card">جارِ تحميل ملخص النشاط…</div>';try{const summaryRequest=prefetchDashboardSummary();const d=await summaryRequest;if(summaryPromise===summaryRequest){summaryPromise=null;summaryToken=''}const lm=Object.fromEntries((d.learners||[]).map(l=>[l.id,l]));report.innerHTML=`<div class="topline"><b>⏱️ ملخص آخر 7 أيام</b><button class="btn btn-soft" data-go="parent-activity">التفاصيل والفلاتر</button></div><div class="session-summaries">${(d.summaries||[]).map(s=>`<div class="session-summary"><b>${safe(lm[s.learner_id]?.display_name||'طالب')}</b><div class="session-mini-grid"><span>📅 جلسات<strong>${s.sessions}</strong></span><span>⏱️ وقت التعلّم<strong>${fmtMin(s.duration_seconds)}</strong></span><span>📏 المتوسط<strong>${fmtMin(s.average_seconds)}</strong></span><span>🕘 آخر جلسة<strong>${s.last_session_at?fmtDate(s.last_session_at):'—'}</strong></span></div></div>`).join('')}</div><div class="muted">التفاصيل التاريخية لا تُحمّل في لوحة الأهل؛ افتح سجل النشاط فقط عندما تحتاجها.</div>`;bindNav(report);}catch{report.innerHTML='<div class="error">تعذر تحميل ملخص النشاط.</div>';}}
+    let report=document.getElementById('learningSessionReport');if(!report){report=document.createElement('section');report.id='learningSessionReport';report.className='panel';document.querySelector('.footer-links')?.insertAdjacentElement('beforebegin',report);}if(report.dataset.compactReady)return;report.dataset.compactReady='1';report.innerHTML='<div class="loading-card">جارِ تحميل ملخص النشاط…</div>';try{const summaryRequest=prefetchDashboardSummary();const d=await summaryRequest;clearSummaryPrefetch(summaryRequest);const lm=Object.fromEntries((d.learners||[]).map(l=>[l.id,l]));report.innerHTML=`<div class="topline"><b>⏱️ ملخص آخر 7 أيام</b><button class="btn btn-soft" data-go="parent-activity">التفاصيل والفلاتر</button></div><div class="session-summaries">${(d.summaries||[]).map(s=>`<div class="session-summary"><b>${safe(lm[s.learner_id]?.display_name||'طالب')}</b><div class="session-mini-grid"><span>📅 جلسات<strong>${s.sessions}</strong></span><span>⏱️ وقت التعلّم<strong>${fmtMin(s.duration_seconds)}</strong></span><span>📏 المتوسط<strong>${fmtMin(s.average_seconds)}</strong></span><span>🕘 آخر جلسة<strong>${s.last_session_at?fmtDate(s.last_session_at):'—'}</strong></span></div></div>`).join('')}</div><div class="muted">التفاصيل التاريخية لا تُحمّل في لوحة الأهل؛ افتح سجل النشاط فقط عندما تحتاجها.</div>`;bindNav(report);}catch{report.innerHTML='<div class="error">تعذر تحميل ملخص النشاط.</div>';}}
 
   function shellPage(title,subtitle,body){if(typeof shell==='function')shell(title,subtitle,`${body}<div class="actions"><button class="btn btn-soft" data-back-parent>رجوع للوحة الأهل</button><button class="btn btn-soft" data-parent-logout>تسجيل خروج</button></div>`);document.querySelectorAll('[data-back-parent]').forEach(b=>b.addEventListener('click',()=>location.hash='parents'));bindNav();}
   function gradeOptions(v){return `<option value="">غير محدد</option>${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}" ${Number(v)===n?'selected':''}>الصف ${n}</option>`).join('')}`}
-  let summaryToken='',summaryPromise=null;
+  const SUMMARY_PREFETCH_TTL_MS=30000;
+  let summaryToken='',summaryPromise=null,summaryResolvedAt=0;
+  function clearSummaryPrefetch(request=null){
+    if(request&&summaryPromise!==request)return;
+    summaryToken='';summaryPromise=null;summaryResolvedAt=0;
+  }
   function prefetchDashboardSummary(){
     if(location.hash!=='#parents')return null;
     const currentToken=token();
     if(!currentToken)return null;
-    if(summaryPromise&&summaryToken===currentToken)return summaryPromise;
-    summaryToken=currentToken;
+    if(summaryPromise&&summaryToken===currentToken){
+      if(!summaryResolvedAt||Date.now()-summaryResolvedAt<SUMMARY_PREFETCH_TTL_MS)return summaryPromise;
+      clearSummaryPrefetch();
+    }
+    summaryToken=currentToken;summaryResolvedAt=0;
     const request=call(ACTIVITY,'parent_session_summary',{days:7});
     summaryPromise=request;
-    request.catch(()=>{if(summaryPromise===request){summaryPromise=null;summaryToken=''}});
+    request.then(()=>{if(summaryPromise===request)summaryResolvedAt=Date.now()},()=>clearSummaryPrefetch(request));
     return request;
   }
 
