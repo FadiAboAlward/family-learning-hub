@@ -18,11 +18,13 @@ The platform does not treat feedback as a fixed message after a right or wrong a
    - Attempt 4: near-solution explanation and then remediation with a new question from the same concept/difficulty when needed.
 
 3. **Structured hint presentation**
-   - A normal hint should be presented as **3 short, numbered steps** whenever the concept can reasonably be decomposed that way.
-   - The learner may press **Explain this hint more** to expand the same hint into **6 numbered steps**.
+   - Every learner-visible Learning hint contains **at least 30 lexical words** arranged as **exactly 3 short bullet points**. This applies even when the underlying question is not decomposable.
+   - The bullets use direct, age/grade-appropriate language and should be easy to scan on a phone or tablet. A single bullet over 24 lexical words requires readability review.
+   - For a decomposable question, the same hint also keeps the existing **3 short structured steps** and may expand to **6 structured steps**. Those machine-readable steps support finer explanation; they do not replace the three learner-visible bullets.
    - The expanded version must stay at the **same disclosure level** as the original hint. It gives more explanation and smaller sub-steps, but must not secretly reveal more of the answer.
-   - Use light, meaningful emoji in hints when it improves scanability or motivation.
-   - Prefer numbered steps over dense paragraphs for primary-school learners.
+   - The four hint levels must grow in instructional depth, never reveal the final answer before finalization, and never repeat the same support.
+   - Missing authored hint content is not a new hint. The runtime shows an availability notice without inventing or advancing a numbered hint level.
+   - Use light, meaningful emoji only when it improves scanability or motivation; prefer the three bullets over dense paragraphs.
 
 4. **Misconception-aware feedback**
    - Multiple-choice distractors can be mapped to known misconceptions.
