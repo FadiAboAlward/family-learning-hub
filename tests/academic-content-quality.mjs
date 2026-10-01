@@ -126,6 +126,19 @@ assert.ok(
   'Soft source references must be rejected inside Learning hints.'
 );
 
+for (const hintText of [
+  'استعمل الطريقة التي يذكرها الدرس للكشف عن أصل ألف الفعل الثلاثي.',
+  'استخدم إحدى طريقتي الدرس للكشف عن أصل ألف الفعل الثلاثي: صوغ المضارع أو إسناد الفعل إلى تاء متحركة.'
+]) {
+  const lessonMethodHint = read('valid-package.json');
+  lessonMethodHint.questions[0].hints[0].content = hintText;
+  const lessonMethodHintResult = validateAcademicPackage(lessonMethodHint);
+  assert.ok(
+    lessonMethodHintResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.includes('.hints[0].content')),
+    'Method hints must embed the rule instead of referring to an unseen lesson: ' + hintText
+  );
+}
+
 const softSourceFeedback = read('valid-package.json');
 softSourceFeedback.questions[1].explanation = 'The answer is the meaning used in the lesson.';
 const softSourceFeedbackResult = validateAcademicPackage(softSourceFeedback);
