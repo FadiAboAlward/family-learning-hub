@@ -115,6 +115,56 @@ const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(v
 
 const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
+const ORDERING_DIRECTION_PATTERNS = {
+  ascending: [
+    /\bküçükten\s+büyüğe(?:\s+doğru)?\b/iu,
+    /\bart(?:an|arak)\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
+    /من\s+(?:الأصغر|الاصغر|الأقل|الاقل)\s+إلى\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)/u,
+    /(?:ترتيب(?:ًا|ا)?\s+)?تصاعد(?:ي(?:ًا|ا)?|ياً|يا)/u,
+    /\b(?:smallest|least)\s+to\s+(?:largest|greatest)\b/iu,
+    /\b(?:ascending|increasing)\s+order\b/iu
+  ],
+  descending: [
+    /\bbüyükten\s+küçüğe(?:\s+doğru)?\b/iu,
+    /\bazalan\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
+    /من\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)\s+إلى\s+(?:الأصغر|الاصغر|الأقل|الاقل)/u,
+    /(?:ترتيب(?:ًا|ا)?\s+)?تنازل(?:ي(?:ًا|ا)?|ياً|يا)/u,
+    /\b(?:largest|greatest)\s+to\s+(?:smallest|least)\b/iu,
+    /\b(?:descending|decreasing)\s+order\b/iu
+  ]
+};
+
+function orderingDirection(value) {
+  const normalized = caseFold(canonicalMath(value));
+  if (!normalized) return '';
+  for (const [direction, patterns] of Object.entries(ORDERING_DIRECTION_PATTERNS)) {
+    if (patterns.some(re => re.test(normalized))) return direction;
+  }
+  return '';
+}
+
+function numericValuesInPrompt(value) {
+  const normalized = canonicalMath(value);
+  const matches = normalized.match(/[+\-]?\d+(?:[.,]\d+)?/gu) || [];
+  return matches
+    .map(raw => Number(raw.replace(',', '.')))
+    .filter(Number.isFinite);
+}
+
+function preSortedOrderingPrompt(value) {
+  const direction = orderingDirection(value);
+  if (!direction) return null;
+  const values = numericValuesInPrompt(value);
+  if (values.length < 3) return null;
+  const alreadyOrdered = values.every((current, index) => {
+    if (index === 0) return true;
+    return direction === 'ascending'
+      ? current >= values[index - 1]
+      : current <= values[index - 1];
+  });
+  return alreadyOrdered ? { direction, values } : null;
+}
+
 function answerLeak(hintText, answer) {
   const h = caseFold(canonicalMath(hintText));
   const a = caseFold(canonicalMath(answer));
@@ -381,6 +431,15 @@ export function validateAcademicPackage(pkg) {
     if (!b) issue(errors, 'BLUEPRINT_MATCH_REQUIRED', p + '.question_code', 'No blueprint row exists for ' + (code || p) + '.');
     if (!SURFACES.has(q && q.delivery_surface)) issue(errors, 'INVALID_DELIVERY_SURFACE', p + '.delivery_surface', 'delivery_surface must be learning, exam, or paper.');
     if (!text(q && q.prompt)) issue(errors, 'PROMPT_REQUIRED', p + '.prompt', 'prompt is required.');
+    const orderingLeak = preSortedOrderingPrompt(q && q.prompt);
+    if (orderingLeak) {
+      issue(
+        errors,
+        'ORDERING_PROMPT_PRE_SORTED_INPUT',
+        p + '.prompt',
+        'Ordering task input is already ordered in the requested ' + orderingLeak.direction + ' direction; shuffle the displayed values so the learner must perform the ordering.'
+      );
+    }
     if (!text(q && q.concept_code)) issue(errors, 'CONCEPT_REQUIRED', p + '.concept_code', 'concept_code is required.');
     if (!Number.isInteger(q && q.difficulty_level) || q.difficulty_level < 1 || q.difficulty_level > 5) issue(errors, 'DIFFICULTY_OUT_OF_RANGE', p + '.difficulty_level', 'difficulty_level must be an integer from 1 to 5.');
     if (!ORIGINS.has(q && q.origin)) issue(errors, 'INVALID_ORIGIN', p + '.origin', 'origin must be BOOK_DERIVED or GENERATED_SIMILAR.');
