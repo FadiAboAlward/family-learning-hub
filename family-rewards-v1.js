@@ -165,15 +165,26 @@
   function datetime(raw) { return raw ? new Date(raw).toISOString() : null; }
   function localDatetime(raw) { if(!raw)return'';const parsed=new Date(raw);if(!Number.isFinite(parsed.getTime()))return'';return new Date(parsed.getTime()-parsed.getTimezoneOffset()*60000).toISOString().slice(0,16); }
   function setFields(form, fields) { for (const [id,val] of Object.entries(fields)) { const element=form.querySelector(`#${id}`);if(!element)continue;if(element.type==='checkbox')element.checked=!!val;else element.value=val??''; } }
-  function setScope(form,prefix,row) { setFields(form,{[`${prefix}Scope`]:row.learner_scope||'all'});form.querySelectorAll('[name="learner_ids"]').forEach(element=>element.checked=(row.learner_ids||[]).includes(element.value));form.querySelector(`[data-fr-scope="${prefix}"]`).hidden=(row.learner_scope||'all')!=='selected'; }
+  function setScope(view,form,prefix,row) {
+    form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());
+    const scope=form.querySelector(`[data-fr-scope="${prefix}"]`);
+    const shown=new Set([...scope.querySelectorAll('[name="learner_ids"]')].map(element=>element.value));
+    for(const id of row.learner_ids||[])if(!shown.has(id)){
+      const learner=(view.data.inactive_scope_learners||[]).find(learner=>learner.id===id);
+      scope.insertAdjacentHTML('beforeend',`<label class="fr-check" data-fr-preserved-scope><input type="checkbox" name="learner_ids" value="${safe(id)}">${safe(learner?.display_name||'طالب سبق ربطه')} (غير نشط)</label>`);
+    }
+    setFields(form,{[`${prefix}Scope`]:row.learner_scope||'all'});
+    scope.querySelectorAll('[name="learner_ids"]').forEach(element=>element.checked=(row.learner_ids||[]).includes(element.value));
+    scope.hidden=(row.learner_scope||'all')!=='selected';
+  }
   function focusForm(form) { form.closest('details')?.setAttribute('open','');form.scrollIntoView({behavior:'smooth',block:'start'});form.querySelector('input,select,textarea')?.focus({preventScroll:true}); }
   function edit(view,kind,id) {
     const row = (view.data[`${kind === 'category' ? 'categorie' : kind}s`] || []).find(row=>row.id===id), form=view.root.querySelector(`#fr${kind[0].toUpperCase()+kind.slice(1)}Form`);
     if(!row||!form)return;
     form.reset();form.dataset.recordId=id;delete form.dataset.idempotencyKey;
     if(kind==='category')setFields(form,{frCategoryTitle:row.title,frCategoryDescription:row.description,frCategoryActive:row.is_active});
-    if(kind==='rule'){setFields(form,{frRuleTitle:row.title,frRuleDescription:row.description,frRuleCategory:row.category_id,frRuleBase:row.base_points,frRuleBonus:row.initiative_bonus_points,frRuleCadence:row.cadence,frRuleLimit:row.max_awards,frRuleSelfReport:row.self_report_allowed,frRuleApproval:row.parent_approval_required,frRuleActive:row.is_active});setScope(form,'frRule',row);}
-    if(kind==='reward'){const criteria=row.criteria||{};setFields(form,{frRewardTitle:row.title,frRewardDescription:row.description,frRewardType:row.reward_type,frRewardPoints:row.required_reward_points,frRewardLevel:row.required_level,frRewardFrom:localDatetime(row.available_from),frRewardUntil:localDatetime(row.available_until),frRewardLimit:row.max_redemptions_per_learner,frRewardStreak:criteria.current_streak,frRewardLongestStreak:criteria.longest_streak,frRewardXp:criteria.min_xp,frRewardActive:row.is_active});setScope(form,'frReward',row);form.querySelectorAll('[name="required_badge_codes"]').forEach(element=>element.checked=(criteria.required_badge_codes||[]).includes(element.value));}
+    if(kind==='rule'){setFields(form,{frRuleTitle:row.title,frRuleDescription:row.description,frRuleCategory:row.category_id,frRuleBase:row.base_points,frRuleBonus:row.initiative_bonus_points,frRuleCadence:row.cadence,frRuleLimit:row.max_awards,frRuleSelfReport:row.self_report_allowed,frRuleApproval:row.parent_approval_required,frRuleActive:row.is_active});setScope(view,form,'frRule',row);}
+    if(kind==='reward'){const criteria=row.criteria||{};setFields(form,{frRewardTitle:row.title,frRewardDescription:row.description,frRewardType:row.reward_type,frRewardPoints:row.required_reward_points,frRewardLevel:row.required_level,frRewardFrom:localDatetime(row.available_from),frRewardUntil:localDatetime(row.available_until),frRewardLimit:row.max_redemptions_per_learner,frRewardStreak:criteria.current_streak,frRewardLongestStreak:criteria.longest_streak,frRewardXp:criteria.min_xp,frRewardActive:row.is_active});setScope(view,form,'frReward',row);form.querySelectorAll('[name="required_badge_codes"]').forEach(element=>element.checked=(criteria.required_badge_codes||[]).includes(element.value));}
     syncCadence(form);focusForm(form);
   }
   function syncCadence(form) { const cadence=form.querySelector('#frRuleCadence'),limit=form.querySelector('#frRuleLimit');if(cadence&&limit){limit.disabled=cadence.value==='unlimited';limit.required=cadence.value!=='unlimited';} }
@@ -199,7 +210,7 @@
     root.querySelectorAll('[data-fr-scope]').forEach(fieldset=>{const select=root.querySelector(`#${fieldset.dataset.frScope}Scope`);select.onchange=()=>fieldset.hidden=select.value!=='selected';});
     root.querySelector('#frRuleCadence')?.addEventListener('change',event=>syncCadence(event.target.form));
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
-    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
+    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
     ['category','rule','reward'].forEach(kind=>{
       root.querySelectorAll(`[data-fr-edit-${kind}]`).forEach(button=>button.onclick=()=>edit(view,kind,button.getAttribute(`data-fr-edit-${kind}`)));
       root.querySelectorAll(`[data-fr-toggle-${kind}]`).forEach(button=>button.onclick=()=>{const rows=view.data[kind==='category'?'categories':`${kind}s`]||[],row=rows.find(row=>row.id===button.getAttribute(`data-fr-toggle-${kind}`));if(!row)return;mutation(view,button,`${kind}_save`,{...row,is_active:row.is_active===false},row.is_active===false?'تم التفعيل.':'تم التعطيل.');});

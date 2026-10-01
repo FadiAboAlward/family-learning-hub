@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
 import { canManageLearningRole } from "../_shared/parent-authorization.mjs";
-import { executeFamilyRewardsAction, isFamilyRewardsAction, publicRewardsError, rewardsErrorStatus } from "../_shared/family-rewards.mjs";
+import { executeFamilyRewardsAction, isFamilyRewardsAction, learnerProfileRewards, publicRewardsError, rewardsErrorStatus } from "../_shared/family-rewards.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -146,7 +146,7 @@ async function learnerProfile(learnerId: string, trace: any) {
     admin.from("learner_gamification_state").select("xp,reward_points,current_level,current_streak,longest_streak,last_learning_date").eq("workspace_id", WORKSPACE_ID).eq("learner_id", learnerId).maybeSingle(),
     admin.from("gamification_levels").select("level_no,name,min_xp,icon").eq("workspace_id", WORKSPACE_ID).order("level_no"),
     admin.from("learner_badges").select("awarded_at,award_reason,badge:gamification_badges(code,title,description,icon)").eq("workspace_id", WORKSPACE_ID).eq("learner_id", learnerId).order("awarded_at", { ascending: false }),
-    admin.from("gamification_rewards").select("id,title,description,reward_type,required_level,required_reward_points,parent_approval_required").eq("workspace_id", WORKSPACE_ID).eq("is_active", true).order("required_reward_points", { ascending: true, nullsFirst: false }),
+    admin.from("gamification_rewards").select("id,title,description,reward_type,required_level,required_reward_points,parent_approval_required,learner_scope,reward_learner_scopes(learner_id)").eq("workspace_id", WORKSPACE_ID).eq("is_active", true).eq("reward_learner_scopes.learner_id", learnerId).order("required_reward_points", { ascending: true, nullsFirst: false }),
   ]));
 
   const s: any = state || { xp: 0, reward_points: 0, current_level: 1, current_streak: 0, longest_streak: 0, last_learning_date: null };
@@ -167,7 +167,7 @@ async function learnerProfile(learnerId: string, trace: any) {
       next_level_info: next,
       xp_to_next: next ? Math.max(0, Number(next.min_xp) - Number(s.xp)) : 0,
       badges: ownedBadges || [],
-      rewards: rewards || [],
+      rewards: learnerProfileRewards(rewards, learnerId, Boolean((learner.metadata || {}).is_test)),
     },
   };
 }

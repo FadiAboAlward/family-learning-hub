@@ -213,6 +213,8 @@ async function assertLayout(page, label) {
   assert.doesNotMatch(rootText, /لوحة الصدارة|ترتيب الإخوة|الفائز|الخاسر|leaderboard/i, `${label}: no sibling ranking`);
   const buttons = await page.locator('[data-family-rewards] .btn').evaluateAll(elements => elements.filter(element => element.getBoundingClientRect().height > 0).map(element => ({ text: element.textContent.trim(), height: element.getBoundingClientRect().height })));
   assert.ok(buttons.every(button => button.height >= 40), `${label}: touch actions are at least 40px high`);
+  const checkboxes = await page.locator('[data-family-rewards] input[type="checkbox"]').evaluateAll(elements => elements.filter(element => element.getBoundingClientRect().height > 0).map(element => ({ id: element.id || element.name, width: element.getBoundingClientRect().width })));
+  assert.ok(checkboxes.every(checkbox => checkbox.width <= 24), `${label}: checkbox controls leave space for their labels (${JSON.stringify(checkboxes)})`);
 }
 
 async function screenshot(page, name, target = page) {
@@ -289,6 +291,7 @@ async function runBrowserSuite() {
     await page.locator('#frRuleCadence').selectOption('week');
     await page.locator('#frRuleLimit').fill('3');
     await page.locator('#frRuleSelfReport').check();
+    await assertLayout(page, `${device.name} open rule form`);
     await screenshot(page, `family-rewards-${device.name}-rule-form`, page.locator('#frRuleForm'));
     await perform(page, 'rule_save', () => submit(page, '#frRuleForm'));
     const ruleId = server.catalog.rules[0].id;
@@ -406,6 +409,15 @@ async function runBrowserSuite() {
     await page.locator('#frRewardXp').fill('100');
     await page.locator('#frRewardBadges [value="qa-consistency"]').check();
     await page.locator('#frRewardBadges [value="qa-effort"]').check();
+    await assertLayout(page, `${device.name} open reward form`);
+    const rewardSavesBeforeInvalidInput = server.count('reward_save');
+    await page.locator('#frRewardXp').fill('2147483648');
+    assert.equal(await page.locator('#frRewardXp').evaluate(input => input.validity.rangeOverflow), true, 'oversized XP exceeds the supported integer boundary');
+    await submit(page, '#frRewardForm');
+    assert.equal(server.count('reward_save'), rewardSavesBeforeInvalidInput, 'native validation blocks oversized criteria before reward_save transport');
+    assert.equal(await page.locator('#frRewardXp').evaluate(input => input.validity.valid), false, 'invalid XP remains available for correction');
+    await page.locator('#frRewardXp').fill('100');
+    assert.equal(await page.locator('#frRewardForm').evaluate(form => form.checkValidity()), true, 'restoring valid XP keeps the completed reward form valid');
     await screenshot(page, `family-rewards-${device.name}-reward-form`, page.locator('#frRewardForm'));
     await perform(page, 'reward_save', () => submit(page, '#frRewardForm'));
     const rewardId = server.catalog.rewards[0].id;
@@ -415,13 +427,25 @@ async function runBrowserSuite() {
     assert.equal(rewardPayload.max_redemptions_per_learner, 3);
     assert.ok(rewardPayload.available_from && rewardPayload.available_until, 'availability is submitted to the server');
     server.catalog.badges.find(row => row.code === 'qa-effort').is_active = false;
+    const inactiveLearnerId = '77777777-7777-4777-8777-777777777777';
+    server.catalog.inactive_scope_learners = [{ id: inactiveLearnerId, display_name: 'طالب الاختبار غير النشط' }];
+    server.catalog.rewards[0].learner_ids.push(inactiveLearnerId);
+    // Reopening the same URL is a same-document navigation; reload the updated fixture dashboard.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await balance(page, 36);
     await open(page, 'parent');
     await showForm(page, '#frRewardForm');
     await page.locator(`[data-fr-edit-reward="${rewardId}"]`).click();
     await page.locator('#frRewardTitle').fill('لعبة عائلية ممتعة');
     assert.equal(await page.locator('#frRewardBadges [value="qa-effort"]').isChecked(), true, 'an inactive required badge remains selected when editing');
+    assert.equal(await page.locator(`#frRewardForm [name="learner_ids"][value="${inactiveLearnerId}"]`).isChecked(), true, 'an already assigned inactive learner remains selected during an edit');
+    assert.match(await page.locator('#frRewardForm [data-fr-preserved-scope]').innerText(), /طالب الاختبار غير النشط/);
     await perform(page, 'reward_save', () => submit(page, '#frRewardForm'));
     assert.deepEqual(server.last('reward_save').criteria.required_badge_codes, ['qa-consistency', 'qa-effort'], 'editing the title preserves inactive badge criteria');
+    assert.deepEqual(server.last('reward_save').learner_ids, [LEARNER_ID, inactiveLearnerId], 'editing the title preserves the existing inactive scope member');
+    await showForm(page, '#frRewardForm');
+    await page.locator('#frRewardForm [data-fr-form-reset]').click();
+    assert.equal(await page.locator('#frRewardForm [data-fr-preserved-scope]').count(), 0, 'new reward forms do not offer stale inactive assignments');
     await showForm(page, '#frRewardForm');
     await perform(page, 'reward_save', () => page.locator(`[data-fr-toggle-reward="${rewardId}"]`).click());
     await open(page, 'student');

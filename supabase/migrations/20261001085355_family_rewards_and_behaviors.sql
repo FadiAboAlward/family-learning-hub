@@ -61,12 +61,14 @@ create table if not exists public.behavior_submissions (
   initiative_bonus_points integer not null default 0 check (initiative_bonus_points >= 0),
   total_points integer not null default 0 check (total_points = base_points + initiative_bonus_points),
   snapshot jsonb not null default '{}'::jsonb,
+  request_payload jsonb not null default '{}'::jsonb,
   idempotency_key text not null check (length(idempotency_key) between 8 and 200),
   unique (id, workspace_id), unique (workspace_id, learner_id, idempotency_key),
   foreign key (learner_id, workspace_id) references public.learners(id, workspace_id) on delete cascade,
   foreign key (rule_id, workspace_id) references public.behavior_rules(id, workspace_id) on delete restrict,
   check (status = 'approved' or total_points = 0)
 );
+alter table public.behavior_submissions add column if not exists request_payload jsonb not null default '{}'::jsonb;
 create index if not exists behavior_submissions_cadence_idx on public.behavior_submissions(workspace_id, learner_id, rule_id, approved_at) where status = 'approved';
 create index if not exists behavior_submissions_pending_idx on public.behavior_submissions(workspace_id, status, requested_at desc);
 create table if not exists public.reward_learner_scopes (
@@ -125,6 +127,23 @@ create trigger gamification_events_family_guard before insert or update or delet
 revoke all on function public.flh_family_ledger_guard() from public, anon, authenticated;
 grant execute on function public.flh_family_ledger_guard() to service_role;
 
+-- Validate stored criteria too: legacy rows must fail closed before typed casts.
+create or replace function public.flh_family_reward_criteria_valid(p_criteria jsonb)
+returns boolean language plpgsql immutable security invoker set search_path = '' as $$
+begin
+  if p_criteria is null or jsonb_typeof(p_criteria)<>'object' then return false; end if;
+  if exists(select 1 from jsonb_object_keys(p_criteria) k where k not in ('current_streak','longest_streak','min_xp','required_badge_codes')) then return false; end if;
+  if exists(select 1 from jsonb_each(p_criteria) kv where kv.key in ('current_streak','longest_streak','min_xp') and (jsonb_typeof(kv.value)<>'number' or kv.value::text !~ '^[0-9]+$')) then return false; end if;
+  if exists(select 1 from jsonb_each(p_criteria) kv where case when kv.key in ('current_streak','longest_streak','min_xp') then kv.value::text::numeric>2147483647 else false end) then return false; end if;
+  if p_criteria ? 'required_badge_codes' then
+    if jsonb_typeof(p_criteria->'required_badge_codes')<>'array' then return false; end if;
+    if exists(select 1 from jsonb_array_elements(p_criteria->'required_badge_codes') x where jsonb_typeof(x)<>'string') then return false; end if;
+  end if;
+  return true;
+end $$;
+revoke all on function public.flh_family_reward_criteria_valid(jsonb) from public, anon, authenticated;
+grant execute on function public.flh_family_reward_criteria_valid(jsonb) to service_role;
+
 -- The eligibility calculation is shared by request, approval, and catalog reads.
 create or replace function public.flh_family_reward_eligibility(p_workspace_id uuid, p_learner_id uuid, p_reward_id uuid)
 returns jsonb language plpgsql security invoker set search_path = '' as $$
@@ -141,6 +160,7 @@ begin
   if not found then return jsonb_build_object('eligible',false,'ineligibility_reasons',jsonb_build_array('LEARNER_NOT_FOUND')); end if;
   select * into r from public.gamification_rewards where id = p_reward_id and workspace_id = p_workspace_id;
   if not found then return jsonb_build_object('eligible',false,'ineligibility_reasons',jsonb_build_array('REWARD_NOT_FOUND')); end if;
+  if not public.flh_family_reward_criteria_valid(r.criteria) then return jsonb_build_object('eligible',false,'ineligibility_reasons',jsonb_build_array('INVALID_CRITERIA')); end if;
   select * into s from public.learner_gamification_state where learner_id = p_learner_id and workspace_id = p_workspace_id;
   if not r.is_active then reasons := reasons || '"REWARD_INACTIVE"'::jsonb; end if;
   if (r.available_from is not null and v_check_time < r.available_from) or (r.available_until is not null and v_check_time > r.available_until) then reasons := reasons || '"REWARD_UNAVAILABLE"'::jsonb; end if;
@@ -194,6 +214,8 @@ declare
   v_page_size integer;
   v_page jsonb;
   v_cursor bigint;
+  v_request_payload jsonb;
+  v_explicit_occurred_at timestamptz;
 begin
   if p_workspace_id is null or p_payload is null or jsonb_typeof(p_payload) <> 'object' then return jsonb_build_object('error','INVALID_INPUT'); end if;
   if v_parent then
@@ -230,6 +252,9 @@ begin
     return jsonb_build_object(
       'ok',true,
       'learners',(select coalesce(jsonb_agg(jsonb_build_object('id',id,'display_name',display_name,'slug',slug,'is_test',coalesce((metadata->>'is_test')::boolean,false)) order by display_name),'[]'::jsonb) from public.learners where id = any(v_ids) and workspace_id = p_workspace_id),
+      'inactive_scope_learners',case when v_parent then (select coalesce(jsonb_agg(jsonb_build_object('id',l.id,'display_name',l.display_name) order by l.display_name),'[]'::jsonb) from public.learners l where l.workspace_id=p_workspace_id and not l.is_active and
+        (case when coalesce((p_payload->>'test_only')::boolean,false) then coalesce((l.metadata->>'is_test')::boolean,false) else not coalesce((l.metadata->>'is_test')::boolean,false) and not coalesce((l.metadata->>'exclude_from_parent_metrics')::boolean,false) end) and
+        (exists(select 1 from public.behavior_rule_learners scopes where scopes.workspace_id=p_workspace_id and scopes.learner_id=l.id) or exists(select 1 from public.reward_learner_scopes scopes where scopes.workspace_id=p_workspace_id and scopes.learner_id=l.id))) else '[]'::jsonb end,
       'states',(select coalesce(jsonb_agg(jsonb_build_object('learner_id',l.id,'xp',coalesce(s.xp,0),'reward_points',coalesce(s.reward_points,0),'current_level',coalesce(s.current_level,1),'current_streak',coalesce(s.current_streak,0),'longest_streak',coalesce(s.longest_streak,0))),'[]'::jsonb) from public.learners l left join public.learner_gamification_state s on s.learner_id=l.id and s.workspace_id=l.workspace_id where l.id=any(v_ids) and l.workspace_id=p_workspace_id),
       'categories',(select coalesce(jsonb_agg(to_jsonb(c) order by c.created_at),'[]'::jsonb) from public.behavior_categories c where c.workspace_id=p_workspace_id and (v_parent or c.is_active)),
       'badges',case when v_parent then (select coalesce(jsonb_agg(jsonb_build_object('code',code,'title',title,'is_active',is_active) order by title),'[]'::jsonb) from public.gamification_badges where workspace_id=p_workspace_id) else '[]'::jsonb end,
@@ -254,7 +279,17 @@ begin
     v_scope := coalesce(p_payload->>'learner_scope','all');
     if v_scope not in ('all','selected') or jsonb_typeof(coalesce(p_payload->'learner_ids','[]'::jsonb)) <> 'array' then return jsonb_build_object('error','INVALID_SCOPE'); end if;
     select coalesce(array_agg(distinct id::uuid),'{}'::uuid[]) into v_scope_ids from jsonb_array_elements_text(coalesce(p_payload->'learner_ids','[]'::jsonb)) id;
-    if (v_scope='selected' and cardinality(v_scope_ids)=0) or exists(select 1 from unnest(v_scope_ids) scope_learner(learner_id) where not exists(select 1 from public.learners l where l.id=scope_learner.learner_id and l.workspace_id=p_workspace_id and l.is_active)) then return jsonb_build_object('error','INVALID_SCOPE'); end if;
+    -- Existing assignments survive learner deactivation; new assignments require active learners.
+    if (v_scope='selected' and cardinality(v_scope_ids)=0) or exists(
+      select 1 from unnest(v_scope_ids) scope_learner(learner_id)
+      left join public.learners l on l.id=scope_learner.learner_id and l.workspace_id=p_workspace_id
+      where l.id is null or (not l.is_active and not (
+        p_payload ? 'id' and case when p_action='rule_save'
+          then exists(select 1 from public.behavior_rule_learners scope where scope.rule_id=v_id and scope.workspace_id=p_workspace_id and scope.learner_id=l.id)
+          else exists(select 1 from public.reward_learner_scopes scope where scope.reward_id=v_id and scope.workspace_id=p_workspace_id and scope.learner_id=l.id)
+        end
+      ))
+    ) then return jsonb_build_object('error','INVALID_SCOPE'); end if;
     if p_action='rule_save' then
       if p_payload ? 'id' and not exists(select 1 from public.behavior_rules where id=v_id and workspace_id=p_workspace_id) then return jsonb_build_object('error','RULE_NOT_FOUND'); end if;
       v_cadence := coalesce(p_payload->>'cadence','day');
@@ -267,11 +302,8 @@ begin
     end if;
     if p_payload ? 'id' and not exists(select 1 from public.gamification_rewards where id=v_id and workspace_id=p_workspace_id) then return jsonb_build_object('error','REWARD_NOT_FOUND'); end if;
     v_criteria := coalesce(p_payload->'criteria','{}'::jsonb);
-    if jsonb_typeof(v_criteria)<>'object' or exists(select 1 from jsonb_object_keys(v_criteria) k where k not in ('current_streak','longest_streak','min_xp','required_badge_codes')) then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
-    if exists(select 1 from jsonb_each(v_criteria) kv where kv.key in ('current_streak','longest_streak','min_xp') and (jsonb_typeof(kv.value)<>'number' or kv.value::text !~ '^[0-9]+$')) then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
-    if exists(select 1 from jsonb_each(v_criteria) kv where kv.key in ('current_streak','longest_streak','min_xp') and kv.value::text::numeric>2147483647) then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
+    if not public.flh_family_reward_criteria_valid(v_criteria) then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
     if v_criteria ? 'required_badge_codes' then
-      if jsonb_typeof(v_criteria->'required_badge_codes')<>'array' then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
       if exists(select 1 from jsonb_array_elements(v_criteria->'required_badge_codes') x where jsonb_typeof(x)<>'string' or not exists(select 1 from public.gamification_badges where workspace_id=p_workspace_id and code=x#>>'{}')) then return jsonb_build_object('error','INVALID_CRITERIA'); end if;
     end if;
     if length(coalesce(p_payload->>'title','')) > 120 or length(coalesce(p_payload->>'description','')) > 1000 or length(btrim(coalesce(p_payload->>'title','')))=0 then return jsonb_build_object('error','INVALID_INPUT'); end if;
@@ -315,9 +347,13 @@ begin
     -- The prior SHARE lock keeps configuration stable; reread after any wait.
     select * into v_rule from public.behavior_rules where id=v_rule.id and workspace_id=p_workspace_id;
     if p_action<>'behavior_review' then
+      v_explicit_occurred_at := nullif(p_payload->>'occurred_at','')::timestamptz;
+      -- Preserve optional-time intent separately from the server-assigned occurrence time.
+      -- Equivalent timezone forms compare by instant; omitted times stay null on retry.
+      v_request_payload := jsonb_build_object('action',p_action,'actor_id',p_actor_id,'learner_id',p_learner_id,'rule_id',v_rule.id,'initiative',coalesce((p_payload->>'initiative')::boolean,false),'reason',coalesce(p_payload->>'reason',''),'occurred_at',extract(epoch from v_explicit_occurred_at));
       select * into v_submission from public.behavior_submissions where workspace_id=p_workspace_id and learner_id=p_learner_id and idempotency_key=v_key;
       if found then
-        if v_submission.rule_id<>v_rule.id or v_submission.requester_type<>(case when p_action='behavior_submit' then 'learner' else 'parent' end) or v_submission.initiative<>coalesce((p_payload->>'initiative')::boolean,false) then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
+        if v_submission.request_payload is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
         return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'already_recorded',true);
       end if;
     end if;
@@ -326,9 +362,9 @@ begin
     if (v_rule.learner_scope='all' and coalesce((v_learner.metadata->>'is_test')::boolean,false)) or (v_rule.learner_scope='selected' and not exists(select 1 from public.behavior_rule_learners where rule_id=v_rule.id and workspace_id=p_workspace_id and learner_id=p_learner_id)) then return jsonb_build_object('error','RULE_SCOPE_FORBIDDEN'); end if;
     if p_action='behavior_submit' and not v_rule.self_report_allowed then return jsonb_build_object('error','SELF_REPORT_FORBIDDEN'); end if;
     if p_action<>'behavior_review' then
-      if coalesce(nullif(p_payload->>'occurred_at','')::timestamptz,v_now)>v_now then return jsonb_build_object('error','INVALID_OCCURRED_AT'); end if;
-      insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,requester_id,reason,idempotency_key,requested_at)
-      values(p_workspace_id,p_learner_id,v_rule.id,coalesce((p_payload->>'initiative')::boolean,false),coalesce(nullif(p_payload->>'occurred_at','')::timestamptz,v_now),case when p_action='behavior_submit' then 'learner' else 'parent' end,case when p_action='behavior_submit' then null else p_actor_id end,coalesce(p_payload->>'reason',''),v_key,v_now) returning * into v_submission;
+      if coalesce(v_explicit_occurred_at,v_now)>v_now then return jsonb_build_object('error','INVALID_OCCURRED_AT'); end if;
+      insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,requester_id,reason,idempotency_key,requested_at,request_payload)
+      values(p_workspace_id,p_learner_id,v_rule.id,coalesce((p_payload->>'initiative')::boolean,false),coalesce(v_explicit_occurred_at,v_now),case when p_action='behavior_submit' then 'learner' else 'parent' end,case when p_action='behavior_submit' then null else p_actor_id end,coalesce(p_payload->>'reason',''),v_key,v_now,v_request_payload) returning * into v_submission;
       -- AC06 always requires parent review, regardless of configurable policy flag.
       if p_action='behavior_submit' then return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission)); end if;
     end if;
@@ -385,9 +421,11 @@ begin
     -- Price/scope stay locked through eligibility, spend, and claim transition.
     select * into v_reward from public.gamification_rewards where id=v_reward.id and workspace_id=p_workspace_id;
     if p_action='reward_request' then
+      if length(coalesce(p_payload->>'note',''))>1000 then return jsonb_build_object('error','INVALID_INPUT'); end if;
+      v_request_payload := jsonb_build_object('action',p_action,'requester_learner_id',p_learner_id,'reward_id',v_reward.id,'note',coalesce(p_payload->>'note',''));
       select * into v_claim from public.reward_claims where workspace_id=p_workspace_id and learner_id=p_learner_id and idempotency_key=v_key;
       if found then
-        if v_claim.reward_id<>v_reward.id then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
+        if v_claim.metadata->'request_payload' is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
         return jsonb_build_object('ok',true,'claim',to_jsonb(v_claim),'already_requested',true);
       end if;
     end if;
@@ -395,7 +433,7 @@ begin
     if not (v_eligibility->>'eligible')::boolean then return jsonb_build_object('error',v_eligibility->'ineligibility_reasons'->>0,'ineligibility_reasons',v_eligibility->'ineligibility_reasons'); end if;
     if p_action='reward_request' then
       if exists(select 1 from public.reward_claims where workspace_id=p_workspace_id and learner_id=p_learner_id and reward_id=v_reward.id and status='pending') then return jsonb_build_object('error','CLAIM_ALREADY_PENDING'); end if;
-      insert into public.reward_claims(workspace_id,learner_id,reward_id,idempotency_key,metadata,requested_at) values(p_workspace_id,p_learner_id,v_reward.id,v_key,jsonb_build_object('requester_learner_id',p_learner_id,'reward_title',v_reward.title,'requested_points',coalesce(v_reward.required_reward_points,0),'is_test',coalesce((v_learner.metadata->>'is_test')::boolean,false)),v_now) returning * into v_claim;
+      insert into public.reward_claims(workspace_id,learner_id,reward_id,idempotency_key,note,metadata,requested_at) values(p_workspace_id,p_learner_id,v_reward.id,v_key,coalesce(p_payload->>'note',''),jsonb_build_object('requester_learner_id',p_learner_id,'reward_title',v_reward.title,'requested_points',coalesce(v_reward.required_reward_points,0),'request_note',coalesce(p_payload->>'note',''),'request_payload',v_request_payload,'is_test',coalesce((v_learner.metadata->>'is_test')::boolean,false)),v_now) returning * into v_claim;
       return jsonb_build_object('ok',true,'claim',to_jsonb(v_claim));
     end if;
     v_points := coalesce(v_reward.required_reward_points,0);
@@ -416,12 +454,13 @@ begin
     select * into v_learner from public.learners where id=p_learner_id and workspace_id=p_workspace_id and is_active for update;
     if not found then return jsonb_build_object('error','LEARNER_NOT_FOUND'); end if;
     v_now := clock_timestamp();
+    v_request_payload := jsonb_build_object('action',p_action,'actor_id',p_actor_id,'learner_id',p_learner_id,'reason',v_reason,'delta',case when p_payload ? 'reversal_event_id' then null else (p_payload->>'delta')::integer end,'reversal_event_id',case when p_payload ? 'reversal_event_id' then (p_payload->>'reversal_event_id')::bigint else null end);
     select * into v_event from public.gamification_events where workspace_id=p_workspace_id and learner_id=p_learner_id and source_type='manual_adjustment' and source_id=v_key;
     if found then
-      if v_event.reason<>v_reason or (p_payload ? 'reversal_event_id' and (v_event.metadata->>'reversal_event_id' is distinct from p_payload->>'reversal_event_id')) or (not (p_payload ? 'reversal_event_id') and (v_event.reward_points_delta is distinct from (p_payload->>'delta')::integer)) then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
+      if v_event.metadata->'request_payload' is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
       return jsonb_build_object('ok',true,'event',to_jsonb(v_event),'already_adjusted',true);
     end if;
-    v_snapshot := jsonb_build_object('actor_id',p_actor_id,'status','approved','is_test',coalesce((v_learner.metadata->>'is_test')::boolean,false));
+    v_snapshot := jsonb_build_object('actor_id',p_actor_id,'request_payload',v_request_payload,'status','approved','is_test',coalesce((v_learner.metadata->>'is_test')::boolean,false));
     if p_payload ? 'reversal_event_id' then
       select * into v_event from public.gamification_events where id=(p_payload->>'reversal_event_id')::bigint and workspace_id=p_workspace_id and learner_id=p_learner_id;
       if not found or v_event.reward_points_delta=0 then return jsonb_build_object('error','REVERSAL_EVENT_NOT_FOUND'); end if;

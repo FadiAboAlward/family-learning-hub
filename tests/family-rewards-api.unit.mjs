@@ -1,13 +1,23 @@
 import assert from 'node:assert/strict';
 import {
   canManageRewardsRole, executeFamilyRewardsAction, isFamilyRewardsAction,
-  publicRewardsError, rewardsErrorStatus,
+  learnerProfileRewards, publicRewardsError, rewardsErrorStatus,
 } from '../supabase/functions/_shared/family-rewards.mjs';
 
 const parentId = '10000000-0000-4000-8000-000000000001';
 const learnerId = '20000000-0000-4000-8000-000000000001';
 const otherId = '30000000-0000-4000-8000-000000000001';
 const workspaceId = '40000000-0000-4000-8000-000000000001';
+const scopedRewards = [
+  { id: 'all', title: 'All real learners', learner_scope: 'all', reward_learner_scopes: [] },
+  { id: 'own', title: 'Own reward', learner_scope: 'selected', reward_learner_scopes: [{ learner_id: learnerId }, { learner_id: otherId }] },
+  { id: 'other', title: 'Sibling reward', learner_scope: 'selected', reward_learner_scopes: [{ learner_id: otherId }] },
+  { id: 'unknown', title: 'Unknown scope', learner_scope: 'unknown' },
+];
+assert.deepEqual(learnerProfileRewards(scopedRewards, learnerId, false).map(x => x.id), ['all', 'own']);
+assert.deepEqual(learnerProfileRewards(scopedRewards, learnerId, true).map(x => x.id), ['own']);
+assert.ok(learnerProfileRewards(scopedRewards, learnerId, false).every(x => !Object.hasOwn(x, 'reward_learner_scopes') && !Object.hasOwn(x, 'learner_scope')));
+assert.deepEqual(learnerProfileRewards(null, learnerId, false), []);
 const calls = [];
 const deps = {
   workspaceId,

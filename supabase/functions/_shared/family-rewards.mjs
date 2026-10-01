@@ -41,6 +41,16 @@ export function canManageRewardsRole(role) {
   return role === 'owner' || role === 'admin';
 }
 
+/** The legacy profile must honor reward scopes too, without returning scope-member IDs. */
+export function learnerProfileRewards(rows, learnerId, isTest) {
+  const profileFields = ['id', 'title', 'description', 'reward_type', 'required_level',
+    'required_reward_points', 'parent_approval_required'];
+  return (rows || []).filter(reward =>
+    (reward.learner_scope === 'all' && !isTest) ||
+    (reward.learner_scope === 'selected' && reward.reward_learner_scopes?.some(scope => scope.learner_id === learnerId))
+  ).map(reward => Object.fromEntries(profileFields.map(field => [field, reward[field]])));
+}
+
 /** Authenticate before forwarding any payload to the privileged transactional boundary. */
 export async function executeFamilyRewardsAction(action, body, dependencies) {
   const parent = parentActions.has(action);
