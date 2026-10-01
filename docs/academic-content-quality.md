@@ -63,6 +63,8 @@ The validator does not independently reconstruct textbook ordering. The author m
 
 After meaningful verified learner evidence, update Student Academic State with the affected subject's coverage cursor, skill coverage status, and next sequential target before authoring the next package. Historical attempts remain evidence, but they do not automatically prove that every earlier book skill was covered.
 
+Keep school/book position separate from assessment coverage. Parent/school confirmation may establish the maximum currently eligible/taught scope, but it does not by itself mark earlier skills as MASTERED or assessment-covered. If Family Learning Hub has no evidence for an earlier eligible skill, that skill remains uncovered/unknown and should be included in the sequential coverage path rather than silently skipped.
+
 ## Assessment blueprint
 
 Every new package must include a machine-readable blueprint before the questions are published. Each blueprint row identifies:
