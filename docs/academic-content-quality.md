@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007 and complements, rather than replaces, docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the Drive Adaptive Assessment SOP.
+This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016, and complements, rather than replaces, docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the Drive Adaptive Assessment SOP.
 
 The gate is an authoring/QA control. It does not add a live AI dependency to a learner attempt.
 
@@ -92,6 +92,16 @@ Wrong options must carry a short distractor_rationale explaining why a learner c
 The deterministic gate cannot prove every semantic property of a distractor. It therefore combines machine checks with author responsibility: plausibility, age-appropriate language, source fidelity, and lack of grammatical/visual answer giveaways still require content review. The validator emits a warning when the correct option is unusually long compared with distractors.
 
 Ordering questions must not disclose the requested order through the input itself. For supported Arabic, Turkish, and English prompts, the guard first requires explicit ordering intent, then isolates the contiguous candidate-number list instead of treating unrelated contextual numerals as values to order. Numeric tokenization follows learner-language conventions so compact English comma-separated integer lists remain lists while Turkish comma decimals remain decimals. When the candidate list contains at least three parseable values, the authoring validator rejects `ORDERING_PROMPT_PRE_SORTED_INPUT` if the candidates are already nondecreasing for an ascending task or nonincreasing for a descending task. Descriptive statements such as a sequence merely being “in ascending order” do not trigger the guard. Shuffle the displayed candidate values before publication so the learner must actually perform the ordering skill. This rule applies equally to Learning, Exam, and Paper surfaces.
+
+## Wording clarity review
+
+Before publication, review the candidate package once as a batch for learner-facing clarity. The review question is deliberately simple: can a learner at the stated age/language level understand each item on a normal first reading, and does the wording measure the intended academic skill rather than accidental language complexity? Use current curriculum terminology, avoid unnecessary technical synonyms, and rewrite awkward phrasing before publication. This is one package-level authoring review, not a per-item manual workflow for the parent and not a live AI dependency in learner runtime.
+
+The deterministic validator supplements that semantic review by rejecting immediately repeated lexical words in learner-visible authored strings with `ADJACENT_DUPLICATE_WORD`. Unicode letters are checked across Arabic, Turkish, and English learner text; punctuation does not bypass the guard, while repeated numeric values and mathematical symbols remain valid data. For example, the Turkish wording `soldan sağa doğru doğru` is rejected, while a clear non-leaking formulation such as `Sayı doğrusunda +1, -1 ve 0 sayıları soldan sağa hangi sırada yer alır?` is acceptable to this guard.
+
+A deterministic wording guard cannot prove that every sentence is pedagogically natural. It is a low-cost defect catcher that works together with the curriculum terminology/question-clarity gate and the batch review above.
+
+If a wording defect is discovered only after learner exposure, classify the item as `ITEM_WORDING_DEFECT`. Do not use that response as evidence of weakness in the underlying academic concept. Preserve the historical attempt/version and remediate prospectively through the normal versioned assessment path rather than silently rewriting published history.
 
 ## Self-contained learner text and language
 
