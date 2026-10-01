@@ -117,7 +117,7 @@ const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').
 
 const ORDERING_DIRECTION_PATTERNS = {
   ascending: [
-    /\bküçükten\s+büyüğe(?:\s+doğru)?\b/iu,
+    /\b(?:en\s+)?küçükten\s+(?:en\s+)?büyüğe(?:\s+doğru)?\b/iu,
     /\bart(?:an|arak)\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
     /من\s+(?:الأصغر|الاصغر|الأقل|الاقل)\s+إلى\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)/u,
     /(?:ترتيب(?:ًا|ا)?\s+)?تصاعد(?:ي(?:ًا|ا)?|ياً|يا)/u,
@@ -125,7 +125,7 @@ const ORDERING_DIRECTION_PATTERNS = {
     /\b(?:ascending|increasing)\s+order\b/iu
   ],
   descending: [
-    /\bbüyükten\s+küçüğe(?:\s+doğru)?\b/iu,
+    /\b(?:en\s+)?büyükten\s+(?:en\s+)?küçüğe(?:\s+doğru)?\b/iu,
     /\bazalan\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
     /من\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)\s+إلى\s+(?:الأصغر|الاصغر|الأقل|الاقل)/u,
     /(?:ترتيب(?:ًا|ا)?\s+)?تنازل(?:ي(?:ًا|ا)?|ياً|يا)/u,
@@ -134,27 +134,77 @@ const ORDERING_DIRECTION_PATTERNS = {
   ]
 };
 
-function orderingDirection(value) {
+const ORDERING_INTENT_PATTERNS = {
+  tr: [
+    /\bsırala(?:yın|yınız)?\b/iu,
+    /\b(?:doğru\s+)?sıralama(?:sı)?\s+(?:hangisidir|nedir)\b/iu
+  ],
+  ar: [
+    /(?:^|[\s،,:؛])رت(?:ّ)?ب(?:\s|$)/u,
+    /(?:ما|أي|أيّ)\s+(?:هو\s+|هي\s+)?(?:ال)?ترتيب/u
+  ],
+  en: [
+    /\b(?:arrange|sort)\b/iu,
+    /\border\s+(?:the\s+)?(?:numbers?|values?|readings?|items?|data|temperatures?|fractions?|decimals?|integers?|them)\b/iu,
+    /\b(?:which|what)\s+(?:is\s+the\s+)?(?:correct\s+)?order\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\bin\s+(?:ascending|descending|increasing|decreasing)\s+order\b/iu
+  ]
+};
+
+const ORDERING_LIST_GAP_RE = /^[\s,،;؛]*(?:(?:(?:ve|and|ile|veya)\b|و)[\s,،;؛]*)?$/iu;
+
+function orderingIntent(value, language) {
   const normalized = caseFold(canonicalMath(value));
-  if (!normalized) return '';
+  const lang = text(language).toLocaleLowerCase('en-US');
+  const patterns = ORDERING_INTENT_PATTERNS[lang] || [];
+  return normalized && patterns.some(re => re.test(normalized));
+}
+
+function orderingDirection(value, language) {
+  const normalized = caseFold(canonicalMath(value));
+  if (!normalized || !orderingIntent(normalized, language)) return '';
   for (const [direction, patterns] of Object.entries(ORDERING_DIRECTION_PATTERNS)) {
     if (patterns.some(re => re.test(normalized))) return direction;
   }
   return '';
 }
 
-function numericValuesInPrompt(value) {
+function candidateOrderingValues(value) {
   const normalized = canonicalMath(value);
-  const matches = normalized.match(/[+\-]?\d+(?:[.,]\d+)?/gu) || [];
-  return matches
-    .map(raw => Number(raw.replace(',', '.')))
-    .filter(Number.isFinite);
+  const tokenRe = /[+\-]?\d+(?:[.,]\d+)?/gu;
+  const tokens = [...normalized.matchAll(tokenRe)]
+    .map(match => ({
+      value: Number(match[0].replace(',', '.')),
+      start: match.index ?? 0,
+      end: (match.index ?? 0) + match[0].length
+    }))
+    .filter(token => Number.isFinite(token.value));
+  if (tokens.length < 3) return [];
+
+  let best = [];
+  let current = [];
+  for (const token of tokens) {
+    if (!current.length) {
+      current = [token];
+      continue;
+    }
+    const previous = current[current.length - 1];
+    const gap = caseFold(normalized.slice(previous.end, token.start));
+    if (ORDERING_LIST_GAP_RE.test(gap)) {
+      current.push(token);
+    } else {
+      if (current.length > best.length) best = current;
+      current = [token];
+    }
+  }
+  if (current.length > best.length) best = current;
+  return best.length >= 3 ? best.map(token => token.value) : [];
 }
 
-function preSortedOrderingPrompt(value) {
-  const direction = orderingDirection(value);
+function preSortedOrderingPrompt(value, language) {
+  const direction = orderingDirection(value, language);
   if (!direction) return null;
-  const values = numericValuesInPrompt(value);
+  const values = candidateOrderingValues(value);
   if (values.length < 3) return null;
   const alreadyOrdered = values.every((current, index) => {
     if (index === 0) return true;
@@ -431,7 +481,7 @@ export function validateAcademicPackage(pkg) {
     if (!b) issue(errors, 'BLUEPRINT_MATCH_REQUIRED', p + '.question_code', 'No blueprint row exists for ' + (code || p) + '.');
     if (!SURFACES.has(q && q.delivery_surface)) issue(errors, 'INVALID_DELIVERY_SURFACE', p + '.delivery_surface', 'delivery_surface must be learning, exam, or paper.');
     if (!text(q && q.prompt)) issue(errors, 'PROMPT_REQUIRED', p + '.prompt', 'prompt is required.');
-    const orderingLeak = preSortedOrderingPrompt(q && q.prompt);
+    const orderingLeak = preSortedOrderingPrompt(q && q.prompt, q && q.prompt_language);
     if (orderingLeak) {
       issue(
         errors,
