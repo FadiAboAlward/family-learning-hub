@@ -57,6 +57,8 @@ Decision rules are intentionally simple. `ADVANCE` must move to an order strictl
 
 A concept in `MASTERED` state must not remain a primary target in ordinary progression. Reusing it as a primary target outside `REVIEW_DUE` requires `mastered_primary_target_justification`. Mastered content may still appear in a limited retrieval/transfer share without being a primary target.
 
+Every concept listed in `primary_target_concepts` must also appear in at least one blueprint row. A package cannot satisfy `REMEDIATE` or `BASELINE` by naming an unused weak/unknown concept while all actual questions assess something else.
+
 The validator does not independently reconstruct textbook ordering. The author must derive the ordering from the assigned Project Source/book map and record it through `ordered_scope_ref`, `cursor_order`, and `next_target_order`. This makes the choice inspectable while deterministically preventing a declared `ADVANCE` decision from remaining at or moving behind the current cursor.
 
 After meaningful verified learner evidence, update Student Academic State with the affected subject's coverage cursor, skill coverage status, and next sequential target before authoring the next package. Historical attempts remain evidence, but they do not automatically prove that every earlier book skill was covered.
