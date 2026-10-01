@@ -143,7 +143,12 @@ function adjacentDuplicateWord(value) {
     const current = words[i];
     const between = source.slice((previous.index ?? 0) + previous[0].length, current.index ?? 0);
     if (/[\p{L}\p{N}]/u.test(between)) continue;
-    if (/[+\-−–—×✕·÷⁄∕*/=≤≥<>^]/u.test(between)) continue;
+    const nonDashMathOperator = /[+×✕·÷⁄∕*/=≤≥<>^]/u.test(between);
+    const singleLetterDashOperands =
+      /[-−–—]/u.test(between) &&
+      [...previous[0]].length === 1 &&
+      [...current[0]].length === 1;
+    if (nonDashMathOperator || singleLetterDashOperands) continue;
     if (caseFold(previous[0]) === caseFold(current[0])) return current[0];
   }
   return '';
