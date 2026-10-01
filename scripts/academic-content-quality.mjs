@@ -134,6 +134,7 @@ const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(v
 
 const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
+/** Return an immediately repeated lexical token, excluding math-operator-separated repetitions such as x + x. */
 function adjacentDuplicateWord(value) {
   const source = text(value).normalize('NFKC');
   const words = [...source.matchAll(/\p{L}[\p{L}\p{M}]*(?:[’'][\p{L}\p{M}]+)*/gu)];
@@ -142,6 +143,7 @@ function adjacentDuplicateWord(value) {
     const current = words[i];
     const between = source.slice((previous.index ?? 0) + previous[0].length, current.index ?? 0);
     if (/[\p{L}\p{N}]/u.test(between)) continue;
+    if (/[+\-−–—×✕·÷⁄∕*/=≤≥<>^]/u.test(between)) continue;
     if (caseFold(previous[0]) === caseFold(current[0])) return current[0];
   }
   return '';
