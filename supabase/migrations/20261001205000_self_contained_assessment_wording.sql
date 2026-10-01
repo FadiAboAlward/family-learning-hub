@@ -1,5 +1,5 @@
--- FLH-FEAT-2026-014 v1.1
--- SPEC_REVISION_ID: ANLCKQmT8ZZ7ecsn9aCb6eIx4Gb0pGQaB_6xWpB_S77ZH6hhVIk5R0xnOgYUSB0M9yF6h0FrUfkDNWz0uZglmVTb5fWMsEwBK479VjmOewE
+-- FLH-FEAT-2026-014 v1.2
+-- SPEC_REVISION_ID: ANLCKQnB3xANbjoQtlg0QuQuJtRMP7bF30uNT0EakId7eeIWusj2SFPI6nRv_akeRK7uZM3y13xElUX9TNqPIVdjOTmFZxloMrh8NdXjOZA
 -- Forward-only remediation for learner-facing soft source references.
 -- Historical published quiz versions remain immutable; future starts select the
 -- corrected higher published version through the existing latest-version rule.
@@ -50,7 +50,7 @@ begin
       where workspace_id = v_workspace
         and quiz_id = v_quiz.id
         and settings->'self_contained_wording'->>'feature_id' = 'FLH-FEAT-2026-014'
-      and settings->'self_contained_wording'->>'spec_version' = '1.1'
+      and settings->'self_contained_wording'->>'spec_version' = '1.2'
     ) then
       continue;
     end if;
@@ -107,7 +107,7 @@ begin
         'self_contained_wording',
         jsonb_build_object(
           'feature_id', 'FLH-FEAT-2026-014',
-          'spec_version', '1.1',
+          'spec_version', '1.2',
           'source_version_id', v_source_version.id,
           'source_version_no', v_source_version.version_no
         )
