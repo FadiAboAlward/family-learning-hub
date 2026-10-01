@@ -64,7 +64,7 @@ The repository PR checklist must explicitly ask whether Math/RTL rendering is af
 
 ## Production verification
 
-For a math/RTL rendering change, after merge and GitHub Pages deployment, first verify the deployed build/assets through direct deployment or HTTP checks. The required GitHub Actions browser smoke remains the automated Playwright coverage for the invariant. Use Family Learning Hub Playwright on the live site only when a browser-rendered production check is still needed and no structured tool or existing automated evidence can prove it. If used, confirm representative math retains LTR order inside the RTL document, and do not modify a real learner attempt solely to perform this verification.
+For a math/RTL rendering change, after merge and GitHub Pages deployment, first verify the deployed build/assets through direct deployment or HTTP checks. The required GitHub Actions browser smoke remains the automated Playwright coverage for the invariant. Use an approved local interactive browser connector selected by required capability on the live site only when a browser-rendered production check is still needed and no structured tool or existing automated evidence can prove it. Connector display-name drift alone is not a blocker when another approved local connector exposes the required capabilities. If used, confirm representative math retains LTR order inside the RTL document, and do not modify a real learner attempt solely to perform this verification.
 
 ## GitHub enforcement
 
