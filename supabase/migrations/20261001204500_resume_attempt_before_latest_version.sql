@@ -1,5 +1,5 @@
--- FLH-FEAT-2026-014 v1.1
--- SPEC_REVISION_ID: ANLCKQmT8ZZ7ecsn9aCb6eIx4Gb0pGQaB_6xWpB_S77ZH6hhVIk5R0xnOgYUSB0M9yF6h0FrUfkDNWz0uZglmVTb5fWMsEwBK479VjmOewE
+-- FLH-FEAT-2026-014 v1.2
+-- SPEC_REVISION_ID: ANLCKQnB3xANbjoQtlg0QuQuJtRMP7bF30uNT0EakId7eeIWusj2SFPI6nRv_akeRK7uZM3y13xElUX9TNqPIVdjOTmFZxloMrh8NdXjOZA
 -- Preserve resume routing across immutable quiz-version publication.
 -- Routing precedence is: existing in-progress attempt, eligible explicit
 -- version-bound assignment, then highest published version for program access.
