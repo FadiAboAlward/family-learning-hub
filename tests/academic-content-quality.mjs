@@ -177,6 +177,16 @@ assert.ok(
 );
 
 
+const missingEnglishFollowingContext = read('valid-package.json');
+missingEnglishFollowingContext.questions[1].prompt_language = 'en';
+missingEnglishFollowingContext.questions[1].prompt = 'In the text below, what does “generous” mean?';
+const missingEnglishFollowingContextResult = validateAcademicPackage(missingEnglishFollowingContext);
+assert.ok(
+  missingEnglishFollowingContextResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+  'An English below/above/following marker must not pass unless the referenced excerpt is actually embedded.'
+);
+
+
 for (const [language, prompt] of [
   ['ar', 'بحسب الدرس، ما معنى كلمة «مُسبغ»؟'],
   ['tr', 'Derse göre “özveri” sözcüğü ne anlama gelir?'],
