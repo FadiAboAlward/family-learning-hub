@@ -33,9 +33,9 @@ Partial completion must be described accurately. For example, say "merged but no
 
 Use the fastest reliable structured tool for operational work. Prefer repository/GitHub operations, APIs, CLIs, MCPs/plugins/connectors, Supabase/backend tools, and GitHub Actions over interactive browser automation when they can perform or prove the same action directly.
 
-Automated Playwright inside GitHub Actions is a different layer from the dedicated **Family Learning Hub Playwright** MCP. The deterministic Playwright browser smoke remains required CI coverage and should continue to run automatically on pull requests.
+Automated Playwright inside GitHub Actions is a different layer from the approved local interactive browser connectors. The deterministic Playwright browser smoke remains required CI coverage and should continue to run automatically on pull requests.
 
-The dedicated Family Learning Hub Playwright MCP is a browser QA/fallback tool. Use it for browser-rendered or interaction-dependent verification, targeted live UI troubleshooting, or when no suitable structured API/MCP/plugin/CLI exists. Do not use it for routine repository edits, settings changes, deployment/status checks, data inspection, or CI operations when a direct structured tool is available. If Family Learning Hub truly requires live browser interaction, use the dedicated Family Learning Hub Playwright rather than Browserbase or a generic browser service.
+Live browser QA is capability-routed rather than bound to one connector display name. Use an approved local interactive browser connector for browser-rendered or interaction-dependent verification, targeted live UI troubleshooting, or when no suitable structured API/MCP/plugin/CLI exists. The current primary for full interaction is **Fadi Personal Playwright 2 Browsers**. **Fadi Personal Five Browsers** is also approved for brokered/pool-oriented and observability flows when its exposed capabilities are sufficient. If one approved connector is unavailable, use the other only when every required capability is present; connector-name drift alone is not a blocker. Do not use interactive browser automation for routine repository edits, settings changes, deployment/status checks, data inspection, or CI operations when a direct structured tool is available. If Family Learning Hub truly requires live browser interaction, use the approved local connector set rather than Browserbase or a generic browser service.
 
 Production verification should use the lowest-cost reliable evidence source: direct deployment/HTTP/API/database checks for non-visual facts, and browser verification only for claims that depend on actual rendering or user interaction.
 
@@ -190,7 +190,7 @@ For user-facing UI changes, the QA process should produce human-viewable Playwri
 - Do not commit transient QA screenshots or the `playwright-screenshots/` folder to repository history. Git history is permanent and is the wrong storage mechanism for temporary evidence.
 - Screenshot capture must never expose passwords, learner access codes, tokens, cookies, authorization headers, or other credentials.
 - PR/browser smoke screenshots should normally use mocked test data so evidence is reproducible and does not modify real learner data.
-- For a production verification that uses Family Learning Hub Playwright, capture only the minimum non-sensitive after-state needed to demonstrate the change. When an ephemeral GitHub artifact is available, link that artifact/run in the PR and user-facing completion report.
+- For a production verification that uses an approved local interactive browser connector, capture only the minimum non-sensitive after-state needed to demonstrate the change. When an ephemeral GitHub artifact is available, link that artifact/run in the PR and user-facing completion report.
 - If a change is backend-only or has no meaningful visual surface, screenshot evidence may be marked N/A with a short reason.
 
 ## Merge rule
@@ -264,7 +264,7 @@ For a database migration, record:
 
 ## Production verification
 
-Repository success and production success are separate states. Choose the fastest reliable verification layer for the production fact being checked. Use deployment status, HTTP/assets, APIs, Supabase/database inspection, or other structured tools first for non-visual facts. Use Family Learning Hub Playwright only when the production claim depends on actual browser rendering/interaction or when structured checks cannot prove it.
+Repository success and production success are separate states. Choose the fastest reliable verification layer for the production fact being checked. Use deployment status, HTTP/assets, APIs, Supabase/database inspection, or other structured tools first for non-visual facts. Use an approved local interactive browser connector selected by required capability only when the production claim depends on actual browser rendering/interaction or when structured checks cannot prove it.
 
 After merge, verify whichever production systems the change touches. Examples:
 
