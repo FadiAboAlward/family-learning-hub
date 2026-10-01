@@ -10,7 +10,8 @@ const installStart = source.indexOf('async function installDashboard()');
 const installEnd = source.indexOf('function shellPage', installStart);
 assert.ok(installStart >= 0 && installEnd > installStart, 'installDashboard source should be discoverable');
 const installSource = source.slice(installStart, installEnd);
-assert.match(installSource, /await prefetchDashboardSummary\(\)/, 'dashboard render should reuse the prefetched activity summary');
+assert.match(installSource, /const summaryRequest=prefetchDashboardSummary\(\);const d=await summaryRequest/, 'dashboard render should reuse the prefetched activity summary');
+assert.match(installSource, /summaryPromise===summaryRequest/, 'dashboard render should expire the consumed summary so later visits refresh');
 assert.doesNotMatch(installSource, /call\(ACTIVITY,'parent_session_summary'/, 'dashboard render must not start a second summary request directly');
 
 const routeStart = source.indexOf('function route()');
