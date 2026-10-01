@@ -176,6 +176,31 @@ assert.ok(
   'A source locator that explicitly points to embedded text below must remain valid.'
 );
 
+
+for (const [language, prompt] of [
+  ['ar', 'بحسب الدرس، ما معنى كلمة «مُسبغ»؟'],
+  ['tr', 'Derse göre “özveri” sözcüğü ne anlama gelir?'],
+  ['en', 'According to the lesson, what does “generous” mean?']
+]) {
+  const accordingToSource = read('valid-package.json');
+  accordingToSource.questions[1].prompt_language = language;
+  accordingToSource.questions[1].prompt = prompt;
+  const accordingToSourceResult = validateAcademicPackage(accordingToSource);
+  assert.ok(
+    accordingToSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'According-to-source wording must be rejected: ' + prompt
+  );
+}
+
+const embeddedArabicLabel = read('valid-package.json');
+embeddedArabicLabel.questions[1].prompt_language = 'ar';
+embeddedArabicLabel.questions[1].prompt = 'في النص: «شارك سام طعامه مع طالب جديد». ما القيمة التي أظهرها سام؟';
+const embeddedArabicLabelResult = validateAcademicPackage(embeddedArabicLabel);
+assert.ok(
+  !embeddedArabicLabelResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'An Arabic source label followed immediately by the embedded quotation must remain valid.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
