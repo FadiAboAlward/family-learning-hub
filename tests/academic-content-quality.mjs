@@ -333,6 +333,17 @@ assert.ok(
   'Punctuation must not bypass adjacent duplicate-word detection.'
 );
 
+for (const separator of ['-', '–', '—']) {
+  const dashDuplicatePrompt = read('valid-package.json');
+  dashDuplicatePrompt.questions[1].prompt_language = 'en';
+  dashDuplicatePrompt.questions[1].prompt = 'Choose the best' + separator + 'best answer.';
+  const dashDuplicatePromptResult = validateAcademicPackage(dashDuplicatePrompt);
+  assert.ok(
+    dashDuplicatePromptResult.errors.some(x => x.code === 'ADJACENT_DUPLICATE_WORD'),
+    'Dash-separated repeated prose must be rejected: ' + separator
+  );
+}
+
 const duplicateOptionText = read('valid-package.json');
 duplicateOptionText.questions[1].options[1].content = 'yanlış yanlış';
 const duplicateOptionTextResult = validateAcademicPackage(duplicateOptionText);
@@ -360,6 +371,8 @@ assert.ok(
 
 for (const prompt of [
   'x + x = 2x. Which expression is equivalent?',
+  'x × x = x². Which expression is equivalent?',
+  'x - x = 0. Which expression is equivalent?',
   'a = a is always true. Which statement describes this?',
   'س + س = ٢س. ما التعبير المكافئ؟'
 ]) {
