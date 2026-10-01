@@ -312,7 +312,7 @@ async function probeInteractive(width,height){
     assert.equal(hintHeading.dir,'rtl');
     assert.equal(hint.dir,'ltr');
     assert.equal(hint.lang,'tr');
-    assert.match(hint.text,/Tam sayılarda/);
+    assert.match(hint.text,/saat dilimini/);
 
     assert.equal(
       await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),
