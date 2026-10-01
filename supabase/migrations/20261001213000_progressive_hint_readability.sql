@@ -218,7 +218,7 @@ begin
       v_old_question.source_page_end,
       coalesce(v_old_question.source_metadata, '{}'::jsonb) || jsonb_build_object(
         'hint_readability_feature', 'FLH-FEAT-2026-015',
-        'remediated_from_question_code', v_old_question.question_code
+        'hint_readability_from_question_code', v_old_question.question_code
       ),
       v_old_question.points,
       v_old_question.question_family_id,
