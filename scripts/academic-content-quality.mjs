@@ -280,8 +280,8 @@ export function validateAcademicPackage(pkg) {
         }
       }
 
-      if (decision === 'ADVANCE' && Number.isInteger(coverage.cursor_order) && Number.isInteger(coverage.next_target_order) && coverage.next_target_order <= coverage.cursor_order) {
-        issue(errors, 'COVERAGE_ADVANCE_NOT_FORWARD', cp + '.next_target_order', 'ADVANCE requires next_target_order to be strictly greater than cursor_order.');
+      if (decision === 'ADVANCE' && Number.isInteger(coverage.cursor_order) && Number.isInteger(coverage.next_target_order) && coverage.next_target_order !== coverage.cursor_order + 1) {
+        issue(errors, 'COVERAGE_ADVANCE_NOT_SEQUENTIAL', cp + '.next_target_order', 'ADVANCE must move to the immediately next assessable skill/subskill: next_target_order must equal cursor_order + 1.');
       }
       if (decision === 'REMEDIATE') {
         if (Number.isInteger(coverage.cursor_order) && Number.isInteger(coverage.next_target_order) && coverage.next_target_order !== coverage.cursor_order) {
