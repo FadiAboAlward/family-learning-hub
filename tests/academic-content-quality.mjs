@@ -205,6 +205,15 @@ assert.ok(
 );
 
 
+const embeddedEnglishImmediate = read('valid-package.json');
+embeddedEnglishImmediate.questions[1].prompt_language = 'en';
+embeddedEnglishImmediate.questions[1].prompt = 'In the text: “Sam shares his lunch with a new student.” Which value does Sam show?';
+const embeddedEnglishImmediateResult = validateAcademicPackage(embeddedEnglishImmediate);
+assert.ok(
+  !embeddedEnglishImmediateResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'An English source label followed immediately by embedded quoted text must remain valid.'
+);
+
 const missingEnglishFollowingContext = read('valid-package.json');
 missingEnglishFollowingContext.questions[1].prompt_language = 'en';
 missingEnglishFollowingContext.questions[1].prompt = 'In the text below, what does “generous” mean?';
