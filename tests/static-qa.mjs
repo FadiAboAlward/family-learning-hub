@@ -154,6 +154,7 @@ if(!learning.includes('class="flh-hint-content" ${hintAttrs(currentHint,q)}'))fa
 if(learning.includes('class="flh-hint-card" ${hintAttrs(currentHint,q)}'))fail('Arabic hint chrome must not inherit the authored hint language boundary.');
 if(!learning.includes('hintContentHtml')||!learning.includes('flh-hint-list'))fail('Learning must render canonical hint bullets as a semantic list.');
 if(!learning.includes('row.hint_unavailable_local=true')||!learning.includes('flh-hint-notice'))fail('Learning must show missing/exhausted hint availability outside the numbered hint card.');
+if(!learning.includes("if(!d.finalized){")||!learning.includes("if(d.hint){")||!learning.includes("}else{\n            row.hint_unavailable_local=true;"))fail('Learning answer submissions with no next authored hint must preserve the last hint and enter the unavailable state.');
 if(learning.includes('وصلت لآخر مستوى من التلميحات'))fail('Learning must not synthesize a fake numbered Hint 4 when authored content is missing.');
 if(learning.includes("content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'"))fail('Learning transport errors must not replace authored hint content with a synthetic numbered hint.');
 if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
