@@ -171,6 +171,21 @@ for (const prompt of [
   );
 }
 
+for (const prompt of [
+  'ما معنى كلمة «البَيْن» في درس «يا شام»؟',
+  'ما الفكرة العامة في نص «التعاون»؟',
+  'ما الصورة الأوضح في قصيدة «يا شام»؟'
+]) {
+  const bareArabicSource = read('valid-package.json');
+  bareArabicSource.questions[1].prompt_language = 'ar';
+  bareArabicSource.questions[1].prompt = prompt;
+  const bareArabicSourceResult = validateAcademicPackage(bareArabicSource);
+  assert.ok(
+    bareArabicSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Bare Arabic lesson/text/poem locators must be rejected unless the needed excerpt is embedded: ' + prompt
+  );
+}
+
 const embeddedNamedSourceQuote = read('valid-package.json');
 embeddedNamedSourceQuote.questions[1].prompt_language = 'ar';
 embeddedNamedSourceQuote.questions[1].prompt = 'قال الشاعر في نص «التعاون»: «أنا ما خُلِقتُ كي أعيشَ بمفردي». ما الفكرة التي يدلّ عليها هذا المعنى؟';
