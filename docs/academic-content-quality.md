@@ -91,6 +91,8 @@ Wrong options must carry a short distractor_rationale explaining why a learner c
 
 The deterministic gate cannot prove every semantic property of a distractor. It therefore combines machine checks with author responsibility: plausibility, age-appropriate language, source fidelity, and lack of grammatical/visual answer giveaways still require content review. The validator emits a warning when the correct option is unusually long compared with distractors.
 
+Ordering questions must not disclose the requested order through the input itself. For supported Arabic, Turkish, and English prompts that explicitly ask for ascending or descending numeric order and contain at least three parseable values, the authoring validator rejects `ORDERING_PROMPT_PRE_SORTED_INPUT` when those values are already nondecreasing for an ascending task or nonincreasing for a descending task. Shuffle the displayed values before publication so the learner must actually perform the ordering skill. This rule applies equally to Learning, Exam, and Paper surfaces.
+
 ## Self-contained learner text and language
 
 Every newly authored question must declare `prompt_language` using a supported learner language code. The current supported set is `ar`, `tr`, and `en`.
