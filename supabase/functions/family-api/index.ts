@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
 import { canManageLearningRole } from "../_shared/parent-authorization.mjs";
+import { executeFamilyRewardsAction, isFamilyRewardsAction, publicRewardsError, rewardsErrorStatus } from "../_shared/family-rewards.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -193,9 +194,19 @@ Deno.serve(async (req: Request) => {
 
   const trace = createBackendPerformanceTrace({ region: Deno.env.get("SB_REGION") || "unknown" });
   let telemetryAction = false;
+  let rewardsAction = false;
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
+    rewardsAction = isFamilyRewardsAction(action);
+    if (rewardsAction) {
+      return json(await executeFamilyRewardsAction(action, body, {
+        workspaceId: WORKSPACE_ID,
+        parentIdentity: () => parentUser(req),
+        learnerIdentity: () => verifyLearnerSession(req),
+        rpc: (name: string, parameters: any) => admin.rpc(name, parameters),
+      }), 200, origin);
+    }
     telemetryAction = new Set(["learner_choices", "student_login", "student_profile"]).has(action);
     if (telemetryAction) trace.setAction(action);
 
@@ -298,6 +309,10 @@ Deno.serve(async (req: Request) => {
     return json({ error: "UNKNOWN_ACTION" }, 400, origin);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "SERVER_ERROR";
+    if (rewardsAction) {
+      const code = publicRewardsError({ message: msg });
+      return json({ error: code }, rewardsErrorStatus(code), origin);
+    }
     const status = msg === "TOO_MANY_LOGIN_ATTEMPTS" ? 429
       : ["AUTH_REQUIRED", "INVALID_SESSION", "SESSION_EXPIRED", "INVALID_PARENT_SESSION"].includes(msg) ? 401
       : msg === "NOT_A_PARENT_MEMBER" ? 403

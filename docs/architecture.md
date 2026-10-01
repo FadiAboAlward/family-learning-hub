@@ -106,6 +106,22 @@ The `test` learner is a preview account. It may mirror real program/assignment a
 8. **Server-authoritative results:** XP, scores, mastery, and exam results must not trust browser-calculated correctness.
 9. **No learner-specific UI constants:** learner names, programs, and available quizzes come from APIs/data.
 
+## Family rewards and habits
+
+`FLH-FEAT-2026-010`, version `1.0`, implements the [frozen Feature Spec](https://docs.google.com/document/d/1lv1RpixgOiSv2JExkXN5IFyNWTt5adLlwkLYNnEwtfc/edit), Drive revision `3`, handed off in [Issue #99](https://github.com/FadiAboAlward/family-learning-hub/issues/99).
+
+XP remains academic-only. Academic earnings and parent-approved family behavior feed the existing `learner_gamification_state.reward_points` balance and `gamification_events` ledger. There is no second wallet. New family events always have zero `xp_delta`; the academic Learning and Exam award paths remain responsible for academic progression.
+
+Parents who are workspace owners/admins manage `behavior_categories`, `behavior_rules`, `behavior_rule_learners`, `behavior_submissions`, existing `gamification_rewards`/`reward_claims`, and `reward_learner_scopes`. Composite foreign keys keep every learner/category/rule/reward relationship within its workspace. Editable default categories do not impose behaviors or values on a family. An all-learner scope includes real active learners; explicit selected scope can include the isolated `test` learner for QA. Normal parent summaries exclude test activity.
+
+The `family-api` verifies the parent JWT or learner session before calling the service-role-only `flh_family_rewards_command` RPC. Reward management requires owner/admin, which is stricter than the teacher-capable learning-management role. Learner identity and workspace come from the verified session; client identities and calculated point totals are discarded. The RPC also verifies parent membership, learner activity, scope and input constraints. Browser code cannot directly modify balances, ledger or claim transitions through authenticated table grants.
+
+Financial commands serialize on the same learner row used by academic completion. Behavior approval applies the current active rule, enforces its UTC approval-day/week award limit, snapshots base points and initiative bonus separately, and appends one event. Client occurrence dates cannot bypass cadence. A self-report always remains pending and awards zero points until a parent approves it, including when the rule's stored approval-policy flag is false (AC-06).
+
+Reward requests and approval check current availability, learner scope, level, supported criteria, redemption limit and balance on the server. Approval spends points once within the transaction; rejection spends nothing, and marking delivery as redeemed never spends again. Idempotency keys, serialized transitions and unique ledger sources protect retries. Reasoned manual adjustments/refunds append compensating events; family ledger rows cannot be rewritten or deleted. See `docs/gamification-and-rewards.md` for the fields, endpoints and QA contract.
+
+The parent rewards page presents balances, category/source drill-down, pending reviews, configuration and reward history. The learner rewards page presents only that learner's balance, goals, point reasons and pending items. Both pages use the existing Arabic RTL shell and expose loading, empty, permission, validation and server-error states. There is no sibling leaderboard.
+
 ## Parent reporting
 
 Parent reporting should distinguish:
