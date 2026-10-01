@@ -128,7 +128,7 @@ const academicTests=read('tests/academic-content-quality.mjs');
 const agents=read('AGENTS.md');
 
 for(const phrase of ['Student Academic State','runtime_external_dependencies','nudge','near_solution','Brisk Teaching','Snorkl','prompt_language','self-contained'])if(!academicContract.includes(phrase))fail(`Academic quality contract missing protected rule: ${phrase}`);
-for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN','PROMPT_LANGUAGE_REQUIRED','LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
+for(const code of ['EVIDENCE_REFS_REQUIRED','DUPLICATE_REASONING_SIGNATURE','DISTRACTOR_RATIONALE_REQUIRED','FOUR_HINT_LEVELS_REQUIRED','HINT_MIN_WORDS','HINT_BULLET_STRUCTURE','HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN','EXTERNAL_RUNTIME_DEPENDENCY_FORBIDDEN','PROMPT_LANGUAGE_REQUIRED','LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY'])if(!academicValidator.includes(code))fail(`Academic package validator missing rule: ${code}`);
 for(const code of ['HINT_ANSWER_LEAK','NON_LEARNING_HINTS_FORBIDDEN'])if(!academicTests.includes(code))fail(`Academic content regression missing: ${code}`);
 if(!agents.includes('docs/academic-content-quality.md'))fail('AGENTS.md must pin the academic content quality contract.');
 
@@ -152,7 +152,10 @@ if(!css.includes(':is(.answers,.answer-grid).answer-layout-v8'))fail('CSS must c
 if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fail('Learning and Exam prompts/options must use prompt_language for explicit content direction.');
 if(!learning.includes('class="flh-hint-content" ${hintAttrs(currentHint,q)}'))fail('Learning authored hint content must use the hint language with question-language fallback.');
 if(learning.includes('class="flh-hint-card" ${hintAttrs(currentHint,q)}'))fail('Arabic hint chrome must not inherit the authored hint language boundary.');
-if(!learning.includes("language:'ar',content:'وصلت لآخر مستوى من التلميحات")||!learning.includes("language:'ar',content:'تعذر تحميل التلميح الآن"))fail('Synthesized Arabic Learning hints must declare Arabic language metadata.');
+if(!learning.includes('hintContentHtml')||!learning.includes('flh-hint-list'))fail('Learning must render canonical hint bullets as a semantic list.');
+if(!learning.includes('row.hint_unavailable_local=true')||!learning.includes('flh-hint-notice'))fail('Learning must show missing/exhausted hint availability outside the numbered hint card.');
+if(learning.includes('وصلت لآخر مستوى من التلميحات'))fail('Learning must not synthesize a fake numbered Hint 4 when authored content is missing.');
+if(learning.includes("content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'"))fail('Learning transport errors must not replace authored hint content with a synthetic numbered hint.');
 if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
 if(!exam.includes('<li dir="auto">'))fail('Exam review explanation steps must isolate their own prose direction.');
 if(!history.includes('contentAttrs(x.prompt_language)'))fail('Attempt history prompt/answer review must use prompt_language direction.');
