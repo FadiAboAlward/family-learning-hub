@@ -153,6 +153,7 @@ if(!learning.includes('questionAttrs(q)')||!exam.includes('questionAttrs(q)'))fa
 if(!learning.includes('class="flh-hint-content" ${hintAttrs(currentHint,q)}'))fail('Learning authored hint content must use the hint language with question-language fallback.');
 if(learning.includes('class="flh-hint-card" ${hintAttrs(currentHint,q)}'))fail('Arabic hint chrome must not inherit the authored hint language boundary.');
 if(!learning.includes('hintContentHtml')||!learning.includes('flh-hint-list'))fail('Learning must render canonical hint bullets as a semantic list.');
+if(!learning.includes("lines.map(x=>`<li>${renderMath(x.replace(/^•\\s+/u,''))}</li>`")||!learning.includes(':renderMath(s);'))fail('Learning hint list/fallback rendering must keep every authored hint segment behind renderMath.');
 if(!learning.includes('row.hint_unavailable_local=true')||!learning.includes('flh-hint-notice'))fail('Learning must show missing/exhausted hint availability outside the numbered hint card.');
 if(!learning.includes("if(!d.finalized){")||!learning.includes("if(d.hint){")||!learning.includes("}else{\n            row.hint_unavailable_local=true;"))fail('Learning answer submissions with no next authored hint must preserve the last hint and enter the unavailable state.');
 if(learning.includes('وصلت لآخر مستوى من التلميحات'))fail('Learning must not synthesize a fake numbered Hint 4 when authored content is missing.');
@@ -189,7 +190,7 @@ if(!mathDirectionCss.includes('input[inputmode="numeric"]')||!mathDirectionCss.i
 
 const protectedSurfaces={
   'learning-launcher-v2.js':[
-    'renderMath(q.prompt)','renderMath(o.content)','renderMath(currentHint.content)','renderMath(d.explanation)',"renderMath(r.prompt||'')",'renderMath(r.explanation)'
+    'renderMath(q.prompt)','renderMath(o.content)','hintContentHtml(currentHint.content)','renderMath(d.explanation)',"renderMath(r.prompt||'')",'renderMath(r.explanation)'
   ],
   'program-exam-v3.js':[
     'renderMath(q.prompt)','renderMath(o.content)',"renderMath(r.prompt||'')","renderMath(selected||String(r.response?.option_position||''))","renderMath(correct||String(r.correct_answer?.option_position||''))",'steps.map(s=>`<li dir="auto">${renderMath(s)}</li>`)'
