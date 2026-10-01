@@ -102,6 +102,47 @@ assert.ok(
   'A self-contained Arabic word problem may mention a book as the problem object.'
 );
 
+
+for (const [language, prompt] of [
+  ['ar', 'في مفردات درس «عَلَمُ بلادي»، ما معنى كلمة «مُسبِغ»؟'],
+  ['tr', 'Derste geçen “özveri” sözcüğü ne anlama gelir?'],
+  ['en', 'As mentioned in the lesson, what does “generous” mean?']
+]) {
+  const softSourcePrompt = read('valid-package.json');
+  softSourcePrompt.questions[1].prompt_language = language;
+  softSourcePrompt.questions[1].prompt = prompt;
+  const softSourcePromptResult = validateAcademicPackage(softSourcePrompt);
+  assert.ok(
+    softSourcePromptResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Soft source-location wording must be rejected: ' + prompt
+  );
+}
+
+const softSourceHint = read('valid-package.json');
+softSourceHint.questions[0].hints[0].content = 'Metinde geçen ifadeyi hatırla.';
+const softSourceHintResult = validateAcademicPackage(softSourceHint);
+assert.ok(
+  softSourceHintResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.includes('.hints[0].content')),
+  'Soft source references must be rejected inside Learning hints.'
+);
+
+const softSourceFeedback = read('valid-package.json');
+softSourceFeedback.questions[1].explanation = 'The answer is the meaning used in the lesson.';
+const softSourceFeedbackResult = validateAcademicPackage(softSourceFeedback);
+assert.ok(
+  softSourceFeedbackResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.endsWith('.explanation')),
+  'Soft source references must be rejected inside learner-facing feedback.'
+);
+
+const embeddedArabicContext = read('valid-package.json');
+embeddedArabicContext.questions[1].prompt_language = 'ar';
+embeddedArabicContext.questions[1].prompt = 'ورد في البيت: «عَلَمي يا مُسبغَ الحبِّ على الأرضِ وشاحًا». ما معنى «مُسبغ»؟';
+const embeddedArabicContextResult = validateAcademicPackage(embeddedArabicContext);
+assert.ok(
+  !embeddedArabicContextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A book-derived question that embeds the needed excerpt directly must remain valid.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';
