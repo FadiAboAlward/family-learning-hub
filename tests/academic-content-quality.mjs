@@ -102,6 +102,170 @@ assert.ok(
   'A self-contained Arabic word problem may mention a book as the problem object.'
 );
 
+
+for (const [language, prompt] of [
+  ['ar', 'في مفردات درس «عَلَمُ بلادي»، ما معنى كلمة «مُسبِغ»؟'],
+  ['tr', 'Derste geçen “özveri” sözcüğü ne anlama gelir?'],
+  ['en', 'As mentioned in the lesson, what does “generous” mean?']
+]) {
+  const softSourcePrompt = read('valid-package.json');
+  softSourcePrompt.questions[1].prompt_language = language;
+  softSourcePrompt.questions[1].prompt = prompt;
+  const softSourcePromptResult = validateAcademicPackage(softSourcePrompt);
+  assert.ok(
+    softSourcePromptResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Soft source-location wording must be rejected: ' + prompt
+  );
+}
+
+const softSourceHint = read('valid-package.json');
+softSourceHint.questions[0].hints[0].content = 'Metinde geçen ifadeyi hatırla.';
+const softSourceHintResult = validateAcademicPackage(softSourceHint);
+assert.ok(
+  softSourceHintResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.includes('.hints[0].content')),
+  'Soft source references must be rejected inside Learning hints.'
+);
+
+for (const hintText of [
+  'استعمل الطريقة التي يذكرها الدرس للكشف عن أصل ألف الفعل الثلاثي.',
+  'استخدم إحدى طريقتي الدرس للكشف عن أصل ألف الفعل الثلاثي: صوغ المضارع أو إسناد الفعل إلى تاء متحركة.'
+]) {
+  const lessonMethodHint = read('valid-package.json');
+  lessonMethodHint.questions[0].hints[0].content = hintText;
+  const lessonMethodHintResult = validateAcademicPackage(lessonMethodHint);
+  assert.ok(
+    lessonMethodHintResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.includes('.hints[0].content')),
+    'Method hints must embed the rule instead of referring to an unseen lesson: ' + hintText
+  );
+}
+
+const softSourceFeedback = read('valid-package.json');
+softSourceFeedback.questions[1].explanation = 'The answer is the meaning used in the lesson.';
+const softSourceFeedbackResult = validateAcademicPackage(softSourceFeedback);
+assert.ok(
+  softSourceFeedbackResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE' && x.path.endsWith('.explanation')),
+  'Soft source references must be rejected inside learner-facing feedback.'
+);
+
+const embeddedArabicContext = read('valid-package.json');
+embeddedArabicContext.questions[1].prompt_language = 'ar';
+embeddedArabicContext.questions[1].prompt = 'ورد في البيت: «عَلَمي يا مُسبغَ الحبِّ على الأرضِ وشاحًا». ما معنى «مُسبغ»؟';
+const embeddedArabicContextResult = validateAcademicPackage(embeddedArabicContext);
+assert.ok(
+  !embeddedArabicContextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A book-derived question that embeds the needed excerpt directly must remain valid.'
+);
+
+
+for (const prompt of [
+  'ما الفكرة الأقرب إلى المعنى العام لقصيدة «يا شام»؟',
+  'في أسئلة الاستيعاب لنص «التعاون»، ما الفكرة العامة التي يوجّه إليها النص؟'
+]) {
+  const unseenNamedSource = read('valid-package.json');
+  unseenNamedSource.questions[1].prompt_language = 'ar';
+  unseenNamedSource.questions[1].prompt = prompt;
+  const unseenNamedSourceResult = validateAcademicPackage(unseenNamedSource);
+  assert.ok(
+    unseenNamedSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Named unseen source summaries must be rejected: ' + prompt
+  );
+}
+
+for (const prompt of [
+  'ما معنى كلمة «البَيْن» في درس «يا شام»؟',
+  'ما الفكرة العامة في نص «التعاون»؟',
+  'ما الصورة الأوضح في قصيدة «يا شام»؟'
+]) {
+  const bareArabicSource = read('valid-package.json');
+  bareArabicSource.questions[1].prompt_language = 'ar';
+  bareArabicSource.questions[1].prompt = prompt;
+  const bareArabicSourceResult = validateAcademicPackage(bareArabicSource);
+  assert.ok(
+    bareArabicSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'Bare Arabic lesson/text/poem locators must be rejected unless the needed excerpt is embedded: ' + prompt
+  );
+}
+
+const embeddedNamedSourceQuote = read('valid-package.json');
+embeddedNamedSourceQuote.questions[1].prompt_language = 'ar';
+embeddedNamedSourceQuote.questions[1].prompt = 'قال الشاعر في نص «التعاون»: «أنا ما خُلِقتُ كي أعيشَ بمفردي». ما الفكرة التي يدلّ عليها هذا المعنى؟';
+const embeddedNamedSourceQuoteResult = validateAcademicPackage(embeddedNamedSourceQuote);
+assert.ok(
+  !embeddedNamedSourceQuoteResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'Naming a source remains valid when the needed excerpt is embedded directly in the prompt.'
+);
+
+const embeddedEnglishText = read('valid-package.json');
+embeddedEnglishText.questions[1].prompt_language = 'en';
+embeddedEnglishText.questions[1].prompt = 'In the text below, “Sam shares his lunch with a new student.” Which value does Sam show?';
+const embeddedEnglishTextResult = validateAcademicPackage(embeddedEnglishText);
+assert.ok(
+  !embeddedEnglishTextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A source locator that explicitly points to embedded text below must remain valid.'
+);
+
+
+const embeddedEnglishImmediate = read('valid-package.json');
+embeddedEnglishImmediate.questions[1].prompt_language = 'en';
+embeddedEnglishImmediate.questions[1].prompt = 'In the text: “Sam shares his lunch with a new student.” Which value does Sam show?';
+const embeddedEnglishImmediateResult = validateAcademicPackage(embeddedEnglishImmediate);
+assert.ok(
+  !embeddedEnglishImmediateResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'An English source label followed immediately by embedded quoted text must remain valid.'
+);
+
+const missingEnglishFollowingContext = read('valid-package.json');
+missingEnglishFollowingContext.questions[1].prompt_language = 'en';
+missingEnglishFollowingContext.questions[1].prompt = 'In the text below, what does “generous” mean?';
+const missingEnglishFollowingContextResult = validateAcademicPackage(missingEnglishFollowingContext);
+assert.ok(
+  missingEnglishFollowingContextResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+  'An English below/above/following marker must not pass unless the referenced excerpt is actually embedded.'
+);
+
+
+for (const [language, prompt] of [
+  ['ar', 'بحسب الدرس، ما معنى كلمة «مُسبغ»؟'],
+  ['tr', 'Derse göre “özveri” sözcüğü ne anlama gelir?'],
+  ['en', 'According to the lesson, what does “generous” mean?']
+]) {
+  const accordingToSource = read('valid-package.json');
+  accordingToSource.questions[1].prompt_language = language;
+  accordingToSource.questions[1].prompt = prompt;
+  const accordingToSourceResult = validateAcademicPackage(accordingToSource);
+  assert.ok(
+    accordingToSourceResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+    'According-to-source wording must be rejected: ' + prompt
+  );
+}
+
+const embeddedArabicLabel = read('valid-package.json');
+embeddedArabicLabel.questions[1].prompt_language = 'ar';
+embeddedArabicLabel.questions[1].prompt = 'في النص: «شارك سام طعامه مع طالب جديد». ما القيمة التي أظهرها سام؟';
+const embeddedArabicLabelResult = validateAcademicPackage(embeddedArabicLabel);
+assert.ok(
+  !embeddedArabicLabelResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'An Arabic source label followed immediately by the embedded quotation must remain valid.'
+);
+
+const missingArabicFollowingContext = read('valid-package.json');
+missingArabicFollowingContext.questions[1].prompt_language = 'ar';
+missingArabicFollowingContext.questions[1].prompt = 'في النص التالي، ما معنى كلمة «مُسبغ»؟';
+const missingArabicFollowingContextResult = validateAcademicPackage(missingArabicFollowingContext);
+assert.ok(
+  missingArabicFollowingContextResult.errors.some(x => x.code === 'SOFT_SOURCE_REFERENCE'),
+  'A following-text marker must not pass unless the referenced excerpt is actually embedded.'
+);
+
+const embeddedArabicFollowingContext = read('valid-package.json');
+embeddedArabicFollowingContext.questions[1].prompt_language = 'ar';
+embeddedArabicFollowingContext.questions[1].prompt = 'في النص التالي: «شارك سام طعامه مع طالب جديد». ما القيمة التي أظهرها سام؟';
+const embeddedArabicFollowingContextResult = validateAcademicPackage(embeddedArabicFollowingContext);
+assert.ok(
+  !embeddedArabicFollowingContextResult.errors.some(x => ['EXTERNAL_SOURCE_DEPENDENCY', 'SOFT_SOURCE_REFERENCE'].includes(x.code)),
+  'A following-text marker with an actual embedded quotation must remain valid.'
+);
+
 const entityArtifact = read('valid-package.json');
 entityArtifact.questions[1].prompt_language = 'tr';
 entityArtifact.questions[1].prompt = 'B şehri UTC-4&#39;tür.';

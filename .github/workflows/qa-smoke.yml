@@ -100,6 +100,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-start-rpc.contract.sql
       - name: Verify Learning start concurrency and idempotency
         run: node tests/learning-start-rpc.concurrency.mjs
+      - name: Verify cross-version attempt resume
+        run: npx --yes supabase@2.117.0 db query --local --file tests/versioned-attempt-resume.contract.sql
       - name: Verify Learning finish RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-finish-rpc.contract.sql
       - name: Verify Learning finish concurrency and idempotency
