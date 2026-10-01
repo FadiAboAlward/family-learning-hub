@@ -39,7 +39,7 @@ const SOFT_SOURCE_REFERENCE_PATTERNS = [
   /\b(?:derse|metne|şiire)\s+göre\b/iu,
   /\b(?:as\s+(?:used|stated|mentioned|defined)\s+in|from)\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
   /\baccording\s+to\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
-  /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!\s+(?:below|above|following))/iu
+  /\bin\s+(?:the\s+)?(?:lesson|text|poem)\b(?!(?:\s+(?:below|above|following)\s*[,;:]?\s*(?:\"[^\"]{3,}\"|“[^”]{3,}”|'[^']{3,}')))/iu
 ];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
