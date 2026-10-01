@@ -207,9 +207,15 @@ const policyPath='docs/math-rendering-invariant.md';
 if(!fs.existsSync(path.join(ROOT,policyPath)))fail(`${policyPath} is required.`);
 else{
   const policy=read(policyPath);
-  for(const phrase of ['every learner','Stored question/answer data is canonical','synthetic DOM probe','Family Learning Hub Playwright','Protect main','Static quality','Browser smoke']){
+  for(const phrase of ['every learner','Stored question/answer data is canonical','synthetic DOM probe','approved local interactive browser connector','required capability','Protect main','Static quality','Browser smoke']){
     if(!policy.includes(phrase))fail(`Math rendering policy lost required principle: ${phrase}`);
   }
+  if(policy.includes('Family Learning Hub Playwright'))fail('Math rendering policy still hard-codes the retired live browser connector name.');
+}
+
+for(const policyFile of ['AGENTS.md','docs/qa-policy.md','.coderabbit.yaml']){
+  const policyText=read(policyFile);
+  if(policyText.includes('Family Learning Hub Playwright'))fail(`${policyFile} still hard-codes the retired live browser connector name.`);
 }
 
 if(failures.length){
