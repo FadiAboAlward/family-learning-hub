@@ -132,7 +132,7 @@ reviews:
         Preserve the Feature Spec pinning model: Drive is the canonical behavior source; each non-trivial branch/PR pins its own FEATURE_ID, SPEC_VERSION, URL, and retrievable Drive revision ID; there is no global current-feature pointer.
         Flag claims that a feature or gate is enforced when it is only advisory or not actually configured.
         Preserve the seven-day temporary Playwright screenshot evidence policy and the rule against committing transient QA screenshots to Git history.
-        Preserve the tool-routing distinction: automated Playwright in GitHub Actions remains required deterministic CI, while the dedicated Family Learning Hub Playwright MCP is a fallback for browser-dependent verification when no direct structured tool can prove or perform the same task.
+        Preserve the tool-routing distinction: automated Playwright in GitHub Actions remains required deterministic CI, while live browser-dependent verification uses the approved local interactive browser connector set selected by required capability. Current primary is Fadi Personal Playwright 2 Browsers; Fadi Personal Five Browsers is approved when its exposed capabilities are sufficient. Connector-name drift alone is not a blocker, and Browserbase/generic browser services are not substitutes.
 
     - path: "AGENTS.md"
       instructions: |
