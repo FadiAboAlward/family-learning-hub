@@ -14,3 +14,13 @@ export async function forEachWithConcurrency(items, limit, worker) {
 
   await Promise.all(Array.from({ length: width }, () => run()));
 }
+
+export async function closeStaleRows(rows, limit, updateSession, durationSeconds) {
+  await forEachWithConcurrency(rows, limit, async session => {
+    await updateSession(session.id, {
+      ended_at: session.last_activity_at,
+      duration_seconds: durationSeconds(session.started_at, session.last_activity_at),
+      end_reason: 'inactivity',
+    });
+  });
+}
