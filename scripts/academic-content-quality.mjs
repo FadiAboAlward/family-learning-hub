@@ -25,6 +25,16 @@ const SOURCE_DEPENDENCY_PATTERNS = [
   /بالرجوع\s+إلى\s+(?:الكتاب|الصفحة|المصدر|المرجع)/u,
   /وفق(?:ًا|ا)\s+(?:للكتاب|للمصدر|للمرجع)/u
 ];
+const SOFT_SOURCE_REFERENCE_PATTERNS = [
+  /(?:في|من)\s+مفردات(?:\s+(?:درس|نص|الدرس|النص))?/u,
+  /(?:كما\s+)?ورد(?:ت)?\s+في\s+(?:وصف|مفردات|درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
+  /كما\s+في\s+(?:درس|نص|قصيدة|مطالعة|الدرس|النص|القصيدة)/u,
+  /استحضر(?:ي)?\s+[^.؟!]{0,80}\s+في\s+(?:النص|الدرس|القصيدة)/u,
+  /\b(?:derste|metinde|şiirde)\s+(?:geçen|kullanılan|yer\s+alan|verilen)\b/iu,
+  /\b(?:dersin|metnin|şiirin)\s+(?:sözlüğünde|kelimelerinde|bağlamında)\b/iu,
+  /\b(?:as\s+(?:used|stated|mentioned|defined)\s+in|from)\s+(?:the\s+)?(?:lesson|text|poem)\b/iu,
+  /\bin\s+(?:the\s+)?lesson\b/iu
+];
 const HINT_ROLES = new Map([[1, 'nudge'], [2, 'guide'], [3, 'strong_guide'], [4, 'near_solution']]);
 const REQUIRED_CONTEXT = ['student_ref', 'grade', 'curriculum', 'subject', 'book_code', 'confirmed_scope', 'learner_state_ref', 'next_target'];
 const CONCEPT_STATES = new Set(['MASTERED', 'DEVELOPING', 'NEEDS_REINFORCEMENT', 'UNKNOWN_BASELINE']);
@@ -188,6 +198,11 @@ function learnerVisibleFields(q, basePath) {
 function sourceDependency(value) {
   const normalized = caseFold(text(value));
   return normalized && SOURCE_DEPENDENCY_PATTERNS.some(re => re.test(normalized));
+}
+
+function softSourceReference(value) {
+  const normalized = caseFold(text(value));
+  return normalized && SOFT_SOURCE_REFERENCE_PATTERNS.some(re => re.test(normalized));
 }
 
 export function validateAcademicPackage(pkg) {
@@ -396,6 +411,9 @@ export function validateAcademicPackage(pkg) {
       }
       if (sourceDependency(field.value)) {
         issue(errors, 'EXTERNAL_SOURCE_DEPENDENCY', field.path, 'Learner-visible authored text must be self-contained and must not send the learner back to a book, page, source, or reference.');
+      }
+      if (softSourceReference(field.value)) {
+        issue(errors, 'SOFT_SOURCE_REFERENCE', field.path, 'Learner-visible authored text must embed the needed context instead of locating it only in an unseen lesson, text, poem, or vocabulary list.');
       }
     }
 
