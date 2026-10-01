@@ -134,6 +134,160 @@ const normalizePrompt = value => abstractOperandNumbers(caseFold(canonicalMath(v
 
 const normalizeRationale = value => caseFold(text(value)).replace(/\s+/gu, ' ').replace(/["'“”‘’….,،؛;:!?؟]+/gu, '').trim();
 
+const canonicalOrderingText = value => preserveSuperscripts(text(value)).normalize('NFKC')
+  .replace(/\p{Cf}/gu, '')
+  .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
+  .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6f0))
+  .replace(/(\d)٬(?=\d)/gu, '$1')
+  .replace(/[−–—]/g, '-')
+  .replace(/[×✕·]/g, '*')
+  .replace(/[÷⁄∕]/g, '/')
+  .replace(/≤/g, '<=')
+  .replace(/≥/g, '>=')
+  .replace(/٫/g, '.')
+  .replace(/٪/g, '%');
+
+const ORDERING_DIRECTION_PATTERNS = {
+  ascending: [
+    /\b(?:en\s+)?küçükten\s+(?:en\s+)?büyüğe(?:\s+doğru)?\b/iu,
+    /\bart(?:an|arak)\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
+    /من\s+(?:الأصغر|الاصغر|الأقل|الاقل)\s+إلى\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)/u,
+    /(?:ترتيب(?:ًا|ا)?\s+)?تصاعد(?:ي(?:ًا|ا)?|ياً|يا)/u,
+    /\b(?:smallest|least)\s+to\s+(?:largest|greatest)\b/iu,
+    /\b(?:ascending|increasing)\s+order\b/iu
+  ],
+  descending: [
+    /\b(?:en\s+)?büyükten\s+(?:en\s+)?küçüğe(?:\s+doğru)?\b/iu,
+    /\bazalan\s+(?:sıra(?:da|ya|yla)?|sıralama)\b/iu,
+    /من\s+(?:الأكبر|الاكبر|الأكثر|الاكثر)\s+إلى\s+(?:الأصغر|الاصغر|الأقل|الاقل)/u,
+    /(?:ترتيب(?:ًا|ا)?\s+)?تنازل(?:ي(?:ًا|ا)?|ياً|يا)/u,
+    /\b(?:largest|greatest)\s+to\s+(?:smallest|least)\b/iu,
+    /\b(?:descending|decreasing)\s+order\b/iu
+  ]
+};
+
+const ORDERING_INTENT_PATTERNS = {
+  tr: [
+    /\bsırala(?:yın|yınız)?\b/iu,
+    /\b(?:doğru\s+)?sıralama(?:sı)?\s+(?:hangisidir|nedir)\b/iu
+  ],
+  ar: [
+    /(?:^|[\s،,:؛])رت(?:ّ)?ب(?:\s|$)/u,
+    /(?:ما|أي|أيّ)\s+(?:هو\s+|هي\s+)?(?:ال)?ترتيب/u
+  ],
+  en: [
+    /\b(?:arrange|sort)\b/iu,
+    /\border\s+(?:the\s+)?(?:following\s+)?(?:numbers?|values?|readings?|items?|data|temperatures?|fractions?|decimals?|integers?|them)\b/iu,
+    /\border\s+(?:(?:the\s+)?following\s*)?[:\-]?\s*(?=[+\-]?\d)/iu,
+    /\b(?:which|what)\s+(?:is\s+the\s+)?(?:correct\s+)?order\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\bin\s+(?:ascending|descending|increasing|decreasing)\s+order\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\b(?:from\s+)?(?:smallest|least)\s+to\s+(?:largest|greatest)\b/iu,
+    /\b(?:put|write|place)\b[\s\S]{0,120}\b(?:from\s+)?(?:largest|greatest)\s+to\s+(?:smallest|least)\b/iu
+  ]
+};
+
+const ORDERING_LIST_GAP_RE = /^[\s,،;؛]*(?:(?:(?:ve|and|ile|veya)\b|و)[\s,،;؛]*)?$/iu;
+
+function orderingIntentMatch(value, language) {
+  const normalized = caseFold(canonicalOrderingText(value));
+  const lang = text(language).toLocaleLowerCase('en-US');
+  const patterns = ORDERING_INTENT_PATTERNS[lang] || [];
+  let best = null;
+  for (const re of patterns) {
+    const match = re.exec(normalized);
+    if (!match) continue;
+    const candidate = {
+      start: match.index ?? 0,
+      end: (match.index ?? 0) + match[0].length
+    };
+    if (!best || candidate.start < best.start) best = candidate;
+  }
+  return best;
+}
+
+function orderingDirection(value, language) {
+  const normalized = caseFold(canonicalOrderingText(value));
+  if (!normalized || !orderingIntentMatch(normalized, language)) return '';
+  for (const [direction, patterns] of Object.entries(ORDERING_DIRECTION_PATTERNS)) {
+    if (patterns.some(re => re.test(normalized))) return direction;
+  }
+  return '';
+}
+
+function candidateOrderingValues(value, language) {
+  const normalized = canonicalOrderingText(value);
+  const lang = text(language).toLocaleLowerCase('en-US');
+  const tokenRe = lang === 'tr'
+    ? /[+\-]?(?:(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)/gu
+    : /[+\-]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)/gu;
+  const tokens = [...normalized.matchAll(tokenRe)]
+    .map(match => {
+      const raw = match[0];
+      const numeric = lang === 'tr'
+        ? raw.replace(/\./gu, '').replace(',', '.')
+        : raw.replace(/,/gu, '');
+      return {
+        value: Number(numeric),
+        start: match.index ?? 0,
+        end: (match.index ?? 0) + raw.length
+      };
+    })
+    .filter(token => Number.isFinite(token.value));
+  if (tokens.length < 3) return [];
+
+  const runs = [];
+  let current = [];
+  for (const token of tokens) {
+    if (!current.length) {
+      current = [token];
+      continue;
+    }
+    const previous = current[current.length - 1];
+    const gap = caseFold(normalized.slice(previous.end, token.start));
+    if (ORDERING_LIST_GAP_RE.test(gap)) {
+      current.push(token);
+    } else {
+      if (current.length >= 3) runs.push(current);
+      current = [token];
+    }
+  }
+  if (current.length >= 3) runs.push(current);
+  if (!runs.length) return [];
+
+  const intent = orderingIntentMatch(normalized, language);
+  if (!intent) return [];
+  const distanceToIntent = run => {
+    const runStart = run[0].start;
+    const runEnd = run[run.length - 1].end;
+    if (runEnd < intent.start) return intent.start - runEnd;
+    if (runStart > intent.end) return runStart - intent.end;
+    return 0;
+  };
+
+  runs.sort((a, b) => {
+    const distance = distanceToIntent(a) - distanceToIntent(b);
+    if (distance !== 0) return distance;
+    const endPreference = b[b.length - 1].end - a[a.length - 1].end;
+    if (endPreference !== 0) return endPreference;
+    return b.length - a.length;
+  });
+  return runs[0].map(token => token.value);
+}
+
+function preSortedOrderingPrompt(value, language) {
+  const direction = orderingDirection(value, language);
+  if (!direction) return null;
+  const values = candidateOrderingValues(value, language);
+  if (values.length < 3) return null;
+  const alreadyOrdered = values.every((current, index) => {
+    if (index === 0) return true;
+    return direction === 'ascending'
+      ? current >= values[index - 1]
+      : current <= values[index - 1];
+  });
+  return alreadyOrdered ? { direction, values } : null;
+}
+
 function answerLeak(hintText, answer) {
   const h = caseFold(canonicalMath(hintText));
   const a = caseFold(canonicalMath(answer));
@@ -407,6 +561,15 @@ export function validateAcademicPackage(pkg) {
     if (!b) issue(errors, 'BLUEPRINT_MATCH_REQUIRED', p + '.question_code', 'No blueprint row exists for ' + (code || p) + '.');
     if (!SURFACES.has(q && q.delivery_surface)) issue(errors, 'INVALID_DELIVERY_SURFACE', p + '.delivery_surface', 'delivery_surface must be learning, exam, or paper.');
     if (!text(q && q.prompt)) issue(errors, 'PROMPT_REQUIRED', p + '.prompt', 'prompt is required.');
+    const orderingLeak = preSortedOrderingPrompt(q && q.prompt, q && q.prompt_language);
+    if (orderingLeak) {
+      issue(
+        errors,
+        'ORDERING_PROMPT_PRE_SORTED_INPUT',
+        p + '.prompt',
+        'Ordering task input is already ordered in the requested ' + orderingLeak.direction + ' direction; shuffle the displayed values so the learner must perform the ordering.'
+      );
+    }
     if (!text(q && q.concept_code)) issue(errors, 'CONCEPT_REQUIRED', p + '.concept_code', 'concept_code is required.');
     if (!Number.isInteger(q && q.difficulty_level) || q.difficulty_level < 1 || q.difficulty_level > 5) issue(errors, 'DIFFICULTY_OUT_OF_RANGE', p + '.difficulty_level', 'difficulty_level must be an integer from 1 to 5.');
     if (!ORIGINS.has(q && q.origin)) issue(errors, 'INVALID_ORIGIN', p + '.origin', 'origin must be BOOK_DERIVED or GENERATED_SIMILAR.');

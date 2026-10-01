@@ -315,6 +315,125 @@ safeTurkishApostrophe.questions[1].prompt = "A şehrinin saat dilimi UTC+2, B ş
 const safeTurkishApostropheResult = validateAcademicPackage(safeTurkishApostrophe);
 assert.ok(!safeTurkishApostropheResult.errors.some(x => ['LEARNER_TEXT_MARKUP_FORBIDDEN','EXTERNAL_SOURCE_DEPENDENCY','PROMPT_LANGUAGE_UNSUPPORTED'].includes(x.code)), 'Normal Turkish apostrophes and UTC +/- notation must remain valid plain text.');
 
+
+for (const [language, prompt] of [
+  ['tr', 'Sayı doğrusunda -9, -4, 0 ve +2 sayıları vardır. Küçükten büyüğe doğru sıralama hangisidir?'],
+  ['tr', 'Sayılar +6, 2, 0 ve -3 şeklindedir. Büyükten küçüğe doğru sıralama hangisidir?'],
+  ['tr', '1, 2, 3 sayılarını en küçükten en büyüğe sıralayınız.'],
+  ['tr', '6, 2, 0, -3 sayılarını en büyükten en küçüğe sıralayınız.'],
+  ['ar', 'الأعداد هي -9، -4، 0، +2. ما الترتيب من الأصغر إلى الأكبر؟'],
+  ['ar', 'الأعداد هي +6، 2، 0، -3. رتّب من الأكبر إلى الأصغر.'],
+  ['en', 'The numbers are -9, -4, 0, +2. Which order is smallest to largest?'],
+  ['en', 'The numbers are +6, 2, 0, -3. Which order is largest to smallest?']
+]) {
+  const preSortedOrdering = read('valid-package.json');
+  preSortedOrdering.questions[1].prompt_language = language;
+  preSortedOrdering.questions[1].prompt = prompt;
+  const preSortedOrderingResult = validateAcademicPackage(preSortedOrdering);
+  assert.ok(
+    preSortedOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+    'Ordering prompts must reject values already arranged in the requested direction: ' + prompt
+  );
+}
+
+const shuffledOrdering = read('valid-package.json');
+shuffledOrdering.questions[1].prompt_language = 'tr';
+shuffledOrdering.questions[1].prompt = 'Sayı doğrusunda 0, -9, +2 ve -4 sayıları vardır. Küçükten büyüğe doğru sıralama hangisidir?';
+const shuffledOrderingResult = validateAcademicPackage(shuffledOrdering);
+assert.ok(
+  !shuffledOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'A shuffled ordering prompt must remain valid because the learner still has to perform the ordering.'
+);
+
+const nonOrderingSortedNumbers = read('valid-package.json');
+nonOrderingSortedNumbers.questions[1].prompt_language = 'en';
+nonOrderingSortedNumbers.questions[1].prompt = 'The temperatures were -9, -4, 0, and +2 degrees. What was the total change from the first value to the last?';
+const nonOrderingSortedNumbersResult = validateAcademicPackage(nonOrderingSortedNumbers);
+assert.ok(
+  !nonOrderingSortedNumbersResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Sorted-looking numeric data in a non-ordering question must not trigger the ordering guard.'
+);
+
+
+const descriptiveAscendingOrder = read('valid-package.json');
+descriptiveAscendingOrder.questions[1].prompt_language = 'en';
+descriptiveAscendingOrder.questions[1].prompt = 'The sequence 1, 2, 3 is in ascending order. What number comes next?';
+const descriptiveAscendingOrderResult = validateAcademicPackage(descriptiveAscendingOrder);
+assert.ok(
+  !descriptiveAscendingOrderResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Describing an existing ascending sequence must not be mistaken for an instruction to order values.'
+);
+
+const contextualNumberBeforeCandidateList = read('valid-package.json');
+contextualNumberBeforeCandidateList.questions[1].prompt_language = 'en';
+contextualNumberBeforeCandidateList.questions[1].prompt = 'On day 10, the readings were 1, 2, 3. Order the readings from smallest to largest.';
+const contextualNumberBeforeCandidateListResult = validateAcademicPackage(contextualNumberBeforeCandidateList);
+assert.ok(
+  contextualNumberBeforeCandidateListResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Unrelated contextual numerals must not hide a pre-sorted candidate list.'
+);
+
+
+for (const prompt of [
+  'Write these numbers from smallest to largest: 1, 2, 3.',
+  'Sort 1,2,3 from smallest to largest.'
+]) {
+  const directEnglishOrdering = read('valid-package.json');
+  directEnglishOrdering.questions[1].prompt_language = 'en';
+  directEnglishOrdering.questions[1].prompt = prompt;
+  const directEnglishOrderingResult = validateAcademicPackage(directEnglishOrdering);
+  assert.ok(
+    directEnglishOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+    'Direct English ordering wording and compact comma-separated lists must be guarded: ' + prompt
+  );
+}
+
+const turkishDecimalOrdering = read('valid-package.json');
+turkishDecimalOrdering.questions[1].prompt_language = 'tr';
+turkishDecimalOrdering.questions[1].prompt = '1,2; 1,5; 2,0 sayılarını en küçükten en büyüğe sıralayınız.';
+const turkishDecimalOrderingResult = validateAcademicPackage(turkishDecimalOrdering);
+assert.ok(
+  turkishDecimalOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Turkish comma-decimal candidate lists must remain parseable while English commas act as list separators.'
+);
+
+
+const directOrderNumericList = read('valid-package.json');
+directOrderNumericList.questions[1].prompt_language = 'en';
+directOrderNumericList.questions[1].prompt = 'Order 1, 2, 3 from smallest to largest.';
+const directOrderNumericListResult = validateAcademicPackage(directOrderNumericList);
+assert.ok(
+  directOrderNumericListResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Imperative order followed directly by a numeric list must be recognized as ordering intent.'
+);
+
+const turkishThreeDigitDecimalOrdering = read('valid-package.json');
+turkishThreeDigitDecimalOrdering.questions[1].prompt_language = 'tr';
+turkishThreeDigitDecimalOrdering.questions[1].prompt = '1,100; 2,0; 3,0 sayılarını en küçükten en büyüğe sıralayınız.';
+const turkishThreeDigitDecimalOrderingResult = validateAcademicPackage(turkishThreeDigitDecimalOrdering);
+assert.ok(
+  turkishThreeDigitDecimalOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'Turkish three-digit comma decimals must not be corrupted by thousands normalization.'
+);
+
+const tiedContextRunShuffledCandidates = read('valid-package.json');
+tiedContextRunShuffledCandidates.questions[1].prompt_language = 'en';
+tiedContextRunShuffledCandidates.questions[1].prompt = 'On days 1, 2, 3, the readings were 8, 5, 7. Order the readings from smallest to largest.';
+const tiedContextRunShuffledCandidatesResult = validateAcademicPackage(tiedContextRunShuffledCandidates);
+assert.ok(
+  !tiedContextRunShuffledCandidatesResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'When numeric runs tie in length, the run nearest the ordering instruction must be treated as the candidate list.'
+);
+
+const groupedThousandsOrdering = read('valid-package.json');
+groupedThousandsOrdering.questions[1].prompt_language = 'en';
+groupedThousandsOrdering.questions[1].prompt = 'Order 1,000, 2,000, 3,000 from smallest to largest.';
+const groupedThousandsOrderingResult = validateAcademicPackage(groupedThousandsOrdering);
+assert.ok(
+  groupedThousandsOrderingResult.errors.some(x => x.code === 'ORDERING_PROMPT_PRE_SORTED_INPUT'),
+  'English grouped-thousands values must remain single numeric candidates.'
+);
+
 const invalid = validateAcademicPackage(read('invalid-package.json'));
 assert.equal(invalid.ok, false);
 const codes = new Set(invalid.errors.map(x => x.code));
@@ -924,4 +1043,4 @@ assert.ok(
   'Declared primary coverage targets must be assessed by at least one blueprint item'
 );
 
-console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, and duplicate reasoning guards are enforced.');
+console.log('Academic content quality tests passed: source/evidence grounding, blueprint/difficulty, distractors, four-level hint depth with learner-visible content uniqueness, 3/6-step shape, short/symbolic and Arabic-script digit, Arabic-thousands and grouped-ASCII thousands, and Arabic-percent answer-leak prevention including spacing variants and bare-number percentage-operand distinction, Unicode-digit and math-operator-aware near-duplicate checks, operator-spacing option uniqueness, unique positive option positions, bidi-control option normalization, fraction including Unicode slash forms, symbolic, equivalent inequality, Turkish case-fold, and Unicode-exponent leak detection and exponent-preserving prompt fingerprints and signed-exponent reasoning signatures, decimal-boundary-safe leak detection including Arabic decimals, operator-preserving reasoning signatures and hint comparisons, semantic-number-safe reasoning normalization including spaced and compact unit operands while preserving 2D/3D dimensions, multi-word answer leak detection, signed-number-safe numeric boundaries including binary-subtraction/prose distinction and signed operands inside analogous expressions, unary-plus handling, and analogous addition/exponent fragments, period/comma-decimal-preserving hint comparison, invisible-text rejection, single-question difficulty justification, explicit Learning decomposition classification with boolean hint-level flags with canonical 3/6 hint-shape boundaries, robust CLI entrypoint execution from spaced paths and symlinks, ordering-question pre-sorted input protection across Turkish, Arabic, and English, and duplicate reasoning guards are enforced.');
