@@ -1,6 +1,6 @@
--- FLH-FEAT-2026-014 v1.1
+-- FLH-FEAT-2026-014 v1.2
 -- Proves that publishing a successor version does not strand an older
--- in-progress Learning or Exam attempt, while fresh starts still use latest.
+-- in-progress Learning or Exam attempt, while explicit assignments stay\n-- version-bound and ordinary program/fresh starts still use latest.
 do $contract$
 declare
   v_workspace constant uuid := '55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
