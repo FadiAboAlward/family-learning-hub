@@ -49,6 +49,7 @@ jobs:
           npx --yes esbuild@0.25.9 supabase/functions/learning-api/index.ts --format=esm --platform=neutral --outfile=/tmp/learning-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/student-library-api/index.ts --format=esm --platform=neutral --outfile=/tmp/student-library-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/family-api/index.ts --format=esm --platform=neutral --outfile=/tmp/family-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/activity-api/index.ts --format=esm --platform=neutral --outfile=/tmp/activity-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/exam-v2-api/index.ts --format=esm --platform=neutral --outfile=/tmp/exam-v2-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/attempt-history-api/index.ts --format=esm --platform=neutral --outfile=/tmp/attempt-history-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/qa-auth/index.ts --format=esm --platform=neutral --outfile=/tmp/qa-auth-check.js
