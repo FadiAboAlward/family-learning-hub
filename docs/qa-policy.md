@@ -190,7 +190,7 @@ For user-facing UI changes, the QA process should produce human-viewable Playwri
 - Do not commit transient QA screenshots or the `playwright-screenshots/` folder to repository history. Git history is permanent and is the wrong storage mechanism for temporary evidence.
 - Screenshot capture must never expose passwords, learner access codes, tokens, cookies, authorization headers, or other credentials.
 - PR/browser smoke screenshots should normally use mocked test data so evidence is reproducible and does not modify real learner data.
-- For a production verification that uses Family Learning Hub Playwright, capture only the minimum non-sensitive after-state needed to demonstrate the change. When an ephemeral GitHub artifact is available, link that artifact/run in the PR and user-facing completion report.
+- For a production verification that uses an approved local interactive browser connector, capture only the minimum non-sensitive after-state needed to demonstrate the change. When an ephemeral GitHub artifact is available, link that artifact/run in the PR and user-facing completion report.
 - If a change is backend-only or has no meaningful visual surface, screenshot evidence may be marked N/A with a short reason.
 
 ## Merge rule
@@ -264,7 +264,7 @@ For a database migration, record:
 
 ## Production verification
 
-Repository success and production success are separate states. Choose the fastest reliable verification layer for the production fact being checked. Use deployment status, HTTP/assets, APIs, Supabase/database inspection, or other structured tools first for non-visual facts. Use Family Learning Hub Playwright only when the production claim depends on actual browser rendering/interaction or when structured checks cannot prove it.
+Repository success and production success are separate states. Choose the fastest reliable verification layer for the production fact being checked. Use deployment status, HTTP/assets, APIs, Supabase/database inspection, or other structured tools first for non-visual facts. Use an approved local interactive browser connector selected by required capability only when the production claim depends on actual browser rendering/interaction or when structured checks cannot prove it.
 
 After merge, verify whichever production systems the change touches. Examples:
 
