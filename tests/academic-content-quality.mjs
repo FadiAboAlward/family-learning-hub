@@ -707,7 +707,14 @@ nonForwardAdvance.academic_context.coverage_plan.decision = 'ADVANCE';
 nonForwardAdvance.academic_context.coverage_plan.next_sequential_target = 'next ordered skill';
 nonForwardAdvance.academic_context.coverage_plan.next_target_order = nonForwardAdvance.academic_context.coverage_plan.cursor_order;
 const nonForwardAdvanceResult = validateAcademicPackage(nonForwardAdvance);
-assert.ok(nonForwardAdvanceResult.errors.some(x => x.code === 'COVERAGE_ADVANCE_NOT_FORWARD'), 'ADVANCE must move strictly forward in the ordered curriculum map');
+assert.ok(nonForwardAdvanceResult.errors.some(x => x.code === 'COVERAGE_ADVANCE_NOT_SEQUENTIAL'), 'ADVANCE must move to the immediately next skill in the ordered curriculum map');
+
+const skippedAdvance = read('valid-package.json');
+skippedAdvance.academic_context.coverage_plan.decision = 'ADVANCE';
+skippedAdvance.academic_context.coverage_plan.next_sequential_target = 'skipped later skill';
+skippedAdvance.academic_context.coverage_plan.next_target_order = skippedAdvance.academic_context.coverage_plan.cursor_order + 2;
+const skippedAdvanceResult = validateAcademicPackage(skippedAdvance);
+assert.ok(skippedAdvanceResult.errors.some(x => x.code === 'COVERAGE_ADVANCE_NOT_SEQUENTIAL'), 'ADVANCE must not skip an unverified assessable skill');
 
 const remediateCursorMismatch = read('valid-package.json');
 remediateCursorMismatch.academic_context.coverage_plan.next_target_order = remediateCursorMismatch.academic_context.coverage_plan.cursor_order + 1;
