@@ -89,6 +89,9 @@ if(index.includes('جارِ'))fail('Visible Arabic typo جارِ found in index.
 
 const build=(index.match(/<body[^>]+data-build=["']([^"']+)/i)||[])[1];
 if(!build)fail('Missing body data-build.');
+const metaBuild=(index.match(/<meta[^>]+name=["']app-build["'][^>]+content=["']([^"']+)/i)||[])[1];
+if(!metaBuild)fail('Missing app-build meta marker.');
+if(build&&metaBuild&&build!==metaBuild)fail('app-build meta marker must match body data-build.');
 const assetVersions=[...index.matchAll(/(?:src|href)=["']\.\/[^"'?]+\?v=([^"']+)["']/g)].map(m=>m[1]);
 if(!assetVersions.length)fail('No versioned local assets found.');
 if(assetVersions.some(v=>v!==build))fail(`All local CSS/JS assets must use the current build version ${build}.`);
@@ -97,7 +100,8 @@ const localRefs=[...index.matchAll(/(?:src|href)=["']\.\/([^"'?]+)(?:\?[^"']*)?[
 for(const ref of localRefs){if(!exists(ref))fail(`index.html references missing file: ${ref}`);}
 const loadedScripts=[...index.matchAll(/<script[^>]+src=["']\.\/([^"'?]+)(?:\?[^"']*)?["']/g)].map(m=>m[1]);
 for(const f of ['learning-launcher-v1.js','program-exam-v2.js','exam-experience-v7.js','exam-state-sync-v7.js'])if(loadedScripts.includes(f))fail(`Legacy runtime must not be loaded: ${f}`);
-for(const f of ['app.js','math-direction-v1.js','content-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','attempt-history-v1.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+for(const f of ['app-version-v1.js','app.js','math-direction-v1.js','content-direction-v1.js','dynamic-login-v3.js','learning-launcher-v2.js','program-exam-v3.js','answer-layout-v8.js','student-library-v3.js','attempt-history-v1.js','parent-center-v3.js','question-reference-ui-v1.js','ui-localization-v1.js'])if(!loadedScripts.includes(f))fail(`Required runtime missing: ${f}`);
+if(loadedScripts.indexOf('app-version-v1.js')>loadedScripts.indexOf('app.js'))fail('App version watcher must load before app.js.');
 if(loadedScripts.indexOf('math-direction-v1.js')<loadedScripts.indexOf('app.js'))fail('Math direction runtime must load after app.js so it can wrap the shared math renderer.');
 if(loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('math-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js'))fail('Math direction runtime must load before Learning and Exam renderers.');
 if(loadedScripts.indexOf('content-direction-v1.js')<loadedScripts.indexOf('math-direction-v1.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('learning-launcher-v2.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('program-exam-v3.js')||loadedScripts.indexOf('content-direction-v1.js')>loadedScripts.indexOf('attempt-history-v1.js'))fail('Content direction runtime must load after math direction and before Learning/Exam/history renderers.');
@@ -112,6 +116,7 @@ const layout=read('answer-layout-v8.js');
 const css=read('answer-layout-v8.css');
 const mathDirection=read('math-direction-v1.js');
 const contentDirection=read('content-direction-v1.js');
+const appVersion=read('app-version-v1.js');
 const questionReference=read('question-reference-ui-v1.js');
 const mathDirectionCss=read('math-direction-v1.css');
 const mathGuard=read('tests/math-rendering-guard.mjs');
@@ -162,6 +167,7 @@ if(!questionReference.includes("b.dir='ltr'")||!questionReference.includes("b.la
 if(!questionReference.includes("document.getElementById('app')")||questionReference.includes('observe(document.documentElement'))fail('Question reference observer must be scoped to #app.');
 if(!contentDirection.includes("['ar','rtl']")||!contentDirection.includes("['tr','ltr']")||!contentDirection.includes("['en','ltr']"))fail('Content direction helper must map ar/tr/en explicitly.');
 if(!contentDirection.includes('normalizeText'))fail('Content direction helper must normalize legacy encoded learner text before safe escaping.');
+for(const phrase of ['FLHAppVersion','visibilitychange',"cache: 'no-store'",'_flh_build','sessionStorage'])if(!appVersion.includes(phrase))fail(`App version watcher missing protected behavior: ${phrase}`);
 if(!mathDirectionCss.includes('.question[dir],.answers[dir],.answer-grid[dir]'))fail('Question/answer language direction boundaries must use bidi isolation.');
 if(!/@media \(max-width:719px\)[\s\S]*grid-template-columns:minmax\(0,1fr\)/.test(css))fail('Mobile answer layout must force one column.');
 if(!/\.answer-content-v8\.math-choice\{[^}]*direction:ltr/.test(css))fail('Math choices must retain LTR isolation.');
