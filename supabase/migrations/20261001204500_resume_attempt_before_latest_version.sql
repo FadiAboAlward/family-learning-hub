@@ -1,8 +1,8 @@
 -- FLH-FEAT-2026-014 v1.1
 -- SPEC_REVISION_ID: ANLCKQmT8ZZ7ecsn9aCb6eIx4Gb0pGQaB_6xWpB_S77ZH6hhVIk5R0xnOgYUSB0M9yF6h0FrUfkDNWz0uZglmVTb5fWMsEwBK479VjmOewE
 -- Preserve resume routing across immutable quiz-version publication.
--- An existing in-progress attempt resolves its original version first; only a
--- learner without such an attempt receives the highest published version.
+-- Routing precedence is: existing in-progress attempt, eligible explicit
+-- version-bound assignment, then highest published version for program access.
 
 create or replace function public.flh_exam_start(p_workspace_id uuid, p_learner_id uuid, p_quiz_slug text)
 returns jsonb
@@ -46,14 +46,33 @@ begin
   limit 1;
 
   if not found then
-    select * into v_version
-    from public.quiz_versions
-    where workspace_id = p_workspace_id
-      and quiz_id = v_quiz.id
-      and state = 'published'
-    order by version_no desc
+    -- A still-valid explicit assignment is version-bound and must remain
+    -- actionable even after a newer immutable successor is published.
+    select qv.* into v_version
+    from public.quiz_assignments qa
+    join public.quiz_versions qv
+      on qv.workspace_id = qa.workspace_id
+     and qv.id = qa.quiz_version_id
+    where qa.workspace_id = p_workspace_id
+      and qa.learner_id = p_learner_id
+      and qa.status in ('assigned','in_progress')
+      and (qa.available_at is null or qa.available_at <= now())
+      and (qa.due_at is null or qa.due_at >= now())
+      and qv.quiz_id = v_quiz.id
+      and qv.state = 'published'
+    order by qa.created_at desc
     limit 1;
-    if not found then return jsonb_build_object('error','VERSION_NOT_FOUND'); end if;
+
+    if not found then
+      select * into v_version
+      from public.quiz_versions
+      where workspace_id = p_workspace_id
+        and quiz_id = v_quiz.id
+        and state = 'published'
+      order by version_no desc
+      limit 1;
+      if not found then return jsonb_build_object('error','VERSION_NOT_FOUND'); end if;
+    end if;
   end if;
 
   select (
@@ -279,17 +298,37 @@ begin
   limit 1;
 
   if not found then
+    -- Preserve an eligible explicit assignment's immutable version before
+    -- choosing the newest published version for an unassigned program start.
     select qv.*
     into v_version
-    from public.quiz_versions qv
-    where qv.workspace_id = p_workspace_id
+    from public.quiz_assignments qa
+    join public.quiz_versions qv
+      on qv.workspace_id = qa.workspace_id
+     and qv.id = qa.quiz_version_id
+    where qa.workspace_id = p_workspace_id
+      and qa.learner_id = p_learner_id
+      and qa.status in ('assigned', 'in_progress')
+      and (qa.available_at is null or qa.available_at <= now())
+      and (qa.due_at is null or qa.due_at >= now())
       and qv.quiz_id = v_quiz.id
       and qv.state = 'published'
-    order by qv.version_no desc
+    order by qa.created_at desc
     limit 1;
 
     if not found then
-      return jsonb_build_object('error', 'VERSION_NOT_FOUND');
+      select qv.*
+      into v_version
+      from public.quiz_versions qv
+      where qv.workspace_id = p_workspace_id
+        and qv.quiz_id = v_quiz.id
+        and qv.state = 'published'
+      order by qv.version_no desc
+      limit 1;
+
+      if not found then
+        return jsonb_build_object('error', 'VERSION_NOT_FOUND');
+      end if;
     end if;
   end if;
 
