@@ -318,6 +318,8 @@ begin
           and (
             h.content='الكلمة وردت في وصف نشر الحب.'
             or h.content='استحضر وصف البحر في النص.'
+            or h.content like '%الطريقة التي يذكرها الدرس%'
+            or h.content like '%طريقتي الدرس%'
           )
       ) then
         raise exception 'SELF_CONTAINED_WORDING_SOFT_HINT_REMAINS:%', v_sc_slug;
