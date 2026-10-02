@@ -410,6 +410,8 @@ begin
     v_learning_count integer;
     v_exam_count integer;
     v_hint_count integer;
+    v_source_misconception_count integer;
+    v_latest_misconception_count integer;
   begin
     select id into v_hint_workspace
     from public.workspaces
@@ -496,6 +498,29 @@ begin
     if v_learning_count <> 20 or v_exam_count <> 20 or v_hint_count <> 80 then
       raise exception 'PROGRESSIVE_HINT_COUNTS_INVALID:%:%:%',
         v_learning_count, v_exam_count, v_hint_count;
+    end if;
+
+    select count(*) into v_source_misconception_count
+    from public.question_option_misconceptions qom
+    join public.quiz_question_options o
+      on o.workspace_id=qom.workspace_id and o.id=qom.option_id
+    join public.quiz_questions q
+      on q.workspace_id=o.workspace_id and q.id=o.question_id
+    where q.workspace_id=v_hint_workspace
+      and q.quiz_version_id=v_source;
+
+    select count(*) into v_latest_misconception_count
+    from public.question_option_misconceptions qom
+    join public.quiz_question_options o
+      on o.workspace_id=qom.workspace_id and o.id=qom.option_id
+    join public.quiz_questions q
+      on q.workspace_id=o.workspace_id and q.id=o.question_id
+    where q.workspace_id=v_hint_workspace
+      and q.quiz_version_id=v_latest;
+
+    if v_latest_misconception_count <> v_source_misconception_count then
+      raise exception 'PROGRESSIVE_HINT_MISCONCEPTION_MAPPING_COUNT_INVALID:%:%',
+        v_source_misconception_count, v_latest_misconception_count;
     end if;
 
     if exists (
