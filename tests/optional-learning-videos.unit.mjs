@@ -51,7 +51,7 @@ assert.equal(calls.at(-1).params.p_video_revision,id,'Validation token must not 
 let conflictCalls=0;
 await assert.rejects(maintainOptionalVideos({from:()=>lookup,rpc:async(_name,params)=>{conflictCalls++;assert.equal(params.p_status_revision,statusRevision);assert.equal(params.p_status.made_for_kids,true);return {data:{error:'VIDEO_STATUS_CONFLICT'}};}},'w',{action:'refresh_optional_video',assignment_id:id},trace,{apiKey:'synthetic-test-key',now,fetchImpl:async()=>response()}),/^Error: VIDEO_STATUS_CONFLICT$/);
 assert.equal(conflictCalls,1,'An outdated provider response must not retry with a newer validation token');
-const migration=fs.readFileSync('supabase/migrations/20261002142152_optional_learning_videos.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261002193353_optional_learning_videos.sql','utf8');
 assert.match(migration,/\"enabled\":false/);
 assert.match(migration,/v_optional_video := private\.flh_learning_optional_video/);
 assert.match(migration,/raise warning 'flh_learning_start optional video skipped \(SQLSTATE %\)', sqlstate;/,'Optional failure diagnostics must log only the stable SQLSTATE');
