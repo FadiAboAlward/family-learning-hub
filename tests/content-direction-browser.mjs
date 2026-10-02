@@ -75,10 +75,14 @@ async function installRoutes(page){
       if(learningHintRequests===1){
         return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
           hint_level:1,
-          hint:{hint_level:1,language:'tr',content:'Tam sayılarda işaretlere ve iki saat dilimi arasındaki uzaklığa dikkat et.'}
+          hint:{hint_level:1,language:'tr',content:[
+            '• Önce sorudaki iki saat dilimini ayrı ayrı belirle ve işaretlerin sıfıra göre hangi yönü gösterdiğine dikkat et.',
+            '• Ardından iki konum arasındaki uzaklığı düşün; saat farkını bulurken yalnızca işaretleri kopyalamak yerine sayı doğrusu mantığını kullan.',
+            '• Son olarak seçenekleri tek tek karşılaştır, bulduğun uzaklıkla uyuşmayanları ele ve cevabı onaylamadan önce işlemini bir kez daha kontrol et.'
+          ].join('\n')}
         })});
       }
-      return r.fulfill({status:500,contentType:'application/json',body:'{"error":"HINT_TEMPORARILY_UNAVAILABLE"}'});
+      return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"exhausted":true,"hint":null,"hint_level":1}'});
     }
     if(body.action==='save_draft')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
     if(body.action==='answer')return r.fulfill({status:200,contentType:'application/json',body:'{"is_correct":false,"finalized":false}'});
@@ -197,16 +201,23 @@ async function probe(width,height){
     assert.equal(hintHeading.dir,'rtl');
     assert.equal(learningHint.dir,'ltr');
     assert.equal(learningHint.lang,'tr');
-    assert.match(learningHint.text,/Tam sayılarda/);
+    assert.match(learningHint.text,/saat dilimini/);
+    assert.equal(await page.locator('.flh-hint-list > li').count(),3);
 
-    await page.locator('#flhHelp').click();
-    await page.waitForFunction(()=>document.querySelector('.flh-hint-content')?.getAttribute('lang')==='ar');
-    const synthesizedHint=await computedDirection(page.locator('.flh-hint-content'));
-    const synthesizedHeading=await computedDirection(page.locator('.flh-hint-card > b'));
-    assert.equal(synthesizedHint.dir,'rtl');
-    assert.equal(synthesizedHint.lang,'ar');
-    assert.match(synthesizedHint.text,/تعذر تحميل التلميح/);
-    assert.equal(synthesizedHeading.dir,'rtl');
+    await page.locator('.flh-learn-answer').first().click();
+    await page.waitForFunction(()=>{const b=document.querySelector('#flhConfirmAnswer');return b&&!b.disabled;});
+    await page.locator('#flhConfirmAnswer').click();
+    await page.locator('.flh-hint-notice').waitFor({state:'visible',timeout:5000});
+    const retainedHint=await computedDirection(page.locator('.flh-hint-content'));
+    const retainedHeading=await computedDirection(page.locator('.flh-hint-card > b'));
+    const hintNotice=await computedDirection(page.locator('.flh-hint-notice'));
+    assert.equal(retainedHint.dir,'ltr');
+    assert.equal(retainedHint.lang,'tr');
+    assert.equal(await page.locator('.flh-hint-list > li').count(),3);
+    assert.match(retainedHeading.text,/تلميح 1/);
+    assert.doesNotMatch(retainedHeading.text,/تلميح 4/);
+    assert.match(hintNotice.text,/المساعدة الإضافية غير متاحة/);
+    assert.equal(await page.locator('#flhHelp').isDisabled(),true);
 
     await page.evaluate(()=>window.FLH.startExamQuiz('qa-direction'));
     await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
@@ -309,7 +320,7 @@ async function probeInteractive(width,height){
     assert.equal(hintHeading.dir,'rtl');
     assert.equal(hint.dir,'ltr');
     assert.equal(hint.lang,'tr');
-    assert.match(hint.text,/Tam sayılarda/);
+    assert.match(hint.text,/saat dilimini/);
 
     assert.equal(
       await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),
@@ -326,7 +337,7 @@ try{
   await probe(390,844);
   await probeInteractive(1280,800);
   await probeInteractive(390,844);
-  console.log('Content direction browser regression passed through Learning, Exam, synthesized/authored hints, live review, attempt history, and standalone interactive practice at desktop and 390x844.');
+  console.log('Content direction browser regression passed through Learning, structured authored hints, null-hint answer exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
 }finally{
   await browser.close();
 }
