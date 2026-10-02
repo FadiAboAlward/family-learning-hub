@@ -27,7 +27,7 @@
     catch{shell('تعذر بدء التدريب','هذا التدريب غير متاح لهذا الحساب.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="learnBack">رجوع</button></div></section>');document.getElementById('learnBack')?.addEventListener('click',home);return;}
 
     const queue=(session.queue||[]).map(x=>({...x}));
-    const started=Date.now();
+    let started=Date.now();
     let index=queue.findIndex(x=>x.status==='active');if(index<0)index=Math.max(0,queue.findIndex(x=>!['completed','skipped'].includes(x.status)));
     let busy=false,currentHint=queue[index]?.last_hint?.content?queue[index].last_hint:null,draftController=null,draftVersion=0;
     const remaining=()=>queue.some(x=>!['completed','skipped'].includes(x.status));
@@ -143,7 +143,7 @@
 
     // A resumed question with existing interaction goes straight back to learning.
     const untouched=session.optional_video?.only_before_first_question!==false&&index===0&&queue.length>0&&queue.every(row=>!['completed','skipped'].includes(row.status)&&!row.draft_option_position&&!Number(row.hint_level_requested||0));
-    try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:render,onExit:home}))return;}catch{globalThis.FLHOptionalVideo?.dispose();}
+    try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:()=>{started=Date.now();render();},onExit:home}))return;}catch{globalThis.FLHOptionalVideo?.dispose();}
     render();
   }
   window.FLH=window.FLH||{};window.FLH.startLearningQuiz=startLearningQuiz;

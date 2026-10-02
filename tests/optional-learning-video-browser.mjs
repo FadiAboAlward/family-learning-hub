@@ -113,7 +113,8 @@ const PROVIDER_SCRIPT = `(() => {
     }
     player.addEventListener = name => { fixture.events.push(name); if (!['onReady', 'onError'].includes(name)) throw new Error('Player tracking is forbidden'); };
     fixture.fire = (event, data) => { if (!player.destroyed) options.events?.[event]?.({ target: player, data }); };
-    if (fixture.mode !== 'pending') setTimeout(() => fixture.fire(fixture.mode === 'error' ? 'onError' : 'onReady', fixture.mode === 'error' ? 150 : undefined), 0);
+    if (fixture.mode === 'sync-error') fixture.fire('onError', 150);
+    else if (fixture.mode !== 'pending') setTimeout(() => fixture.fire(fixture.mode === 'error' ? 'onError' : 'onReady', fixture.mode === 'error' ? 150 : undefined), 0);
   }};
   window.onYouTubeIframeAPIReady?.();
 })();`;
@@ -231,6 +232,10 @@ async function explicitReports(browser, device) {
       assert.equal(await page.locator('#flhVideoReport').inputValue(), value);
     }
     assert.equal(fixture.video.report_revision, 4, 'one revision per explicit edit');
+    await page.evaluate(() => {
+      const realNow = Date.now.bind(Date);
+      Date.now = () => realNow() + 300000;
+    }); // Five minutes on the optional card are not academic solving time.
     if (device.name === 'mobile') await page.locator('#flhVideoStart').tap();
     else await page.locator('#flhVideoStart').press('Enter');
     await questionReady(page);
@@ -245,6 +250,7 @@ async function explicitReports(browser, device) {
     await page.locator('#learnHome').waitFor({ state: 'visible' });
     assert.equal(fixture.count('answer'), 1, 'original server-authoritative Learning flow still runs');
     assert.equal(fixture.count('finish_quiz'), 1);
+    assert.ok(fixture.last('finish_quiz').duration_seconds >= 1 && fixture.last('finish_quiz').duration_seconds < 60, 'academic duration excludes five minutes spent on optional video card');
     await test.verifyAndClose(`${device.name} reports`);
   } catch (error) { await test.context.close(); throw error; }
 }
@@ -368,6 +374,7 @@ async function failureScenarios(browser, device) {
     { name: 'status-expired', video: videoFixture({ verification_expires_at: '2000-01-01T00:00:00Z' }) },
     { name: 'made-for-kids-unknown', video: videoFixture({ made_for_kids: null }) },
     { name: 'provider-error', providerMode: 'error' },
+    { name: 'synchronous-provider-error', providerMode: 'sync-error' },
     { name: 'network-error', providerMode: 'network-error' },
     { name: 'learner-fallback' },
   ]) {
@@ -383,6 +390,11 @@ async function failureScenarios(browser, device) {
         await page.locator('#flhOptionalVideo').waitFor({ state: 'visible' });
         if (scenario.name === 'learner-fallback') await page.locator('#flhVideoUnavailable').click();
         await page.locator('#flhVideoFallback').waitFor({ state: 'visible' });
+        if (scenario.name === 'synchronous-provider-error') {
+          assert.equal(await page.evaluate(() => window.__qaVideoProvider.instances.length), 1, 'synchronous failure occurs during construction');
+          assert.equal(await page.evaluate(() => window.__qaVideoProvider.destroyed), 1, 'constructor failure disposes the returned provider instance');
+          assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'synchronous failure removes playback frame');
+        }
         if (['status-unavailable', 'status-expired', 'made-for-kids-unknown'].includes(scenario.name)) {
           assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'invalid required status cannot start an embed');
           assert.equal(test.providerRequests.length, 0, 'invalid required status cannot initiate provider requests');

@@ -17,17 +17,17 @@ The optional selector records only a learner's own statement:
 
 The card explicitly labels this as optional **Family Learning Hub self-report**, separate from YouTube content. Only pressing Save writes a report. Starting without a report creates no viewing event. A save or refresh failure leaves Start available. Reports cannot change scoring, mastery, XP, Reward Points or Exam access.
 
+The existing exercise-duration timer starts when the learner enters the first question. Time spent on the optional card is excluded from academic duration reporting; no video-duration value is calculated or stored.
+
 There is no playback-time, percentage, seek, pause/play, player-ended or inferred-completion evidence. The player integration listens only for technical readiness and errors; it never reads the playback clock or state. A learner may change their own statement; it remains a statement, never a verified viewing result.
 
 ## Association and authoring
 
 Candidate selection remains part of assessment authoring. No autonomous discovery, ranking, download or re-hosting service is added. Validate newly authored academic packages through `node scripts/academic-content-quality.mjs <package.json>` before their normal publication path; optional video attachment does not replace that gate.
 
-For an existing published version, `node scripts/attach-learning-video.mjs <academic-package.json> <video-reference.json> --dry-run` checks the same academic gate and the candidate without making a provider or attachment request. The reference contains `academic_context` (`student_ref`, `grade`, `curriculum`, `subject`) copied from the package, `concept_code` from its primary target concepts, and `video` with the exact database association fields described below. The server independently verifies those IDs against the learner's enrolled serving program and published assessment. Validation errors block attachment; academic warnings require explicit `--warnings-reviewed` after disposition.
-
-Removing `--dry-run` calls the explicitly configured `FLH_LEARNING_API_URL` with `FLH_PARENT_ACCESS_TOKEN` and `FLH_PUBLISHABLE_KEY` from the process environment. Use an authorized Testing endpoint for implementation QA. Credentials and provider bodies are never printed. The script neither publishes an assessment nor discovers a candidate.
-
 The author supplies the exact learner, published quiz version, serving program, curriculum, grade, subject and primary concept/target, plus a YouTube video ID, authored title/language and recommendation rationale/source. Program enrollment supplies curriculum and grade; `learners.grade_level` alone and an unrelated primary program cannot prove equivalence. An available quiz in an active enrolled serving program and a matching quiz concept must exist. A similar topic name never authorizes reuse across curricula.
+
+Use the existing authenticated authoring API with a `video` object containing `learner_id`, `quiz_version_id`, `program_id`, `curriculum_id`, `grade_level`, `subject_id`, `concept_id`, `video_ref`, `title`, `language` and `rationale`. The author must resolve those IDs from the published assessment and learner's serving context and review the actual video's curriculum/skill relevance; copied text labels do not prove association. The server checks database relationships and official provider status before attachment. This operation does not publish an assessment.
 
 Attachment and status refresh are authenticated parent owner/admin operations through `learning-api`. They validate the candidate with the supported [YouTube videos.list endpoint](https://developers.google.com/youtube/v3/docs/videos/list), requesting only identity and required status fields. `status.embeddable` must be true and `status.madeForKids` must be an explicit boolean. Deleted/private/non-embeddable responses, missing/invalid status, absent API credentials, timeout, malformed JSON and provider rejection fail closed. Do not substitute `selfDeclaredMadeForKids`, scrape the player, or mark an unknown status as safe.
 

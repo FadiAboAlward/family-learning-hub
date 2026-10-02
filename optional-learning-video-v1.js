@@ -108,7 +108,9 @@
       playerTimeout = setTimeout(fallback, 10000);
       loadPlayerApi().then(YT => {
         if (!alive || !card.querySelector('#flhVideoFrame')) return;
-        player = new YT.Player('flhVideoFrame', {events:{onReady:() => clearTimeout(playerTimeout),onError:fallback}});
+        const created = new YT.Player('flhVideoFrame', {events:{onReady:() => clearTimeout(playerTimeout),onError:fallback}});
+        if (!alive || !card.querySelector('#flhVideoFrame')) { try { created.destroy(); } catch {} }
+        else player = created;
       }).catch(fallback);
     }
     return true;
