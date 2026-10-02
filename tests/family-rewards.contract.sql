@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-010 v1.0 rev 3. One prepared-compatible DO statement.
+-- FLH-FEAT-2026-017 v1.0 extends the FLH-FEAT-2026-010 prepared-compatible contract.
 -- A dedicated caught success code rolls back every fixture; assertion errors propagate.
 -- Active authenticated learner activity targets the seeded dedicated test learner.
 do $contract$
@@ -84,18 +84,23 @@ begin
   perform pg_temp.family_assert(result->>'ok'='true','parent rule create'); rule_id := (result->'rule'->>'id')::uuid;
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('learner_ids',jsonb_build_array(other_l)));
   perform pg_temp.family_assert(result->>'error'='INVALID_SCOPE','scope cannot cross workspace');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
-  perform pg_temp.family_assert(result->>'ok'='true' and result->'submission'->>'status'='approved' and result->'submission'->>'base_points'='5' and result->'submission'->>'initiative_bonus_points'='3' and result->>'reward_points'='28','base and initiative award separately');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'adhkar_completed',true,'reason','QA invalid adhkar','idempotency_key','qa-family-adhkar-blocked'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT' and (select reward_points from public.learner_gamification_state where learner_id=l)=20,'adhkar cannot be claimed on a rule with no configured adhkar bonus');
+  update public.behavior_rules set adhkar_bonus_points=2 where id=rule_id and workspace_id=w;
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  perform pg_temp.family_assert(result->>'ok'='true' and result->'submission'->>'status'='approved' and result->'submission'->>'base_points'='5' and result->'submission'->>'initiative_bonus_points'='3' and result->'submission'->>'adhkar_bonus_points'='2' and result->'submission'->>'total_points'='10' and result->'submission'->'snapshot'->>'adhkar_completed'='true' and result->>'reward_points'='30','base, initiative and linked adhkar award separately in one event');
   sid := (result->'submission'->>'id')::uuid;
-  second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
-  perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text,'duplicate parent record idempotent');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'reason','Changed reason','idempotency_key','qa-family-direct'));
+  second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text,'duplicate parent prayer record is idempotent');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',false,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','same prayer key cannot silently change the adhkar selection');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','Changed reason','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent key cannot discard a changed reason');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'reason','QA direct behavior','occurred_at',v_occurred_at,'idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','occurred_at',v_occurred_at,'idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent key cannot add an explicit occurrence time to an omitted-time request');
-  result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent request key is bound to the original verified actor');
-  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=28 and (select reason from public.behavior_submissions where id=sid)='QA direct behavior','conflicting parent reuse changes no balance or audit reason');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=30 and (select reason from public.behavior_submissions where id=sid)='QA direct behavior','conflicting parent reuse changes no balance or audit reason');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',now()-interval '1 day','idempotency_key','qa-family-farm'));
   perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','past occurred_at cannot farm daily award');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',rule_id,'idempotency_key','qa-family-daily-pending'));
@@ -119,15 +124,15 @@ begin
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','learner key cannot discard changed occurrence time');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'initiative',true,'reason','QA self report','idempotency_key','qa-family-self'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','learner cannot omit originally explicit occurrence time on retry');
-  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=28 and (select occurred_at=v_occurred_at and reason='QA self report' and status='pending' from public.behavior_submissions where id=sid),'conflicting self-report reuse changes no balance or audit fields');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=30 and (select occurred_at=v_occurred_at and reason='QA self report' and status='pending' from public.behavior_submissions where id=sid),'conflicting self-report reuse changes no balance or audit fields');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved','reason','QA confirmed'));
-  perform pg_temp.family_assert(result->>'reward_points'='34' and result->'submission'->>'total_points'='6','parent review adds correct points');
+  perform pg_temp.family_assert(result->>'reward_points'='36' and result->'submission'->>'total_points'='6','parent review adds correct points');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
   perform pg_temp.family_assert(result->>'already_reviewed'='true','repeated approval no double-award');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected'));
   perform pg_temp.family_assert(result->>'error'='INVALID_TRANSITION','opposite stale behavior decision must not report success');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',week_rule,'idempotency_key','qa-family-week-second'));
-  perform pg_temp.family_assert(result->>'reward_points'='38','second weekly award');
+  perform pg_temp.family_assert(result->>'reward_points'='40','second weekly award');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',week_rule,'idempotency_key','qa-family-week-third'));
   perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','N weekly limit enforced');
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('title','QA blocked','self_report_allowed',false,'cadence','unlimited'));
@@ -180,7 +185,7 @@ begin
     if v_matrix.code='selected-scope' then delete from public.reward_learner_scopes scopes where scopes.reward_id=v_matrix_reward and scopes.workspace_id=w; end if;
     result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',v_matrix_claim,'decision','approved'));
     perform pg_temp.family_assert(result->>'error'=v_matrix.expected_error,'approval revalidates '||v_matrix.code);
-    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=38 and not exists(select 1 from public.gamification_events where source_type='reward_claim' and source_id=v_matrix_claim::text),'failed eligibility approval changes no points or spend event');
+    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=40 and not exists(select 1 from public.gamification_events where source_type='reward_claim' and source_id=v_matrix_claim::text),'failed eligibility approval changes no points or spend event');
     result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',v_matrix_claim,'decision','rejected'));
   end loop;
   -- Older stored rows bypassed today's save boundary; malformed criteria must not grant or brick reads.
@@ -202,7 +207,7 @@ begin
     insert into public.reward_claims(workspace_id,learner_id,reward_id) values(w,l,v_matrix_reward) returning id into v_matrix_claim;
     result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',v_matrix_claim,'decision','approved'));
     perform pg_temp.family_assert(result->>'error'='INVALID_CRITERIA' and (select status='pending' and points_spent=0 from public.reward_claims where id=v_matrix_claim),'legacy invalid criteria cannot approve existing pending claim');
-    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=38 and not exists(select 1 from public.gamification_events where source_type='reward_claim' and source_id=v_matrix_claim::text) and (select criteria from public.gamification_rewards where id=v_matrix_reward)=v_matrix.criteria,'legacy invalid criteria writes no points, spend, or history correction');
+    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=40 and not exists(select 1 from public.gamification_events where source_type='reward_claim' and source_id=v_matrix_claim::text) and (select criteria from public.gamification_rewards where id=v_matrix_reward)=v_matrix.criteria,'legacy invalid criteria writes no points, spend, or history correction');
   end loop;
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload||jsonb_build_object('title','QA inactive badge criterion','criteria',jsonb_build_object('required_badge_codes',jsonb_build_array(v_badge_code))));
   perform pg_temp.family_assert(result->>'ok'='true' and result->'reward'->'criteria'->'required_badge_codes'=jsonb_build_array(v_badge_code),'inactive badge criterion can be preserved when editing');
@@ -217,7 +222,7 @@ begin
   result := public.flh_family_rewards_command(w,null,l,'reward_request',jsonb_build_object('reward_id',reward_id,'note','Changed request note','idempotency_key','qa-family-reward-request'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','reward request key cannot discard changed note');
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',cid,'decision','approved'));
-  perform pg_temp.family_assert(result->>'reward_points'='28' and result->'claim'->>'points_spent'='10','approval spends exactly once');
+  perform pg_temp.family_assert(result->>'reward_points'='30' and result->'claim'->>'points_spent'='10','approval spends exactly once');
   result := public.flh_family_rewards_command(w,null,l,'reward_request',jsonb_build_object('reward_id',reward_id,'note','QA reward request note','idempotency_key','qa-family-reward-request'));
   perform pg_temp.family_assert(result->>'already_requested'='true' and result->'claim'->'metadata'->>'request_note'='QA reward request note','original request note remains retryable after review replaces display note');
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_review',jsonb_build_object('claim_id',cid,'decision','approved'));
@@ -249,16 +254,16 @@ begin
   perform pg_temp.family_assert(result->>'error'='INSUFFICIENT_POINTS','approval revalidates changed price/balance');
 
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust','{"delta":5,"reason":"QA administrative correction","idempotency_key":"qa-family-adjust"}');
-  perform pg_temp.family_assert(result->>'reward_points'='33','manual adjustment canonical balance'); eid := (result->'event'->>'id')::bigint;
+  perform pg_temp.family_assert(result->>'reward_points'='35','manual adjustment canonical balance'); eid := (result->'event'->>'id')::bigint;
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust','{"delta":5,"reason":"QA administrative correction","idempotency_key":"qa-family-adjust"}');
   perform pg_temp.family_assert(result->>'already_adjusted'='true','adjustment retry one event');
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust','{"delta":5,"reason":"Changed administrative reason","idempotency_key":"qa-family-adjust"}');
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','manual adjustment key cannot discard changed reason');
   result := public.flh_family_rewards_command(w,admin_id,l,'points_adjust','{"delta":5,"reason":"QA administrative correction","idempotency_key":"qa-family-adjust"}');
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','adjustment key is bound to original verified actor');
-  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=33,'conflicting adjustment reuse changes no balance');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=35,'conflicting adjustment reuse changes no balance');
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust',jsonb_build_object('reversal_event_id',eid,'reason','QA compensate prior error','idempotency_key','qa-family-reversal'));
-  perform pg_temp.family_assert(result->>'reward_points'='28' and result->'event'->>'reward_points_delta'='-5','reversal compensates without rewriting');
+  perform pg_temp.family_assert(result->>'reward_points'='30' and result->'event'->>'reward_points_delta'='-5','reversal compensates without rewriting');
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust',jsonb_build_object('reversal_event_id',eid,'reason','QA repeated reversal','idempotency_key','qa-family-reversal-again'));
   perform pg_temp.family_assert(result->>'error'='ALREADY_REVERSED','one event cannot reverse twice');
   result := public.flh_family_rewards_command(w,owner_id,l,'points_adjust','{"delta":-1000,"reason":"QA no overdraft","idempotency_key":"qa-family-overdraw"}');
@@ -297,7 +302,7 @@ begin
   perform pg_temp.family_assert(exists(select 1 from jsonb_array_elements(result->'claims') x where x->>'id'=v_old_approved::text and x->>'status'='approved'),'old approved undelivered reward remains actionable beyond200 terminal claims');
   reset role;
   perform pg_temp.family_assert((select xp from public.learner_gamification_state where learner_id=l)=xp_before,'every family path preserves XP');
-  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=133,'canonical balance matches awards/spend/adjustments');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=135,'canonical balance matches awards/spend/adjustments');
   perform pg_temp.family_assert((select count(*) from public.gamification_events where workspace_id=w and learner_id=l and source_type='family_behavior')=3,'exactly three approved behavior events');
   perform pg_temp.family_assert((select count(*) from public.gamification_events where workspace_id=w and learner_id=l and source_type='reward_claim')=1,'approval/redemption one spend event');
   perform pg_temp.family_assert(not exists(select 1 from public.gamification_events where workspace_id=w and learner_id=l and source_type in ('family_behavior','reward_claim','manual_adjustment') and xp_delta<>0),'family ledger never changes XP');
