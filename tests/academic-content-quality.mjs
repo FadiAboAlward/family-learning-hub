@@ -866,9 +866,16 @@ assert.ok(duplicateVisibleHintResult.errors.some(x => x.code === 'DUPLICATE_HINT
 const symlinkCliDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flh-academic-qa-symlink-'));
 try {
   const realScript = path.resolve(fileURLToPath(new URL('../scripts/academic-content-quality.mjs', import.meta.url)));
-  const linkedScript = path.join(symlinkCliDir, 'academic-quality-link.mjs');
+  let linkedScript = path.join(symlinkCliDir, 'academic-quality-link.mjs');
   const invalidPackage = path.join(symlinkCliDir, 'invalid.json');
-  fs.symlinkSync(realScript, linkedScript);
+  if (process.platform === 'win32') {
+    // Directory junctions exercise the same realpath entrypoint check without administrator privileges.
+    const linkedDirectory = path.join(symlinkCliDir, 'scripts');
+    fs.symlinkSync(path.dirname(realScript), linkedDirectory, 'junction');
+    linkedScript = path.join(linkedDirectory, path.basename(realScript));
+  } else {
+    fs.symlinkSync(realScript, linkedScript);
+  }
   fs.writeFileSync(invalidPackage, '{}\n', 'utf8');
   const symlinkRun = spawnSync(process.execPath, [linkedScript, invalidPackage], { encoding: 'utf8' });
   assert.equal(symlinkRun.status, 1, 'CLI must execute validation when invoked through a symlink');

@@ -106,6 +106,10 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-finish-rpc.contract.sql
       - name: Verify Learning finish concurrency and idempotency
         run: node tests/learning-finish-rpc.concurrency.mjs
+      - name: Verify family rewards authorization and ledger contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards.contract.sql
+      - name: Verify family rewards concurrent awards and spending
+        run: node tests/family-rewards.concurrency.mjs
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify Exam answer save/submit concurrency
@@ -166,6 +170,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/content-direction-browser.mjs
+      - name: Run family rewards browser regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/family-rewards-browser.mjs
       - name: Capture Playwright screenshot evidence
         env:
           APP_URL: http://127.0.0.1:4173/

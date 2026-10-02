@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const migration=fs.readFileSync('supabase/migrations/20260922134500_paper_unanswered_answers.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260922134500_paper_unanswered_answers.sql','utf8').replace(/\r\n/g,'\n');
 
 for(const fragment of [
   'FLH-FEAT-2026-003',
