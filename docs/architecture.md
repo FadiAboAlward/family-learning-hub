@@ -126,6 +126,12 @@ The parent rewards page presents balances, category/source drill-down, pending r
 
 `FLH-FEAT-2026-017`, version `1.0`, extends family behavior records so a rule may define an optional server-authoritative `adhkar_bonus_points`. A prayer check-in remains one behavior submission and one ledger event: base points, initiative points and the linked post-prayer adhkar bonus are snapshotted separately and summed atomically. The browser sends only the boolean completion choice; it never supplies the bonus amount. Rules with no configured adhkar bonus reject an adhkar claim. The request idempotency signature includes the adhkar choice, so retries cannot double-award or silently change that choice.
 
+## Optional pre-Learning videos
+
+`FLH-FEAT-2026-012` version `1.1`, Drive revision `2`, adds one vetted video tied to the learner, immutable assessment version and exact serving program/curriculum/grade/subject/skill. The Learning start RPC retains its single Edge database operation and includes a nullable optional-video reference after normal access checks. Missing, mismatched, expired or unavailable references never prevent the exercise; Exam remains independent.
+
+Viewing evidence is explicit optional Family Learning Hub self-report only: `not_reported`, `not_watched`, `watched_part` or `watched_full`. No YouTube playback seconds, percentage, seek/state/ended-derived metrics are stored. Reports are separate from grading, mastery and gamification. Official provider status is validated before attachment, and learner identity comes from the verified session. Existing attempts retain their video snapshot across attachment changes and idempotent retries. The feature defaults to disabled until the required child-directed/provider, ads/navigation and real restricted-device gates pass. See [optional-learning-videos.md](optional-learning-videos.md) for authoring, status retention, security and release QA.
+
 ## Parent reporting
 
 Parent reporting should distinguish:

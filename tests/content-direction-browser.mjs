@@ -3,9 +3,24 @@ import { chromium } from 'playwright';
 
 const APP_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const browser=await chromium.launch({headless:true});
+const unexpectedApiRequests=[];
 
 async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',resumeHint=false}={}){
   let learningHintRequests=0;
+  await page.route('**/functions/v1/**',r=>{
+    unexpectedApiRequests.push(new URL(r.request().url()).pathname);
+    return r.abort('blockedbyclient');
+  });
+  // Synthetic Testing transport prevents a delayed real authentication failure
+  // from replacing the question under test with the learner login screen.
+  await page.route('**/functions/v1/family-api',async r=>{
+    const body=r.request().postDataJSON()||{};
+    const profile={learner:{id:'11111111-1111-4111-8111-111111111111',slug:'test',display_name:'طالب الاختبار',grade_level:7,is_test:true},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}};
+    const result=body.action==='student_profile'?profile:body.action==='learner_choices'?{learners:[]}:{ok:true};
+    return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
+  });
+  await page.route('**/functions/v1/student-library-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"programs":[],"standalone_books":[]}'}));
+  await page.route('**/functions/v1/activity-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
   await page.route('**/functions/v1/question-reference-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"codes":{}}'}));
 
   await page.route('**/functions/v1/attempt-history-api',async r=>{
@@ -436,6 +451,7 @@ try{
   await probeMisconceptionFeedback();
   await probeInteractive(1280,800);
   await probeInteractive(390,844);
+  assert.deepEqual(unexpectedApiRequests,[],'Every API request must be handled by synthetic Testing fixtures');
   console.log('Content direction browser regression passed through Learning, structured authored hints, request-hint exhausted/error states, resumed level-4 restoration, misconception-only feedback, null-hint answer exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
 }finally{
   await browser.close();

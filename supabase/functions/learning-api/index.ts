@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
+import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport } from "../_shared/optional-learning-videos.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -21,6 +22,16 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
   }
   if((data as any)?.error)throw new Error(String((data as any).error));
   return data;
+}
+
+async function videoAuthor(req:Request){
+  const auth=req.headers.get('authorization')||'';
+  if(!auth.startsWith('Bearer '))throw new Error('AUTH_REQUIRED');
+  const{data,error}=await admin.auth.getUser(auth.slice(7).trim());
+  if(error||!data.user)throw new Error('INVALID_PARENT_SESSION');
+  const{data:membership}=await admin.from('workspace_members').select('role').eq('workspace_id',WORKSPACE_ID).eq('user_id',data.user.id).maybeSingle();
+  if(!membership||!['owner','admin'].includes(membership.role))throw new Error('VIDEO_ATTACHMENT_FORBIDDEN');
+  return data.user.id;
 }
 
 async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
@@ -52,4 +63,38 @@ async function finishQuiz(learnerId:string,b:any,trace:any){
   return data;
 }
 
-Deno.serve(async(req:Request)=>{const origin=req.headers.get("origin");if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors(origin)});const trace=createBackendPerformanceTrace({region:Deno.env.get("SB_REGION")||"unknown"});if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));try{const b=await req.json().catch(()=>({})),action=String(b.action||""),allowed=new Set(["start_quiz","save_draft","request_hint","answer","finish_quiz"]);if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));trace.setAction(action);const lid=await trace.measure("authentication",{},()=>learner(req));let output;if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);else if(action==="save_draft")output=await saveDraft(lid,b,trace);else if(action==="request_hint")output=await requestHint(lid,b,trace);else if(action==="answer")output=await answerQuestion(lid,b,trace);else output=await finishQuiz(lid,b,trace);return performanceJsonResponse(trace,output,200,cors(origin));}catch(e){const m=e instanceof Error?e.message:"SERVER_ERROR",auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE"],status=auth.includes(m)?401:nf.includes(m)?404:bad.includes(m)?400:500;return performanceJsonResponse(trace,{error:m},status,cors(origin));}});
+Deno.serve(async(req:Request)=>{
+  const origin=req.headers.get("origin");
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors(origin)});
+  const trace=createBackendPerformanceTrace({region:Deno.env.get("SB_REGION")||"unknown"});
+  if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));
+  try{
+    const b=await req.json().catch(()=>({})),action=String(b.action||"");
+    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status"]);
+    const allowed=new Set(["start_quiz","save_draft","request_hint","answer","finish_quiz","save_video_report",...parentActions]);
+    if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
+    trace.setAction(action);
+    let output;
+    if(parentActions.has(action)){
+      const parentId=await trace.measure("authentication",{},()=>videoAuthor(req));
+      const providerOptions={apiKey:Deno.env.get("YOUTUBE_API_KEY")};
+      output=action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
+    }else{
+      const lid=await trace.measure("authentication",{},()=>learner(req));
+      if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
+      else if(action==="save_draft")output=await saveDraft(lid,b,trace);
+      else if(action==="request_hint")output=await requestHint(lid,b,trace);
+      else if(action==="answer")output=await answerQuestion(lid,b,trace);
+      else if(action==="save_video_report")output=await saveOptionalVideoReport(admin,WORKSPACE_ID,lid,b,trace);
+      else output=await finishQuiz(lid,b,trace);
+    }
+    return performanceJsonResponse(trace,output,200,cors(origin));
+  }catch(e){
+    const m=e instanceof Error?e.message:"SERVER_ERROR";
+    const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
+    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"?409:nf.includes(m)?404:bad.includes(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
+    const details=(e as any)?.data;
+    const payload=m==="REPORT_CONFLICT"?{error:m,self_report:details?.self_report,report_revision:details?.report_revision}:{error:m};
+    return performanceJsonResponse(trace,payload,status,cors(origin));
+  }
+});

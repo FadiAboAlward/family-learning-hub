@@ -110,6 +110,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards.contract.sql
       - name: Verify family rewards concurrent awards and spending
         run: node tests/family-rewards.concurrency.mjs
+      - name: Verify optional Learning video authorization and self-report contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-videos.contract.sql
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify Exam answer save/submit concurrency
@@ -174,6 +176,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/family-rewards-browser.mjs
+      - name: Run optional Learning video browser regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/optional-learning-video-browser.mjs
       - name: Capture Playwright screenshot evidence
         env:
           APP_URL: http://127.0.0.1:4173/
