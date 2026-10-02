@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 const APP_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const browser=await chromium.launch({headless:true});
 
-async function installRoutes(page){
+async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',resumeHint=false}={}){
   let learningHintRequests=0;
   await page.route('**/functions/v1/question-reference-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"codes":{}}'}));
 
@@ -51,14 +51,24 @@ async function installRoutes(page){
     if(body.action==='start_quiz'){
       return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
         attempt_id:'direction-learning-attempt',
-        resumed:false,
+        resumed:resumeHint,
         quiz:{slug:'qa-direction',title:'Yön testi'},
         queue:[{
           question_id:'learning-tr',
           source_role:'core',
           status:'active',
           draft_option_position:null,
-          hint_level_requested:0,
+          hint_level_requested:resumeHint?4:0,
+          ...(resumeHint?{last_hint:{
+            hint_level:4,
+            pedagogical_role:'near_solution',
+            language:'tr',
+            content:[
+              '• Önce işaretleri ve verilen saat dilimlerini yeniden kontrol et; hangi değerin sıfırın sağında, hangisinin solunda olduğunu açıkça belirle.',
+              '• Sonra iki konum arasındaki uzaklığı sayı doğrusu mantığıyla hesapla ve yalnızca mutlak değerleri toplamak yerine yönleri birlikte değerlendir.',
+              '• Son adımda bulduğun farkı seçeneklerle karşılaştır, işlemini bir kez denetle ve sonucu kendi kararınla seçmeden önce bütün verilerin uyduğunu doğrula.'
+            ].join('\n')
+          }}:{}),
           question:{
             id:'learning-tr',
             question_code:'QA-DIR-LEARN-TR',
@@ -82,10 +92,25 @@ async function installRoutes(page){
           ].join('\n')}
         })});
       }
+      if(hintSecond==='error')return r.fulfill({status:500,contentType:'application/json',body:'{"error":"HINT_TEMPORARILY_UNAVAILABLE"}'});
       return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"exhausted":true,"hint":null,"hint_level":1}'});
     }
     if(body.action==='save_draft')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
-    if(body.action==='answer')return r.fulfill({status:200,contentType:'application/json',body:'{"is_correct":false,"finalized":false}'});
+    if(body.action==='answer'){
+      if(answerMode==='misconception')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+        is_correct:false,
+        finalized:false,
+        hint_level:null,
+        hints_used:0,
+        hint:{
+          hint_level:null,
+          pedagogical_role:'misconception_explanation',
+          language:'tr',
+          content:'Saat dilimlerinin işaretlerini ayrı ayrı değerlendir; seçtiğin cevap, iki konum arasındaki gerçek uzaklığı olduğundan daha küçük hesapladığını gösteriyor.'
+        }
+      })});
+      return r.fulfill({status:200,contentType:'application/json',body:'{"is_correct":false,"finalized":false}'});
+    }
     if(body.action==='finish_quiz')return r.fulfill({status:200,contentType:'application/json',body:'{"percentage":0,"review":[]}'});
     return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});
   });
@@ -295,6 +320,76 @@ async function probe(width,height){
   }
 }
 
+async function probeHintRequestState(hintSecond){
+  const page=await browser.newPage({viewport:{width:390,height:844}});
+  try{
+    await page.addInitScript(()=>localStorage.setItem('learner_session','qa.direction'));
+    await installRoutes(page,{hintSecond});
+    await page.goto(APP_URL+'#student',{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');
+    await page.evaluate(()=>window.FLH.startLearningQuiz('qa-direction'));
+    await page.locator('.question').waitFor({state:'visible',timeout:5000});
+
+    await page.locator('#flhHelp').click();
+    await page.locator('.flh-hint-card').waitFor({state:'visible',timeout:5000});
+    assert.equal(await page.locator('.flh-hint-card').count(),1);
+    assert.match((await page.locator('.flh-hint-card > b').textContent())||'',/تلميح 1/);
+
+    await page.locator('#flhHelp').click();
+    if(hintSecond==='error'){
+      await page.locator('.flh-hint-notice.error').waitFor({state:'visible',timeout:5000});
+      assert.equal(await page.locator('.flh-hint-card').count(),1);
+      assert.match((await page.locator('.flh-hint-card > b').textContent())||'',/تلميح 1/);
+      assert.equal(await page.locator('#flhHelp').isDisabled(),false);
+    }else{
+      await page.locator('.flh-hint-notice:not(.error)').waitFor({state:'visible',timeout:5000});
+      assert.equal(await page.locator('.flh-hint-card').count(),1);
+      assert.match((await page.locator('.flh-hint-card > b').textContent())||'',/تلميح 1/);
+      assert.equal(await page.locator('#flhHelp').isDisabled(),true);
+    }
+  }finally{
+    await page.close();
+  }
+}
+
+async function probeResumeHint(){
+  const page=await browser.newPage({viewport:{width:390,height:844}});
+  try{
+    await page.addInitScript(()=>localStorage.setItem('learner_session','qa.direction'));
+    await installRoutes(page,{resumeHint:true});
+    await page.goto(APP_URL+'#student',{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');
+    await page.evaluate(()=>window.FLH.startLearningQuiz('qa-direction'));
+    await page.locator('.flh-hint-card').waitFor({state:'visible',timeout:5000});
+    assert.match((await page.locator('.flh-hint-card > b').textContent())||'',/تلميح 4/);
+    assert.equal(await page.locator('.flh-hint-list > li').count(),3);
+    assert.equal(await page.locator('#flhHelp').isDisabled(),true);
+  }finally{
+    await page.close();
+  }
+}
+
+async function probeMisconceptionFeedback(){
+  const page=await browser.newPage({viewport:{width:390,height:844}});
+  try{
+    await page.addInitScript(()=>localStorage.setItem('learner_session','qa.direction'));
+    await installRoutes(page,{answerMode:'misconception'});
+    await page.goto(APP_URL+'#student',{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');
+    await page.evaluate(()=>window.FLH.startLearningQuiz('qa-direction'));
+    await page.locator('.flh-learn-answer').first().click();
+    await page.waitForFunction(()=>{const b=document.querySelector('#flhConfirmAnswer');return b&&!b.disabled;});
+    await page.locator('#flhConfirmAnswer').click();
+    await page.locator('.flh-misconception-feedback').waitFor({state:'visible',timeout:5000});
+    assert.equal(await page.locator('.flh-hint-card').count(),0);
+    assert.doesNotMatch((await page.locator('.flh-misconception-feedback').textContent())||'',/تلميح\s+\d/);
+    assert.equal(await page.locator('.flh-hint-notice').count(),1);
+    assert.equal(await page.locator('#flhHelp').isDisabled(),true);
+  }finally{
+    await page.close();
+  }
+}
+
 async function probeInteractive(width,height){
   const page=await browser.newPage({viewport:{width,height}});
   try{
@@ -335,9 +430,13 @@ async function probeInteractive(width,height){
 try{
   await probe(1280,800);
   await probe(390,844);
+  await probeHintRequestState('exhausted');
+  await probeHintRequestState('error');
+  await probeResumeHint();
+  await probeMisconceptionFeedback();
   await probeInteractive(1280,800);
   await probeInteractive(390,844);
-  console.log('Content direction browser regression passed through Learning, structured authored hints, null-hint answer exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
+  console.log('Content direction browser regression passed through Learning, structured authored hints, request-hint exhausted/error states, resumed level-4 restoration, misconception-only feedback, null-hint answer exhaustion, Exam review, attempt history, and standalone interactive practice at desktop and 390x844.');
 }finally{
   await browser.close();
 }
