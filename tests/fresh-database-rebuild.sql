@@ -399,5 +399,225 @@ begin
     end if;
   end self_contained_wording_contract;
 
+
+  <<progressive_hint_readability_contract>>
+  declare
+    v_hint_workspace uuid;
+    v_foundations_quiz uuid;
+    v_baseline_quiz uuid;
+    v_latest uuid;
+    v_source uuid;
+    v_learning_count integer;
+    v_exam_count integer;
+    v_hint_count integer;
+    v_source_misconception_count integer;
+    v_latest_misconception_count integer;
+  begin
+    select id into v_hint_workspace
+    from public.workspaces
+    where slug='family-learning-hub'
+    limit 1;
+
+    select id into v_foundations_quiz
+    from public.quizzes
+    where workspace_id=v_hint_workspace
+      and slug='sy-g7-arabic-u1-foundations-20260923-a'
+      and status='archived'
+    limit 1;
+
+    if v_foundations_quiz is null then
+      raise exception 'PROGRESSIVE_HINT_FOUNDATIONS_NOT_ARCHIVED';
+    end if;
+
+    select id into v_baseline_quiz
+    from public.quizzes
+    where workspace_id=v_hint_workspace
+      and slug='sy-g7-arabic-u1-baseline-20261001'
+      and status='active'
+    limit 1;
+
+    if v_baseline_quiz is null then
+      raise exception 'PROGRESSIVE_HINT_BASELINE_NOT_ACTIVE';
+    end if;
+
+    select id,
+           (settings->'progressive_hint_readability'->>'source_version_id')::uuid
+      into v_latest, v_source
+    from public.quiz_versions
+    where workspace_id=v_hint_workspace
+      and quiz_id=v_baseline_quiz
+      and state='published'
+    order by version_no desc
+    limit 1;
+
+    if v_latest is null
+       or v_source is null
+       or not exists (
+         select 1
+         from public.quiz_versions
+         where workspace_id=v_hint_workspace
+           and id=v_latest
+           and settings->'progressive_hint_readability'->>'feature_id'='FLH-FEAT-2026-015'
+           and settings->'progressive_hint_readability'->>'minimum_hint_words'='30'
+           and settings->'progressive_hint_readability'->>'learner_visible_bullets'='3'
+       ) then
+      raise exception 'PROGRESSIVE_HINT_LATEST_VERSION_INVALID';
+    end if;
+
+    if not exists (
+      select 1
+      from public.quiz_versions
+      where workspace_id=v_hint_workspace
+        and id=v_source
+        and quiz_id=v_baseline_quiz
+        and state='published'
+    ) then
+      raise exception 'PROGRESSIVE_HINT_SOURCE_VERSION_MISSING';
+    end if;
+
+    select count(*) into v_learning_count
+    from public.quiz_questions
+    where workspace_id=v_hint_workspace
+      and quiz_version_id=v_latest
+      and delivery_role='core';
+
+    select count(*) into v_exam_count
+    from public.quiz_questions
+    where workspace_id=v_hint_workspace
+      and quiz_version_id=v_latest
+      and delivery_role='exam_pool';
+
+    select count(*) into v_hint_count
+    from public.quiz_question_hints h
+    join public.quiz_questions q
+      on q.workspace_id=h.workspace_id and q.id=h.question_id
+    where q.workspace_id=v_hint_workspace
+      and q.quiz_version_id=v_latest
+      and q.delivery_role='core';
+
+    if v_learning_count <> 20 or v_exam_count <> 20 or v_hint_count <> 80 then
+      raise exception 'PROGRESSIVE_HINT_COUNTS_INVALID:%:%:%',
+        v_learning_count, v_exam_count, v_hint_count;
+    end if;
+
+    select count(*) into v_source_misconception_count
+    from public.question_option_misconceptions qom
+    join public.quiz_question_options o
+      on o.workspace_id=qom.workspace_id and o.id=qom.option_id
+    join public.quiz_questions q
+      on q.workspace_id=o.workspace_id and q.id=o.question_id
+    where q.workspace_id=v_hint_workspace
+      and q.quiz_version_id=v_source;
+
+    select count(*) into v_latest_misconception_count
+    from public.question_option_misconceptions qom
+    join public.quiz_question_options o
+      on o.workspace_id=qom.workspace_id and o.id=qom.option_id
+    join public.quiz_questions q
+      on q.workspace_id=o.workspace_id and q.id=o.question_id
+    where q.workspace_id=v_hint_workspace
+      and q.quiz_version_id=v_latest;
+
+    if v_latest_misconception_count <> v_source_misconception_count then
+      raise exception 'PROGRESSIVE_HINT_MISCONCEPTION_MAPPING_COUNT_INVALID:%:%',
+        v_source_misconception_count, v_latest_misconception_count;
+    end if;
+
+    if exists (
+      select 1
+      from public.quiz_questions q
+      left join public.quiz_question_hints h
+        on h.workspace_id=q.workspace_id and h.question_id=q.id
+      where q.workspace_id=v_hint_workspace
+        and q.quiz_version_id=v_latest
+        and q.delivery_role='core'
+      group by q.id
+      having count(h.question_id)<>4
+         or min(h.hint_level)<>1
+         or max(h.hint_level)<>4
+         or count(distinct h.hint_level)<>4
+    ) then
+      raise exception 'PROGRESSIVE_HINT_FOUR_LEVELS_INVALID';
+    end if;
+
+    if exists (
+      select 1
+      from public.quiz_question_hints h
+      join public.quiz_questions q
+        on q.workspace_id=h.workspace_id and q.id=h.question_id
+      where q.workspace_id=v_hint_workspace
+        and q.quiz_version_id=v_latest
+        and q.delivery_role<>'core'
+    ) then
+      raise exception 'PROGRESSIVE_HINT_EXAM_HINTS_PRESENT';
+    end if;
+
+    if exists (
+      select 1
+      from public.quiz_question_hints h
+      join public.quiz_questions q
+        on q.workspace_id=h.workspace_id and q.id=h.question_id
+      cross join lateral (
+        select count(*) as line_count,
+               bool_or(btrim(line) !~ '^•[[:space:]]+[^[:space:]]') as invalid_line
+        from regexp_split_to_table(h.content,E'\n') line
+        where btrim(line)<>''
+      ) shape
+      where q.workspace_id=v_hint_workspace
+        and q.quiz_version_id=v_latest
+        and q.delivery_role='core'
+        and (shape.line_count<>3 or shape.invalid_line)
+    ) then
+      raise exception 'PROGRESSIVE_HINT_BULLET_STRUCTURE_INVALID';
+    end if;
+
+    if exists (
+      select 1
+      from public.quiz_question_hints h
+      join public.quiz_questions q
+        on q.workspace_id=h.workspace_id and q.id=h.question_id
+      where q.workspace_id=v_hint_workspace
+        and q.quiz_version_id=v_latest
+        and q.delivery_role='core'
+        and cardinality(
+          regexp_split_to_array(
+            btrim(replace(h.content,'•','')),
+            '[[:space:]]+'
+          )
+        )<30
+    ) then
+      raise exception 'PROGRESSIVE_HINT_MIN_WORDS_INVALID';
+    end if;
+
+    if exists (
+      select 1
+      from public.quiz_questions q
+      join public.quiz_question_hints h
+        on h.workspace_id=q.workspace_id and h.question_id=q.id
+      join public.quiz_question_answer_keys k
+        on k.workspace_id=q.workspace_id and k.question_id=q.id
+      join public.quiz_question_options o
+        on o.workspace_id=q.workspace_id
+       and o.question_id=q.id
+       and o.position=nullif(k.correct_answer->>'option_position','')::integer
+      where q.workspace_id=v_hint_workspace
+        and q.quiz_version_id=v_latest
+        and q.delivery_role='core'
+        and btrim(o.content)<>''
+        and position(lower(btrim(o.content)) in lower(h.content))>0
+    ) then
+      raise exception 'PROGRESSIVE_HINT_ANSWER_LEAK';
+    end if;
+
+    if (
+      select count(*)
+      from public.quiz_versions
+      where workspace_id=v_hint_workspace
+        and quiz_id=v_baseline_quiz
+    ) < 3 then
+      raise exception 'PROGRESSIVE_HINT_HISTORICAL_VERSIONS_NOT_PRESERVED';
+    end if;
+  end progressive_hint_readability_contract;
+
 end;
 $contract$;

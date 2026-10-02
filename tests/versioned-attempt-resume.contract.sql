@@ -75,6 +75,14 @@ begin
     (v_workspace,v_q2_learning,1,'A','new learning option'),
     (v_workspace,v_q2_exam,1,'A','new exam option');
 
+  insert into public.quiz_question_hints(
+    workspace_id,question_id,hint_level,pedagogical_role,content,language,terminology_display_mode
+  ) values (
+    v_workspace,v_q1_learning,4,'near_solution',
+    '• Resume the saved authored hint exactly.\n• Keep the persisted hint level unchanged.\n• Do not create a synthetic replacement.',
+    'en','inherit'
+  );
+
   insert into public.quiz_attempts(
     id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
   ) values
@@ -83,10 +91,10 @@ begin
 
   insert into public.quiz_attempt_question_queue(
     workspace_id,quiz_attempt_id,sequence_no,question_id,source_role,
-    difficulty_level,status,selection_reason
+    difficulty_level,status,selection_reason,hint_level_requested
   ) values
-    (v_workspace,v_learning_attempt,1,v_q1_learning,'core',2,'active','qa_old_learning'),
-    (v_workspace,v_exam_attempt,1,v_q1_exam,'core',2,'active','qa_old_exam');
+    (v_workspace,v_learning_attempt,1,v_q1_learning,'core',2,'active','qa_old_learning',4),
+    (v_workspace,v_exam_attempt,1,v_q1_exam,'core',2,'active','qa_old_exam',0);
 
   insert into public.quiz_attempt_answers(
     workspace_id,attempt_id,question_id,response
@@ -100,7 +108,10 @@ begin
 
   if v_result->>'attempt_id' <> v_learning_attempt::text
      or coalesce((v_result->>'resumed')::boolean,false) is not true
-     or v_result->'queue'->0->'question'->>'prompt' <> 'old learning prompt' then
+     or v_result->'queue'->0->'question'->>'prompt' <> 'old learning prompt'
+     or v_result->'queue'->0->'last_hint'->>'hint_level' <> '4'
+     or v_result->'queue'->0->'last_hint'->>'pedagogical_role' <> 'near_solution'
+     or v_result->'queue'->0->'last_hint'->>'content' not like '• Resume the saved authored hint exactly.%' then
     raise exception 'VERSION_RESUME_LEARNING_OLD_ATTEMPT_NOT_RESUMED:%', v_result;
   end if;
 
