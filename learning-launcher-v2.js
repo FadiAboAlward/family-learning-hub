@@ -9,6 +9,7 @@
   const questionAttrs=q=>contentAttrs(q?.prompt_language);
   const hintAttrs=(hint,q)=>contentAttrs(hint?.language||q?.prompt_language);
   const renderMath=(s='')=>typeof math==='function'?math(safe(normalizeText(s))):safe(normalizeText(s));
+  const hintContentHtml=(s='')=>{const lines=String(s).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return lines.length===3&&lines.every(x=>/^•\s+\S/u.test(x))?`<ul class="flh-hint-list">${lines.map(x=>`<li>${renderMath(x.replace(/^•\s+/u,''))}</li>`).join('')}</ul>`:renderMath(s);};
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const optionLabel=pos=>{const i=Math.max(0,Number(pos)-1);return OPTION_LABELS[i]||(i<26?String.fromCharCode(65+i):String(pos));};
   async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
@@ -50,9 +51,10 @@
       const selected=Number(row.draft_option_position||0)||null;
       const opts=(q.options||[]).map(o=>{const pos=Number(o.position),sel=pos===selected,label=optionLabel(pos);return`<button class="answer flh-learn-answer ${sel?'selected confirm-ready':''}" data-pos="${pos}" ${busy?'disabled':''}><span class="answer-number">${sel?`✓ ${label}`:label}</span><span>${renderMath(o.content)}</span></button>`}).join('');
       const restored=session.resumed?'<div class="flh-resume-note">↩️ رجعناك لنفس التدريب، وكل ما حفظته موجود.</div>':'';
-      const hintBox=currentHint?.content?`<div class="flh-hint-card"><b>💡 تلميح ${Number(currentHint.hint_level||row.hint_level_requested||1)}</b><div class="flh-hint-content" ${hintAttrs(currentHint,q)}>${renderMath(currentHint.content)}</div></div>`:(Number(row.hint_level_requested||0)>0?`<div class="muted">استخدمت ${Number(row.hint_level_requested)} تلميح/تلميحات سابقًا في هذا السؤال.</div>`:'');
+      const hintBox=currentHint?.content?`<div class="flh-hint-card"><b>💡 تلميح ${Number(currentHint.hint_level||row.hint_level_requested||1)}</b><div class="flh-hint-content" ${hintAttrs(currentHint,q)}>${hintContentHtml(currentHint.content)}</div></div>`:(Number(row.hint_level_requested||0)>0?`<div class="muted">استخدمت ${Number(row.hint_level_requested)} تلميح/تلميحات سابقًا في هذا السؤال.</div>`:'');
+      const hintNotice=row.hint_unavailable_local?'<div class="flh-hint-notice" role="status">المساعدة الإضافية غير متاحة لهذا السؤال الآن. استخدم آخر تلميح ظهر لك وحاول من جديد.</div>':row.hint_error_local?'<div class="flh-hint-notice error" role="status">تعذر تحميل المساعدة الآن. جرّب مرة ثانية بعد قليل.</div>':'';
       const status=busy?'جارٍ إرسال الإجابة…':selected?'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.':'اختر جوابك.';
-      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div><div class="flh-instruction">اختر جوابك، ثم أكّده عندما تتأكد.</div><div class="answer-grid answer-layout-v8" ${questionAttrs(q)}>${opts}</div><div id="flhLearnStatus" class="muted">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!selected||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div><div class="flh-instruction">اختر جوابك، ثم أكّده عندما تتأكد.</div><div class="answer-grid answer-layout-v8" ${questionAttrs(q)}>${opts}</div><div id="flhLearnStatus" class="muted">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!selected||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
       document.getElementById('flhLearnExit')?.addEventListener('click',home);
       document.getElementById('flhHelp')?.addEventListener('click',help);
       document.getElementById('flhConfirmAnswer')?.addEventListener('click',confirmAnswer);
@@ -92,7 +94,16 @@
       try{
         const d=await call('answer',{attempt_id:session.attempt_id,question_id:row.question_id,option_position:pos});
         row.draft_option_position=null;if(d.hint_level)row.hint_level_requested=Math.max(Number(row.hint_level_requested||0),Number(d.hint_level));
-        if(!d.finalized){currentHint=d.hint||null;busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">مو هي الإجابة بعد. جرّب من جديد.</div>';return;}
+        if(!d.finalized){
+          row.hint_error_local=false;
+          if(d.hint){
+            row.hint_unavailable_local=false;
+            currentHint=d.hint;
+          }else{
+            row.hint_unavailable_local=true;
+          }
+          busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">مو هي الإجابة بعد. جرّب من جديد.</div>';return;
+        }
         row.status='completed';currentHint=null;if(d.remediation_added?.question)queue.push(d.remediation_added);
         busy=false;
         const ni=nextIndex();
@@ -105,9 +116,19 @@
 
     async function help(){
       if(busy)return;busy=true;render();const row=queue[index];
-      try{const d=await call('request_hint',{attempt_id:session.attempt_id,question_id:row.question_id});if(d.hint){row.hint_level_requested=Number(d.hint_level||row.hint_level_requested||0);currentHint=d.hint;}else if(d.exhausted){row.hint_level_requested=Math.max(4,Number(row.hint_level_requested||0));currentHint={hint_level:4,language:'ar',content:'وصلت لآخر مستوى من التلميحات. جرّب تفكر بالخطوات اللي أخذناها.'};}}
-      catch{currentHint={hint_level:row.hint_level_requested||0,language:'ar',content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'};}
-      finally{busy=false;render();}
+      try{
+        const d=await call('request_hint',{attempt_id:session.attempt_id,question_id:row.question_id});
+        row.hint_error_local=false;
+        if(d.hint){
+          row.hint_unavailable_local=false;
+          row.hint_level_requested=Number(d.hint_level||row.hint_level_requested||0);
+          currentHint=d.hint;
+        }else if(d.exhausted){
+          row.hint_unavailable_local=true;
+        }
+      }catch{
+        row.hint_error_local=true;
+      }finally{busy=false;render();}
     }
 
     render();
