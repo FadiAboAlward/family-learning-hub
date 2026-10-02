@@ -20,20 +20,7 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
     throw new Error("START_QUIZ_FAILED");
   }
   if((data as any)?.error)throw new Error(String((data as any).error));
-  const payload=data as any;
-  if(payload?.resumed&&Array.isArray(payload.queue)){
-    const active=payload.queue.find((row:any)=>row?.status==='active'&&Number(row?.hint_level_requested||0)>0);
-    if(active){
-      const level=Number(active.hint_level_requested||0);
-      const{data:lastHint,error:lastHintError}=await trace.measure("start.last_hint",{dbOperations:1},()=>admin.from("quiz_question_hints").select("hint_level,pedagogical_role,content,language,terminology_display_mode").eq("workspace_id",WORKSPACE_ID).eq("question_id",String(active.question_id||"")).eq("hint_level",level).maybeSingle());
-      if(lastHintError){
-        console.error("Learning resume last hint lookup failed",{code:lastHintError.code,message:lastHintError.message});
-        throw new Error("START_QUIZ_FAILED");
-      }
-      active.last_hint=lastHint||null;
-    }
-  }
-  return payload;
+  return data;
 }
 
 async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
