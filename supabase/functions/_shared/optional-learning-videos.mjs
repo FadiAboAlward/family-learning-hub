@@ -66,11 +66,11 @@ export async function maintainOptionalVideos(admin, workspaceId, body, trace, pr
     return data;
   }
   const assignmentId = uuid(body.assignment_id);
-  const {data:assignment,error:lookupError} = await trace.measure('video.refresh.lookup',{dbOperations:1},()=>admin.from('learning_video_assignments').select('id,video_revision,video_ref').eq('workspace_id',workspaceId).eq('id',assignmentId).maybeSingle());
+  const {data:assignment,error:lookupError} = await trace.measure('video.refresh.lookup',{dbOperations:1},()=>admin.from('learning_video_assignments').select('id,video_revision,status_revision,video_ref').eq('workspace_id',workspaceId).eq('id',assignmentId).maybeSingle());
   if (lookupError || !assignment) throw new Error('VIDEO_NOT_AVAILABLE');
   let status = null;
   try { status = await validateYouTubeStatus(assignment.video_ref,providerOptions); } catch { /* Fail closed, with an opaque provider error. */ }
-  const {data,error} = await trace.measure('video.refresh.rpc',{dbOperations:1},()=>admin.rpc('flh_learning_video_refresh',{p_workspace_id:workspaceId,p_assignment_id:assignmentId,p_video_revision:assignment.video_revision,p_status:status}));
+  const {data,error} = await trace.measure('video.refresh.rpc',{dbOperations:1},()=>admin.rpc('flh_learning_video_refresh',{p_workspace_id:workspaceId,p_assignment_id:assignmentId,p_video_revision:assignment.video_revision,p_status_revision:assignment.status_revision,p_status:status}));
   if (error) throw new Error('VIDEO_MAINTENANCE_UNAVAILABLE');
   if (data?.error) throw new Error(data.error);
   return data;

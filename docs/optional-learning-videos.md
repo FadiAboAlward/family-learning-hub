@@ -37,7 +37,7 @@ Existing attempts pin the selected reference separately from future attachments.
 
 ## Provider status lifetime
 
-Validation is usable for seven days. Status refresh rechecks the same reference through the official API; unavailable or expired status produces the non-blocking fallback. The Learning start path remains one database RPC and does not await a live provider request. This preserves exercise availability during a YouTube outage.
+Validation is usable for seven days. Status refresh rechecks the same reference through the official API; unavailable or expired status produces the non-blocking fallback. A separate provider-status revision rejects stale results after reattachment, another refresh or pruning without changing video identity or self-report revisions. Status updates are scoped to that assignment's pinned video snapshots. The Learning start path remains one database RPC and does not await a live provider request. This preserves exercise availability during a YouTube outage.
 
 Provider metadata must be refreshed or removed within 30 days under [YouTube's data policy](https://developers.google.com/youtube/terms/developer-policies). Before activation, configure the authenticated maintenance operation to prune expired provider-status data, run it at least daily, and verify it affects assignments and attempt snapshots. Seven-day render expiry alone does not satisfy stored-data retention. Educational association and first-party self-report remain distinct from provider status.
 

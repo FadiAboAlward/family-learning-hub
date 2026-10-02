@@ -92,7 +92,7 @@ Deno.serve(async(req:Request)=>{
   }catch(e){
     const m=e instanceof Error?e.message:"SERVER_ERROR";
     const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
-    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"?409:nf.includes(m)?404:bad.includes(m)?400:500;
+    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"?409:nf.includes(m)?404:bad.includes(m)?400:500;
     const details=(e as any)?.data;
     const payload=m==="REPORT_CONFLICT"?{error:m,self_report:details?.self_report,report_revision:details?.report_revision}:{error:m};
     return performanceJsonResponse(trace,payload,status,cors(origin));

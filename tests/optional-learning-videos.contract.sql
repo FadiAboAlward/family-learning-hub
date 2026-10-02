@@ -6,6 +6,7 @@ declare
  concept uuid:=gen_random_uuid(); question uuid:=gen_random_uuid(); subject bigint;
  candidate jsonb; result jsonb; resumed jsonb; report jsonb; attempt uuid; exam_attempt uuid; video uuid; assignment uuid; newer_video uuid;
  request_one uuid:=gen_random_uuid(); request_two uuid:=gen_random_uuid(); events_before bigint; balances_before jsonb;
+ status_token uuid; newer_status_token uuid; other_video uuid; other_attempt uuid;
 begin
  execute $definition$create or replace function pg_temp.video_assert(ok boolean,message text) returns void language plpgsql as $assert$begin if ok is distinct from true then raise exception 'Optional video contract: %',message; end if; end$assert$$definition$;
  begin
@@ -27,7 +28,7 @@ begin
   insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary) values(w,question,concept,true);
   insert into public.quiz_question_answer_keys(workspace_id,question_id,correct_answer,explanation) values(w,question,'{"option_position":1,"sentinel":"VIDEO_SECRET_ANSWER_SENTINEL"}','VIDEO_SECRET_EXPLANATION');
   candidate:=jsonb_build_object('learner_id',l,'quiz_version_id',version,'program_id',program,'curriculum_id',curriculum,'grade_level',7,'subject_id',subject,'concept_id',concept,'video_ref','qaVideo0001','title','Author-vetted exact target','language','en','rationale','Synthetic reviewed exact concept match','embeddable',true,'made_for_kids',true,'verified_at',now(),'verification_expires_at',now()+interval '7 days');
-  perform pg_temp.video_assert(not has_function_privilege('authenticated','public.flh_learning_video_attach(uuid,uuid,jsonb)','EXECUTE') and not has_function_privilege('anon','public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid)','EXECUTE'),'RPCs service-only');
+  perform pg_temp.video_assert(not has_function_privilege('authenticated','public.flh_learning_video_attach(uuid,uuid,jsonb)','EXECUTE') and not has_function_privilege('anon','public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid)','EXECUTE') and not has_function_privilege('authenticated','public.flh_learning_video_refresh(uuid,uuid,uuid,uuid,jsonb)','EXECUTE'),'RPCs service-only');
   perform pg_temp.video_assert(not has_table_privilege('authenticated','public.learning_video_assignments','INSERT') and not has_table_privilege('authenticated','public.learning_video_attempts','SELECT') and not has_table_privilege('anon','public.learning_video_report_requests','SELECT'),'browser roles cannot directly access learner video state');
   perform pg_temp.video_assert((select bool_and(relrowsecurity) from pg_class where oid in ('public.learning_video_assignments'::regclass,'public.learning_video_attempts'::regclass,'public.learning_video_report_requests'::regclass)),'RLS enabled on every new table');
   perform pg_temp.video_assert((select not prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid='public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid)'::regprocedure),'report invoker fixed search_path');
@@ -79,12 +80,37 @@ begin
   perform pg_temp.video_assert(report->>'error'='ATTEMPT_NOT_ACTIVE','other learner cannot write report');
   report:=public.flh_learning_video_report(gen_random_uuid(),l,attempt,video,'watched_full',2,gen_random_uuid());
   perform pg_temp.video_assert(report->>'error'='ATTEMPT_NOT_ACTIVE','other workspace cannot write report');
+  select status_revision into status_token from public.learning_video_assignments where id=assignment;
+  result:=public.flh_learning_video_attach(w,owner_id,candidate||'{"made_for_kids":false}'::jsonb);
+  select status_revision into newer_status_token from public.learning_video_assignments where id=assignment;
+  perform pg_temp.video_assert(result->>'video_id'=video::text and newer_status_token<>status_token,'same reference attachment rotates status token without changing pinned video identity');
+  result:=public.flh_learning_video_refresh(w,assignment,video,status_token,null);
+  perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='verified' and made_for_kids=false and status_revision=newer_status_token from public.learning_video_assignments where id=assignment),'stale failed refresh cannot clear a newer reattachment');
+  result:=public.flh_learning_video_refresh(w,assignment,video,status_token,candidate);
+  perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='verified' and made_for_kids=false and self_report='watched_full' and report_revision=2 from public.learning_video_attempts where attempt_id=attempt),'stale successful refresh cannot overwrite newer status or learner report');
+  result:=public.flh_learning_video_refresh(w,assignment,video,newer_status_token,candidate);
+  select status_revision into status_token from public.learning_video_assignments where id=assignment;
+  perform pg_temp.video_assert(result->>'availability'='available' and status_token<>newer_status_token,'accepted successful refresh rotates status token');
+  result:=public.flh_learning_video_refresh(w,assignment,video,newer_status_token,candidate||'{"made_for_kids":false}'::jsonb);
+  perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select made_for_kids=true from public.learning_video_attempts where attempt_id=attempt),'an older successful refresh cannot overwrite the winning refresh');
+  reset role;
+  insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values(w,other_l,program,'active');
+  set local role service_role;
+  result:=public.flh_learning_video_attach(w,owner_id,candidate||jsonb_build_object('learner_id',other_l,'made_for_kids',false));
+  other_video:=(result->>'video_id')::uuid;
+  result:=public.flh_learning_start(w,other_l,'qa-optional-video');
+  other_attempt:=(result->>'attempt_id')::uuid;
+  perform pg_temp.video_assert(other_video<>video and result->'optional_video'->>'made_for_kids'='false' and (select made_for_kids=true from public.learning_video_attempts where attempt_id=attempt),'same provider reference in another assignment keeps independent pinned status');
+  result:=public.flh_learning_video_refresh(w,assignment,video,status_token,null);
+  select status_revision into newer_status_token from public.learning_video_assignments where id=assignment;
+  perform pg_temp.video_assert(result->>'availability'='unavailable' and newer_status_token<>status_token and (select verification_state='verified' and made_for_kids=false from public.learning_video_attempts where attempt_id=other_attempt),'accepted failed refresh rotates token without clearing another assignment snapshot');
   result:=public.flh_learning_video_attach(w,owner_id,candidate||'{"video_ref":"qaVideo0002"}'::jsonb);
   newer_video:=(result->>'video_id')::uuid;
   perform pg_temp.video_assert(newer_video<>video,'changed reference gets new video identity');
   resumed:=public.flh_learning_start(w,l,'qa-optional-video');
   perform pg_temp.video_assert(resumed->'optional_video'->>'id'=video::text and resumed->'optional_video'->>'video_ref'='qaVideo0001' and resumed->'optional_video'->>'report_revision'='2','old attempt pins original identity/reference/report');
-  result:=public.flh_learning_video_refresh(w,assignment,newer_video,null);
+  select status_revision into status_token from public.learning_video_assignments where id=assignment;
+  result:=public.flh_learning_video_refresh(w,assignment,newer_video,status_token,null);
   perform pg_temp.video_assert(result->>'availability'='unavailable','provider refresh failure fails closed');
   reset role;
   update public.learning_video_attempts set verification_expires_at=now()-interval '1 minute' where attempt_id=attempt;
@@ -108,11 +134,22 @@ begin
   perform pg_temp.video_assert(resumed->>'attempt_id'=attempt::text and resumed->'optional_video'->>'id'=video::text,'successor version never retargets active Learning video');
   reset role;
   update public.learning_video_attempts set verified_at=now()-interval '31 days',verification_expires_at=now()-interval '24 days' where attempt_id=attempt;
+  update public.learning_video_assignments set verification_state='verified',embeddable=true,made_for_kids=true,verified_at=now()-interval '31 days',verification_expires_at=now()-interval '24 days' where id=assignment;
+  select status_revision into status_token from public.learning_video_assignments where id=assignment;
   set local role service_role;
   result:=public.flh_learning_video_prune_status(w);
-  perform pg_temp.video_assert(result->>'attempts_pruned'='1' and (select made_for_kids is null and verified_at is null and self_report='watched_full' from public.learning_video_attempts where attempt_id=attempt),'prune expired provider data keeps FLH report history');
+  perform pg_temp.video_assert(result->>'assignments_pruned'='1' and result->>'attempts_pruned'='1' and (select made_for_kids is null and verified_at is null and self_report='watched_full' from public.learning_video_attempts where attempt_id=attempt),'prune expired provider data keeps FLH report history');
+  perform pg_temp.video_assert((select status_revision<>status_token from public.learning_video_assignments where id=assignment),'prune invalidates an inflight provider request');
+  result:=public.flh_learning_video_refresh(w,assignment,newer_video,status_token,candidate);
+  perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='expired' and verified_at is null and made_for_kids is null from public.learning_video_assignments where id=assignment),'stale successful refresh cannot restore data after pruning');
   perform pg_temp.video_assert((select count(*)=events_before from public.gamification_events where workspace_id=w and learner_id=l),'report never changes academic rewards ledger');
   perform pg_temp.video_assert(coalesce((select jsonb_build_object('xp',xp,'reward_points',reward_points) from public.learner_gamification_state where workspace_id=w and learner_id=l),'null'::jsonb)=balances_before,'report never changes XP or Reward Points balances');
+  reset role;
+  -- Fault injection is inside the rollback block: never retain a modified helper.
+  execute $fault$create or replace function private.flh_learning_optional_video(p_workspace_id uuid,p_learner_id uuid,p_attempt_id uuid,p_version_id uuid) returns jsonb language plpgsql security invoker set search_path='' as $body$begin raise exception 'VIDEO_RAW_PRIVATE_FAULT_SENTINEL' using errcode='23514'; end$body$$fault$;
+  set local role service_role;
+  result:=public.flh_learning_start(w,l,'qa-optional-video');
+  perform pg_temp.video_assert(result->>'error' is null and result->>'attempt_id'=attempt::text and result->'optional_video'='null'::jsonb and position('VIDEO_RAW_PRIVATE_FAULT_SENTINEL' in result::text)=0,'optional helper failure logs only SQLSTATE and preserves authorized start without raw error response');
   reset role;
   raise exception 'Optional video contract success rollback' using errcode='P0V12';
  exception when sqlstate 'P0V12' then

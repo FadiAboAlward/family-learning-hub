@@ -6,6 +6,8 @@ grant usage on schema private to service_role;
 create table public.learning_video_assignments (
   id uuid primary key default gen_random_uuid(),
   video_revision uuid not null default gen_random_uuid(),
+  -- Provider validation changes independently from pinned video/report identity.
+  status_revision uuid not null default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   learner_id uuid not null,
   quiz_version_id uuid not null,
@@ -142,13 +144,14 @@ begin
  insert into public.learning_video_assignments(workspace_id,learner_id,quiz_version_id,program_id,curriculum_id,grade_level,subject_id,concept_id,video_ref,title,language,rationale,verification_state,embeddable,made_for_kids,verified_at,verification_expires_at,reviewed_by)
  values(p_workspace_id,(c->>'learner_id')::uuid,(c->>'quiz_version_id')::uuid,(c->>'program_id')::uuid,(c->>'curriculum_id')::uuid,(c->>'grade_level')::smallint,(c->>'subject_id')::bigint,(c->>'concept_id')::uuid,c->>'video_ref',c->>'title',c->>'language',c->>'rationale','verified',true,(c->>'made_for_kids')::boolean,(c->>'verified_at')::timestamptz,(c->>'verification_expires_at')::timestamptz,p_parent_id)
  on conflict(workspace_id,learner_id,quiz_version_id) do update set
+  status_revision=gen_random_uuid(),
   video_revision=case when (learning_video_assignments.video_ref,learning_video_assignments.program_id,learning_video_assignments.curriculum_id,learning_video_assignments.grade_level,learning_video_assignments.subject_id,learning_video_assignments.concept_id) is distinct from (excluded.video_ref,excluded.program_id,excluded.curriculum_id,excluded.grade_level,excluded.subject_id,excluded.concept_id) then gen_random_uuid() else learning_video_assignments.video_revision end,
   program_id=excluded.program_id,curriculum_id=excluded.curriculum_id,grade_level=excluded.grade_level,subject_id=excluded.subject_id,concept_id=excluded.concept_id,
   video_ref=excluded.video_ref,title=excluded.title,language=excluded.language,rationale=excluded.rationale,verification_state='verified',embeddable=true,made_for_kids=excluded.made_for_kids,verified_at=excluded.verified_at,verification_expires_at=excluded.verification_expires_at,reviewed_by=p_parent_id,updated_at=now()
  returning * into v;
- -- Refresh policy status for pinned snapshots of the same provider reference only.
+ -- Refresh only this assignment's pinned reference, preserving other assignments.
  update public.learning_video_attempts set verification_state='verified',embeddable=true,made_for_kids=v.made_for_kids,verified_at=v.verified_at,verification_expires_at=v.verification_expires_at
- where workspace_id=p_workspace_id and video_ref=v.video_ref;
+ where workspace_id=p_workspace_id and video_id=v.video_revision and video_ref=v.video_ref;
  return jsonb_build_object('ok',true,'assignment_id',v.id,'video_id',v.video_revision,'verification_expires_at',v.verification_expires_at);
 exception when invalid_text_representation or check_violation or not_null_violation then return jsonb_build_object('error','INVALID_VIDEO_INPUT');
 end;
@@ -205,15 +208,16 @@ $$;
 revoke all on function public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid) from public,anon,authenticated;
 grant execute on function public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid) to service_role;
 
-create function public.flh_learning_video_refresh(p_workspace_id uuid,p_assignment_id uuid,p_video_revision uuid,p_status jsonb)
+create function public.flh_learning_video_refresh(p_workspace_id uuid,p_assignment_id uuid,p_video_revision uuid,p_status_revision uuid,p_status jsonb)
 returns jsonb language plpgsql security invoker set search_path = '' as $$
 declare v public.learning_video_assignments%rowtype;
 begin
- select * into v from public.learning_video_assignments where workspace_id=p_workspace_id and id=p_assignment_id and video_revision=p_video_revision for update;
+ select * into v from public.learning_video_assignments where workspace_id=p_workspace_id and id=p_assignment_id for update;
  if not found then return jsonb_build_object('error','VIDEO_NOT_AVAILABLE'); end if;
+ if v.video_revision is distinct from p_video_revision or v.status_revision is distinct from p_status_revision then return jsonb_build_object('error','VIDEO_STATUS_CONFLICT'); end if;
  if p_status is null then
-  update public.learning_video_assignments set verification_state='unavailable',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where id=v.id;
-  update public.learning_video_attempts set verification_state='unavailable',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where workspace_id=p_workspace_id and video_ref=v.video_ref;
+  update public.learning_video_assignments set status_revision=gen_random_uuid(),verification_state='unavailable',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where id=v.id;
+  update public.learning_video_attempts set verification_state='unavailable',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where workspace_id=p_workspace_id and video_id=v.video_revision and video_ref=v.video_ref;
   return jsonb_build_object('ok',true,'availability','unavailable');
  end if;
  if p_status->'embeddable' is distinct from 'true'::jsonb or jsonb_typeof(p_status->'made_for_kids') is distinct from 'boolean'
@@ -222,20 +226,20 @@ begin
   or (p_status->>'verification_expires_at')::timestamptz<=(p_status->>'verified_at')::timestamptz
   or (p_status->>'verification_expires_at')::timestamptz>(p_status->>'verified_at')::timestamptz+interval '7 days'
  then return jsonb_build_object('error','INVALID_VIDEO_INPUT'); end if;
- update public.learning_video_assignments set verification_state='verified',embeddable=true,made_for_kids=(p_status->>'made_for_kids')::boolean,verified_at=(p_status->>'verified_at')::timestamptz,verification_expires_at=(p_status->>'verification_expires_at')::timestamptz where id=v.id;
- update public.learning_video_attempts set verification_state='verified',embeddable=true,made_for_kids=(p_status->>'made_for_kids')::boolean,verified_at=(p_status->>'verified_at')::timestamptz,verification_expires_at=(p_status->>'verification_expires_at')::timestamptz where workspace_id=p_workspace_id and video_ref=v.video_ref;
+ update public.learning_video_assignments set status_revision=gen_random_uuid(),verification_state='verified',embeddable=true,made_for_kids=(p_status->>'made_for_kids')::boolean,verified_at=(p_status->>'verified_at')::timestamptz,verification_expires_at=(p_status->>'verification_expires_at')::timestamptz where id=v.id;
+ update public.learning_video_attempts set verification_state='verified',embeddable=true,made_for_kids=(p_status->>'made_for_kids')::boolean,verified_at=(p_status->>'verified_at')::timestamptz,verification_expires_at=(p_status->>'verification_expires_at')::timestamptz where workspace_id=p_workspace_id and video_id=v.video_revision and video_ref=v.video_ref;
  return jsonb_build_object('ok',true,'availability','available');
 exception when invalid_text_representation then return jsonb_build_object('error','INVALID_VIDEO_INPUT');
 end;
 $$;
-revoke all on function public.flh_learning_video_refresh(uuid,uuid,uuid,jsonb) from public,anon,authenticated;
-grant execute on function public.flh_learning_video_refresh(uuid,uuid,uuid,jsonb) to service_role;
+revoke all on function public.flh_learning_video_refresh(uuid,uuid,uuid,uuid,jsonb) from public,anon,authenticated;
+grant execute on function public.flh_learning_video_refresh(uuid,uuid,uuid,uuid,jsonb) to service_role;
 
 -- Maintenance must run at least daily before activation; no provider data older than 30 days is retained.
 create function public.flh_learning_video_prune_status(p_workspace_id uuid) returns jsonb language plpgsql security invoker set search_path = '' as $$
 declare a integer; b integer;
 begin
- update public.learning_video_assignments set verification_state='expired',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where workspace_id=p_workspace_id and verified_at<now()-interval '29 days'; get diagnostics a=row_count;
+ update public.learning_video_assignments set status_revision=gen_random_uuid(),verification_state='expired',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where workspace_id=p_workspace_id and verified_at<now()-interval '29 days'; get diagnostics a=row_count;
  update public.learning_video_attempts set verification_state='expired',embeddable=null,made_for_kids=null,verified_at=null,verification_expires_at=null where workspace_id=p_workspace_id and verified_at<now()-interval '29 days'; get diagnostics b=row_count;
  return jsonb_build_object('ok',true,'assignments_pruned',a,'attempts_pruned',b);
 end;
@@ -575,6 +579,7 @@ begin
   begin
     v_optional_video := private.flh_learning_optional_video(p_workspace_id,p_learner_id,v_attempt.id,v_version.id);
   exception when others then
+    raise warning 'flh_learning_start optional video skipped (SQLSTATE %)', sqlstate;
     v_optional_video := null; -- Optional failures never roll back an authorized start.
   end;
 
