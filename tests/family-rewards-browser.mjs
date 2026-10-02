@@ -585,6 +585,8 @@ async function runBrowserSuite() {
       learner_scope: 'selected', learner_ids: [LEARNER_ID], cadence: 'day', max_awards: 1,
       self_report_allowed: true, parent_approval_required: true, is_active: true,
     });
+    // The fixture changed outside the page; reload the dashboard before selecting the new rule.
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await open(page, 'parent');
     await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);
     await page.locator('#frOccurrenceRule').selectOption(ruleId);
