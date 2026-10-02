@@ -241,6 +241,32 @@ begin
       and question_id = v_old_question.id
     order by position;
 
+    insert into public.question_option_misconceptions(
+      workspace_id,
+      option_id,
+      misconception_id,
+      confidence,
+      metadata,
+      created_at
+    )
+    select
+      qom.workspace_id,
+      new_option.id,
+      qom.misconception_id,
+      qom.confidence,
+      qom.metadata,
+      qom.created_at
+    from public.question_option_misconceptions qom
+    join public.quiz_question_options old_option
+      on old_option.workspace_id = qom.workspace_id
+     and old_option.id = qom.option_id
+     and old_option.question_id = v_old_question.id
+    join public.quiz_question_options new_option
+      on new_option.workspace_id = qom.workspace_id
+     and new_option.question_id = v_new_question
+     and new_option.position = old_option.position
+    where qom.workspace_id = v_workspace;
+
     insert into public.quiz_question_answer_keys(
       question_id,
       workspace_id,
