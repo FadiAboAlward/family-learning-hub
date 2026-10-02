@@ -41,7 +41,7 @@ for (const action of ['student_rewards_dashboard', 'student_rewards_ledger', 'be
   await executeFamilyRewardsAction(action, {
     learner_id: otherId, workspace_id: otherId, actor_id: parentId, reviewer: parentId,
     reward_points_delta: 999999, xp_delta: 999, action,
-    rule_id: otherId, reward_id: otherId, initiative: true, idempotency_key: otherId,
+    rule_id: otherId, reward_id: otherId, initiative: true, adhkar_completed: true, idempotency_key: otherId,
   }, { ...deps, parentIdentity: async () => { throw new Error('must not use parent identity'); } });
   const { parameters } = calls.at(-1);
   assert.equal(parameters.p_learner_id, learnerId);
@@ -52,10 +52,13 @@ for (const action of ['student_rewards_dashboard', 'student_rewards_ledger', 'be
   }
 }
 
-await executeFamilyRewardsAction('behavior_record', { learner_id: learnerId, rule_id: otherId, initiative: true }, deps);
+await executeFamilyRewardsAction('behavior_record', { learner_id: learnerId, rule_id: otherId, initiative: true, adhkar_completed: true }, deps);
 assert.equal(calls.at(-1).parameters.p_actor_id, parentId);
 assert.equal(calls.at(-1).parameters.p_learner_id, learnerId);
 assert.equal(calls.at(-1).parameters.p_payload.rule_id, otherId);
+assert.equal(calls.at(-1).parameters.p_payload.adhkar_completed, true, 'parent prayer record may forward the linked adhkar selection');
+const learnerSubmit = calls.findLast(row => row.parameters?.p_payload?.rule_id === otherId && row.parameters?.p_actor_id === null);
+assert.equal(learnerSubmit.parameters.p_payload.adhkar_completed, true, 'learner prayer self-report may forward the linked adhkar selection');
 for (const invalid of [undefined, '', 'another-child', 123]) {
   await assert.rejects(() => executeFamilyRewardsAction('points_adjust', { learner_id: invalid, delta: 1, reason: 'تصحيح' }, deps), /INVALID_LEARNER_ID/);
 }
