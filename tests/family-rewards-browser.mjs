@@ -80,11 +80,13 @@ export function createRewardsFixture() {
         id: id(), learner_id: LEARNER_ID, rule_id: rule.id, category_id: rule.category_id,
         rule_title: rule.title, category_title: find(catalog.categories, rule.category_id)?.title,
         status: action === 'behavior_record' ? 'approved' : 'pending',
-        base_points: action === 'behavior_record' ? rule.base_points : 0, initiative_bonus_points: action === 'behavior_record' && body.initiative ? rule.initiative_bonus_points : 0,
-        reason: body.reason, occurred_at: body.occurred_at || NOW, requested_at: NOW, initiative: body.initiative,
+        base_points: action === 'behavior_record' ? rule.base_points : 0,
+        initiative_bonus_points: action === 'behavior_record' && body.initiative ? rule.initiative_bonus_points : 0,
+        adhkar_bonus_points: action === 'behavior_record' && body.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0,
+        reason: body.reason, occurred_at: body.occurred_at || NOW, requested_at: NOW, initiative: body.initiative, adhkar_completed: !!body.adhkar_completed,
         requester_type: action === 'behavior_record' ? 'parent' : 'learner', requester_id: 'qa-requester', reviewer_id: action === 'behavior_record' ? 'qa-parent' : null,
       };
-      row.total_points = row.base_points + row.initiative_bonus_points;
+      row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points;
       catalog.submissions.unshift(row);
       if (action === 'behavior_record') pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: clone(row) });
       return { submission: clone(row), id: row.id };
@@ -98,7 +100,8 @@ export function createRewardsFixture() {
           const rule = find(catalog.rules, row.rule_id);
           row.base_points = rule.base_points;
           row.initiative_bonus_points = row.initiative ? rule.initiative_bonus_points : 0;
-          row.total_points = row.base_points + row.initiative_bonus_points;
+          row.adhkar_bonus_points = row.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0;
+          row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points;
           pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: { ...clone(row), reviewer_id: 'qa-parent', approved_at: NOW } });
         }
       }
@@ -574,10 +577,47 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('#frLedgerSource').inputValue(), 'academic', 'the academic breakdown leaves the matching option selected');
     assert.deepEqual(await page.locator('[data-fr-ledger] [data-fr-event]').evaluateAll(rows => rows.map(row => row.dataset.frEvent).sort()), academicEventIds, 'academic drill-down includes the same legacy and modern academic history');
 
+    // FLH-FEAT-2026-017: adhkar is an optional server-configured bonus inside a prayer check-in.
+    const prayerRuleId = '99999999-9999-4999-8999-999999999999';
+    server.catalog.rules.push({
+      id: prayerRuleId, category_id: categoryId, category_title: 'العبادات', title: 'صلاة الفجر في وقتها',
+      base_points: 2, initiative_bonus_points: 1, adhkar_bonus_points: 2,
+      learner_scope: 'selected', learner_ids: [LEARNER_ID], cadence: 'day', max_awards: 1,
+      self_report_allowed: true, parent_approval_required: true, is_active: true,
+    });
+    // The fixture changed outside the page; reload the dashboard before selecting the new rule.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await open(page, 'parent');
+    await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);
+    await page.locator('#frOccurrenceRule').selectOption(ruleId);
+    assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isHidden(), true, 'non-prayer behavior does not expose an adhkar option');
+    await page.locator('#frOccurrenceRule').selectOption(prayerRuleId);
+    assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isVisible(), true, 'configured prayer exposes the linked adhkar option');
+    await page.locator('#frOccurrenceInitiative').check();
+    await page.locator('#frOccurrenceAdhkar').check();
+    await page.locator('#frOccurrenceReason').fill('صلاة الفجر مع الأذكار');
+    await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'));
+    assert.equal(server.last('behavior_record').adhkar_completed, true, 'parent check-in submits the adhkar selection');
+    await balance(page, 29);
+    const prayerEvent = server.catalog.ledger.find(row => row.metadata?.rule_id === prayerRuleId);
+    const prayerHistory = page.locator(`[data-fr-event="${prayerEvent.id}"]`);
+    assert.match(await prayerHistory.innerText(), /أساس.*2.*مبادرة.*1.*أذكار.*2/s, 'one prayer event explains base, initiative and adhkar points');
+    assert.equal(prayerEvent.reward_points_delta, 5, 'prayer with initiative and adhkar awards one five-point movement');
+
+    await open(page, 'student');
+    await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
+    assert.equal(await page.locator('[data-fr-adhkar="frSelfReport"]').isVisible(), true, 'learner prayer self-report exposes the same adhkar option');
+    await page.locator('#frSelfReportAdhkar').check();
+    await page.locator('#frSelfReportReason').fill('صلاة مع أذكار بانتظار الاعتماد');
+    await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
+    assert.equal(server.last('behavior_submit').adhkar_completed, true, 'learner self-report submits linked adhkar without a learner id');
+    assert.equal('learner_id' in server.last('behavior_submit'), false, 'linked adhkar preserves session-derived learner identity');
+    await balance(page, 29);
+
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-010', spec_version: '1.0', drive_revision_id: '3', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-017', spec_version: '1.0', base_feature_id: 'FLH-FEAT-2026-010', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();

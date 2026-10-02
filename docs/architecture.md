@@ -122,6 +122,10 @@ Reward requests and approval check current availability, learner scope, level, s
 
 The parent rewards page presents balances, category/source drill-down, pending reviews, configuration and reward history. The learner rewards page presents only that learner's balance, goals, point reasons and pending items. Both pages use the existing Arabic RTL shell and expose loading, empty, permission, validation and server-error states. There is no sibling leaderboard.
 
+### Linked prayer adhkar bonus
+
+`FLH-FEAT-2026-017`, version `1.0`, extends family behavior records so a rule may define an optional server-authoritative `adhkar_bonus_points`. A prayer check-in remains one behavior submission and one ledger event: base points, initiative points and the linked post-prayer adhkar bonus are snapshotted separately and summed atomically. The browser sends only the boolean completion choice; it never supplies the bonus amount. Rules with no configured adhkar bonus reject an adhkar claim. The request idempotency signature includes the adhkar choice, so retries cannot double-award or silently change that choice.
+
 ## Parent reporting
 
 Parent reporting should distinguish:
