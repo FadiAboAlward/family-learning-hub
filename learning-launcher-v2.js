@@ -12,7 +12,7 @@
   const hintContentHtml=(s='')=>{const lines=String(s).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return lines.length===3&&lines.every(x=>/^•\s+\S/u.test(x))?`<ul class="flh-hint-list">${lines.map(x=>`<li>${renderMath(x.replace(/^•\s+/u,''))}</li>`).join('')}</ul>`:renderMath(s);};
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const optionLabel=pos=>{const i=Math.max(0,Number(pos)-1);return OPTION_LABELS[i]||(i<26?String.fromCharCode(65+i):String(pos));};
-  async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
+  async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok){const error=new Error(d.error||'SERVER_ERROR');error.data=d;throw error;}return d;}
   async function refreshProfile(){try{if(typeof api==='function'&&typeof state!=='undefined')state.learnerProfile=await api('student_profile',{},token());}catch{}}
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
@@ -20,6 +20,7 @@
 
   async function startLearningQuiz(slug){
     if(!slug||typeof shell!=='function')return;
+    globalThis.FLHOptionalVideo?.dispose();
     shell('🧠 جاري تجهيز وضع التعلّم','رح نساعدك خطوة بخطوة.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
     let session;
     try{session=await call('start_quiz',{quiz_slug:slug});}
@@ -140,6 +141,9 @@
       }finally{busy=false;render();}
     }
 
+    // A resumed question with existing interaction goes straight back to learning.
+    const untouched=session.optional_video?.only_before_first_question!==false&&index===0&&queue.length>0&&queue.every(row=>!['completed','skipped'].includes(row.status)&&!row.draft_option_position&&!Number(row.hint_level_requested||0));
+    try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:render,onExit:home}))return;}catch{globalThis.FLHOptionalVideo?.dispose();}
     render();
   }
   window.FLH=window.FLH||{};window.FLH.startLearningQuiz=startLearningQuiz;

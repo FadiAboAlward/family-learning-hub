@@ -133,7 +133,7 @@ begin
     raise exception 'LEARNING_START_QUESTION_PAYLOAD_INVALID:%', v_result;
   end if;
   select array_agg(key order by key) into v_keys from jsonb_object_keys(v_result) key;
-  if v_keys <> array['attempt_id','queue','quiz','resumed','started_at']::text[] then
+  if v_keys <> array['attempt_id','optional_video','queue','quiz','resumed','started_at']::text[] then
     raise exception 'LEARNING_START_RESPONSE_KEYS_INVALID:%', v_keys;
   end if;
   if not exists (
