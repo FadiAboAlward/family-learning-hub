@@ -110,7 +110,7 @@ const learning=read('learning-launcher-v2.js');
 const exam=read('program-exam-v3.js');
 const history=read('attempt-history-v1.js');
 const attemptHistoryApi=read('supabase/functions/attempt-history-api/index.ts');
-const learningApi=read('supabase/functions/learning-api/index.ts');
+const resumeHintMigration=read('supabase/migrations/20261002124500_learning_resume_last_authored_hint.sql');
 const interactivePracticeHtml=read('interactive-practice.html');
 const interactivePractice=read('interactive-practice-v1.js');
 const layout=read('answer-layout-v8.js');
@@ -161,7 +161,7 @@ if(learning.includes('وصلت لآخر مستوى من التلميحات'))fai
 if(learning.includes("content:'تعذر تحميل التلميح الآن. جرّب مرة ثانية.'"))fail('Learning transport errors must not replace authored hint content with a synthetic numbered hint.');
 if(!learning.includes("pedagogical_role==='misconception_explanation'")||!learning.includes('flh-misconception-feedback'))fail('Misconception-only feedback must render outside numbered Learning hints.');
 if(!learning.includes("currentHint=queue[index]?.last_hint?.content?queue[index].last_hint:null"))fail('Learning resume must initialize from the last authored hint returned by the backend.');
-if(!learningApi.includes('start.last_hint')||!learningApi.includes('.eq("hint_level",level)')||!learningApi.includes('active.last_hint=lastHint||null'))fail('Learning API resume must retrieve the persisted authored hint without advancing progression.');
+if(!resumeHintMigration.includes("'last_hint', case")||!resumeHintMigration.includes('from public.quiz_question_hints h')||!resumeHintMigration.includes('h.hint_level = qq.hint_level_requested'))fail('Learning start RPC must return the last persisted authored hint without advancing progression.');
 if(!learning.includes('class="flh-explanation"><b>الشرح</b><div dir="auto"'))fail('Learning feedback explanations must use automatic prose direction when no language metadata exists.');
 if(!exam.includes('<li dir="auto">'))fail('Exam review explanation steps must isolate their own prose direction.');
 if(!history.includes('contentAttrs(x.prompt_language)'))fail('Attempt history prompt/answer review must use prompt_language direction.');
