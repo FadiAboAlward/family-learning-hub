@@ -51,6 +51,20 @@ assert.equal(calls.at(-1).params.p_video_revision,id,'Validation token must not 
 let conflictCalls=0;
 await assert.rejects(maintainOptionalVideos({from:()=>lookup,rpc:async(_name,params)=>{conflictCalls++;assert.equal(params.p_status_revision,statusRevision);assert.equal(params.p_status.made_for_kids,true);return {data:{error:'VIDEO_STATUS_CONFLICT'}};}},'w',{action:'refresh_optional_video',assignment_id:id},trace,{apiKey:'synthetic-test-key',now,fetchImpl:async()=>response()}),/^Error: VIDEO_STATUS_CONFLICT$/);
 assert.equal(conflictCalls,1,'An outdated provider response must not retry with a newer validation token');
+// Execute the actual API response boundary, removing only its TypeScript assertion.
+const learningApi=fs.readFileSync('supabase/functions/learning-api/index.ts','utf8');
+const apiCatch=learningApi.match(/\}catch\(e\)\{([\s\S]*?)\r?\n  \}\r?\n\}\);\s*$/);
+assert.ok(apiCatch,'Learning API error response block must be available to the regression');
+const errorResponse=new Function('e','trace','origin','cors','performanceJsonResponse',apiCatch[1].replace('(e as any)','e'));
+const respondToError=error=>errorResponse(error,trace,'https://testing.example',origin=>({origin}),(_trace,payload,status)=>({payload,status}));
+const providerError=new Error('VIDEO_PROVIDER_UNAVAILABLE');
+providerError.data={raw_provider_payload:'Synthetic sensitive provider detail'};
+assert.deepEqual(respondToError(providerError),{payload:{error:'VIDEO_PROVIDER_UNAVAILABLE'},status:422},'Expected provider rejection is an opaque 422, not a server failure');
+for(const [message,status] of [['AUTH_REQUIRED',401],['INVALID_PARENT_SESSION',401],['VIDEO_ATTACHMENT_FORBIDDEN',403],['QUIZ_NOT_AVAILABLE',404],['VIDEO_NOT_AVAILABLE',404],['VIDEO_REPORT_REQUEST_CONFLICT',409],['VIDEO_STATUS_CONFLICT',409],['INVALID_VIDEO_INPUT',400],['VIDEO_CONTEXT_MISMATCH',400],['ATTEMPT_NOT_ACTIVE',400],['VIDEO_ATTACHMENT_UNAVAILABLE',500],['SERVER_ERROR',500]]) assert.deepEqual(respondToError(new Error(message)),{payload:{error:message},status},`${message} keeps its existing API status`);
+const reportConflict=new Error('REPORT_CONFLICT');
+reportConflict.data={self_report:'watched_full',report_revision:2,raw_provider_payload:'Synthetic sensitive provider detail'};
+assert.deepEqual(respondToError(reportConflict),{payload:{error:'REPORT_CONFLICT',self_report:'watched_full',report_revision:2},status:409},'Report conflicts expose only the authoritative self-report/revision');
+assert.deepEqual(respondToError({message:'Synthetic unknown thrown value'}),{payload:{error:'SERVER_ERROR'},status:500});
 const migration=fs.readFileSync('supabase/migrations/20261002193353_optional_learning_videos.sql','utf8');
 assert.match(migration,/\"enabled\":false/);
 assert.match(migration,/v_optional_video := private\.flh_learning_optional_video/);
