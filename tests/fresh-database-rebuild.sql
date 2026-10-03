@@ -789,7 +789,9 @@ begin
     v_qc_version uuid;
     v_generated_id uuid := 'f0190000-0000-4000-8000-000000000001';
     v_explicit_id uuid := 'f0190000-0000-4000-8000-000000000002';
+    v_whitespace_id uuid := 'f0190000-0000-4000-8000-000000000003';
     v_generated_code text;
+    v_whitespace_code text;
     v_explicit_code text;
   begin
     if not exists (
@@ -842,8 +844,20 @@ begin
     )
     returning question_code into v_generated_code;
 
-    if v_generated_code !~ '^Q-[0-9]{6,} then
+    if v_generated_code !~ '^Q-[0-9]{6,}$' then
       raise exception 'QUESTION_CODE_TRIGGER_GENERATION_INVALID:%',v_generated_code;
+    end if;
+
+    insert into public.quiz_questions(
+      id,workspace_id,quiz_version_id,position,question_type,prompt,question_code
+    ) values (
+      v_whitespace_id,v_qc_workspace,v_qc_version,900003,'single_choice',
+      'QA whitespace public question code','   '
+    )
+    returning question_code into v_whitespace_code;
+
+    if v_whitespace_code !~ '^Q-[0-9]{6,}$' then
+      raise exception 'QUESTION_CODE_TRIGGER_WHITESPACE_GENERATION_INVALID:%',v_whitespace_code;
     end if;
 
     insert into public.quiz_questions(
@@ -859,7 +873,7 @@ begin
     end if;
 
     delete from public.quiz_questions
-    where id in (v_generated_id,v_explicit_id);
+    where id in (v_generated_id,v_explicit_id,v_whitespace_id);
   exception when others then
     delete from public.quiz_questions
     where id in (v_generated_id,v_explicit_id);
