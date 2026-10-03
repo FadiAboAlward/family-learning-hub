@@ -120,13 +120,10 @@ begin
       'reward_claims_reward_id_fkey'
     )
   ) then raise exception 'one or more scalar FKs remain'; end if;
-end
-$$;
 
-
--- v1.1 residual integrity: bind persisted Exam answers to the owning attempt
--- version and bind activity sessions to a learner in the same workspace.
-do $v1_1$
+  -- v1.1 residual integrity: bind persisted Exam answers to the owning attempt
+  -- version and bind activity sessions to a learner in the same workspace.
+  <<v1_1>>
 declare
   v_workspace uuid;
   v_learner uuid;
@@ -312,5 +309,7 @@ begin
   delete from public.learner_learning_sessions where id=v_session;
   delete from public.quiz_attempts where id=v_attempt;
   delete from public.workspaces where id=v_other_workspace;
+end v1_1;
+
 end
-$v1_1$;
+$$;
