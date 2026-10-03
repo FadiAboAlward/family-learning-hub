@@ -876,7 +876,7 @@ begin
     where id in (v_generated_id,v_explicit_id,v_whitespace_id);
   exception when others then
     delete from public.quiz_questions
-    where id in (v_generated_id,v_explicit_id);
+    where id in (v_generated_id,v_explicit_id,v_whitespace_id);
     raise;
   end question_code_search_path_contract;
 
