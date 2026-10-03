@@ -782,5 +782,89 @@ begin
     end if;
   end progressive_hint_readability_contract;
 
+
+  <<question_code_search_path_contract>>
+  declare
+    v_qc_workspace uuid;
+    v_qc_version uuid;
+    v_generated_id uuid := 'f0190000-0000-4000-8000-000000000001';
+    v_explicit_id uuid := 'f0190000-0000-4000-8000-000000000002';
+    v_generated_code text;
+    v_explicit_code text;
+  begin
+    if not exists (
+      select 1
+      from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public'
+        and p.proname='assign_question_public_code'
+        and pg_get_function_identity_arguments(p.oid)=''
+        and not p.prosecdef
+        and p.proconfig @> array['search_path=""']::text[]
+    ) then
+      raise exception 'QUESTION_CODE_TRIGGER_FUNCTION_SECURITY_INVALID';
+    end if;
+
+    if not exists (
+      select 1
+      from pg_trigger t
+      join pg_class c on c.oid=t.tgrelid
+      join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public'
+        and c.relname='quiz_questions'
+        and t.tgname='trg_assign_question_public_code'
+        and not t.tgisinternal
+        and t.tgenabled<>'D'
+    ) then
+      raise exception 'QUESTION_CODE_TRIGGER_MISSING_OR_DISABLED';
+    end if;
+
+    select id into v_qc_workspace
+    from public.workspaces
+    where slug='family-learning-hub'
+    limit 1;
+
+    select id into v_qc_version
+    from public.quiz_versions
+    where workspace_id=v_qc_workspace
+    order by created_at,id
+    limit 1;
+
+    if v_qc_workspace is null or v_qc_version is null then
+      raise exception 'QUESTION_CODE_TRIGGER_FIXTURE_MISSING';
+    end if;
+
+    insert into public.quiz_questions(
+      id,workspace_id,quiz_version_id,position,question_type,prompt
+    ) values (
+      v_generated_id,v_qc_workspace,v_qc_version,900001,'single_choice',
+      'QA generated public question code'
+    )
+    returning question_code into v_generated_code;
+
+    if v_generated_code !~ '^Q-[0-9]{6,} then
+      raise exception 'QUESTION_CODE_TRIGGER_GENERATION_INVALID:%',v_generated_code;
+    end if;
+
+    insert into public.quiz_questions(
+      id,workspace_id,quiz_version_id,position,question_type,prompt,question_code
+    ) values (
+      v_explicit_id,v_qc_workspace,v_qc_version,900002,'single_choice',
+      'QA explicit public question code','Q-999999999'
+    )
+    returning question_code into v_explicit_code;
+
+    if v_explicit_code <> 'Q-999999999' then
+      raise exception 'QUESTION_CODE_TRIGGER_EXPLICIT_CODE_CHANGED:%',v_explicit_code;
+    end if;
+
+    delete from public.quiz_questions
+    where id in (v_generated_id,v_explicit_id);
+  exception when others then
+    delete from public.quiz_questions
+    where id in (v_generated_id,v_explicit_id);
+    raise;
+  end question_code_search_path_contract;
+
 end;
 $contract$;
