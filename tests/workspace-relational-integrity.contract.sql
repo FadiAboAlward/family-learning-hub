@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-004 deterministic database contract.
+-- FLH-FEAT-2026-004 v1.1 deterministic database contract.
 do $$
 declare
   v_count integer;
@@ -122,3 +122,195 @@ begin
   ) then raise exception 'one or more scalar FKs remain'; end if;
 end
 $$;
+
+
+-- v1.1 residual integrity: bind persisted Exam answers to the owning attempt
+-- version and bind activity sessions to a learner in the same workspace.
+do $v1_1$
+declare
+  v_workspace uuid;
+  v_learner uuid;
+  v_version_a uuid;
+  v_version_b uuid;
+  v_question_a uuid;
+  v_question_b uuid;
+  v_attempt uuid := 'a613dd0a-2ea4-4e53-a505-79db5d699101';
+  v_answer uuid := 'a613dd0a-2ea4-4e53-a505-79db5d699102';
+  v_other_workspace uuid := 'a613dd0a-2ea4-4e53-a505-79db5d699103';
+  v_session uuid := 'a613dd0a-2ea4-4e53-a505-79db5d699104';
+  v_rejected boolean;
+  v_def text;
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema='public'
+      and table_name='quiz_attempt_answers'
+      and column_name='quiz_version_id'
+      and is_nullable='NO'
+      and data_type='uuid'
+  ) then
+    raise exception 'quiz_attempt_answers.quiz_version_id is missing or nullable';
+  end if;
+
+  foreach v_def in array array[
+    'quiz_attempt_answers_attempt_version_workspace_fkey',
+    'quiz_attempt_answers_question_version_workspace_fkey',
+    'learner_learning_sessions_learner_workspace_fkey'
+  ] loop
+    if not exists (
+      select 1
+      from pg_constraint
+      where conname=v_def
+        and convalidated
+    ) then
+      raise exception 'required validated v1.1 constraint missing: %', v_def;
+    end if;
+  end loop;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid='public.quiz_attempt_answers'::regclass
+      and tgname='quiz_attempt_answers_bind_version'
+      and not tgisinternal
+  ) then
+    raise exception 'quiz_attempt_answers version-binding trigger missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='private'
+      and p.proname='flh_bind_quiz_attempt_answer_version'
+      and not p.prosecdef
+  ) then
+    raise exception 'version-binding helper is missing or unexpectedly SECURITY DEFINER';
+  end if;
+
+  if exists (
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_attempts a
+      on a.id=aa.attempt_id and a.workspace_id=aa.workspace_id
+    join public.quiz_questions q
+      on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.quiz_version_id is distinct from a.quiz_version_id
+       or aa.quiz_version_id is distinct from q.quiz_version_id
+  ) then
+    raise exception 'existing quiz_attempt_answers version mismatch remains';
+  end if;
+
+  if exists (
+    select 1
+    from public.learner_learning_sessions s
+    join public.learners l on l.id=s.learner_id
+    where s.workspace_id is distinct from l.workspace_id
+  ) then
+    raise exception 'existing learner session workspace mismatch remains';
+  end if;
+
+  select w.id
+    into v_workspace
+  from public.workspaces w
+  where w.slug='family-learning-hub'
+  limit 1;
+
+  select l.id
+    into v_learner
+  from public.learners l
+  where l.workspace_id=v_workspace
+    and coalesce((l.metadata->>'is_test')::boolean,false)
+  limit 1;
+
+  select q.quiz_version_id, q.id
+    into v_version_a, v_question_a
+  from public.quiz_questions q
+  join public.quiz_versions v
+    on v.id=q.quiz_version_id and v.workspace_id=q.workspace_id
+  where q.workspace_id=v_workspace
+    and not (v.settings ? 'paper_exam')
+  order by q.quiz_version_id, q.position
+  limit 1;
+
+  select q.quiz_version_id, q.id
+    into v_version_b, v_question_b
+  from public.quiz_questions q
+  join public.quiz_versions v
+    on v.id=q.quiz_version_id and v.workspace_id=q.workspace_id
+  where q.workspace_id=v_workspace
+    and q.quiz_version_id<>v_version_a
+    and not (v.settings ? 'paper_exam')
+  order by q.quiz_version_id, q.position
+  limit 1;
+
+  if v_workspace is null or v_learner is null
+     or v_version_a is null or v_version_b is null then
+    raise exception 'v1.1 relational fixture prerequisites missing';
+  end if;
+
+  insert into public.quiz_attempts(
+    id,workspace_id,learner_id,quiz_version_id,status,delivery_mode
+  ) values (
+    v_attempt,v_workspace,v_learner,v_version_a,'in_progress','exam'
+  );
+
+  insert into public.quiz_attempt_answers(
+    id,workspace_id,attempt_id,question_id,response
+  ) values (
+    v_answer,v_workspace,v_attempt,v_question_a,'{"option_position":1}'::jsonb
+  );
+
+  if not exists (
+    select 1
+    from public.quiz_attempt_answers
+    where id=v_answer and quiz_version_id=v_version_a
+  ) then
+    raise exception 'positive answer version binding did not populate quiz_version_id';
+  end if;
+
+  v_rejected := false;
+  begin
+    insert into public.quiz_attempt_answers(
+      workspace_id,attempt_id,question_id,response
+    ) values (
+      v_workspace,v_attempt,v_question_b,'{"option_position":1}'::jsonb
+    );
+  exception when foreign_key_violation then
+    v_rejected := true;
+  end;
+
+  if not v_rejected then
+    raise exception 'cross-version quiz attempt answer was accepted';
+  end if;
+
+  insert into public.workspaces(id,name,slug)
+  values (v_other_workspace,'QA relational other workspace','qa-relational-other-workspace');
+
+  v_rejected := false;
+  begin
+    insert into public.learner_learning_sessions(
+      workspace_id,learner_id,auth_nonce
+    ) values (
+      v_other_workspace,v_learner,'qa-cross-workspace-nonce'
+    );
+  exception when foreign_key_violation then
+    v_rejected := true;
+  end;
+
+  if not v_rejected then
+    raise exception 'cross-workspace learner session was accepted';
+  end if;
+
+  insert into public.learner_learning_sessions(
+    id,workspace_id,learner_id,auth_nonce
+  ) values (
+    v_session,v_workspace,v_learner,'qa-positive-session-nonce'
+  );
+
+  delete from public.learner_learning_sessions where id=v_session;
+  delete from public.quiz_attempts where id=v_attempt;
+  delete from public.workspaces where id=v_other_workspace;
+end
+$v1_1$;
