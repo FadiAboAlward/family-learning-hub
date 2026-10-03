@@ -134,7 +134,8 @@ begin
       and c.relname = any(array[
         'workspaces','workspace_members','workspace_settings','learners',
         'quiz_question_answer_keys','learner_access_tokens','quiz_assignments','quiz_attempts',
-        'quiz_attempt_answers','learner_concept_mastery','learning_programs',
+        'quiz_attempt_answers','quiz_answer_attempts','quiz_attempt_question_queue',
+        'learner_concept_mastery','adaptive_events','learner_term_exposures','learning_programs',
         'program_subjects','program_books','program_quizzes',
         'learner_program_enrollments','learner_login_rate_limits',
         'learner_gamification_state','learner_learning_sessions'
@@ -162,8 +163,9 @@ begin
       and p.tablename = any(array[
         'workspaces','workspace_members','workspace_settings','learners',
         'learner_access_tokens','quiz_assignments','quiz_attempts',
-        'quiz_attempt_answers','quiz_attempt_question_queue',
-        'learner_concept_mastery','learning_programs','program_subjects',
+        'quiz_attempt_answers','quiz_answer_attempts','quiz_attempt_question_queue',
+        'learner_concept_mastery','adaptive_events','learner_term_exposures',
+        'learning_programs','program_subjects',
         'program_books','program_quizzes','learner_program_enrollments',
         'learner_gamification_state','gamification_events',
         'learner_learning_sessions'
@@ -188,8 +190,7 @@ begin
     from unnest(array[
       'workspace_members','workspace_settings','learners',
       'learner_access_tokens','quiz_assignments','quiz_attempts',
-      'quiz_attempt_answers','quiz_attempt_question_queue',
-      'learner_concept_mastery','learning_programs','program_subjects',
+      'quiz_attempt_answers','learning_programs','program_subjects',
       'program_books','program_quizzes','learner_program_enrollments',
       'learner_gamification_state','gamification_events'
     ]::text[]) as relation_name
@@ -204,7 +205,12 @@ begin
     select * from (values
       ('workspaces', 'SELECT', 'qual'),
       ('workspaces', 'UPDATE', 'qual'),
-      ('workspaces', 'UPDATE', 'with_check')
+      ('workspaces', 'UPDATE', 'with_check'),
+      ('quiz_answer_attempts', 'SELECT', 'qual'),
+      ('quiz_attempt_question_queue', 'SELECT', 'qual'),
+      ('learner_concept_mastery', 'SELECT', 'qual'),
+      ('adaptive_events', 'SELECT', 'qual'),
+      ('learner_term_exposures', 'SELECT', 'qual')
     ) as partial_contract(tablename, command_name, expression_name)
   loop
     if not exists (
@@ -225,6 +231,163 @@ begin
         v_policy_contract.expression_name;
     end if;
   end loop;
+
+  -- v1.1 behavioral proof that scoped SELECT policies cannot be bypassed by
+  -- an authenticated user who belongs only to a different workspace.
+  <<server_owned_cross_workspace_read_contract>>
+  declare
+    v_outsider_user uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699201';
+    v_outsider_workspace uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699202';
+    v_target_learner uuid;
+    v_target_version uuid;
+    v_target_question uuid;
+    v_target_concept uuid;
+    v_target_curriculum uuid;
+    v_target_attempt uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699203';
+    v_target_queue uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699204';
+    v_target_answer_attempt uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699205';
+    v_target_mastery uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699206';
+    v_target_term uuid := 'e513dd0a-2ea4-4e53-a505-79db5d699207';
+    v_adaptive_event_id bigint;
+    v_term_exposure_id bigint;
+    v_visible integer;
+  begin
+    select l.id into v_target_learner
+    from public.learners l
+    where l.workspace_id=v_workspace
+      and coalesce((l.metadata->>'is_test')::boolean,false)
+    limit 1;
+
+    select q.quiz_version_id,q.id
+      into v_target_version,v_target_question
+    from public.quiz_questions q
+    where q.workspace_id=v_workspace
+    order by q.created_at,q.id
+    limit 1;
+
+    select c.id,c.curriculum_id
+      into v_target_concept,v_target_curriculum
+    from public.learning_concepts c
+    where c.workspace_id=v_workspace
+      and c.curriculum_id is not null
+      and not exists (
+        select 1
+        from public.learner_concept_mastery m
+        where m.workspace_id=c.workspace_id
+          and m.learner_id=v_target_learner
+          and m.concept_id=c.id
+      )
+    order by c.created_at,c.id
+    limit 1;
+
+    if v_target_learner is null
+       or v_target_version is null
+       or v_target_question is null
+       or v_target_concept is null
+       or v_target_curriculum is null then
+      raise exception 'FRESH_REBUILD_SERVER_OWNED_READ_FIXTURE_MISSING';
+    end if;
+
+    insert into auth.users(id) values (v_outsider_user);
+    insert into public.workspaces(id,name,slug)
+    values (
+      v_outsider_workspace,
+      'Fresh rebuild outsider workspace',
+      'fresh-rebuild-outsider-workspace'
+    );
+    insert into public.workspace_members(workspace_id,user_id,role)
+    values (v_outsider_workspace,v_outsider_user,'owner');
+
+    insert into public.quiz_attempts(
+      id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
+    ) values (
+      v_target_attempt,v_workspace,v_target_learner,v_target_version,
+      'in_progress','learning','{"is_test":true,"qa_scope":"fresh_server_owned_read_isolation"}'::jsonb
+    );
+
+    insert into public.quiz_attempt_question_queue(
+      id,workspace_id,quiz_attempt_id,sequence_no,question_id,difficulty_level,status
+    ) values (
+      v_target_queue,v_workspace,v_target_attempt,9002,
+      v_target_question,3,'pending'
+    );
+
+    insert into public.quiz_answer_attempts(
+      id,workspace_id,quiz_attempt_id,question_id,attempt_no,response,is_correct,score_fraction
+    ) values (
+      v_target_answer_attempt,v_workspace,v_target_attempt,v_target_question,
+      1,'{"option_position":1}'::jsonb,false,0
+    );
+
+    insert into public.learner_concept_mastery(
+      id,workspace_id,learner_id,concept_id,metadata
+    ) values (
+      v_target_mastery,v_workspace,v_target_learner,v_target_concept,
+      '{"is_test":true,"qa_scope":"fresh_server_owned_read_isolation"}'::jsonb
+    );
+
+    insert into public.adaptive_events(
+      workspace_id,quiz_attempt_id,learner_id,concept_id,event_type,reason,input_state,output_state
+    ) values (
+      v_workspace,v_target_attempt,v_target_learner,v_target_concept,
+      'feedback_served','qa-fresh-server-owned-read-isolation',
+      '{"is_test":true}'::jsonb,'{"is_test":true}'::jsonb
+    ) returning id into v_adaptive_event_id;
+
+    insert into public.curriculum_concept_terms(
+      id,workspace_id,concept_id,curriculum_id,language_code,term,verification_status,metadata
+    ) values (
+      v_target_term,v_workspace,v_target_concept,v_target_curriculum,
+      'en','qa-fresh-server-owned-cross-workspace-term','unverified',
+      '{"is_test":true,"qa_scope":"fresh_server_owned_read_isolation"}'::jsonb
+    );
+
+    insert into public.learner_term_exposures(
+      workspace_id,learner_id,concept_id,term_id,quiz_attempt_id,exposure_type
+    ) values (
+      v_workspace,v_target_learner,v_target_concept,v_target_term,
+      v_target_attempt,'review'
+    ) returning id into v_term_exposure_id;
+
+    perform set_config('request.jwt.claim.sub',v_outsider_user::text,true);
+    execute 'set local role authenticated';
+
+    select
+      (select count(*) from public.quiz_answer_attempts where id=v_target_answer_attempt)
+      + (select count(*) from public.quiz_attempt_question_queue where id=v_target_queue)
+      + (select count(*) from public.learner_concept_mastery where id=v_target_mastery)
+      + (select count(*) from public.adaptive_events where id=v_adaptive_event_id)
+      + (select count(*) from public.learner_term_exposures where id=v_term_exposure_id)
+    into v_visible;
+
+    if v_visible <> 0 then
+      raise exception 'FRESH_REBUILD_SERVER_OWNED_CROSS_WORKSPACE_READ:%',v_visible;
+    end if;
+
+    execute 'reset role';
+
+    delete from public.learner_term_exposures where id=v_term_exposure_id;
+    delete from public.curriculum_concept_terms where id=v_target_term;
+    delete from public.adaptive_events where id=v_adaptive_event_id;
+    delete from public.learner_concept_mastery where id=v_target_mastery;
+    delete from public.quiz_answer_attempts where id=v_target_answer_attempt;
+    delete from public.quiz_attempt_question_queue where id=v_target_queue;
+    delete from public.quiz_attempts where id=v_target_attempt;
+    delete from public.workspaces where id=v_outsider_workspace;
+    delete from auth.users where id=v_outsider_user;
+  exception when others then
+    execute 'reset role';
+    delete from public.learner_term_exposures where id=v_term_exposure_id;
+    delete from public.curriculum_concept_terms where id=v_target_term;
+    delete from public.adaptive_events where id=v_adaptive_event_id;
+    delete from public.learner_concept_mastery where id=v_target_mastery;
+    delete from public.quiz_answer_attempts where id=v_target_answer_attempt;
+    delete from public.quiz_attempt_question_queue where id=v_target_queue;
+    delete from public.quiz_attempts where id=v_target_attempt;
+    delete from public.workspaces where id=v_outsider_workspace;
+    delete from auth.users where id=v_outsider_user;
+    raise;
+  end server_owned_cross_workspace_read_contract;
 
   <<self_contained_wording_contract>>
   declare
