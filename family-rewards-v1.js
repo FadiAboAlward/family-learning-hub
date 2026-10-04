@@ -328,6 +328,7 @@
       const result=await call(view,action,payload);
       if (!current(view)) return;
       if(action==='behavior_submit'&&result?.duplicate_pending)success='هذا السلوك مسجّل مسبقًا وبانتظار موافقة الأهل.';
+      if(action==='behavior_review')view.approvalMessage=null;
       // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
       if(action==='reward_request')requestKeys.delete(`${view.token}:${payload.reward_id}`);
