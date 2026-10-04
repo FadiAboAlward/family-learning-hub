@@ -93,6 +93,7 @@ Deno.serve(async(req:Request)=>{
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
+      else if(action==="preview_videos")output=await previewVideos(lid,String(b.quiz_slug||""),trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
       else if(action==="request_hint")output=await requestHint(lid,b,trace);
       else if(action==="answer")output=await answerQuestion(lid,b,trace);
