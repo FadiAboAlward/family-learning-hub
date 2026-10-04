@@ -76,6 +76,15 @@ assert.equal(duplicateResults[0].submission.id,duplicateResults[1].submission.id
 assert.equal(Number(await psql(`select reward_points from public.learner_gamification_state where learner_id='${learnerId}'`)),20);
 assert.equal(Number(await psql(`select count(*) from public.gamification_events where learner_id='${learnerId}' and source_type='family_behavior' and metadata->>'rule_id'='${ruleId}'`)),1);
 
+const sameOccurrence = new Date(Date.now()-60_000).toISOString();
+const pendingResults=await race(
+  command('behavior_submit',{rule_id:ruleId,occurred_at:sameOccurrence,idempotency_key:'qa-family-pending-one'},null,learnerId),
+  command('behavior_submit',{rule_id:ruleId,occurred_at:sameOccurrence,idempotency_key:'qa-family-pending-two'},null,learnerId),97000105);
+assert.ok(pendingResults.every(result=>result.ok),'concurrent exact self-reports both return a safe result');
+assert.equal(pendingResults[0].submission.id,pendingResults[1].submission.id,'concurrent exact self-reports converge on one pending submission');
+assert.equal(pendingResults.filter(result=>result.duplicate_pending===true).length,1,'the waiter explicitly reports pending occurrence reuse');
+assert.equal(Number(await psql(`select count(*) from public.behavior_submissions where learner_id='${learnerId}' and rule_id='${ruleId}' and status='pending' and occurred_at='${sameOccurrence}'::timestamptz`)),1,'concurrent exact self-reports persist one pending row');
+
 const cadenceResults=await race(
   command('behavior_record',{rule_id:secondRuleId,idempotency_key:'qa-family-cadence-one'},actorId,learnerId),
   command('behavior_record',{rule_id:secondRuleId,idempotency_key:'qa-family-cadence-two'},actorId,learnerId),97000102);
@@ -110,4 +119,4 @@ const expiredResults=await race(
   command('reward_review',{claim_id:expiringRequest.claim.id,decision:'approved'}),97000104);
 assert.ok(expiredResults.every(result=>result.error==='REWARD_UNAVAILABLE'),'a reward expired during lock wait must never approve');
 assert.equal(Number(await psql(`select count(*) from public.gamification_events where source_type='reward_claim' and source_id='${expiringRequest.claim.id}'`)),0);
-console.log('Family rewards real concurrent duplicate award, cadence, competing claims, no overdraft/double spend, availability after lock wait, and XP preservation passed.');
+console.log('Family rewards real concurrent duplicate award, exact pending occurrence reuse, cadence, competing claims, no overdraft/double spend, availability after lock wait, and XP preservation passed.');
