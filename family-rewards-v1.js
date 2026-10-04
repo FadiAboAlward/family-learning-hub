@@ -86,6 +86,14 @@
     const ids = new Set(occurrenceRules(view,prefix).map(rule => rule.category_id));
     return (view.data.categories || []).filter(category => category.is_active !== false && ids.has(category.id));
   }
+  function syncOccurrenceCategories(view,prefix) {
+    const category=view.root.querySelector(`#${prefix}Category`);
+    if(!category)return;
+    const previous=category.value, rows=occurrenceCategories(view,prefix);
+    category.innerHTML=`<option value="">اختر الفئة</option>${rows.map(row=>`<option value="${safe(row.id)}">${safe(row.title)}</option>`).join('')}`;
+    if(rows.some(row=>row.id===previous))category.value=previous;
+    syncBehaviorPicker(view,prefix);
+  }
   function syncBehaviorPicker(view, prefix) {
     const category = view.root.querySelector(`#${prefix}Category`), ruleSelect = view.root.querySelector(`#${prefix}Rule`);
     if (!category || !ruleSelect) return;
@@ -128,9 +136,10 @@
     return Number.isFinite(parsed.getTime()) ? `${row.learner_id}|${row.rule_id}|${parsed.toISOString()}` : '';
   }
   function duplicateSubmissionIds(rows) {
-    const seen=new Map(), duplicates=new Set();
+    const seen=new Map(), duplicates=new Set(), approved=new Set(rows.filter(row=>row.status==='approved').map(exactOccurrenceKey).filter(Boolean));
     for(const row of rows.filter(row=>row.status==='pending')){
       const key=exactOccurrenceKey(row); if(!key)continue;
+      if(approved.has(key))duplicates.add(row.id);
       if(seen.has(key)){duplicates.add(seen.get(key));duplicates.add(row.id);} else seen.set(key,row.id);
     }
     return duplicates;
@@ -283,8 +292,9 @@
       payload.idempotency_key = keyHolder.dataset.idempotencyKey;
     }
     try {
-      await call(view,action,payload);
+      const result=await call(view,action,payload);
       if (!current(view)) return;
+      if(action==='behavior_submit'&&result?.duplicate_pending)success='هذا السلوك مسجّل مسبقًا وبانتظار موافقة الأهل.';
       // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
       if(action==='reward_request')requestKeys.delete(`${view.token}:${payload.reward_id}`);
@@ -359,11 +369,11 @@
       ruleSelect?.addEventListener('change',()=>syncAdhkar(view,prefix));
       dateMode?.addEventListener('change',()=>syncOccurrenceWhen(view,prefix));
       timeMode?.addEventListener('change',()=>syncOccurrenceWhen(view,prefix));
-      syncBehaviorPicker(view,prefix);syncOccurrenceWhen(view,prefix);
+      syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);
     }
-    root.querySelector('#frOccurrenceLearner')?.addEventListener('change',()=>{const category=root.querySelector('#frOccurrenceCategory');if(category)category.value='';syncBehaviorPicker(view,'frOccurrence');});
+    root.querySelector('#frOccurrenceLearner')?.addEventListener('change',()=>{const category=root.querySelector('#frOccurrenceCategory');if(category)category.value='';syncOccurrenceCategories(view,'frOccurrence');});
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
-    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncBehaviorPicker(view,prefix);syncOccurrenceWhen(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
+    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
     ['category','rule','reward'].forEach(kind=>{
       root.querySelectorAll(`[data-fr-edit-${kind}]`).forEach(button=>button.onclick=()=>edit(view,kind,button.getAttribute(`data-fr-edit-${kind}`)));
       root.querySelectorAll(`[data-fr-toggle-${kind}]`).forEach(button=>button.onclick=()=>{const rows=view.data[kind==='category'?'categories':`${kind}s`]||[],row=rows.find(row=>row.id===button.getAttribute(`data-fr-toggle-${kind}`));if(!row)return;mutation(view,button,`${kind}_save`,{...row,is_active:row.is_active===false},row.is_active===false?'تم التفعيل.':'تم التعطيل.');});
