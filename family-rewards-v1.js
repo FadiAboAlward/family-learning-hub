@@ -214,26 +214,47 @@
       return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head"><h3>${safe(name(view,learnerId))}</h3><button class="btn btn-soft" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
     }).join('');
   }
-  function reportRows(view) {
-    let rows=[...(view.data.submissions||[])];
-    const learnerId=view.role==='parent'?(view.reportLearner||learners(view)[0]?.id||''):(learners(view)[0]?.id||'');
-    if(learnerId)rows=rows.filter(row=>row.learner_id===learnerId);
-    if(view.reportCategory)rows=rows.filter(row=>(row.category_id||view.data.rules?.find(rule=>rule.id===row.rule_id)?.category_id)===view.reportCategory);
-    if(view.reportRule)rows=rows.filter(row=>row.rule_id===view.reportRule);
-    rows.sort((a,b)=>new Date(b.occurred_at||b.requested_at||0)-new Date(a.occurred_at||a.requested_at||0));
-    if(view.reportPeriod==='last30'){
-      const cutoff=Date.now()-30*24*60*60*1000;
-      rows=rows.filter(row=>new Date(row.occurred_at||row.requested_at||0).getTime()>=cutoff);
-    } else rows=rows.slice(0,7);
-    return rows;
+  function reportRequest(view) {
+    const payload={period:view.reportPeriod||'last7'};
+    if(view.reportCategory)payload.category_id=view.reportCategory;
+    if(view.reportRule)payload.rule_id=view.reportRule;
+    if(view.role==='parent'&&view.reportLearner)payload.learner_id=view.reportLearner;
+    return payload;
+  }
+  async function loadReport(view,{repaint=false}={}) {
+    if(!current(view))return;
+    if(view.role==='parent'&&!view.reportLearner){
+      view.reportData={rows:[],summary:{approved_count:0,pending_count:0,total_points:0}};
+      view.reportError='';
+      if(repaint)paint(view);
+      return;
+    }
+    const serial=++view.reportSerial;
+    view.reportBusy=true;
+    const host=view.root?.querySelector('[data-fr-report]');
+    host?.setAttribute('aria-busy','true');
+    try{
+      const data=await call(view,`${view.role}_behavior_report`,reportRequest(view));
+      if(!current(view)||serial!==view.reportSerial)return;
+      view.reportData=data||{rows:[],summary:{}};
+      view.reportError='';
+    }catch(error){
+      if(!current(view)||serial!==view.reportSerial)return;
+      view.reportError=errorMessages[String(error?.message||'')]||'تعذر تحميل التقرير الآن.';
+    }finally{
+      if(serial===view.reportSerial)view.reportBusy=false;
+      host?.removeAttribute('aria-busy');
+    }
+    if(repaint&&current(view)&&serial===view.reportSerial)paint(view);
   }
   function reportSection(view) {
     if(view.role==='parent'&&(!view.reportLearner||!learners(view).some(row=>row.id===view.reportLearner)))view.reportLearner=learners(view)[0]?.id||'';
-    const rows=reportRows(view), approved=rows.filter(row=>row.status==='approved').length, pending=rows.filter(row=>row.status==='pending').length;
-    const points=rows.filter(row=>row.status==='approved').reduce((sum,row)=>sum+number(row.total_points),0);
+    const rows=view.reportData?.rows||[], summary=view.reportData?.summary||{};
+    const approved=number(summary.approved_count), pending=number(summary.pending_count), points=number(summary.total_points);
     const reportRules=(view.data.rules||[]).filter(rule=>!view.reportCategory||rule.category_id===view.reportCategory);
     const cards=rows.map(row=>`<article class="fr-report-item"><div class="topline"><b>${safe(ruleName(view,row))}</b>${statusBadge(row.status)}</div><div class="muted">${safe(categoryName(view,{...row,category_id:row.category_id||view.data.rules?.find(rule=>rule.id===row.rule_id)?.category_id}))} · ${isolated(date(row.occurred_at||row.requested_at))}</div>${pointParts(row)}${row.initiative?'<div class="muted">مبادرة دون تذكير</div>':''}${row.adhkar_completed?'<div class="muted">أذكار ما بعد الصلاة</div>':''}</article>`).join('')||'<div class="empty">لا توجد سجلات ضمن هذا الاختيار.</div>';
-    return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${(view.data.categories||[]).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRules.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div><div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
+    const error=view.reportError?`<div class="error" role="alert">${safe(view.reportError)}</div>`:'';
+    return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${(view.data.categories||[]).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRules.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div>${error}<div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
   }
   async function approveAllForLearner(view, button, learnerId) {
     if(!current(view)||button.dataset.frBusy==='1')return;
@@ -242,16 +263,30 @@
     button.dataset.frBusy='1';button.disabled=true;button.setAttribute('aria-busy','true');
     const reason=view.root.querySelector('#frReviewReason')?.value.trim()||'';
     let approved=0;const failures=[];
-    for(const row of rows){
-      try{await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason});approved++;}
-      catch(error){failures.push({id:row.id,error:String(error?.message||'SERVER_ERROR')});}
+    try{
+      for(const row of rows){
+        try{await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason});approved++;}
+        catch(error){failures.push({id:row.id,error:String(error?.message||'SERVER_ERROR')});}
+      }
+      if(!current(view))return;
+      const statusText=failures.length
+        ? `تم اعتماد ${approved} من ${rows.length}. تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`
+        : `تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`;
+      view.savedMessage=statusText;
+      try{
+        await refresh(view,statusText);
+        if(failures.length&&current(view)){
+          const host=view.root.querySelector('[data-fr-approvals] .fr-message');
+          if(host)host.innerHTML=`<div class="error" role="alert">${safe(statusText)}</div>`;
+        }
+      }catch(error){
+        if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));
+      }
+    }finally{
+      if(current(view)&&document.contains(button)){
+        button.dataset.frBusy='0';button.removeAttribute('aria-busy');button.disabled=!!view.refreshRequired;
+      }
     }
-    if(!current(view))return;
-    if(failures.length){
-      await refresh(view);
-      const host=view.root.querySelector('[data-fr-approvals] .fr-message');
-      if(host)host.innerHTML=`<div class="error" role="alert">تم اعتماد ${approved} من ${rows.length}. تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية قبل المحاولة مجددًا.</div>`;
-    } else await refresh(view,`تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`);
   }
   function paint(view, success = '') {
     if (!current(view)) return;
@@ -276,6 +311,7 @@
     if (view.role === 'parent' && view.selectedLearner && !learners(view).some(learner=>learner.id===view.selectedLearner)) view.selectedLearner='';
     if (view.role === 'parent' && (!view.reportLearner || !learners(view).some(learner=>learner.id===view.reportLearner))) view.reportLearner=learners(view)[0]?.id||'';
     view.refreshRequired=false;
+    await loadReport(view);
     const savedMessage=success||view.savedMessage||'';delete view.savedMessage;
     paint(view,savedMessage);
   }
@@ -387,10 +423,10 @@
     root.querySelectorAll('[data-fr-claim-redeem]').forEach(button=>button.onclick=()=>mutation(view,button,'reward_redeem',{claim_id:button.dataset.frClaimRedeem,reason:root.querySelector('#frReviewReason')?.value.trim()||''},'تم تسجيل تسليم الجائزة؛ لا يوجد خصم إضافي.'));
     root.querySelectorAll('[data-fr-request-reward]').forEach(button=>button.onclick=()=>{const id=button.dataset.frRequestReward,key=`${view.token}:${id}`;if(requestKeys.has(key))button.dataset.idempotencyKey=requestKeys.get(key);else{button.dataset.idempotencyKey=crypto.randomUUID();requestKeys.set(key,button.dataset.idempotencyKey);}mutation(view,button,'reward_request',{reward_id:id,idempotency_key:true},'طلب الجائزة بانتظار موافقة الأهل.');});
     root.querySelectorAll('[data-fr-approve-all]').forEach(button=>button.onclick=()=>approveAllForLearner(view,button,button.dataset.frApproveAll));
-    root.querySelector('#frReportLearner')?.addEventListener('change',event=>{view.reportLearner=event.target.value;paint(view);});
-    root.querySelector('#frReportCategory')?.addEventListener('change',event=>{view.reportCategory=event.target.value;view.reportRule='';paint(view);});
-    root.querySelector('#frReportRule')?.addEventListener('change',event=>{view.reportRule=event.target.value;paint(view);});
-    root.querySelector('#frReportPeriod')?.addEventListener('change',event=>{view.reportPeriod=event.target.value;paint(view);});
+    root.querySelector('#frReportLearner')?.addEventListener('change',async event=>{view.reportLearner=event.target.value;await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportCategory')?.addEventListener('change',async event=>{view.reportCategory=event.target.value;view.reportRule='';await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportRule')?.addEventListener('change',async event=>{view.reportRule=event.target.value;await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportPeriod')?.addEventListener('change',async event=>{view.reportPeriod=event.target.value;await loadReport(view,{repaint:true});});
     root.querySelector('#frLedgerCategory').onchange=()=>loadLedger(view);
     root.querySelector('#frLedgerSource').onchange=()=>loadLedger(view);
     root.querySelector('[data-fr-ledger-all]').onclick=()=>loadLedger(view);
@@ -403,7 +439,7 @@
     if(!role){screen=null;requestKeys.clear();return;}
     const token=tokenFor(role);
     if(!token){location.hash=role==='parent'?'parents':'student';return;}
-    const view={role,token,generation,data:{},selectedLearner:'',reportLearner:'',reportCategory:'',reportRule:'',reportPeriod:'last7',ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
+    const view={role,token,generation,data:{},selectedLearner:'',reportLearner:'',reportCategory:'',reportRule:'',reportPeriod:'last7',reportData:{rows:[],summary:{}},reportError:'',reportSerial:0,reportBusy:false,ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
     shell(role==='parent'?'🎁 الجوائز والعادات':'🎁 جوائزي وعاداتي',role==='parent'?'نقاط واضحة، سلوكيات تشجّعها العائلة، وجوائز باعتماد الأهل.':'تقدّمك الشخصي ومصدر نقاطك، خطوة بخطوة.',`<div class="actions fr-page-actions"><a class="btn btn-soft" href="#${role==='parent'?'parents':'student'}">رجوع ${role==='parent'?'للوحة الأهل':'إلى صفحتي'}</a><button class="btn btn-soft" data-fr-refresh>تحديث</button></div><div data-family-rewards data-role="${role}"><div class="loading-card" role="status">جارٍ تحميل النقاط والجوائز…</div></div>`);
     view.root=document.querySelector('[data-family-rewards]');
     document.querySelector('[data-fr-refresh]').onclick=async()=>{try{await refresh(view);}catch(error){if(current(view)){if(view.refreshRequired)savedRefreshNotice(view);else reportError(view.root,error);}}};
