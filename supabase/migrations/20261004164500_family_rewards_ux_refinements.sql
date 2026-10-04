@@ -49,7 +49,7 @@ begin
   if p_workspace_id is null or p_payload is null or jsonb_typeof(p_payload) <> 'object' then return jsonb_build_object('error','INVALID_INPUT'); end if;
   if v_parent then
     if not exists(select 1 from public.workspace_members where workspace_id = p_workspace_id and user_id = p_actor_id and role in ('owner','admin')) then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN'); end if;
-  elsif p_action not in ('student_catalog','student_ledger','behavior_submit','reward_request') then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN');
+  elsif p_action not in ('student_catalog','student_ledger','student_report','behavior_submit','reward_request') then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN');
   end if;
 
   if not v_parent and p_learner_id is null then return jsonb_build_object('error','LEARNER_NOT_FOUND'); end if;
