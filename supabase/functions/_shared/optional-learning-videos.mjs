@@ -9,13 +9,14 @@ function text(value, maximum) { if (typeof value !== 'string' || !value.trim() |
 
 export function validateVideoCandidate(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
-  const allowed = new Set(['learner_id','quiz_version_id','program_id','curriculum_id','grade_level','subject_id','concept_id','video_ref','title','language','rationale']);
+  const allowed = new Set(['learner_id','quiz_version_id','program_id','curriculum_id','grade_level','subject_id','concept_id','position','video_ref','title','language','rationale']);
   if (Object.keys(value).some(key => !allowed.has(key))) invalid();
   const result = {};
   for (const key of ['learner_id','quiz_version_id','program_id','curriculum_id','concept_id']) result[key] = uuid(value[key]);
-  if (!Number.isInteger(value.grade_level) || value.grade_level < 1 || value.grade_level > 12 || !Number.isSafeInteger(value.subject_id) || value.subject_id < 1) invalid();
+  const position = value.position == null ? 1 : value.position;
+  if (!Number.isInteger(value.grade_level) || value.grade_level < 1 || value.grade_level > 12 || !Number.isSafeInteger(value.subject_id) || value.subject_id < 1 || !Number.isInteger(position) || position < 1 || position > 20) invalid();
   if (!VIDEO_ID.test(value.video_ref || '') || !['ar','tr','en'].includes(value.language)) invalid();
-  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000)};
+  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,position,video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000)};
 }
 
 export function validateVideoReport(value) {

@@ -1,10 +1,10 @@
 # Optional Learning videos
 
-Contract: `FLH-FEAT-2026-012`, `SPEC_VERSION: 1.1`, [Drive Feature Spec](https://docs.google.com/document/d/1h2rPlJOps6LztcOOHZe4WAopG40nnQo8sysm4-EY6jM/edit), retrievable Drive revision `2`, [Issue #104](https://github.com/FadiAboAlward/family-learning-hub/issues/104). Version 1.1 supersedes the original player-derived measurement design.
+Contract: canonical `FLH-FEAT-2026-018`, `SPEC_VERSION: 1.2`, [Drive Feature Spec](https://docs.google.com/document/d/14_Vnm5Rk5dwQtxEOXGt8wr5ddLe7BBjttNHFIcot7DU/edit), [Issue #125](https://github.com/FadiAboAlward/family-learning-hub/issues/125). The historical implementation alias `FLH-FEAT-2026-012` remains in older migration/branch names only. Version 1.2 extends v1.1 from one vetted video to a small ordered vetted sequence without changing the self-report/privacy contract.
 
 ## Learner behavior
 
-One vetted video may accompany a learner's exact assessment version before the first Learning question. The learner can immediately start the exercise, watch some or all of the video, or leave. An absent, unverified, mismatched, expired or failing video never prevents Learning. An already progressed Learning session resumes its question directly. Exam has no video dependency or instructional card.
+One or more vetted videos may accompany a learner's exact assessment version before the first Learning question. Multi-video assignments have explicit positive positions and are shown in order; existing single-video assignments remain position 1. The learner can immediately start the exercise, watch some or all of the video, or leave. An absent, unverified, mismatched, expired or failing video never prevents Learning. An already progressed Learning session resumes its question directly. Exam has no video dependency or instructional card.
 
 The optional selector records only a learner's own statement:
 
@@ -41,7 +41,7 @@ Validation is usable for seven days. Status refresh rechecks the same reference 
 
 Provider metadata must be refreshed or removed within 30 days under [YouTube's data policy](https://developers.google.com/youtube/terms/developer-policies). Before any Production provider-status collection, including attachment while the UI remains disabled, configure the authenticated maintenance operation to prune expired provider-status data, run it at least daily, and verify it affects assignments and attempt snapshots. Disabling rendering and seven-day render expiry do not satisfy stored-data retention. Educational association and first-party self-report remain distinct from provider status.
 
-The parent owner/admin API actions are `attach_optional_video` with `video`, `refresh_optional_video` with `assignment_id`, and `prune_optional_video_status`. Pruning clears provider booleans and validation timestamps after 29 days, leaving a one-day margin for daily maintenance. `learning_video_assignments` stores the reviewed association; `learning_video_attempts` pins an attempt's reference and explicitly named `self_report`; `learning_video_report_requests` provides retry receipts. These service-only tables do not add a gamification event or viewing metric.
+The parent owner/admin API actions are `attach_optional_video` with `video`, `refresh_optional_video` with `assignment_id`, and `prune_optional_video_status`. Pruning clears provider booleans and validation timestamps after 29 days, leaving a one-day margin for daily maintenance. `learning_video_assignments` stores each reviewed ordered association; `learning_video_attempts` pins the attempt's full sequence on first entry and explicitly named `self_report`; `learning_video_report_requests` provides retry receipts. These service-only tables do not add a gamification event or viewing metric.
 
 ## Embed configuration and failure
 
