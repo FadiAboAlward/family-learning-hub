@@ -250,10 +250,18 @@
       return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head"><h3>${safe(name(view,learnerId))}</h3><button class="btn btn-soft" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
     }).join('');
   }
+  function reportDimensionRows(primary, historical) {
+    const rows=new Map();
+    for(const row of historical||[])if(row?.id)rows.set(row.id,row);
+    for(const row of primary||[])if(row?.id)rows.set(row.id,row);
+    return [...rows.values()];
+  }
+  function reportCategories(view) { return reportDimensionRows(view.data.categories,view.data.report_categories); }
+  function reportRules(view) { return reportDimensionRows(view.data.rules,view.data.report_rules); }
   function syncReportRuleOptions(view) {
     const select=view.root.querySelector('#frReportRule');
     if(!select)return;
-    const rows=view.data.rules||[];
+    const rows=reportRules(view);
     select.innerHTML=`<option value="">كل السلوكيات</option>${rows.map(rule=>`<option value="${safe(rule.id)}">${safe(rule.title)}</option>`).join('')}`;
     select.value=view.reportRule&&rows.some(rule=>rule.id===view.reportRule)?view.reportRule:'';
   }
@@ -295,10 +303,10 @@
     if(view.role==='parent'&&(!view.reportLearner||!learners(view).some(row=>row.id===view.reportLearner)))view.reportLearner=learners(view)[0]?.id||'';
     const rows=view.reportData?.rows||[], summary=view.reportData?.summary||{};
     const approved=number(summary.approved_count), pending=number(summary.pending_count), points=number(summary.total_points);
-    const reportRules=view.data.rules||[];
+    const reportRuleRows=reportRules(view);
     const cards=rows.map(row=>`<article class="fr-report-item"><div class="topline"><b>${safe(ruleName(view,row))}</b>${statusBadge(row.status)}</div><div class="muted">${safe(categoryName(view,{...row,category_id:row.category_id||view.data.rules?.find(rule=>rule.id===row.rule_id)?.category_id}))} · ${isolated(date(row.occurred_at||row.requested_at))}</div>${pointParts(row)}${row.initiative?'<div class="muted">مبادرة دون تذكير</div>':''}${row.adhkar_completed?'<div class="muted">أذكار ما بعد الصلاة</div>':''}</article>`).join('')||'<div class="empty">لا توجد سجلات ضمن هذا الاختيار.</div>';
     const error=view.reportError?`<div class="error" role="alert">${safe(view.reportError)}</div>`:'';
-    return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${(view.data.categories||[]).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRules.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div>${error}<div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
+    return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${reportCategories(view).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRuleRows.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div>${error}<div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
   }
   async function approveAllForLearner(view, button, learnerId) {
     if(!current(view)||button.dataset.frBusy==='1')return;
