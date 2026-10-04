@@ -235,9 +235,18 @@ begin
       -- Preserve optional-time intent separately from the server-assigned occurrence time.
       -- Equivalent timezone forms compare by instant; omitted times stay null on retry.
       v_request_payload := jsonb_build_object('action',p_action,'actor_id',p_actor_id,'learner_id',p_learner_id,'rule_id',v_rule.id,'initiative',coalesce((p_payload->>'initiative')::boolean,false),'adhkar_completed',coalesce((p_payload->>'adhkar_completed')::boolean,false),'reason',coalesce(p_payload->>'reason',''),'occurred_at',extract(epoch from v_explicit_occurred_at));
-      select * into v_submission from public.behavior_submissions where workspace_id=p_workspace_id and learner_id=p_learner_id and idempotency_key=v_key;
+      select * into v_submission
+      from public.behavior_submissions
+      where workspace_id=p_workspace_id
+        and learner_id=p_learner_id
+        and (
+          idempotency_key=v_key
+          or coalesce(request_payload->'idempotency_aliases','[]'::jsonb) ? v_key
+        )
+      order by case when idempotency_key=v_key then 0 else 1 end, requested_at asc, id asc
+      limit 1;
       if found then
-        if v_submission.request_payload is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
+        if (coalesce(v_submission.request_payload,'{}'::jsonb)-'idempotency_aliases') is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
         return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'already_recorded',true);
       end if;
       if p_action='behavior_submit' then
@@ -251,6 +260,19 @@ begin
         order by requested_at asc, id asc
         limit 1;
         if found then
+          update public.behavior_submissions
+          set request_payload =
+            coalesce(request_payload,'{}'::jsonb)
+            || jsonb_build_object(
+              'idempotency_aliases',
+              case
+                when coalesce(request_payload->'idempotency_aliases','[]'::jsonb) ? v_key
+                  then coalesce(request_payload->'idempotency_aliases','[]'::jsonb)
+                else coalesce(request_payload->'idempotency_aliases','[]'::jsonb) || jsonb_build_array(v_key)
+              end
+            )
+          where id=v_submission.id
+          returning * into v_submission;
           return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'duplicate_pending',true);
         end if;
       end if;
@@ -396,5 +418,5 @@ exception
 end $$;
 revoke all on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) from public, anon, authenticated;
 grant execute on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) to service_role;
-comment on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) is 'FLH-FEAT-2026-010 v1.1 + FLH-FEAT-2026-017. Service-only atomic family rewards command with exact pending self-report reuse, duplicate-occurrence approval guard, and complete learner-scoped behavior reports.';
+comment on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) is 'FLH-FEAT-2026-010 v1.1 + FLH-FEAT-2026-017. Service-only atomic family rewards command with exact pending self-report reuse, persistent retry aliases, duplicate-occurrence approval guard, and complete learner-scoped behavior reports.';
 
