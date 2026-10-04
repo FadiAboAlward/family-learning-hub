@@ -140,6 +140,32 @@ begin
         (exists(select 1 from public.behavior_rule_learners scopes where scopes.workspace_id=p_workspace_id and scopes.learner_id=l.id) or exists(select 1 from public.reward_learner_scopes scopes where scopes.workspace_id=p_workspace_id and scopes.learner_id=l.id))) else '[]'::jsonb end,
       'states',(select coalesce(jsonb_agg(jsonb_build_object('learner_id',l.id,'xp',coalesce(s.xp,0),'reward_points',coalesce(s.reward_points,0),'current_level',coalesce(s.current_level,1),'current_streak',coalesce(s.current_streak,0),'longest_streak',coalesce(s.longest_streak,0))),'[]'::jsonb) from public.learners l left join public.learner_gamification_state s on s.learner_id=l.id and s.workspace_id=l.workspace_id where l.id=any(v_ids) and l.workspace_id=p_workspace_id),
       'categories',(select coalesce(jsonb_agg(to_jsonb(c) order by c.created_at),'[]'::jsonb) from public.behavior_categories c where c.workspace_id=p_workspace_id and (v_parent or c.is_active)),
+      'report_categories',case when v_parent then '[]'::jsonb else (
+        select coalesce(jsonb_agg(jsonb_build_object('id',x.category_id,'title',x.category_title) order by x.category_title),'[]'::jsonb)
+        from (
+          select distinct on (q.category_id) q.category_id,q.category_title
+          from (
+            select coalesce(nullif(s.snapshot->>'category_id','')::uuid,r.category_id) as category_id,
+                   coalesce(s.snapshot->>'category_title',c.title) as category_title,
+                   s.requested_at,s.id
+            from public.behavior_submissions s
+            join public.behavior_rules r on r.id=s.rule_id and r.workspace_id=s.workspace_id
+            join public.behavior_categories c on c.id=r.category_id and c.workspace_id=r.workspace_id
+            where s.workspace_id=p_workspace_id and s.learner_id=p_learner_id
+          ) q
+          order by q.category_id,q.requested_at desc,q.id desc
+        ) x
+      ) end,
+      'report_rules',case when v_parent then '[]'::jsonb else (
+        select coalesce(jsonb_agg(jsonb_build_object('id',x.rule_id,'title',x.rule_title) order by x.rule_title),'[]'::jsonb)
+        from (
+          select distinct on (s.rule_id) s.rule_id,coalesce(s.snapshot->>'rule_title',r.title) as rule_title
+          from public.behavior_submissions s
+          join public.behavior_rules r on r.id=s.rule_id and r.workspace_id=s.workspace_id
+          where s.workspace_id=p_workspace_id and s.learner_id=p_learner_id
+          order by s.rule_id,s.requested_at desc,s.id desc
+        ) x
+      ) end,
       'badges',case when v_parent then (select coalesce(jsonb_agg(jsonb_build_object('code',code,'title',title,'is_active',is_active) order by title),'[]'::jsonb) from public.gamification_badges where workspace_id=p_workspace_id) else '[]'::jsonb end,
       'rules',(select coalesce(jsonb_agg(to_jsonb(r) || jsonb_build_object('category_title',c.title,'learner_ids',(select coalesce(jsonb_agg(rl.learner_id),'[]'::jsonb) from public.behavior_rule_learners rl where rl.rule_id=r.id and rl.workspace_id=p_workspace_id and (v_parent or rl.learner_id=p_learner_id))) order by r.created_at),'[]'::jsonb) from public.behavior_rules r join public.behavior_categories c on c.id=r.category_id and c.workspace_id=r.workspace_id where r.workspace_id=p_workspace_id and (v_parent or (r.is_active and c.is_active and r.self_report_allowed and ((r.learner_scope='all' and not coalesce((v_learner.metadata->>'is_test')::boolean,false)) or exists(select 1 from public.behavior_rule_learners rl where rl.rule_id=r.id and rl.workspace_id=p_workspace_id and rl.learner_id=p_learner_id))))),
       'rewards',(select coalesce(jsonb_agg(to_jsonb(r) || jsonb_build_object('learner_ids',(select coalesce(jsonb_agg(rl.learner_id),'[]'::jsonb) from public.reward_learner_scopes rl where rl.reward_id=r.id and rl.workspace_id=p_workspace_id and (v_parent or rl.learner_id=p_learner_id))) || case when p_action='student_catalog' then public.flh_family_reward_eligibility(p_workspace_id,p_learner_id,r.id) else '{}'::jsonb end order by r.created_at),'[]'::jsonb) from public.gamification_rewards r where r.workspace_id=p_workspace_id and (v_parent or (r.is_active and ((r.learner_scope='all' and not coalesce((v_learner.metadata->>'is_test')::boolean,false)) or exists(select 1 from public.reward_learner_scopes rl where rl.reward_id=r.id and rl.workspace_id=p_workspace_id and rl.learner_id=p_learner_id))))),
@@ -252,6 +278,15 @@ begin
         end if;
         return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'already_recorded',true);
       end if;
+    end if;
+    select * into v_category from public.behavior_categories where id=v_rule.category_id and workspace_id=p_workspace_id;
+    if not v_rule.is_active or not v_category.is_active then return jsonb_build_object('error','RULE_INACTIVE'); end if;
+    if (v_rule.learner_scope='all' and coalesce((v_learner.metadata->>'is_test')::boolean,false)) or (v_rule.learner_scope='selected' and not exists(select 1 from public.behavior_rule_learners where rule_id=v_rule.id and workspace_id=p_workspace_id and learner_id=p_learner_id)) then return jsonb_build_object('error','RULE_SCOPE_FORBIDDEN'); end if;
+    if p_action='behavior_submit' and not v_rule.self_report_allowed then return jsonb_build_object('error','SELF_REPORT_FORBIDDEN'); end if;
+    if p_action<>'behavior_review' then
+      if coalesce(v_explicit_occurred_at,v_now)>v_now then return jsonb_build_object('error','INVALID_OCCURRED_AT'); end if;
+      if coalesce((p_payload->>'adhkar_completed')::boolean,false) and coalesce(v_rule.adhkar_bonus_points,0)=0 then return jsonb_build_object('error','INVALID_INPUT'); end if;
+      if length(coalesce(p_payload->>'reason',''))>1000 then return jsonb_build_object('error','INVALID_INPUT'); end if;
       if p_action='behavior_submit' then
         select * into v_submission
         from public.behavior_submissions
@@ -276,14 +311,6 @@ begin
           return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'duplicate_pending',true);
         end if;
       end if;
-    end if;
-    select * into v_category from public.behavior_categories where id=v_rule.category_id and workspace_id=p_workspace_id;
-    if not v_rule.is_active or not v_category.is_active then return jsonb_build_object('error','RULE_INACTIVE'); end if;
-    if (v_rule.learner_scope='all' and coalesce((v_learner.metadata->>'is_test')::boolean,false)) or (v_rule.learner_scope='selected' and not exists(select 1 from public.behavior_rule_learners where rule_id=v_rule.id and workspace_id=p_workspace_id and learner_id=p_learner_id)) then return jsonb_build_object('error','RULE_SCOPE_FORBIDDEN'); end if;
-    if p_action='behavior_submit' and not v_rule.self_report_allowed then return jsonb_build_object('error','SELF_REPORT_FORBIDDEN'); end if;
-    if p_action<>'behavior_review' then
-      if coalesce(v_explicit_occurred_at,v_now)>v_now then return jsonb_build_object('error','INVALID_OCCURRED_AT'); end if;
-      if coalesce((p_payload->>'adhkar_completed')::boolean,false) and coalesce(v_rule.adhkar_bonus_points,0)=0 then return jsonb_build_object('error','INVALID_INPUT'); end if;
       insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,adhkar_completed,occurred_at,requester_type,requester_id,reason,idempotency_key,requested_at,request_payload)
       values(p_workspace_id,p_learner_id,v_rule.id,coalesce((p_payload->>'initiative')::boolean,false),coalesce((p_payload->>'adhkar_completed')::boolean,false),coalesce(v_explicit_occurred_at,v_now),case when p_action='behavior_submit' then 'learner' else 'parent' end,case when p_action='behavior_submit' then null else p_actor_id end,coalesce(p_payload->>'reason',''),v_key,v_now,v_request_payload) returning * into v_submission;
       -- AC06 always requires parent review, regardless of configurable policy flag.
