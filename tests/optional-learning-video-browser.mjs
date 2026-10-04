@@ -60,6 +60,9 @@ function createFixture({ video = videoFixture(), language = 'tr', resumed = fals
         return { body: { ok: true } };
       }
       assert.equal(endpoint, 'learning-api', 'mock never forwards an unrecognized API to a live backend');
+      if (body.action === 'preview_videos') {
+        return { body: { quiz_version_id: '11111111-1111-4111-8111-111111111115', resumable_attempt_id: started ? ATTEMPT_ID : null, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, optional_video: clone(video) } };
+      }
       if (body.action === 'start_quiz') {
         const response = { attempt_id: ATTEMPT_ID, resumed: started, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, queue: [clone(row)], optional_video: clone(video) };
         started = true;
@@ -154,7 +157,8 @@ async function setup(browser, device, options = {}) {
     }
     return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html lang="en"><title>Synthetic Testing embed</title><body>Testing provider fixture</body></html>' });
   });
-  await page.goto(`${APP_URL}?optional-video-testing#student`, { waitUntil: 'domcontentloaded' });
+  const target = options.initialPath ? `${APP_URL}${options.initialPath}` : `${APP_URL}?optional-video-testing#student`;
+  await page.goto(target, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.FLH?.startLearningQuiz === 'function' && typeof window.FLH?.startExamQuiz === 'function');
   return {
     context, page, fixture, providerRequests,
@@ -450,6 +454,49 @@ async function failureScenarios(browser, device) {
   }
 }
 
+async function directPreviewDeepLink(browser, device) {
+  const secondId = '11111111-1111-4111-8111-111111111114';
+  const thirdId = '11111111-1111-4111-8111-111111111116';
+  const fourthId = '11111111-1111-4111-8111-111111111117';
+  const first = videoFixture({ position: 1, language: 'ar', title: 'الدرس الأول — علم بلادي', only_before_first_question: false });
+  const second = videoFixture({ id: secondId, position: 2, video_ref: 'qaVideo0002', language: 'ar', title: 'الدرس الثاني — المجرد والمزيد', only_before_first_question: false });
+  const third = videoFixture({ id: thirdId, position: 3, video_ref: 'qaVideo0003', language: 'ar', title: 'الدرس الثالث — التعاون', only_before_first_question: false });
+  const fourth = videoFixture({ id: fourthId, position: 4, video_ref: 'qaVideo0004', language: 'ar', title: 'الدرس الرابع — الفعل الصحيح والمعتل', only_before_first_question: false });
+  const sequence = { ...clone(first), videos: [first, second, third, fourth] };
+  const test = await setup(browser, device, {
+    video: sequence,
+    language: 'ar',
+    resumed: true,
+    progressed: true,
+    initialPath: '?quiz=qa-video&mode=learning&learner=test&videos=1#student',
+  });
+  const { page, fixture } = test;
+  try {
+    await page.locator('#flhOptionalVideo').waitFor({ state: 'visible' });
+    assert.equal(fixture.count('preview_videos'), 1, 'deep link uses read-only preview action');
+    assert.equal(fixture.count('start_quiz'), 0, 'opening preview does not start or resume Learning yet');
+    assert.equal(fixture.count('save_video_report'), 0, 'read-only preview creates no viewing report');
+    assert.equal(await page.locator('.flh-video-sequence-item').count(), 4, 'deep link exposes all four ordered lessons');
+    assert.equal(await page.locator('#flhVideoReport').count(), 0, 'preview has no report controls without an attempt snapshot');
+    assert.equal((await page.locator('#flhVideoStart').innerText()).trim(), 'متابعة التدريب');
+    assert.match(await page.locator('#flhVideoLesson h3').innerText(), /علم بلادي/);
+    await page.locator('.flh-video-sequence-item').nth(3).click();
+    assert.match(await page.locator('#flhVideoLesson h3').innerText(), /الفعل الصحيح والمعتل/);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'deep-link preview has no horizontal overflow');
+    assert.equal(fixture.row.draft_option_position, 1, 'opening preview preserves the existing draft answer');
+    assert.equal(new URL(page.url()).searchParams.has('videos'), false, 'deep-link routing cleans preview parameters after launch');
+
+    await page.locator('#flhVideoStart').click();
+    await questionReady(page);
+    assert.equal(fixture.count('start_quiz'), 1, 'continue resumes Learning only after learner action');
+    assert.equal(fixture.row.draft_option_position, 1, 'continue preserves the existing saved draft');
+    assert.equal(await page.locator('.flh-resume-note').count(), 1, 'continued Learning is visibly resumed');
+    assert.equal(await page.locator('.flh-learn-answer.selected').count(), 1, 'saved answer selection is restored');
+    assert.equal(fixture.count('save_video_report'), 0, 'preview and continue never create self-report evidence');
+    await test.verifyAndClose(`${device.name} direct video preview deep link`);
+  } catch (error) { await test.context.close(); throw error; }
+}
+
 async function examIndependence(browser, device) {
   const test = await setup(browser, device, { providerMode: 'pending' });
   const { page, fixture } = test;
@@ -482,6 +529,7 @@ try {
     await resumeAndRetry(browser, device);
     await reportPendingDoesNotGate(browser, device);
     await priorInteractionResume(browser, device);
+    await directPreviewDeepLink(browser, device);
     await failureScenarios(browser, device);
     await examIndependence(browser, device);
     console.log(`Optional-video real-runtime regression PASS (${device.name}; synthetic Testing data; no live provider/device claim).`);
