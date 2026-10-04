@@ -217,6 +217,11 @@ begin
     ),
     'approved report history stays under its snapshotted category after the rule moves'
   );
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',original_report_category,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(
+    result->>'ok'='true' and exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'id'=snapshot_report_sid::text),
+    'combined category and rule filters can retrieve approved history from the rule original snapshotted category'
+  );
   result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',moved_category));
   perform pg_temp.family_assert(
     not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'id'=snapshot_report_sid::text),
