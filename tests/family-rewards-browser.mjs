@@ -686,8 +686,8 @@ async function runBrowserSuite() {
     server.catalog.submissions.unshift(secondLearnerPending, legacyB, legacyA);
     await open(page, 'parent');
     assert.equal(await page.locator('[data-fr-approval-learner]').count(), 2, 'parent pending approvals are grouped into separate learner sections');
-    assert.equal(await page.locator(`[data-fr-submission="${legacyA.id}"] .fr-duplicate`).count(), 1, 'first exact duplicate-looking card is flagged');
-    assert.equal(await page.locator(`[data-fr-submission="${legacyB.id}"] .fr-duplicate`).count(), 1, 'second exact duplicate-looking card is flagged');
+    assert.equal(await page.locator(`[data-fr-approvals] [data-fr-submission="${legacyA.id}"] .fr-duplicate`).count(), 1, 'first exact duplicate-looking approval card is flagged');
+    assert.equal(await page.locator(`[data-fr-approvals] [data-fr-submission="${legacyB.id}"] .fr-duplicate`).count(), 1, 'second exact duplicate-looking approval card is flagged');
     const bulkButton = page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`);
     await bulkButton.click();
     await page.getByRole('alert').filter({ hasText: 'تعذر اعتماد 1' }).waitFor({ state: 'visible' });
