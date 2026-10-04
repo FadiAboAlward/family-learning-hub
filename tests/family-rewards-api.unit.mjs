@@ -87,5 +87,6 @@ await assert.rejects(() => executeFamilyRewardsAction('reward_request', {}, {
 }), /CLAIM_ALREADY_PENDING/);
 assert.equal(rewardsErrorStatus('SELF_REPORT_FORBIDDEN'), 403);
 assert.equal(rewardsErrorStatus('CLAIM_ALREADY_PENDING'), 409);
+assert.equal(rewardsErrorStatus('DUPLICATE_OCCURRENCE'), 409);
 assert.equal(publicRewardsError({ message: 'INVALID_INPUT' }), 'INVALID_INPUT');
 console.log('Family rewards API identity, owner/admin authorization and safe errors: PASS');
