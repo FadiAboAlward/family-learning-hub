@@ -53,8 +53,8 @@ begin
 
   -- Match Learning start routing without mutating state: resume version first,
   -- then an eligible explicit assignment, then the highest published version.
-  select qv.*, a.id
-  into v_version, v_attempt_id
+  select a.id
+  into v_attempt_id
   from public.quiz_attempts a
   join public.quiz_versions qv
     on qv.workspace_id = a.workspace_id
@@ -68,7 +68,21 @@ begin
   order by a.started_at desc
   limit 1;
 
-  if not found then
+  if found then
+    select qv.*
+    into v_version
+    from public.quiz_attempts a
+    join public.quiz_versions qv
+      on qv.workspace_id = a.workspace_id
+     and qv.id = a.quiz_version_id
+    where a.workspace_id = p_workspace_id
+      and a.id = v_attempt_id
+      and a.learner_id = p_learner_id
+      and a.delivery_mode = 'learning'
+      and qv.quiz_id = v_quiz.id
+      and qv.state = 'published'
+    limit 1;
+  else
     v_attempt_id := null;
 
     select qv.*
