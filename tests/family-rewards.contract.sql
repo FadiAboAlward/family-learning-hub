@@ -163,6 +163,17 @@ begin
   result := public.flh_family_rewards_command(w,null,other_l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'idempotency_key','qa-family-cross'));
   perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','foreign learner blocked');
 
+  insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points)
+  select w,l,duplicate_rule,false,now()-(g||' minutes')::interval,'parent','QA report history','qa-report-'||g,'approved',now()-(g||' minutes')::interval,now()-(g||' minutes')::interval,2,0,2
+  from generate_series(1,9) g;
+  result := public.flh_family_rewards_command(w,null,l,'student_report',jsonb_build_object('period','last7','category_id',category_id,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(result->>'ok'='true' and jsonb_array_length(result->'rows')=7 and result->'summary'->>'approved_count'='7' and result->'summary'->>'pending_count'='0' and result->'summary'->>'total_points'='14','student Last 7 report is complete for its exact filtered window');
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',category_id,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(result->>'ok'='true' and jsonb_array_length(result->'rows')=12 and result->'summary'->>'approved_count'='10' and result->'summary'->>'pending_count'='0' and result->'summary'->>'total_points'='20','parent Last 30 days report is not capped by dashboard history and aggregates the full filtered period');
+  perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'learner_id'<>l::text or x->>'rule_id'<>duplicate_rule::text),'report rows remain learner and rule scoped');
+  result := public.flh_family_rewards_command(w,owner_id,null,'parent_report','{"period":"last7"}');
+  perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','parent report cannot read across learners without an explicit scoped learner');
+
   payload := jsonb_build_object('title','QA family reward','reward_type','activity','required_reward_points',10,'required_level',1,'learner_scope','selected','learner_ids',jsonb_build_array(l),'max_redemptions_per_learner',1,'criteria',jsonb_build_object('min_xp',200,'current_streak',2));
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload);
   perform pg_temp.family_assert(result->>'ok'='true','parent reward create'); reward_id := (result->'reward'->>'id')::uuid;
