@@ -126,6 +126,12 @@ begin
   second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
   perform pg_temp.family_assert(second->>'duplicate_pending'='true' and second->'submission'->>'id'=sid::text,'exact pending occurrence with a new request key reuses the existing pending submission');
   perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.status='pending' and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
+  update public.behavior_rules set is_active=false where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA disabled duplicate attempt','idempotency_key','qa-duplicate-disabled'));
+  perform pg_temp.family_assert(result->>'error'='RULE_INACTIVE' and not coalesce((select request_payload->'idempotency_aliases' ? 'qa-duplicate-disabled' from public.behavior_submissions where id=sid),false),'disabled rule cannot reuse or mutate an existing exact pending submission');
+  update public.behavior_rules set is_active=true where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason',repeat('x',1001),'idempotency_key','qa-duplicate-long-reason'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT' and not coalesce((select request_payload->'idempotency_aliases' ? 'qa-duplicate-long-reason' from public.behavior_submissions where id=sid),false),'oversized reason is rejected before exact-pending reuse can grow request metadata');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate pending cleanup'));
   perform pg_temp.family_assert(result->'submission'->>'status'='rejected','duplicate pending fixture can be rejected without points');
   second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
@@ -202,6 +208,18 @@ begin
     )
   )
   returning id into snapshot_report_sid;
+  update public.behavior_categories set is_active=false where id=original_report_category and workspace_id=w;
+  update public.behavior_rules set is_active=false,self_report_allowed=false where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'student_catalog','{}');
+  perform pg_temp.family_assert(
+    not exists(select 1 from jsonb_array_elements(result->'categories') x where x->>'id'=original_report_category::text)
+    and not exists(select 1 from jsonb_array_elements(result->'rules') x where x->>'id'=duplicate_rule::text)
+    and exists(select 1 from jsonb_array_elements(result->'report_categories') x where x->>'id'=original_report_category::text)
+    and exists(select 1 from jsonb_array_elements(result->'report_rules') x where x->>'id'=duplicate_rule::text),
+    'learner catalog keeps disabled historical category and rule available only as report dimensions'
+  );
+  update public.behavior_categories set is_active=true where id=original_report_category and workspace_id=w;
+  update public.behavior_rules set is_active=true,self_report_allowed=true where id=duplicate_rule and workspace_id=w;
   result := public.flh_family_rewards_command(w,owner_id,null,'category_save',jsonb_build_object('title','QA moved category','description','moved for report history test','is_active',true));
   moved_category := (result->'category'->>'id')::uuid;
   update public.behavior_rules set category_id=moved_category where id=duplicate_rule and workspace_id=w;
