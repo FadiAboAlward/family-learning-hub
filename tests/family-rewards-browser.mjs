@@ -356,7 +356,7 @@ async function runBrowserSuite() {
     await perform(page, 'rule_save', () => page.locator(`[data-fr-toggle-rule="${ruleId}"]`).click());
     assert.equal(server.catalog.rules[0].is_active, false, 'rule can be deactivated');
     await open(page, 'student');
-    await page.locator('#frSelfReportCategory').selectOption(categoryId);
+    assert.equal(await page.locator(`#frSelfReportCategory option[value="${categoryId}"]`).count(), 0, 'a category with no active eligible self-report rules is hidden');
     assert.equal(await page.locator(`#frSelfReportRule option[value="${ruleId}"]`).count(), 0, 'inactive rules are absent from learner self-report choices');
     await open(page, 'parent');
     await showForm(page, '#frRuleForm');
