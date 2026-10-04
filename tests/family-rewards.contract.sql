@@ -23,6 +23,7 @@ declare
   duplicate_rule uuid;
   moved_category uuid;
   snapshot_report_sid uuid;
+  duplicate_warning_sid uuid;
   blocked_rule uuid;
   reward_id uuid;
   other_reward uuid;
@@ -218,6 +219,37 @@ begin
 
   result := public.flh_family_rewards_command(w,owner_id,null,'parent_report','{"period":"last7"}');
   perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','parent report cannot read across learners without an explicit scoped learner');
+
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,
+    requested_at,approved_at,base_points,initiative_bonus_points,total_points,snapshot
+  )
+  select
+    w,l,duplicate_rule,false,v_occurred_at-(g||' minutes')::interval,'parent','QA duplicate-warning approved history',
+    'qa-warning-approved-'||g,'approved',v_occurred_at-(g||' minutes')::interval,v_occurred_at-(g||' minutes')::interval,
+    2,0,2,jsonb_build_object('category_id',category_id,'rule_id',duplicate_rule,'status','approved')
+  from generate_series(1,205) g;
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at
+  )
+  values(
+    w,l,duplicate_rule,false,v_occurred_at-interval '205 minutes','learner','QA duplicate-warning pending',
+    'qa-warning-pending','pending',v_occurred_at
+  )
+  returning id into duplicate_warning_sid;
+  result := public.flh_family_rewards_command(w,owner_id,null,'parent_catalog','{"test_only":true}');
+  perform pg_temp.family_assert(
+    exists(
+      select 1
+      from jsonb_array_elements(result->'submissions') x
+      where x->>'id'=duplicate_warning_sid::text
+        and x->>'status'='pending'
+        and x->>'possible_duplicate'='true'
+    ),
+    'pending duplicate warning checks complete approved history beyond the dashboard 200-row display cap'
+  );
+  delete from public.behavior_submissions
+  where workspace_id=w and learner_id=l and idempotency_key like 'qa-warning-%';
 
   payload := jsonb_build_object('title','QA family reward','reward_type','activity','required_reward_points',10,'required_level',1,'learner_scope','selected','learner_ids',jsonb_build_array(l),'max_redemptions_per_learner',1,'criteria',jsonb_build_object('min_xp',200,'current_streak',2));
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload);
