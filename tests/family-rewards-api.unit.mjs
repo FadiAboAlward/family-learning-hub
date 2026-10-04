@@ -67,7 +67,7 @@ assert.equal(calls.at(-1).parameters.p_actor_id, parentId);
 assert.equal(calls.at(-1).parameters.p_learner_id, learnerId);
 assert.equal(calls.at(-1).parameters.p_payload.rule_id, otherId);
 assert.equal(calls.at(-1).parameters.p_payload.adhkar_completed, true, 'parent prayer record may forward the linked adhkar selection');
-const learnerSubmit = calls.findLast(row => row.parameters?.p_payload?.rule_id === otherId && row.parameters?.p_actor_id === null);
+const learnerSubmit = calls.findLast(row => row.parameters?.p_action === 'behavior_submit' && row.parameters?.p_payload?.rule_id === otherId && row.parameters?.p_actor_id === null);
 assert.equal(learnerSubmit.parameters.p_payload.adhkar_completed, true, 'learner prayer self-report may forward the linked adhkar selection');
 for (const invalid of [undefined, '', 'another-child', 123]) {
   await assert.rejects(() => executeFamilyRewardsAction('points_adjust', { learner_id: invalid, delta: 1, reason: 'تصحيح' }, deps), /INVALID_LEARNER_ID/);
