@@ -369,16 +369,16 @@ async function runBrowserSuite() {
     await page.locator('#frOccurrenceCategory').selectOption(categoryId);
     await page.locator('#frOccurrenceRule').selectOption(ruleId);
     await page.locator('#frOccurrenceInitiative').check();
-    await setOccurrenceTime(page, 'frOccurrence', '2026-10-01', '12:00');
     await page.locator('#frOccurrenceReason').fill('رتّب الغرفة دون تذكير');
     server.failAfter('behavior_record');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'), { status: 500, refresh: false });
     await balance(page, 20);
     const retryKey = server.last('behavior_record').idempotency_key;
     assert.match(retryKey, /^[0-9a-f-]{36}$/i, 'occurrence has a durable retry key');
-    assert.equal(server.last('behavior_record').occurred_at, '2026-10-01T09:00:00.000Z', '12:00 Istanbul is submitted as the same instant even when the browser runs in UTC');
+    assert.equal(server.last('behavior_record').occurred_at, null, 'default Now leaves occurrence time server-assigned so retry payload stays stable');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'));
     assert.equal(server.last('behavior_record').idempotency_key, retryKey, 'retry reuses the original key after a lost response');
+    assert.equal(server.last('behavior_record').occurred_at, null, 'default Now retry keeps the same omitted occurrence-time signature');
     await balance(page, 28);
     assert.equal(server.catalog.ledger.length, 2, 'post-commit retry adds one award alongside academic points');
     assert.equal(server.state.xp, 100, 'behavior fixture does not alter academic XP');
@@ -635,7 +635,7 @@ async function runBrowserSuite() {
     const prayerRuleId = '99999999-9999-4999-8999-999999999999';
     server.catalog.rules.push({
       id: prayerRuleId, category_id: categoryId, category_title: 'العبادات', title: 'صلاة الفجر في وقتها',
-      base_points: 2, initiative_bonus_points: 1, adhkar_bonus_points: 2,
+      base_points: 2, initiative_bonus_points: 1, adhkar_bonus_points: 4,
       learner_scope: 'selected', learner_ids: [LEARNER_ID], cadence: 'day', max_awards: 1,
       self_report_allowed: true, parent_approval_required: true, is_active: true,
     });
@@ -648,21 +648,23 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isHidden(), true, 'non-prayer behavior does not expose an adhkar option');
     await page.locator('#frOccurrenceRule').selectOption(prayerRuleId);
     assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isVisible(), true, 'configured prayer exposes the linked adhkar option');
+    assert.match(await page.locator('[data-fr-adhkar-points="frOccurrence"]').innerText(), /4.*نقطة/, 'parent sees the configured adhkar bonus rather than a hard-coded value');
     await page.locator('#frOccurrenceInitiative').check();
     await page.locator('#frOccurrenceAdhkar').check();
     await page.locator('#frOccurrenceReason').fill('صلاة الفجر مع الأذكار');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'));
     assert.equal(server.last('behavior_record').adhkar_completed, true, 'parent check-in submits the adhkar selection');
-    await balance(page, 29);
+    await balance(page, 31);
     const prayerEvent = server.catalog.ledger.find(row => row.metadata?.rule_id === prayerRuleId);
     const prayerHistory = page.locator(`[data-fr-event="${prayerEvent.id}"]`);
-    assert.match(await prayerHistory.innerText(), /أساس.*2.*مبادرة.*1.*أذكار.*2/s, 'one prayer event explains base, initiative and adhkar points');
-    assert.equal(prayerEvent.reward_points_delta, 5, 'prayer with initiative and adhkar awards one five-point movement');
+    assert.match(await prayerHistory.innerText(), /أساس.*2.*مبادرة.*1.*أذكار.*4/s, 'one prayer event explains base, initiative and configured adhkar points');
+    assert.equal(prayerEvent.reward_points_delta, 7, 'prayer with initiative and configured adhkar awards one seven-point movement');
 
     await open(page, 'student');
     await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
     assert.equal(await page.locator('[data-fr-adhkar="frSelfReport"]').isVisible(), true, 'learner prayer self-report exposes the same adhkar option');
+    assert.match(await page.locator('[data-fr-adhkar-points="frSelfReport"]').innerText(), /4.*نقطة/, 'learner sees the same configured adhkar bonus');
     await page.locator('#frSelfReportAdhkar').check();
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '13:00');
     await page.locator('#frSelfReportReason').fill('صلاة مع أذكار بانتظار الاعتماد');
