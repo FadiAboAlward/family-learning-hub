@@ -48,6 +48,17 @@ export function createRewardsFixture() {
     }
     value.breakdown = [...breakdown.values()];
     if (role === 'learner') {
+      const reportSubmissions = catalog.submissions.filter(row => row.learner_id === LEARNER_ID);
+      value.report_categories = [...new Map(reportSubmissions.map(row => {
+        const currentRule = catalog.rules.find(rule => rule.id === row.rule_id);
+        const categoryId = row.category_id || currentRule?.category_id;
+        const currentCategory = catalog.categories.find(category => category.id === categoryId);
+        return [categoryId, { id: categoryId, title: row.category_title || currentCategory?.title || 'فئة سابقة' }];
+      }).filter(([id]) => id)).values()];
+      value.report_rules = [...new Map(reportSubmissions.map(row => {
+        const currentRule = catalog.rules.find(rule => rule.id === row.rule_id);
+        return [row.rule_id, { id: row.rule_id, title: row.rule_title || currentRule?.title || 'سلوك سابق' }];
+      }).filter(([id]) => id)).values()];
       value.learners = value.learners.filter(row => row.id === LEARNER_ID);
       value.states = value.states.filter(row => row.learner_id === LEARNER_ID);
       value.submissions = value.submissions.filter(row => row.learner_id === LEARNER_ID);
@@ -55,7 +66,8 @@ export function createRewardsFixture() {
       value.ledger = value.ledger.filter(row => row.learner_id === LEARNER_ID);
       value.breakdown = value.breakdown.filter(row => row.learner_id === LEARNER_ID);
       value.badges = [];
-      value.rules = value.rules.filter(row => row.is_active && row.self_report_allowed);
+      value.categories = value.categories.filter(row => row.is_active);
+      value.rules = value.rules.filter(row => row.is_active && row.self_report_allowed && value.categories.some(category => category.id === row.category_id));
       value.rewards = value.rewards.filter(row => row.is_active).map(row => ({
         ...row, eligible: state.reward_points >= row.required_reward_points && state.current_level >= (row.required_level || 1),
         ineligibility_reasons: state.reward_points < row.required_reward_points ? ['INSUFFICIENT_POINTS'] : [],
@@ -722,8 +734,15 @@ async function runBrowserSuite() {
     await page.locator('#frReportPeriod').selectOption('last7');
     await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
 
+    server.catalog.categories.find(row => row.id === categoryId).is_active = false;
+    const historicalRule = server.catalog.rules.find(row => row.id === reportRuleId);
+    historicalRule.is_active = false;
+    historicalRule.self_report_allowed = false;
     await open(page, 'student');
     assert.equal(await page.locator('#frReportLearner').count(), 0, 'learner report cannot switch to a sibling');
+    assert.equal(await page.locator(`#frSelfReportCategory option[value="${categoryId}"]`).count(), 0, 'disabled historical category is absent from new self-report choices');
+    assert.equal(await page.locator(`#frReportCategory option[value="${categoryId}"]`).count(), 1, 'disabled historical category remains available in learner report filters');
+    assert.equal(await page.locator(`#frReportRule option[value="${reportRuleId}"]`).count(), 1, 'disabled historical rule remains available in learner report filters');
     await page.locator('#frReportCategory').selectOption(categoryId);
     await page.locator('#frReportRule').selectOption(reportRuleId);
     await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
