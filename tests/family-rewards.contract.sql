@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-017 v1.0 extends the FLH-FEAT-2026-010 prepared-compatible contract.
+-- FLH-FEAT-2026-010 v1.1 with FLH-FEAT-2026-017 prayer/adhkar compatibility.
 -- A dedicated caught success code rolls back every fixture; assertion errors propagate.
 -- Active authenticated learner activity targets the seeded dedicated test learner.
 do $contract$
@@ -20,6 +20,7 @@ declare
   category_id uuid;
   rule_id uuid;
   week_rule uuid;
+  duplicate_rule uuid;
   blocked_rule uuid;
   reward_id uuid;
   other_reward uuid;
@@ -114,6 +115,26 @@ begin
 
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('title','QA weekly','base_points',4,'initiative_bonus_points',2,'cadence','week','max_awards',2,'parent_approval_required',false));
   week_rule := (result->'rule'->>'id')::uuid;
+  result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('title','QA duplicate occurrence','base_points',2,'initiative_bonus_points',0,'cadence','unlimited','max_awards',null,'parent_approval_required',true));
+  duplicate_rule := (result->'rule'->>'id')::uuid;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending','idempotency_key','qa-duplicate-pending-a'));
+  sid := (result->'submission'->>'id')::uuid;
+  second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(second->>'duplicate_pending'='true' and second->'submission'->>'id'=sid::text,'exact pending occurrence with a new request key reuses the existing pending submission');
+  perform pg_temp.family_assert((select count(*) from public.behavior_submissions where workspace_id=w and learner_id=l and rule_id=duplicate_rule and status='pending' and occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate pending cleanup'));
+  perform pg_temp.family_assert(result->'submission'->>'status'='rejected','duplicate pending fixture can be rejected without points');
+
+  insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points,request_payload)
+  values(w,l,duplicate_rule,false,v_occurred_at-interval '20 minutes','learner','QA legacy approved duplicate','qa-legacy-approved-duplicate','approved',now()-interval '20 minutes',now()-interval '19 minutes',2,0,2,'{}'::jsonb);
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '20 minutes','reason','QA legacy pending duplicate','idempotency_key','qa-legacy-pending-duplicate'));
+  sid := (result->'submission'->>'id')::uuid;
+  select reward_points into points_before from public.learner_gamification_state where learner_id=l;
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
+  perform pg_temp.family_assert(result->>'error'='DUPLICATE_OCCURRENCE','approval blocks a second award for an already approved exact occurrence');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=points_before and not exists(select 1 from public.gamification_events where workspace_id=w and source_type='family_behavior' and source_id=sid::text),'duplicate approval changes neither balance nor ledger');
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate approval cleanup'));
+  perform pg_temp.family_assert(result->'submission'->>'status'='rejected','blocked duplicate remains reviewable for rejection');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'initiative',true,'reason','QA self report','occurred_at',v_occurred_at,'idempotency_key','qa-family-self'));
   perform pg_temp.family_assert(result->'submission'->>'status'='pending' and result->'submission'->>'total_points'='0','even false policy self report stays pending and zero'); sid := (result->'submission'->>'id')::uuid;
   second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'initiative',true,'reason','QA self report','occurred_at',to_char((v_occurred_at at time zone 'UTC')+interval '3 hours','YYYY-MM-DD"T"HH24:MI:SS.US')||'+03:00','idempotency_key','qa-family-self'));
