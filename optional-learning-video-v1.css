@@ -10,3 +10,10 @@
 .flh-video-report label{display:block;margin-bottom:.5rem}
 .flh-video-report select{max-width:100%;width:100%;min-height:44px;margin-bottom:.7rem;font:inherit}
 .flh-video-report button{min-height:44px}
+
+.flh-video-sequence{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.55rem;margin:1rem 0}
+.flh-video-sequence-item{white-space:normal;min-width:0}
+.flh-video-sequence-item[aria-current="true"]{font-weight:800;outline:2px solid currentColor;outline-offset:1px}
+.flh-video-lesson-status{font-weight:800;margin:.35rem 0 .6rem}
+#flhVideoLesson{min-width:0}
+@media(max-width:480px){.flh-video-sequence{grid-template-columns:repeat(2,minmax(0,1fr))}}
