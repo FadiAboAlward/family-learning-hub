@@ -310,6 +310,10 @@
         : `تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`;
       view.savedMessage=statusText;
       view.approvalMessage=failures.length?{type:'error',text:statusText}:null;
+      if(failures.length){
+        const liveHost=view.root.querySelector('[data-fr-approvals] .fr-message');
+        if(liveHost)liveHost.innerHTML=`<div class="error" role="alert">${safe(statusText)}</div>`;
+      }
       try{
         await refresh(view,statusText);
       }catch(error){
