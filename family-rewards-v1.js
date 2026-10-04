@@ -283,6 +283,7 @@
       view.reportError='';
     }catch(error){
       if(!current(view)||serial!==view.reportSerial)return;
+      view.reportData={rows:[],summary:{approved_count:0,pending_count:0,total_points:0}};
       view.reportError=errorMessages[String(error?.message||'')]||'تعذر تحميل التقرير الآن.';
     }finally{
       if(serial===view.reportSerial)view.reportBusy=false;
