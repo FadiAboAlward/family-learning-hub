@@ -48,6 +48,12 @@ export function createRewardsFixture() {
     }
     value.breakdown = [...breakdown.values()];
     if (role === 'learner') {
+      value.learners = value.learners.filter(row => row.id === LEARNER_ID);
+      value.states = value.states.filter(row => row.learner_id === LEARNER_ID);
+      value.submissions = value.submissions.filter(row => row.learner_id === LEARNER_ID);
+      value.claims = value.claims.filter(row => row.learner_id === LEARNER_ID);
+      value.ledger = value.ledger.filter(row => row.learner_id === LEARNER_ID);
+      value.breakdown = value.breakdown.filter(row => row.learner_id === LEARNER_ID);
       value.badges = [];
       value.rules = value.rules.filter(row => row.is_active && row.self_report_allowed);
       value.rewards = value.rewards.filter(row => row.is_active).map(row => ({
