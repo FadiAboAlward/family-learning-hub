@@ -21,6 +21,8 @@ declare
   rule_id uuid;
   week_rule uuid;
   duplicate_rule uuid;
+  moved_category uuid;
+  snapshot_report_sid uuid;
   blocked_rule uuid;
   reward_id uuid;
   other_reward uuid;
@@ -175,6 +177,45 @@ begin
   result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',category_id,'rule_id',duplicate_rule));
   perform pg_temp.family_assert(result->>'ok'='true' and jsonb_array_length(result->'rows')=12 and result->'summary'->>'approved_count'='10' and result->'summary'->>'pending_count'='0' and result->'summary'->>'total_points'='20','parent Last 30 days report is not capped by dashboard history and aggregates the full filtered period');
   perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'learner_id'<>l::text or x->>'rule_id'<>duplicate_rule::text),'report rows remain learner and rule scoped');
+
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,
+    requested_at,approved_at,base_points,initiative_bonus_points,total_points,snapshot
+  )
+  values(
+    w,l,duplicate_rule,false,now()-interval '2 minutes','parent','QA snapshotted category history','qa-report-snapshot-category','approved',
+    now()-interval '2 minutes',now()-interval '2 minutes',2,0,2,
+    jsonb_build_object(
+      'category_id',category_id,
+      'category_title',(select title from public.behavior_categories where id=category_id and workspace_id=w),
+      'rule_id',duplicate_rule,
+      'rule_title','QA duplicate occurrence',
+      'status','approved'
+    )
+  )
+  returning id into snapshot_report_sid;
+  result := public.flh_family_rewards_command(w,owner_id,null,'category_save',jsonb_build_object('title','QA moved category','description','moved for report history test','is_active',true));
+  moved_category := (result->'category'->>'id')::uuid;
+  update public.behavior_rules set category_id=moved_category where id=duplicate_rule and workspace_id=w;
+
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',category_id));
+  perform pg_temp.family_assert(
+    exists(
+      select 1
+      from jsonb_array_elements(result->'rows') x
+      where x->>'id'=snapshot_report_sid::text
+        and x->>'category_id'=category_id::text
+        and x->>'category_title'=(select title from public.behavior_categories where id=category_id and workspace_id=w)
+    ),
+    'approved report history stays under its snapshotted category after the rule moves'
+  );
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',moved_category));
+  perform pg_temp.family_assert(
+    not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'id'=snapshot_report_sid::text),
+    'moved rule current category does not relabel snapshotted approved history'
+  );
+  update public.behavior_rules set category_id=category_id where id=duplicate_rule and workspace_id=w;
+
   result := public.flh_family_rewards_command(w,owner_id,null,'parent_report','{"period":"last7"}');
   perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','parent report cannot read across learners without an explicit scoped learner');
 
