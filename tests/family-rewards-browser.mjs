@@ -664,6 +664,7 @@ async function runBrowserSuite() {
     await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
     assert.equal(await page.locator('[data-fr-adhkar="frSelfReport"]').isVisible(), true, 'learner prayer self-report exposes the same adhkar option');
     await page.locator('#frSelfReportAdhkar').check();
+    await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '13:00');
     await page.locator('#frSelfReportReason').fill('صلاة مع أذكار بانتظار الاعتماد');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     assert.equal(server.last('behavior_submit').adhkar_completed, true, 'learner self-report submits linked adhkar without a learner id');
