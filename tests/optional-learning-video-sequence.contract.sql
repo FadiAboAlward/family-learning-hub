@@ -5,7 +5,7 @@ declare
   w uuid; l uuid; owner_id uuid:=gen_random_uuid();
   curriculum uuid:=gen_random_uuid(); program uuid:=gen_random_uuid(); quiz uuid:=gen_random_uuid(); version uuid:=gen_random_uuid();
   concept_one uuid:=gen_random_uuid(); concept_two uuid:=gen_random_uuid(); question_one uuid:=gen_random_uuid(); question_two uuid:=gen_random_uuid();
-  subject bigint; base jsonb; result jsonb; resumed jsonb; report jsonb; attempt uuid; video_one uuid; video_two uuid;
+  subject bigint; base jsonb; result jsonb; resumed jsonb; preview jsonb; report jsonb; attempt uuid; video_one uuid; video_two uuid;
 begin
   execute $definition$create or replace function pg_temp.sequence_assert(ok boolean,message text) returns void language plpgsql as $assert$begin if ok is distinct from true then raise exception 'Optional video sequence contract: %',message; end if; end$assert$$definition$;
   begin
@@ -68,6 +68,13 @@ begin
     perform pg_temp.sequence_assert(resumed->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid001','resume keeps the original position-1 snapshot');
     perform pg_temp.sequence_assert(resumed->'optional_video'->'videos'->1->>'video_ref'='qaSeqVid002','resume keeps the original position-2 snapshot');
 
+    preview:=public.flh_learning_video_preview(w,l,'qa-optional-video-sequence');
+    perform pg_temp.sequence_assert(preview->>'resumable_attempt_id'=attempt::text,'preview identifies the existing progressed attempt without starting another');
+    perform pg_temp.sequence_assert(jsonb_array_length(preview->'optional_video'->'videos')=2,'preview returns the current ordered assignment sequence');
+    perform pg_temp.sequence_assert(preview->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid003','preview sees the current replacement instead of rewriting the historical attempt snapshot');
+    perform pg_temp.sequence_assert(preview->'optional_video'->'videos'->1->>'video_ref'='qaSeqVid002','preview keeps current second lesson ordering');
+    perform pg_temp.sequence_assert((select count(*)=2 from public.learning_video_attempts where workspace_id=w and attempt_id=attempt),'preview is read-only and does not add or replace attempt snapshots');
+
     result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_two,'position',3,'video_ref','qaSeqVid002'));
     perform pg_temp.sequence_assert(result->>'error'='INVALID_VIDEO_INPUT','same provider reference cannot be duplicated in another position');
 
@@ -75,7 +82,7 @@ begin
     raise exception 'Optional video sequence success rollback' using errcode='P0S12';
   exception when sqlstate 'P0S12' then
     reset role;
-    raise notice 'Optional video ordered sequence, snapshot stability and per-video report isolation passed; fixtures rolled back.';
+    raise notice 'Optional video ordered sequence, read-only preview, snapshot stability and per-video report isolation passed; fixtures rolled back.';
   end;
 end;
 $contract$;
