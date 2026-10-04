@@ -677,9 +677,11 @@ async function runBrowserSuite() {
     // learner-level bulk approval stops duplicate awards, and the lightweight report summarizes the visible set.
     const secondLearnerId = '22222222-2222-4222-8222-222222222222';
     const reportRuleId = '33333333-3333-4333-8333-333333333333';
+    const movedReportCategoryId = '66666666-6666-4666-8666-666666666666';
     server.catalog.learners.push({ id: secondLearnerId, slug: 'qa-second', display_name: 'طالب اختبار ثانٍ', grade_level: 5, is_test: true });
+    server.catalog.categories.push({ id: movedReportCategoryId, title: 'فئة حالية جديدة', description: 'نُقل إليها السلوك بعد سجلات أقدم', is_active: true });
     server.catalog.rules.push({
-      id: reportRuleId, category_id: categoryId, category_title: 'المساهمة في البيت', title: 'سلوك تقرير الاختبار',
+      id: reportRuleId, category_id: movedReportCategoryId, category_title: 'فئة حالية جديدة', title: 'سلوك تقرير الاختبار',
       base_points: 3, initiative_bonus_points: 0, adhkar_bonus_points: 0,
       learner_scope: 'all', learner_ids: [], cadence: 'unlimited', max_awards: null,
       self_report_allowed: true, parent_approval_required: true, is_active: true,
@@ -703,6 +705,7 @@ async function runBrowserSuite() {
 
     await page.locator('#frReportLearner').selectOption(LEARNER_ID);
     await page.locator('#frReportCategory').selectOption(categoryId);
+    assert.equal(await page.locator(`#frReportRule option[value="${reportRuleId}"]`).count(), 1, 'a moved rule stays selectable with its historical category filter');
     await page.locator('#frReportRule').selectOption(reportRuleId);
     await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
     assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'parent report summarizes approved, pending and awarded points for the filtered recent set');
