@@ -108,7 +108,7 @@ The `test` learner is a preview account. It may mirror real program/assignment a
 
 ## Family rewards and habits
 
-`FLH-FEAT-2026-010`, version `1.0`, implements the [frozen Feature Spec](https://docs.google.com/document/d/1lv1RpixgOiSv2JExkXN5IFyNWTt5adLlwkLYNnEwtfc/edit), Drive revision `3`, handed off in [Issue #99](https://github.com/FadiAboAlward/family-learning-hub/issues/99).
+`FLH-FEAT-2026-010` originated in version `1.0`; the current refinement is version `1.1`, pinned to the [v1.1 Feature Spec](https://docs.google.com/document/d/1OKE1SPoE5DqpaZtx0V2FM6t2CjuXE1BSighc5Phx5-E/edit), Drive revision `2`, in [Issue #123](https://github.com/FadiAboAlward/family-learning-hub/issues/123). Unchanged v1.0 contracts remain in force.
 
 XP remains academic-only. Academic earnings and parent-approved family behavior feed the existing `learner_gamification_state.reward_points` balance and `gamification_events` ledger. There is no second wallet. New family events always have zero `xp_delta`; the academic Learning and Exam award paths remain responsible for academic progression.
 
@@ -118,9 +118,11 @@ The `family-api` verifies the parent JWT or learner session before calling the s
 
 Financial commands serialize on the same learner row used by academic completion. Behavior approval applies the current active rule, enforces its UTC approval-day/week award limit, snapshots base points and initiative bonus separately, and appends one event. Client occurrence dates cannot bypass cadence. A self-report always remains pending and awards zero points until a parent approves it, including when the rule's stored approval-policy flag is false (AC-06).
 
+Version 1.1 also treats `learner_id + rule_id + occurred_at` as the occurrence identity for duplicate protection. Exact pending learner self-reports reuse the existing pending row; an approval is rejected with a stable duplicate-occurrence conflict if another approved submission already represents that same occurrence. This protection is additive to request-key idempotency and cadence enforcement.
+
 Reward requests and approval check current availability, learner scope, level, supported criteria, redemption limit and balance on the server. Approval spends points once within the transaction; rejection spends nothing, and marking delivery as redeemed never spends again. Idempotency keys, serialized transitions and unique ledger sources protect retries. Reasoned manual adjustments/refunds append compensating events; family ledger rows cannot be directly rewritten or deleted. Existing authorized learner/workspace erasure retains its foreign-key cascade, without granting direct ledger deletion. See `docs/gamification-and-rewards.md` for the fields, endpoints, migration preflight and QA contract.
 
-The parent rewards page presents balances, category/source drill-down, pending reviews, configuration and reward history. The learner rewards page presents only that learner's balance, goals, point reasons and pending items. Both pages use the existing Arabic RTL shell and expose loading, empty, permission, validation and server-error states. There is no sibling leaderboard.
+The parent rewards page presents balances, category/source drill-down, pending reviews grouped by learner, learner-level bulk approval, configuration, reward history and a lightweight recent behavior report. The learner rewards page presents only that learner's balance, goals, point reasons, pending items and the same self-only recent report. Behavior entry uses category → behavior progressive disclosure and quick date/time presets. Both pages use the existing Arabic RTL shell and expose loading, empty, permission, validation and server-error states. There is no sibling leaderboard or family-wide approve-all action.
 
 ### Linked prayer adhkar bonus
 
