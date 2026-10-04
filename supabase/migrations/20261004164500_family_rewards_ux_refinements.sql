@@ -267,7 +267,7 @@ begin
       -- AC06 always requires parent review, regardless of configurable policy flag.
       if p_action='behavior_submit' then return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission)); end if;
     end if;
-    if p_action='behavior_review' and exists(
+    if p_action in ('behavior_review','behavior_record') and exists(
       select 1
       from public.behavior_submissions existing
       where existing.workspace_id=p_workspace_id
@@ -277,6 +277,9 @@ begin
         and existing.occurred_at=v_submission.occurred_at
         and existing.id<>v_submission.id
     ) then
+      -- A direct parent record has already inserted a pending row in this transaction.
+      -- Remove only that newly created row before returning the stable duplicate conflict.
+      if p_action='behavior_record' then delete from public.behavior_submissions where id=v_submission.id; end if;
       return jsonb_build_object('error','DUPLICATE_OCCURRENCE');
     end if;
     if v_rule.cadence<>'unlimited' then
