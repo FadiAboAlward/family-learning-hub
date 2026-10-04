@@ -80,7 +80,7 @@ begin
     with ranked as (
       select
         s.*,
-        r.category_id,
+        coalesce(nullif(s.snapshot->>'category_id','')::uuid,r.category_id) as category_id,
         coalesce(s.snapshot->>'rule_title',r.title) as rule_title,
         coalesce(s.snapshot->>'category_title',c.title) as category_title,
         row_number() over(order by s.occurred_at desc,s.requested_at desc,s.id desc) as report_rank
@@ -89,7 +89,7 @@ begin
       join public.behavior_categories c on c.id=r.category_id and c.workspace_id=r.workspace_id
       where s.workspace_id=p_workspace_id
         and s.learner_id=p_learner_id
-        and (v_report_category_id is null or r.category_id=v_report_category_id)
+        and (v_report_category_id is null or coalesce(nullif(s.snapshot->>'category_id','')::uuid,r.category_id)=v_report_category_id)
         and (v_report_rule_id is null or r.id=v_report_rule_id)
         and (v_period<>'last30' or s.occurred_at>=v_now-interval '30 days')
     ),
