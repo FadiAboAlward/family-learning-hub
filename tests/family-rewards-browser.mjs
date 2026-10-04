@@ -76,6 +76,11 @@ export function createRewardsFixture() {
     if (action === 'behavior_record' || action === 'behavior_submit') {
       const rule = find(catalog.rules, body.rule_id);
       assert.ok(rule, 'behavior request references a configured rule');
+      const occurredAt = body.occurred_at || NOW;
+      if (action === 'behavior_submit') {
+        const existing = catalog.submissions.find(row => row.status === 'pending' && row.learner_id === LEARNER_ID && row.rule_id === rule.id && row.occurred_at === occurredAt);
+        if (existing) return { submission: clone(existing), id: existing.id, duplicate_pending: true };
+      }
       const row = {
         id: id(), learner_id: LEARNER_ID, rule_id: rule.id, category_id: rule.category_id,
         rule_title: rule.title, category_title: find(catalog.categories, rule.category_id)?.title,
@@ -83,7 +88,7 @@ export function createRewardsFixture() {
         base_points: action === 'behavior_record' ? rule.base_points : 0,
         initiative_bonus_points: action === 'behavior_record' && body.initiative ? rule.initiative_bonus_points : 0,
         adhkar_bonus_points: action === 'behavior_record' && body.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0,
-        reason: body.reason, occurred_at: body.occurred_at || NOW, requested_at: NOW, initiative: body.initiative, adhkar_completed: !!body.adhkar_completed,
+        reason: body.reason, occurred_at: occurredAt, requested_at: NOW, initiative: body.initiative, adhkar_completed: !!body.adhkar_completed,
         requester_type: action === 'behavior_record' ? 'parent' : 'learner', requester_id: 'qa-requester', reviewer_id: action === 'behavior_record' ? 'qa-parent' : null,
       };
       row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points;
@@ -95,6 +100,9 @@ export function createRewardsFixture() {
       const row = find(catalog.submissions, body.submission_id);
       assert.ok(row, 'review references a pending submission');
       if (row.status === 'pending') {
+        if (body.decision === 'approved' && catalog.submissions.some(other => other.id !== row.id && other.status === 'approved' && other.learner_id === row.learner_id && other.rule_id === row.rule_id && other.occurred_at === row.occurred_at)) {
+          return { error: 'DUPLICATE_OCCURRENCE', status: 409 };
+        }
         row.status = body.decision;
         if (row.status === 'approved') {
           const rule = find(catalog.rules, row.rule_id);
@@ -206,6 +214,12 @@ async function perform(page, action, trigger, { status = 200, refresh = true, da
 }
 
 const submit = (page, selector) => page.locator(`${selector} button[type="submit"]`).click();
+async function setOccurrenceTime(page, prefix, day, time = '12:00') {
+  await page.locator(`#${prefix}DateMode`).selectOption('custom');
+  await page.locator(`#${prefix}Date`).fill(day);
+  await page.locator(`#${prefix}TimeMode`).selectOption('custom');
+  await page.locator(`#${prefix}Time`).fill(time);
+}
 const balance = (page, value) => page.locator('[data-fr-balance]').filter({ hasText: new RegExp(`^${value}$`) }).waitFor({ state: 'visible' });
 
 async function assertLayout(page, label) {
@@ -313,6 +327,7 @@ async function runBrowserSuite() {
     await perform(page, 'rule_save', () => page.locator(`[data-fr-toggle-rule="${ruleId}"]`).click());
     assert.equal(server.catalog.rules[0].is_active, false, 'rule can be deactivated');
     await open(page, 'student');
+    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     assert.equal(await page.locator(`#frSelfReportRule option[value="${ruleId}"]`).count(), 0, 'inactive rules are absent from learner self-report choices');
     await open(page, 'parent');
     await showForm(page, '#frRuleForm');
@@ -320,9 +335,12 @@ async function runBrowserSuite() {
 
     // A lost post-commit response leaves the local balance unchanged; the retry reconciles once.
     await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);
+    assert.equal(await page.locator('#frOccurrenceDateMode').inputValue(), 'today', 'parent behavior date defaults to today');
+    assert.equal(await page.locator('#frOccurrenceTimeMode').inputValue(), 'now', 'parent behavior time defaults to now');
+    await page.locator('#frOccurrenceCategory').selectOption(categoryId);
     await page.locator('#frOccurrenceRule').selectOption(ruleId);
     await page.locator('#frOccurrenceInitiative').check();
-    await page.locator('#frOccurrenceAt').fill('2026-10-01T12:00');
+    await setOccurrenceTime(page, 'frOccurrence', '2026-10-01', '12:00');
     await page.locator('#frOccurrenceReason').fill('رتّب الغرفة دون تذكير');
     server.failAfter('behavior_record');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'), { status: 500, refresh: false });
@@ -343,9 +361,12 @@ async function runBrowserSuite() {
 
     // Self-report never awards locally and never submits a client-controlled learner identity.
     await open(page, 'student');
+    assert.equal(await page.locator('#frSelfReportDateMode').inputValue(), 'today', 'learner behavior date defaults to today');
+    assert.equal(await page.locator('#frSelfReportTimeMode').inputValue(), 'now', 'learner behavior time defaults to now');
+    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(ruleId);
     await page.locator('#frSelfReportInitiative').check();
-    await page.locator('#frSelfReportAt').fill('2026-10-02T12:00');
+    await setOccurrenceTime(page, 'frSelfReport', '2026-10-02', '12:00');
     await page.locator('#frSelfReportReason').fill('بادرت بترتيب الغرفة');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     assert.equal('learner_id' in server.last('behavior_submit'), false, 'self-report identity is session-derived');
@@ -379,8 +400,9 @@ async function runBrowserSuite() {
 
     // Rejection and cadence errors show a clear result and preserve the balance.
     await open(page, 'student');
+    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(ruleId);
-    await page.locator('#frSelfReportAt').fill('2026-10-03T12:00');
+    await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '12:00');
     await page.locator('#frSelfReportReason').fill('طلب يحتاج مراجعة');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     const rejectedId = server.catalog.submissions[0].id;
@@ -389,6 +411,7 @@ async function runBrowserSuite() {
     await balance(page, 36);
     assert.equal(server.catalog.ledger.length, 3, 'rejection has no point movement');
     await open(page, 'student');
+    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(ruleId);
     server.failBefore('behavior_submit', 'CADENCE_LIMIT_REACHED', 409);
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'), { status: 409, refresh: false });
@@ -589,6 +612,7 @@ async function runBrowserSuite() {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await open(page, 'parent');
     await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);
+    await page.locator('#frOccurrenceCategory').selectOption(categoryId);
     await page.locator('#frOccurrenceRule').selectOption(ruleId);
     assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isHidden(), true, 'non-prayer behavior does not expose an adhkar option');
     await page.locator('#frOccurrenceRule').selectOption(prayerRuleId);
@@ -605,6 +629,7 @@ async function runBrowserSuite() {
     assert.equal(prayerEvent.reward_points_delta, 5, 'prayer with initiative and adhkar awards one five-point movement');
 
     await open(page, 'student');
+    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
     assert.equal(await page.locator('[data-fr-adhkar="frSelfReport"]').isVisible(), true, 'learner prayer self-report exposes the same adhkar option');
     await page.locator('#frSelfReportAdhkar').check();
@@ -614,10 +639,50 @@ async function runBrowserSuite() {
     assert.equal('learner_id' in server.last('behavior_submit'), false, 'linked adhkar preserves session-derived learner identity');
     await balance(page, 29);
 
+    // FLH-FEAT-2026-010 v1.1: legacy duplicate-looking pending rows are grouped by learner,
+    // learner-level bulk approval stops duplicate awards, and the lightweight report summarizes the visible set.
+    const secondLearnerId = '22222222-2222-4222-8222-222222222222';
+    const reportRuleId = '33333333-3333-4333-8333-333333333333';
+    server.catalog.learners.push({ id: secondLearnerId, slug: 'qa-second', display_name: 'طالب اختبار ثانٍ', grade_level: 5, is_test: true });
+    server.catalog.rules.push({
+      id: reportRuleId, category_id: categoryId, category_title: 'المساهمة في البيت', title: 'سلوك تقرير الاختبار',
+      base_points: 3, initiative_bonus_points: 0, adhkar_bonus_points: 0,
+      learner_scope: 'all', learner_ids: [], cadence: 'unlimited', max_awards: null,
+      self_report_allowed: true, parent_approval_required: true, is_active: true,
+    });
+    const duplicateTime = '2026-10-04T10:15:00.000Z';
+    const legacyA = { id: '44444444-4444-4444-8444-444444444441', learner_id: LEARNER_ID, rule_id: reportRuleId, category_id: categoryId, rule_title: 'سلوك تقرير الاختبار', category_title: 'المساهمة في البيت', status: 'pending', base_points: 0, initiative_bonus_points: 0, adhkar_bonus_points: 0, total_points: 0, reason: 'قديم أ', occurred_at: duplicateTime, requested_at: NOW, initiative: false, adhkar_completed: false };
+    const legacyB = { ...clone(legacyA), id: '44444444-4444-4444-8444-444444444442', reason: 'قديم ب' };
+    const secondLearnerPending = { ...clone(legacyA), id: '55555555-5555-4555-8555-555555555555', learner_id: secondLearnerId, reason: 'طالب ثانٍ', occurred_at: '2026-10-04T11:15:00.000Z' };
+    server.catalog.submissions.unshift(secondLearnerPending, legacyB, legacyA);
+    await open(page, 'parent');
+    assert.equal(await page.locator('[data-fr-approval-learner]').count(), 2, 'parent pending approvals are grouped into separate learner sections');
+    assert.equal(await page.locator(`[data-fr-submission="${legacyA.id}"] .fr-duplicate`).count(), 1, 'first exact duplicate-looking card is flagged');
+    assert.equal(await page.locator(`[data-fr-submission="${legacyB.id}"] .fr-duplicate`).count(), 1, 'second exact duplicate-looking card is flagged');
+    const bulkButton = page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`);
+    await bulkButton.click();
+    await page.getByRole('alert').filter({ hasText: 'تعذر اعتماد 1' }).waitFor({ state: 'visible' });
+    assert.equal(server.catalog.submissions.find(row => row.id === secondLearnerPending.id).status, 'pending', 'learner-level approve all never crosses into another learner');
+    assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'approved').length, 1, 'bulk approval awards one of two exact duplicate occurrences');
+    assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'pending').length, 1, 'the conflicting duplicate remains pending for an explicit parent decision');
+
+    await page.locator('#frReportLearner').selectOption(LEARNER_ID);
+    await page.locator('#frReportCategory').selectOption(categoryId);
+    await page.locator('#frReportRule').selectOption(reportRuleId);
+    assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'parent report summarizes approved, pending and awarded points for the filtered recent set');
+    await screenshot(page, `family-rewards-${device.name}-report`, page.locator('[data-fr-report]'));
+
+    await open(page, 'student');
+    assert.equal(await page.locator('#frReportLearner').count(), 0, 'learner report cannot switch to a sibling');
+    await page.locator('#frReportCategory').selectOption(categoryId);
+    await page.locator('#frReportRule').selectOption(reportRuleId);
+    assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'learner sees the same report summary for self only');
+    await assertLayout(page, `${device.name} rewards report`);
+
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-017', spec_version: '1.0', base_feature_id: 'FLH-FEAT-2026-010', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-010', spec_version: '1.1', compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();
