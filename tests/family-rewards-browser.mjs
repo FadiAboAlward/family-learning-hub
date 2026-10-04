@@ -671,7 +671,7 @@ async function runBrowserSuite() {
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     assert.equal(server.last('behavior_submit').adhkar_completed, true, 'learner self-report submits linked adhkar without a learner id');
     assert.equal('learner_id' in server.last('behavior_submit'), false, 'linked adhkar preserves session-derived learner identity');
-    await balance(page, 29);
+    await balance(page, 31);
 
     // FLH-FEAT-2026-010 v1.1: legacy duplicate-looking pending rows are grouped by learner,
     // learner-level bulk approval stops duplicate awards, and the lightweight report summarizes the visible set.
