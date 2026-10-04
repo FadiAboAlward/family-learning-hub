@@ -250,6 +250,13 @@
       return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head"><h3>${safe(name(view,learnerId))}</h3><button class="btn btn-soft" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
     }).join('');
   }
+  function syncReportRuleOptions(view) {
+    const select=view.root.querySelector('#frReportRule');
+    if(!select)return;
+    const rows=(view.data.rules||[]).filter(rule=>!view.reportCategory||rule.category_id===view.reportCategory);
+    select.innerHTML=`<option value="">كل السلوكيات</option>${rows.map(rule=>`<option value="${safe(rule.id)}">${safe(rule.title)}</option>`).join('')}`;
+    select.value=view.reportRule&&rows.some(rule=>rule.id===view.reportRule)?view.reportRule:'';
+  }
   function reportRequest(view) {
     const payload={period:view.reportPeriod||'last7'};
     if(view.reportCategory)payload.category_id=view.reportCategory;
@@ -462,7 +469,7 @@
     root.querySelectorAll('[data-fr-request-reward]').forEach(button=>button.onclick=()=>{const id=button.dataset.frRequestReward,key=`${view.token}:${id}`;if(requestKeys.has(key))button.dataset.idempotencyKey=requestKeys.get(key);else{button.dataset.idempotencyKey=crypto.randomUUID();requestKeys.set(key,button.dataset.idempotencyKey);}mutation(view,button,'reward_request',{reward_id:id,idempotency_key:true},'طلب الجائزة بانتظار موافقة الأهل.');});
     root.querySelectorAll('[data-fr-approve-all]').forEach(button=>button.onclick=()=>approveAllForLearner(view,button,button.dataset.frApproveAll));
     root.querySelector('#frReportLearner')?.addEventListener('change',async event=>{view.reportLearner=event.target.value;await loadReport(view,{repaint:true});});
-    root.querySelector('#frReportCategory')?.addEventListener('change',async event=>{view.reportCategory=event.target.value;view.reportRule='';await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportCategory')?.addEventListener('change',async event=>{view.reportCategory=event.target.value;view.reportRule='';syncReportRuleOptions(view);await loadReport(view,{repaint:true});});
     root.querySelector('#frReportRule')?.addEventListener('change',async event=>{view.reportRule=event.target.value;await loadReport(view,{repaint:true});});
     root.querySelector('#frReportPeriod')?.addEventListener('change',async event=>{view.reportPeriod=event.target.value;await loadReport(view,{repaint:true});});
     root.querySelector('#frLedgerCategory').onchange=()=>loadLedger(view);
