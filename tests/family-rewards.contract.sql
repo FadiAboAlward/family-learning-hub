@@ -121,7 +121,7 @@ begin
   sid := (result->'submission'->>'id')::uuid;
   second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
   perform pg_temp.family_assert(second->>'duplicate_pending'='true' and second->'submission'->>'id'=sid::text,'exact pending occurrence with a new request key reuses the existing pending submission');
-  perform pg_temp.family_assert((select count(*) from public.behavior_submissions where workspace_id=w and learner_id=l and rule_id=duplicate_rule and status='pending' and occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
+  perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.status='pending' and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate pending cleanup'));
   perform pg_temp.family_assert(result->'submission'->>'status'='rejected','duplicate pending fixture can be rejected without points');
 
