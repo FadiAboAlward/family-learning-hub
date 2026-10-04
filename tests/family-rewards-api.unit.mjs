@@ -28,7 +28,7 @@ const deps = {
 
 for (const role of ['owner', 'admin']) assert.equal(canManageRewardsRole(role), true);
 for (const role of ['teacher', 'viewer', null, undefined, 'OWNER']) assert.equal(canManageRewardsRole(role), false);
-const parentActions = ['parent_rewards_dashboard', 'parent_rewards_ledger', 'category_save', 'rule_save',
+const parentActions = ['parent_rewards_dashboard', 'parent_rewards_ledger', 'parent_behavior_report', 'category_save', 'rule_save',
   'reward_save', 'behavior_record', 'behavior_review', 'reward_review', 'reward_redeem', 'points_adjust'];
 for (const action of parentActions) {
   const before = calls.length;
@@ -37,7 +37,7 @@ for (const action of parentActions) {
   }), /NOT_REWARDS_ADMIN/);
   assert.equal(calls.length, before, `${action} must reject before privileged RPC`);
 }
-for (const action of ['student_rewards_dashboard', 'student_rewards_ledger', 'behavior_submit', 'reward_request']) {
+for (const action of ['student_rewards_dashboard', 'student_rewards_ledger', 'student_behavior_report', 'behavior_submit', 'reward_request']) {
   await executeFamilyRewardsAction(action, {
     learner_id: otherId, workspace_id: otherId, actor_id: parentId, reviewer: parentId,
     reward_points_delta: 999999, xp_delta: 999, action,
@@ -52,6 +52,16 @@ for (const action of ['student_rewards_dashboard', 'student_rewards_ledger', 'be
   }
 }
 
+await executeFamilyRewardsAction('parent_behavior_report', { learner_id: learnerId, period: 'last30', category_id: otherId, rule_id: otherId, reward_points_delta: 999 }, deps);
+assert.equal(calls.at(-1).parameters.p_action, 'parent_report');
+assert.equal(calls.at(-1).parameters.p_learner_id, learnerId);
+assert.deepEqual(calls.at(-1).parameters.p_payload, { period: 'last30', category_id: otherId, rule_id: otherId }, 'parent report forwards only report filters and verified parent-selected learner');
+
+await executeFamilyRewardsAction('student_behavior_report', { learner_id: otherId, period: 'last7', category_id: otherId, rule_id: otherId, actor_id: parentId }, deps);
+assert.equal(calls.at(-1).parameters.p_action, 'student_report');
+assert.equal(calls.at(-1).parameters.p_learner_id, learnerId, 'learner report identity comes only from verified session');
+assert.deepEqual(calls.at(-1).parameters.p_payload, { period: 'last7', category_id: otherId, rule_id: otherId }, 'learner report strips client identity fields');
+
 await executeFamilyRewardsAction('behavior_record', { learner_id: learnerId, rule_id: otherId, initiative: true, adhkar_completed: true }, deps);
 assert.equal(calls.at(-1).parameters.p_actor_id, parentId);
 assert.equal(calls.at(-1).parameters.p_learner_id, learnerId);
@@ -61,6 +71,7 @@ const learnerSubmit = calls.findLast(row => row.parameters?.p_payload?.rule_id =
 assert.equal(learnerSubmit.parameters.p_payload.adhkar_completed, true, 'learner prayer self-report may forward the linked adhkar selection');
 for (const invalid of [undefined, '', 'another-child', 123]) {
   await assert.rejects(() => executeFamilyRewardsAction('points_adjust', { learner_id: invalid, delta: 1, reason: 'تصحيح' }, deps), /INVALID_LEARNER_ID/);
+  await assert.rejects(() => executeFamilyRewardsAction('parent_behavior_report', { learner_id: invalid, period: 'last7' }, deps), /INVALID_LEARNER_ID/);
 }
 for (const action of parentActions) assert.equal(isFamilyRewardsAction(action), true);
 assert.equal(isFamilyRewardsAction('parent_dashboard'), false, 'existing parent reporting remains unchanged');
