@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-017 v1.0 extends the FLH-FEAT-2026-010 prepared-compatible contract.
+-- FLH-FEAT-2026-010 v1.1 with FLH-FEAT-2026-017 prayer/adhkar compatibility.
 -- A dedicated caught success code rolls back every fixture; assertion errors propagate.
 -- Active authenticated learner activity targets the seeded dedicated test learner.
 do $contract$
@@ -20,6 +20,11 @@ declare
   category_id uuid;
   rule_id uuid;
   week_rule uuid;
+  duplicate_rule uuid;
+  moved_category uuid;
+  original_report_category uuid;
+  snapshot_report_sid uuid;
+  duplicate_warning_sid uuid;
   blocked_rule uuid;
   reward_id uuid;
   other_reward uuid;
@@ -114,6 +119,41 @@ begin
 
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('title','QA weekly','base_points',4,'initiative_bonus_points',2,'cadence','week','max_awards',2,'parent_approval_required',false));
   week_rule := (result->'rule'->>'id')::uuid;
+  result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('title','QA duplicate occurrence','base_points',2,'initiative_bonus_points',0,'cadence','unlimited','max_awards',null,'parent_approval_required',true));
+  duplicate_rule := (result->'rule'->>'id')::uuid;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending','idempotency_key','qa-duplicate-pending-a'));
+  sid := (result->'submission'->>'id')::uuid;
+  second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(second->>'duplicate_pending'='true' and second->'submission'->>'id'=sid::text,'exact pending occurrence with a new request key reuses the existing pending submission');
+  perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.status='pending' and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
+  update public.behavior_rules set is_active=false where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA disabled duplicate attempt','idempotency_key','qa-duplicate-disabled'));
+  perform pg_temp.family_assert(result->>'error'='RULE_INACTIVE' and not coalesce((select request_payload->'idempotency_aliases' ? 'qa-duplicate-disabled' from public.behavior_submissions where id=sid),false),'disabled rule cannot reuse or mutate an existing exact pending submission');
+  update public.behavior_rules set is_active=true where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason',repeat('x',1001),'idempotency_key','qa-duplicate-long-reason'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT' and not coalesce((select request_payload->'idempotency_aliases' ? 'qa-duplicate-long-reason' from public.behavior_submissions where id=sid),false),'oversized reason is rejected before exact-pending reuse can grow request metadata');
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate pending cleanup'));
+  perform pg_temp.family_assert(result->'submission'->>'status'='rejected','duplicate pending fixture can be rejected without points');
+  second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text and second->'submission'->>'status'='rejected','reused pending alias retry resolves to the original submission after its status changes');
+  perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'lost reused response retry cannot create a second occurrence after review');
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','Changed alias payload','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','reused alias key remains bound to the normalized request that created it');
+
+  insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points,request_payload)
+  values(w,l,duplicate_rule,false,v_occurred_at-interval '20 minutes','learner','QA legacy approved duplicate','qa-legacy-approved-duplicate','approved',now()-interval '20 minutes',now()-interval '19 minutes',2,0,2,'{}'::jsonb);
+  select reward_points into points_before from public.learner_gamification_state where learner_id=l;
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '20 minutes','reason','QA duplicate direct','idempotency_key','qa-duplicate-direct'));
+  perform pg_temp.family_assert(result->>'error'='DUPLICATE_OCCURRENCE','direct parent record cannot award an already approved exact occurrence');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=points_before and not exists(select 1 from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.idempotency_key='qa-duplicate-direct'),'blocked direct duplicate leaves neither points nor a pending submission');
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '20 minutes','reason','QA legacy pending duplicate','idempotency_key','qa-legacy-pending-duplicate'));
+  sid := (result->'submission'->>'id')::uuid;
+  select reward_points into points_before from public.learner_gamification_state where learner_id=l;
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
+  perform pg_temp.family_assert(result->>'error'='DUPLICATE_OCCURRENCE','approval blocks a second award for an already approved exact occurrence');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=points_before and not exists(select 1 from public.gamification_events where workspace_id=w and source_type='family_behavior' and source_id=sid::text),'duplicate approval changes neither balance nor ledger');
+  result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate approval cleanup'));
+  perform pg_temp.family_assert(result->'submission'->>'status'='rejected','blocked duplicate remains reviewable for rejection');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'initiative',true,'reason','QA self report','occurred_at',v_occurred_at,'idempotency_key','qa-family-self'));
   perform pg_temp.family_assert(result->'submission'->>'status'='pending' and result->'submission'->>'total_points'='0','even false policy self report stays pending and zero'); sid := (result->'submission'->>'id')::uuid;
   second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'initiative',true,'reason','QA self report','occurred_at',to_char((v_occurred_at at time zone 'UTC')+interval '3 hours','YYYY-MM-DD"T"HH24:MI:SS.US')||'+03:00','idempotency_key','qa-family-self'));
@@ -141,6 +181,105 @@ begin
   perform pg_temp.family_assert(result->>'error'='SELF_REPORT_FORBIDDEN','learner only self reports explicit rules');
   result := public.flh_family_rewards_command(w,null,other_l,'behavior_submit',jsonb_build_object('rule_id',week_rule,'idempotency_key','qa-family-cross'));
   perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','foreign learner blocked');
+
+  insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points)
+  select w,l,duplicate_rule,false,now()-(g||' minutes')::interval,'parent','QA report history','qa-report-'||g,'approved',now()-(g||' minutes')::interval,now()-(g||' minutes')::interval,2,0,2
+  from generate_series(1,9) g;
+  result := public.flh_family_rewards_command(w,null,l,'student_report',jsonb_build_object('period','last7','category_id',category_id,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(result->>'ok'='true' and jsonb_array_length(result->'rows')=7 and result->'summary'->>'approved_count'='7' and result->'summary'->>'pending_count'='0' and result->'summary'->>'total_points'='14','student Last 7 report is complete for its exact filtered window');
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',category_id,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(result->>'ok'='true' and jsonb_array_length(result->'rows')=12 and result->'summary'->>'approved_count'='10' and result->'summary'->>'pending_count'='0' and result->'summary'->>'total_points'='20','parent Last 30 days report is not capped by dashboard history and aggregates the full filtered period');
+  perform pg_temp.family_assert(not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'learner_id'<>l::text or x->>'rule_id'<>duplicate_rule::text),'report rows remain learner and rule scoped');
+
+  original_report_category := category_id;
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,
+    requested_at,approved_at,base_points,initiative_bonus_points,total_points,snapshot
+  )
+  values(
+    w,l,duplicate_rule,false,now()-interval '2 minutes','parent','QA snapshotted category history','qa-report-snapshot-category','approved',
+    now()-interval '2 minutes',now()-interval '2 minutes',2,0,2,
+    jsonb_build_object(
+      'category_id',original_report_category,
+      'category_title',(select title from public.behavior_categories where id=original_report_category and workspace_id=w),
+      'rule_id',duplicate_rule,
+      'rule_title','QA duplicate occurrence',
+      'status','approved'
+    )
+  )
+  returning id into snapshot_report_sid;
+  update public.behavior_categories set is_active=false where id=original_report_category and workspace_id=w;
+  update public.behavior_rules set is_active=false,self_report_allowed=false where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,null,l,'student_catalog','{}');
+  perform pg_temp.family_assert(
+    not exists(select 1 from jsonb_array_elements(result->'categories') x where x->>'id'=original_report_category::text)
+    and not exists(select 1 from jsonb_array_elements(result->'rules') x where x->>'id'=duplicate_rule::text)
+    and exists(select 1 from jsonb_array_elements(result->'report_categories') x where x->>'id'=original_report_category::text)
+    and exists(select 1 from jsonb_array_elements(result->'report_rules') x where x->>'id'=duplicate_rule::text),
+    'learner catalog keeps disabled historical category and rule available only as report dimensions'
+  );
+  update public.behavior_categories set is_active=true where id=original_report_category and workspace_id=w;
+  update public.behavior_rules set is_active=true,self_report_allowed=true where id=duplicate_rule and workspace_id=w;
+  result := public.flh_family_rewards_command(w,owner_id,null,'category_save',jsonb_build_object('title','QA moved category','description','moved for report history test','is_active',true));
+  moved_category := (result->'category'->>'id')::uuid;
+  update public.behavior_rules set category_id=moved_category where id=duplicate_rule and workspace_id=w;
+
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',original_report_category));
+  perform pg_temp.family_assert(
+    exists(
+      select 1
+      from jsonb_array_elements(result->'rows') x
+      where x->>'id'=snapshot_report_sid::text
+        and x->>'category_id'=original_report_category::text
+        and x->>'category_title'=(select title from public.behavior_categories where id=original_report_category and workspace_id=w)
+    ),
+    'approved report history stays under its snapshotted category after the rule moves'
+  );
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',original_report_category,'rule_id',duplicate_rule));
+  perform pg_temp.family_assert(
+    result->>'ok'='true' and exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'id'=snapshot_report_sid::text),
+    'combined category and rule filters can retrieve approved history from the rule original snapshotted category'
+  );
+  result := public.flh_family_rewards_command(w,owner_id,l,'parent_report',jsonb_build_object('period','last30','category_id',moved_category));
+  perform pg_temp.family_assert(
+    not exists(select 1 from jsonb_array_elements(result->'rows') x where x->>'id'=snapshot_report_sid::text),
+    'moved rule current category does not relabel snapshotted approved history'
+  );
+  update public.behavior_rules set category_id=original_report_category where id=duplicate_rule and workspace_id=w;
+
+  result := public.flh_family_rewards_command(w,owner_id,null,'parent_report','{"period":"last7"}');
+  perform pg_temp.family_assert(result->>'error'='LEARNER_NOT_FOUND','parent report cannot read across learners without an explicit scoped learner');
+
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,
+    requested_at,approved_at,base_points,initiative_bonus_points,total_points,snapshot
+  )
+  select
+    w,l,duplicate_rule,false,v_occurred_at-(g||' minutes')::interval,'parent','QA duplicate-warning approved history',
+    'qa-warning-approved-'||g,'approved',v_occurred_at-(g||' minutes')::interval,v_occurred_at-(g||' minutes')::interval,
+    2,0,2,jsonb_build_object('category_id',category_id,'rule_id',duplicate_rule,'status','approved')
+  from generate_series(1,205) g;
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at
+  )
+  values(
+    w,l,duplicate_rule,false,v_occurred_at-interval '205 minutes','learner','QA duplicate-warning pending',
+    'qa-warning-pending','pending',v_occurred_at
+  )
+  returning id into duplicate_warning_sid;
+  result := public.flh_family_rewards_command(w,owner_id,null,'parent_catalog','{"test_only":true}');
+  perform pg_temp.family_assert(
+    exists(
+      select 1
+      from jsonb_array_elements(result->'submissions') x
+      where x->>'id'=duplicate_warning_sid::text
+        and x->>'status'='pending'
+        and x->>'possible_duplicate'='true'
+    ),
+    'pending duplicate warning checks complete approved history beyond the dashboard 200-row display cap'
+  );
+  delete from public.behavior_submissions
+  where workspace_id=w and learner_id=l and idempotency_key like 'qa-warning-%';
 
   payload := jsonb_build_object('title','QA family reward','reward_type','activity','required_reward_points',10,'required_level',1,'learner_scope','selected','learner_ids',jsonb_build_array(l),'max_redemptions_per_learner',1,'criteria',jsonb_build_object('min_xp',200,'current_streak',2));
   result := public.flh_family_rewards_command(w,owner_id,null,'reward_save',payload);

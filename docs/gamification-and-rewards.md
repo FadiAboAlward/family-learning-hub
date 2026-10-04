@@ -80,7 +80,7 @@ Parent reporting should distinguish:
 
 ## Family behavior and real-world reward management
 
-Contract: `FEATURE_ID: FLH-FEAT-2026-010`, `SPEC_VERSION: 1.0`, `DRIVE_REVISION_ID: 3`. The [Drive Feature Spec](https://docs.google.com/document/d/1lv1RpixgOiSv2JExkXN5IFyNWTt5adLlwkLYNnEwtfc/edit) is frozen for [Issue #99](https://github.com/FadiAboAlward/family-learning-hub/issues/99); later edits do not silently change this branch's requirements.
+Current refinement contract: `FEATURE_ID: FLH-FEAT-2026-010`, `SPEC_VERSION: 1.1`, `DRIVE_REVISION_ID: 2`. The [v1.1 Drive Feature Spec](https://docs.google.com/document/d/1OKE1SPoE5DqpaZtx0V2FM6t2CjuXE1BSighc5Phx5-E/edit) is pinned in [Issue #123](https://github.com/FadiAboAlward/family-learning-hub/issues/123). The original v1.0 contract remains the baseline for behavior not changed by v1.1.
 
 ### Point domains and history
 
@@ -98,6 +98,8 @@ Rules include title/description, category, base points, optional initiative bonu
 
 A parent can record an already-approved occurrence directly. An eligible learner can self-report only a rule that explicitly allows it. Every learner report enters `pending`, contributes zero points, and awaits parent approval regardless of the optional policy flag, as required by AC-06. Parent rejection contributes no points. Approval rechecks the current rule, category, learner scope and cadence before awarding the current rule's base points and any initiative bonus. Each approved occurrence updates the balance and creates exactly one event. The same idempotency key returns the existing result only for the same normalized command, verified actor, reason and explicitly supplied occurrence time; conflicting reuse is rejected. Omitting an occurrence time remains a stable retry rather than adopting a new timestamp.
 
+Version 1.1 adds occurrence-level duplicate safety on top of request idempotency. A learner self-report with the same learner, rule and exact `occurred_at` as an existing pending submission reuses that pending row even when a new request key is generated. Approval refuses `DUPLICATE_OCCURRENCE` when another approved submission already represents the same learner/rule/time occurrence, so legacy duplicate pending rows cannot double-award. Parents may then reject the remaining duplicate explicitly.
+
 For `FLH-FEAT-2026-017` ([Feature Spec](https://docs.google.com/document/d/1h1EQCVjyDQG45oxSlfEi22qbd1r5tiOKM4V61BwppdI/edit), [Issue #116](https://github.com/FadiAboAlward/family-learning-hub/issues/116)), a behavior rule can additionally define `adhkar_bonus_points`. When that value is positive, the prayer check-in UI exposes “قرأت أذكار ما بعد الصلاة” beside the existing initiative choice. The submitted boolean `adhkar_completed` is part of the idempotency signature; the RPC derives the point amount from the rule, stores `adhkar_bonus_points` on the submission, and snapshots the base, initiative and adhkar components in the single family-behavior event. A request cannot claim adhkar on a rule with a zero configured bonus.
 
 ### Reward configuration and claims
@@ -114,10 +116,10 @@ All operations are POST actions of `family-api`:
 
 | Caller | Actions |
 | --- | --- |
-| Parent owner/admin | `parent_rewards_dashboard`, `parent_rewards_ledger`, `category_save`, `rule_save`, `reward_save`, `behavior_record`, `behavior_review`, `reward_review`, `reward_redeem`, `points_adjust` |
-| Verified learner session | `student_rewards_dashboard`, `student_rewards_ledger`, `behavior_submit`, `reward_request` |
+| Parent owner/admin | `parent_rewards_dashboard`, `parent_rewards_ledger`, `parent_behavior_report`, `category_save`, `rule_save`, `reward_save`, `behavior_record`, `behavior_review`, `reward_review`, `reward_redeem`, `points_adjust` |
+| Verified learner session | `student_rewards_dashboard`, `student_rewards_ledger`, `student_behavior_report`, `behavior_submit`, `reward_request` |
 
-Save actions accept an optional `id` to edit/disable an existing record. Creation and updates validate fields server-side. Behavior records/requests and adjustments require an `idempotency_key`; review decisions are `approved` or `rejected`. Ledger reads support `before_id`, `page_size` (maximum 100), `source_type` and `category_id`; only a parent may supply a learner filter. The transport never forwards a learner-supplied learner ID, workspace, actor, reviewer or calculated point delta. Public errors are allowlisted codes, with no raw database details or child free text in telemetry.
+Save actions accept an optional `id` to edit/disable an existing record. Creation and updates validate fields server-side. Behavior records/requests and adjustments require an `idempotency_key`; review decisions are `approved` or `rejected`. Ledger reads support `before_id`, `page_size` (maximum 100), `source_type` and `category_id`; only a parent may supply a learner filter. Behavior report reads support `period` (`last7` occurrences or `last30` days), `category_id` and `rule_id`; `parent_behavior_report` requires an explicitly selected learner while `student_behavior_report` always derives the learner from the verified learner session. Approved report history uses the snapshotted category when present so later rule edits do not rewrite historical classification. The transport never forwards a learner-supplied learner ID, workspace, actor, reviewer or calculated point delta. Public errors are allowlisted codes, with no raw database details or child free text in telemetry.
 
 The service-role-only RPC uses `SECURITY INVOKER` and a fixed empty search path. It rechecks owner/admin membership for parent actions. New tables have RLS and parent-only reads; writes go through the server command. Authenticated direct writes to rewards, claims, points state and event history are revoked. Existing academic service-role functions retain their permissions and behavior. Every financial operation locks the same learner row as academic completion to avoid lost updates across the two point sources.
 
@@ -126,6 +128,8 @@ The service-role-only RPC uses `SECURITY INVOKER` and a fixed empty search path.
 All-real rules/rewards exclude test learners. A selected scope can include the dedicated `test` learner for an isolated test run. Parent catalogs normally exclude test learners; authenticated `test_only` reads support QA without mixing test summaries into real family reporting. QA uses synthetic fixtures or disposable local/CI databases and must not alter Aya/Mohammad production state.
 
 The forward-only migration is `20261001085355_family_rewards_and_behaviors.sql`. It adds categories/rules/scopes/submissions and idempotency/security boundaries, seeds editable categories, and preserves existing balances and academic history. Historical migrations are unchanged. The linked prayer-adhkar extension is forward-only in `20261002163500_prayer_adhkar_bonus.sql`; it adds optional rule/submission fields and replaces the service RPC without rewriting the historical migration. Production migration and Edge deployment require separate explicit user approval; opening this PR does not authorize them.
+
+The v1.1 refinement is forward-only in `20261004164500_family_rewards_ux_refinements.sql`. It replaces the service RPC with exact-pending reuse, persistent retry aliases bound to each reused request payload, and a duplicate-approval guard while leaving the historical migrations untouched. The browser entry flow uses category → behavior progressive disclosure, Today/Yesterday/custom date choices with Now/day-part/custom time, learner-grouped pending approvals with learner-level bulk approval, and a lightweight Last 7 / Last 30 days behavior report. The report is derived from the existing submission history and does not create a second analytics/history model.
 
 Before the separately approved Production migration, recheck both unique-index predicates on the actual target with an aggregate-only read. Each conflict count must be zero:
 

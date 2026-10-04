@@ -18,7 +18,7 @@
     INVALID_SCOPE:'اختر طالبًا واحدًا على الأقل عند تحديد نطاق الطلاب.',INVALID_CRITERIA:'تحقّق من شروط الجائزة وقيمها.',INVALID_OCCURRED_AT:'أدخل وقتًا صحيحًا لحدوث السلوك.',ADJUSTMENT_REASON_REQUIRED:'سبب تعديل النقاط مطلوب.',
     CADENCE_LIMIT:'بلغ هذا السلوك حد التكرار المسموح لهذه الفترة.',CLAIM_NOT_APPROVED:'يجب اعتماد طلب الجائزة قبل تسجيل تسليمها.',REWARD_INACTIVE:'هذه الجائزة معطّلة حاليًا.',
     LEVEL_REQUIRED:'لم تصل إلى المستوى المطلوب لهذه الجائزة بعد.',XP_REQUIRED:'لم يكتمل التقدم الأكاديمي المطلوب بعد.',STREAK_REQUIRED:'لم تكتمل سلسلة التعلّم المطلوبة بعد.',BADGE_REQUIRED:'لم تحصل على الأوسمة المطلوبة لهذه الجائزة بعد.',
-    REDEMPTION_LIMIT:'وصلت إلى حد استبدال هذه الجائزة.',CLAIM_ALREADY_PENDING:'لديك طلب لهذه الجائزة بانتظار الموافقة.',ALREADY_REVERSED:'تم عكس هذه الحركة سابقًا.',
+    REDEMPTION_LIMIT:'وصلت إلى حد استبدال هذه الجائزة.',CLAIM_ALREADY_PENDING:'لديك طلب لهذه الجائزة بانتظار الموافقة.',DUPLICATE_OCCURRENCE:'هذا السلوك مسجّل مسبقًا لنفس الوقت؛ لم تُضف نقاط مرة ثانية.',ALREADY_REVERSED:'تم عكس هذه الحركة سابقًا.',
     LEARNER_NOT_FOUND:'الطالب غير متاح لهذا الحساب.',CATEGORY_NOT_FOUND:'الفئة غير متاحة. حدّث الصفحة.',RULE_NOT_FOUND:'السلوك غير متاح. حدّث الصفحة.',REWARD_NOT_FOUND:'الجائزة غير متاحة. حدّث الصفحة.',SUBMISSION_NOT_FOUND:'طلب السلوك غير متاح. حدّث الصفحة.',CLAIM_NOT_FOUND:'طلب الجائزة غير متاح. حدّث الصفحة.',REVERSAL_EVENT_NOT_FOUND:'الحركة الأصلية غير متاحة لهذا الطالب.',
   };
   let generation = 0;
@@ -67,6 +67,119 @@
   }
   function scopePayload(form, prefix) { return {learner_scope:value(form, `${prefix}Scope`), learner_ids:[...form.querySelectorAll('[name="learner_ids"]:checked')].map(element => element.value)}; }
   function selectOptions(rows, label, selected = '') { return `<option value="">${safe(label)}</option>${rows.map(row => `<option value="${safe(row.id)}" ${row.id === selected ? 'selected' : ''}>${safe(row.title || row.display_name)}${row.is_active === false ? ' (معطّل)' : ''}</option>`).join('')}`; }
+  const OCCURRENCE_TIME_ZONE='Europe/Istanbul';
+  const occurrenceZoneParts = dateValue => Object.fromEntries(
+    new Intl.DateTimeFormat('en-US',{
+      timeZone:OCCURRENCE_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
+    }).formatToParts(new Date(dateValue)).filter(part=>part.type!=='literal').map(part=>[part.type,part.value])
+  );
+  const zonedYmd = dateValue => {
+    const parts=occurrenceZoneParts(dateValue);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const zonedHm = dateValue => {
+    const parts=occurrenceZoneParts(dateValue);
+    return `${parts.hour}:${parts.minute}`;
+  };
+  function shiftYmd(day,deltaDays){
+    const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||'');
+    if(!match)throw new Error('INVALID_OCCURRED_AT');
+    const shifted=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])+deltaDays));
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth()+1).padStart(2,'0')}-${String(shifted.getUTCDate()).padStart(2,'0')}`;
+  }
+  function zonedLocalIso(day,clock){
+    const dayMatch=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||'');
+    const timeMatch=/^(\d{2}):(\d{2})$/.exec(clock||'');
+    if(!dayMatch||!timeMatch)throw new Error('INVALID_OCCURRED_AT');
+    const expected={
+      year:Number(dayMatch[1]),month:Number(dayMatch[2]),day:Number(dayMatch[3]),
+      hour:Number(timeMatch[1]),minute:Number(timeMatch[2]),second:0,
+    };
+    if(expected.month<1||expected.month>12||expected.day<1||expected.day>31||expected.hour>23||expected.minute>59)throw new Error('INVALID_OCCURRED_AT');
+    const targetUtc=Date.UTC(expected.year,expected.month-1,expected.day,expected.hour,expected.minute,0);
+    let guess=targetUtc;
+    for(let i=0;i<4;i++){
+      const parts=occurrenceZoneParts(new Date(guess));
+      const seenUtc=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),Number(parts.hour),Number(parts.minute),Number(parts.second));
+      const correction=targetUtc-seenUtc;
+      guess+=correction;
+      if(correction===0)break;
+    }
+    const finalParts=occurrenceZoneParts(new Date(guess));
+    if(
+      Number(finalParts.year)!==expected.year||Number(finalParts.month)!==expected.month||Number(finalParts.day)!==expected.day||
+      Number(finalParts.hour)!==expected.hour||Number(finalParts.minute)!==expected.minute
+    )throw new Error('INVALID_OCCURRED_AT');
+    return new Date(guess).toISOString();
+  }
+  function ruleEligibleForLearner(rule, learnerId) {
+    return rule.learner_scope !== 'selected' || !learnerId || (rule.learner_ids || []).includes(learnerId);
+  }
+  function occurrenceRules(view, prefix) {
+    const learnerId = prefix === 'frOccurrence' ? (view.root?.querySelector('#frOccurrenceLearner')?.value || view.selectedLearner || '') : (learners(view)[0]?.id || '');
+    return (view.data.rules || []).filter(rule => rule.is_active !== false && (prefix === 'frOccurrence' || rule.self_report_allowed) && ruleEligibleForLearner(rule, learnerId));
+  }
+  function occurrenceCategories(view, prefix) {
+    const ids = new Set(occurrenceRules(view,prefix).map(rule => rule.category_id));
+    return (view.data.categories || []).filter(category => category.is_active !== false && ids.has(category.id));
+  }
+  function syncOccurrenceCategories(view,prefix) {
+    const category=view.root.querySelector(`#${prefix}Category`);
+    if(!category)return;
+    const previous=category.value, rows=occurrenceCategories(view,prefix);
+    category.innerHTML=`<option value="">اختر الفئة</option>${rows.map(row=>`<option value="${safe(row.id)}">${safe(row.title)}</option>`).join('')}`;
+    if(rows.some(row=>row.id===previous))category.value=previous;
+    syncBehaviorPicker(view,prefix);
+  }
+  function syncBehaviorPicker(view, prefix) {
+    const category = view.root.querySelector(`#${prefix}Category`), ruleSelect = view.root.querySelector(`#${prefix}Rule`);
+    if (!category || !ruleSelect) return;
+    const rows = occurrenceRules(view,prefix).filter(rule => rule.category_id === category.value);
+    ruleSelect.innerHTML = selectOptions(rows, category.value ? (rows.length ? 'اختر السلوك' : 'لا توجد سلوكيات في هذه الفئة') : 'اختر الفئة أولًا');
+    ruleSelect.disabled = !category.value || !rows.length;
+    syncAdhkar(view,prefix);
+  }
+  function syncOccurrenceWhen(view, prefix) {
+    const dateMode=view.root.querySelector(`#${prefix}DateMode`), timeMode=view.root.querySelector(`#${prefix}TimeMode`);
+    const dateWrap=view.root.querySelector(`[data-fr-custom-date="${prefix}"]`), timeWrap=view.root.querySelector(`[data-fr-custom-time="${prefix}"]`);
+    if(!dateMode||!timeMode)return;
+    if(dateWrap)dateWrap.hidden=dateMode.value!=='custom';
+    const nowOption=timeMode.querySelector('option[value="now"]');
+    if(nowOption)nowOption.disabled=dateMode.value!=='today';
+    if(dateMode.value!=='today'&&timeMode.value==='now')timeMode.value='morning';
+    if(timeWrap)timeWrap.hidden=timeMode.value!=='custom';
+  }
+  function occurrenceAt(form,prefix) {
+    const now=new Date(), dateMode=value(form,`${prefix}DateMode`), timeMode=value(form,`${prefix}TimeMode`);
+    let day;
+    if(dateMode==='today')day=zonedYmd(now);
+    else if(dateMode==='yesterday')day=shiftYmd(zonedYmd(now),-1);
+    else day=value(form,`${prefix}Date`);
+    if(!day)throw new Error('INVALID_OCCURRED_AT');
+    let clock;
+    if(timeMode==='now'){if(dateMode!=='today')throw new Error('INVALID_OCCURRED_AT');return null;}
+    else if(timeMode==='morning')clock='08:00';
+    else if(timeMode==='afternoon')clock='15:00';
+    else if(timeMode==='evening')clock='19:00';
+    else clock=value(form,`${prefix}Time`);
+    if(!clock)throw new Error('INVALID_OCCURRED_AT');
+    return zonedLocalIso(day,clock);
+  }
+  function exactOccurrenceKey(row) {
+    if(!row?.learner_id||!row?.rule_id||!row?.occurred_at)return '';
+    const parsed=new Date(row.occurred_at);
+    return Number.isFinite(parsed.getTime()) ? `${row.learner_id}|${row.rule_id}|${parsed.toISOString()}` : '';
+  }
+  function duplicateSubmissionIds(rows) {
+    const seen=new Map(), duplicates=new Set(), approved=new Set(rows.filter(row=>row.status==='approved').map(exactOccurrenceKey).filter(Boolean));
+    for(const row of rows.filter(row=>row.status==='pending')){
+      const key=exactOccurrenceKey(row); if(!key)continue;
+      if(row.possible_duplicate||approved.has(key))duplicates.add(row.id);
+      if(seen.has(key)){duplicates.add(seen.get(key));duplicates.add(row.id);} else seen.set(key,row.id);
+    }
+    return duplicates;
+  }
   function name(view, id) { return learners(view).find(row => row.id === id)?.display_name || 'الطالب'; }
   function categoryName(view, row) { return row.category_title || row.category_name || row.metadata?.category_title || view.data.categories?.find(category => category.id === (row.category_id || row.metadata?.category_id))?.title || sourceText(row.source_type); }
   function ruleName(view, row) { return row.rule_title || row.behavior_title || row.metadata?.rule_title || view.data.rules?.find(rule => rule.id === (row.rule_id || row.metadata?.rule_id))?.title || row.reason || 'حركة نقاط'; }
@@ -85,7 +198,7 @@
   }
   function submissionCard(view, row) {
     const rule = view.data.rules?.find(rule => rule.id === row.rule_id), title = row.rule_title || rule?.title || row.reason || 'سلوك عائلي';
-    return `<article data-fr-submission="${safe(row.id)}" class="fr-item"><div class="topline"><b>${safe(title)}</b>${statusBadge(row.status)}</div><div class="muted">${view.role === 'parent' ? `${safe(name(view, row.learner_id))} · ` : ''}${safe(categoryName(view, {...row,category_id:row.category_id || rule?.category_id}))} · ${isolated(date(row.occurred_at || row.created_at || row.requested_at))}</div>${row.status === 'pending' && rule ? `<div class="muted">النقاط المتوقعة بحسب القاعدة الحالية عند الاعتماد:</div>${pointParts({base_points:rule.base_points,initiative_bonus_points:row.initiative?rule.initiative_bonus_points:0,adhkar_bonus_points:row.adhkar_completed?rule.adhkar_bonus_points:0})}` : pointParts(row)}${row.initiative ? '<div class="muted">تم دون تذكير</div>' : ''}${row.adhkar_completed ? '<div class="muted">تمت أذكار ما بعد الصلاة</div>' : ''}${row.reason ? `<p>${safe(row.reason)}</p>` : ''}${row.review_reason ? `<p>ملاحظة الأهل: ${safe(row.review_reason)}</p>` : ''}${row.status === 'pending' ? '<div class="muted">لا تُضاف نقاط قبل موافقة الأهل.</div>' : ''}${view.role === 'parent' && row.status === 'pending' ? `<div class="actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>` : ''}</article>`;
+    return `<article data-fr-submission="${safe(row.id)}" class="fr-item"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id) ? '<span class="fr-status fr-duplicate">مكرر محتمل</span>' : ''}</span></div><div class="muted">${view.role === 'parent' ? `${safe(name(view, row.learner_id))} · ` : ''}${safe(categoryName(view, {...row,category_id:row.category_id || rule?.category_id}))} · ${isolated(date(row.occurred_at || row.created_at || row.requested_at))}</div>${row.status === 'pending' && rule ? `<div class="muted">النقاط المتوقعة بحسب القاعدة الحالية عند الاعتماد:</div>${pointParts({base_points:rule.base_points,initiative_bonus_points:row.initiative?rule.initiative_bonus_points:0,adhkar_bonus_points:row.adhkar_completed?rule.adhkar_bonus_points:0})}` : pointParts(row)}${row.initiative ? '<div class="muted">تم دون تذكير</div>' : ''}${row.adhkar_completed ? '<div class="muted">تمت أذكار ما بعد الصلاة</div>' : ''}${row.reason ? `<p>${safe(row.reason)}</p>` : ''}${row.review_reason ? `<p>ملاحظة الأهل: ${safe(row.review_reason)}</p>` : ''}${row.status === 'pending' ? '<div class="muted">لا تُضاف نقاط قبل موافقة الأهل.</div>' : ''}${view.role === 'parent' && row.status === 'pending' ? `<div class="actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>` : ''}</article>`;
   }
   function claimCard(view, row) {
     const reward = view.data.rewards?.find(reward => reward.id === row.reward_id);
@@ -106,8 +219,9 @@
     return `<details class="fr-section"><summary>قواعد السلوك والعادات</summary><div class="fr-card-grid">${(view.data.rules || []).map(rule => `<article data-fr-rule="${safe(rule.id)}" class="fr-item"><div class="topline"><b>${safe(rule.title)}</b><span class="fr-status">${rule.is_active === false ? 'معطّل' : 'نشط'}</span></div><div class="muted">${safe(categoryName(view,rule))} · أساس ${isolated(rule.base_points)} + مبادرة ${isolated(rule.initiative_bonus_points)}</div><div class="muted">${rule.cadence === 'unlimited' ? 'دون حد تكرار' : `${isolated(rule.max_awards)} ${rule.cadence === 'week' ? 'في الأسبوع' : 'في اليوم'}`} · ${rule.self_report_allowed ? 'يسمح بتسجيل الطالب' : 'يسجّله الأهل'}</div><div class="actions"><button class="btn btn-soft" data-fr-edit-rule="${safe(rule.id)}" data-fr-rule-edit="${safe(rule.id)}">تعديل السلوك</button><button class="btn btn-soft" data-fr-toggle-rule="${safe(rule.id)}">${rule.is_active === false ? 'تفعيل' : 'تعطيل'}</button></div></article>`).join('') || '<div class="empty">أضف أول سلوك تشجّعه العائلة.</div>'}</div><form id="frRuleForm" class="fr-form"><h3>إنشاء / تعديل سلوك</h3><div class="fr-form-grid">${field('frRuleTitle','اسم السلوك',input('frRuleTitle','text','required maxlength="120"'))}${field('frRuleCategory','الفئة',`<select id="frRuleCategory" required>${selectOptions(view.data.categories || [],'اختر الفئة')}</select>`)}${field('frRuleBase','نقاط السلوك الأساسية',input('frRuleBase','number','required min="0" max="100000" step="1" value="5" inputmode="numeric" dir="ltr"'))}${field('frRuleBonus','مكافأة المبادرة دون تذكير',input('frRuleBonus','number','required min="0" max="100000" step="1" value="0" inputmode="numeric" dir="ltr"'))}</div>${field('frRuleDescription','وصف السلوك (اختياري)',`<textarea id="frRuleDescription" maxlength="1000" rows="2"></textarea>`)}${scopeFields(view,'frRule')}<div class="fr-form-grid">${field('frRuleCadence','فترة حد التكرار',`<select id="frRuleCadence"><option value="day">يومي</option><option value="week">أسبوعي</option><option value="unlimited">دون حد</option></select>`)}${field('frRuleLimit','أقصى مرات الاعتماد في الفترة',input('frRuleLimit','number','min="1" step="1" value="1" inputmode="numeric" dir="ltr"'))}</div>${checkbox('frRuleSelfReport','السماح للطالب بتسجيل السلوك')}${checkbox('frRuleApproval','يتطلب اعتماد الأهل',true)}<div class="muted">تسجيل الطالب يظل بانتظار موافقة الأهل دائمًا؛ لا يمنح نقاطًا تلقائيًا.</div>${checkbox('frRuleActive','السلوك نشط',true)}${formFooter('حفظ السلوك')}</form></details>`;
   }
   function occurrenceForm(view, learner) {
-    const role = view.role, prefix = role === 'parent' ? 'frOccurrence' : 'frSelfReport', rows = (view.data.rules || []).filter(rule => rule.is_active !== false && (role === 'parent' || rule.self_report_allowed));
-    return `<form id="${prefix}Form" class="fr-form"><h3>${role === 'parent' ? 'تسجيل سلوك معتمد مباشرة' : 'سجّل سلوكًا قمت به'}</h3>${role === 'parent' ? field('frOccurrenceLearner','الطالب',`<select id="frOccurrenceLearner" required>${selectOptions(learners(view),'اختر الطالب',learner)}</select>`) : '<p class="muted">سيصل الطلب إلى الأهل. تُضاف النقاط بعد موافقتهم.</p>'}${field(`${prefix}Rule`,'السلوك',`<select id="${prefix}Rule" required>${selectOptions(rows,rows.length ? 'اختر السلوك' : 'لا توجد سلوكيات تسمح بالتسجيل الآن')}</select>`)}${checkbox(`${prefix}Initiative`,'قمت به دون تذكير (مبادرة)')}<div data-fr-adhkar="${prefix}" hidden>${checkbox(`${prefix}Adhkar`,'قرأت أذكار ما بعد الصلاة (+٢ نقطة)')}</div>${field(`${prefix}At`,'وقت حدوث السلوك',input(`${prefix}At`,'datetime-local','dir="ltr"'))}${field(`${prefix}Reason`,'ملاحظة أو سبب (اختياري)',`<textarea id="${prefix}Reason" maxlength="1000" rows="2"></textarea>`)}${formFooter(role === 'parent' ? 'تسجيل واعتماد السلوك' : 'إرسال إلى الأهل')}</form>`;
+    const role=view.role, prefix=role==='parent'?'frOccurrence':'frSelfReport', rows=occurrenceRules(view,prefix), categories=occurrenceCategories(view,prefix);
+    const categoryOptions=`<option value="">اختر الفئة</option>${categories.map(category=>`<option value="${safe(category.id)}">${safe(category.title)}</option>`).join('')}`;
+    return `<form id="${prefix}Form" class="fr-form"><h3>${role==='parent'?'تسجيل سلوك معتمد مباشرة':'سجّل سلوكًا قمت به'}</h3>${role==='parent'?field('frOccurrenceLearner','الطالب',`<select id="frOccurrenceLearner" required>${selectOptions(learners(view),'اختر الطالب',learner)}</select>`):'<p class="muted">سيصل الطلب إلى الأهل. تُضاف النقاط بعد موافقتهم.</p>'}${field(`${prefix}Category`,'الفئة',`<select id="${prefix}Category" required>${categoryOptions}</select>`)}${field(`${prefix}Rule`,'السلوك',`<select id="${prefix}Rule" required disabled><option value="">اختر الفئة أولًا</option></select>`)}${checkbox(`${prefix}Initiative`,'قمت به دون تذكير (مبادرة)')}<div data-fr-adhkar="${prefix}" hidden>${checkbox(`${prefix}Adhkar`,'قرأت أذكار ما بعد الصلاة')}<span class="muted" data-fr-adhkar-points="${prefix}"></span></div><div class="fr-form-grid">${field(`${prefix}DateMode`,'تاريخ السلوك',`<select id="${prefix}DateMode"><option value="today" selected>اليوم</option><option value="yesterday">أمس</option><option value="custom">اختيار تاريخ</option></select>`)}<div data-fr-custom-date="${prefix}" hidden>${field(`${prefix}Date`,'التاريخ',input(`${prefix}Date`,'date','dir="ltr"'))}</div>${field(`${prefix}TimeMode`,'الوقت',`<select id="${prefix}TimeMode"><option value="now" selected>الآن</option><option value="morning">صباحًا</option><option value="afternoon">ظهرًا</option><option value="evening">مساءً</option><option value="custom">وقت محدد</option></select>`)}<div data-fr-custom-time="${prefix}" hidden>${field(`${prefix}Time`,'الوقت المحدد',input(`${prefix}Time`,'time','dir="ltr"'))}</div></div>${field(`${prefix}Reason`,'ملاحظة أو سبب (اختياري)',`<textarea id="${prefix}Reason" maxlength="1000" rows="2"></textarea>`)}${formFooter(role==='parent'?'تسجيل واعتماد السلوك':'إرسال إلى الأهل')}</form>`;
   }
   function rewardForm(view) {
     return `<details class="fr-section"><summary>إدارة الجوائز</summary><div class="fr-card-grid">${(view.data.rewards || []).map(reward => rewardCard(view,reward)).join('') || '<div class="empty">لم تُضف جوائز بعد.</div>'}</div><form id="frRewardForm" class="fr-form"><h3>إنشاء / تعديل جائزة</h3><div class="fr-form-grid">${field('frRewardTitle','اسم الجائزة',input('frRewardTitle','text','required maxlength="120"'))}${field('frRewardType','نوع الجائزة',`<select id="frRewardType">${[['activity','نشاط'],['outing','نزهة'],['experience','تجربة'],['privilege','امتياز'],['gift','هدية'],['custom','مخصصة']].map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select>`)}</div>${field('frRewardDescription','وصف الجائزة (اختياري)',`<textarea id="frRewardDescription" maxlength="1000" rows="2"></textarea>`)}<div class="fr-form-grid">${field('frRewardPoints','النقاط المطلوبة (اختياري)',input('frRewardPoints','number','min="0" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardLevel','المستوى المطلوب (اختياري)',input('frRewardLevel','number','min="1" step="1" inputmode="numeric" dir="ltr"'))}</div>${scopeFields(view,'frReward')}<div class="fr-form-grid">${field('frRewardFrom','متاحة من (اختياري)',input('frRewardFrom','datetime-local','dir="ltr"'))}${field('frRewardUntil','متاحة حتى (اختياري)',input('frRewardUntil','datetime-local','dir="ltr"'))}${field('frRewardLimit','حد الاستبدال لكل طالب (اختياري)',input('frRewardLimit','number','min="1" step="1" inputmode="numeric" dir="ltr"'))}</div><fieldset class="fr-criteria"><legend>شروط التقدّم الإضافية (اختيارية)</legend><div class="fr-form-grid">${field('frRewardStreak','سلسلة التعلّم الحالية بالأيام',input('frRewardStreak','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardLongestStreak','أطول سلسلة تعلّم بالأيام',input('frRewardLongestStreak','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardXp','الحد الأدنى من XP الأكاديمي',input('frRewardXp','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${`<fieldset id="frRewardBadges" class="fr-criteria"><legend>الأوسمة المطلوبة (اختيارية)</legend>${(view.data.badges || []).map(badge => `<label class="fr-check"><input type="checkbox" name="required_badge_codes" value="${safe(badge.code)}">${safe(badge.title)}${badge.is_active === false ? ' (غير نشط)' : ''}</label>`).join('') || '<div class="muted">لا توجد أوسمة متاحة للاختيار حاليًا.</div>'}</fieldset>`}</div></fieldset>${checkbox('frRewardActive','الجائزة نشطة',true)}<div class="muted">اعتماد الجائزة يخصم النقاط مرة واحدة. تسليمها لاحقًا لا يخصم مجددًا.</div>${formFooter('حفظ الجائزة')}</form></details>`;
@@ -128,16 +242,118 @@
     const breakdown = allBreakdown.filter(row=>!view.selectedLearner || row.learner_id===view.selectedLearner);
     return `<section class="panel fr-summary"><h2>${view.role === 'parent' ? 'النقاط القابلة للاستبدال' : 'تقدّمك وجوائزك'}</h2>${view.role === 'parent' ? field('frLearnerFilter','عرض نقاط الطالب',`<select id="frLearnerFilter"><option value="">كل الطلاب الحقيقيين</option>${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.selectedLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`) : ''}<div class="fr-balance"><span>🪙 نقاط الجوائز</span><strong data-fr-balance>${isolated(balance)}</strong></div><div class="muted">⭐ XP أكاديمي: <b data-fr-xp>${isolated(xp)}</b></div><p class="muted">XP للتعلّم الأكاديمي. نقاط الجوائز تجمع التعلّم والسلوك العائلي المعتمد ويمكن استبدالها.</p>${view.role === 'parent' && !view.selectedLearner ? `<div class="fr-card-grid">${learners(view).map(learner=>`<button class="fr-breakdown" data-fr-select-learner="${safe(learner.id)}"><b>${safe(learner.display_name)}</b><span>${isolated(states.find(row=>row.learner_id===learner.id)?.reward_points || 0)} نقطة</span></button>`).join('')}</div>` : ''}${breakdown.length ? `<h3>توزيع النقاط حسب الفئة والمصدر</h3><div class="fr-card-grid">${breakdown.map(row=>`<button class="fr-breakdown" data-fr-breakdown-category="${safe(row.category_id || '')}" data-fr-breakdown-source="${safe(row.source_type || '')}" data-fr-breakdown-learner="${safe(row.learner_id || '')}"><span>${safe(categoryName(view,row))}${row.source_type ? ` · ${safe(sourceText(row.source_type))}` : ''}</span><b>${isolated(row.points ?? row.total_points ?? row.reward_points_delta ?? row.total ?? 0)} نقطة</b></button>`).join('')}</div>` : '<div class="empty">سيظهر توزيع النقاط بعد أول حركة مسجّلة.</div>'}</section>`;
   }
+  function pendingApprovalGroups(view, rows) {
+    if(!rows.length)return '<div class="empty">لا توجد سلوكيات بانتظار المراجعة.</div>';
+    const ids=[...new Set(rows.map(row=>row.learner_id))];
+    return ids.map(learnerId=>{
+      const learnerRows=rows.filter(row=>row.learner_id===learnerId);
+      return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head"><h3>${safe(name(view,learnerId))}</h3><button class="btn btn-soft" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
+    }).join('');
+  }
+  function reportDimensionRows(primary, historical) {
+    const rows=new Map();
+    for(const row of historical||[])if(row?.id)rows.set(row.id,row);
+    for(const row of primary||[])if(row?.id)rows.set(row.id,row);
+    return [...rows.values()];
+  }
+  function reportCategories(view) { return reportDimensionRows(view.data.categories,view.data.report_categories); }
+  function reportRules(view) { return reportDimensionRows(view.data.rules,view.data.report_rules); }
+  function syncReportRuleOptions(view) {
+    const select=view.root.querySelector('#frReportRule');
+    if(!select)return;
+    const rows=reportRules(view);
+    select.innerHTML=`<option value="">كل السلوكيات</option>${rows.map(rule=>`<option value="${safe(rule.id)}">${safe(rule.title)}</option>`).join('')}`;
+    select.value=view.reportRule&&rows.some(rule=>rule.id===view.reportRule)?view.reportRule:'';
+  }
+  function reportRequest(view) {
+    const payload={period:view.reportPeriod||'last7'};
+    if(view.reportCategory)payload.category_id=view.reportCategory;
+    if(view.reportRule)payload.rule_id=view.reportRule;
+    if(view.role==='parent'&&view.reportLearner)payload.learner_id=view.reportLearner;
+    return payload;
+  }
+  async function loadReport(view,{repaint=false}={}) {
+    if(!current(view))return;
+    if(view.role==='parent'&&!view.reportLearner){
+      view.reportData={rows:[],summary:{approved_count:0,pending_count:0,total_points:0}};
+      view.reportError='';
+      if(repaint)paint(view);
+      return;
+    }
+    const serial=++view.reportSerial;
+    view.reportBusy=true;
+    const host=view.root?.querySelector('[data-fr-report]');
+    host?.setAttribute('aria-busy','true');
+    try{
+      const data=await call(view,`${view.role}_behavior_report`,reportRequest(view));
+      if(!current(view)||serial!==view.reportSerial)return;
+      view.reportData=data||{rows:[],summary:{}};
+      view.reportError='';
+    }catch(error){
+      if(!current(view)||serial!==view.reportSerial)return;
+      view.reportData={rows:[],summary:{approved_count:0,pending_count:0,total_points:0}};
+      view.reportError=errorMessages[String(error?.message||'')]||'تعذر تحميل التقرير الآن.';
+    }finally{
+      if(serial===view.reportSerial)view.reportBusy=false;
+      host?.removeAttribute('aria-busy');
+    }
+    if(repaint&&current(view)&&serial===view.reportSerial)paint(view);
+  }
+  function reportSection(view) {
+    if(view.role==='parent'&&(!view.reportLearner||!learners(view).some(row=>row.id===view.reportLearner)))view.reportLearner=learners(view)[0]?.id||'';
+    const rows=view.reportData?.rows||[], summary=view.reportData?.summary||{};
+    const approved=number(summary.approved_count), pending=number(summary.pending_count), points=number(summary.total_points);
+    const reportRuleRows=reportRules(view);
+    const cards=rows.map(row=>`<article class="fr-report-item"><div class="topline"><b>${safe(ruleName(view,row))}</b>${statusBadge(row.status)}</div><div class="muted">${safe(categoryName(view,{...row,category_id:row.category_id||view.data.rules?.find(rule=>rule.id===row.rule_id)?.category_id}))} · ${isolated(date(row.occurred_at||row.requested_at))}</div>${pointParts(row)}${row.initiative?'<div class="muted">مبادرة دون تذكير</div>':''}${row.adhkar_completed?'<div class="muted">أذكار ما بعد الصلاة</div>':''}</article>`).join('')||'<div class="empty">لا توجد سجلات ضمن هذا الاختيار.</div>';
+    const error=view.reportError?`<div class="error" role="alert">${safe(view.reportError)}</div>`:'';
+    return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${reportCategories(view).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRuleRows.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div>${error}<div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
+  }
+  async function approveAllForLearner(view, button, learnerId) {
+    if(!current(view)||button.dataset.frBusy==='1')return;
+    const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===learnerId);
+    if(!rows.length)return;
+    button.dataset.frBusy='1';button.disabled=true;button.setAttribute('aria-busy','true');
+    const reason=view.root.querySelector('#frReviewReason')?.value.trim()||'';
+    let approved=0;const failures=[];
+    try{
+      for(const row of rows){
+        try{await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason});approved++;}
+        catch(error){failures.push({id:row.id,error:String(error?.message||'SERVER_ERROR')});}
+      }
+      if(!current(view))return;
+      const statusText=failures.length
+        ? `تم اعتماد ${approved} من ${rows.length}. تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`
+        : `تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`;
+      view.savedMessage=statusText;
+      view.approvalMessage=failures.length?{type:'error',text:statusText}:null;
+      if(failures.length){
+        const liveHost=view.root.querySelector('[data-fr-approvals] .fr-message');
+        if(liveHost)liveHost.innerHTML=`<div class="error" role="alert">${safe(statusText)}</div>`;
+      }
+      try{
+        await refresh(view,statusText);
+      }catch(error){
+        if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));
+      }
+    }finally{
+      if(current(view)&&document.contains(button)){
+        button.dataset.frBusy='0';button.removeAttribute('aria-busy');button.disabled=!!view.refreshRequired;
+      }
+    }
+  }
   function paint(view, success = '') {
     if (!current(view)) return;
     view.ledgerSerial++;
-    view.ledgerBusy = false;
-    view.ledger = view.data.ledger || [];
-    view.ledgerCursor = null;
-    view.fullLedger = false;
-    const submissions = (view.data.submissions || []).filter(row=>!view.selectedLearner || row.learner_id===view.selectedLearner), claims = (view.data.claims || []).filter(row=>!view.selectedLearner || row.learner_id===view.selectedLearner);
-    const parent = view.role === 'parent';
-    view.root.innerHTML = `${success ? `<div class="success" role="status">${safe(success)}</div>` : ''}${summary(view)}${parent ? `<section class="panel fr-section"><h2>الطلبات والموافقات</h2>${field('frReviewReason','سبب القرار أو ملاحظة المراجعة (اختياري)',`<textarea id="frReviewReason" maxlength="1000" rows="2"></textarea>`)}<h3>السلوكيات بانتظار المراجعة</h3><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('') || '<div class="empty">لا توجد سلوكيات بانتظار المراجعة.</div>'}</div><h3>طلبات الجوائز</h3><div class="fr-card-grid">${claims.filter(row=>row.status==='pending'||row.status==='approved').map(row=>claimCard(view,row)).join('') || '<div class="empty">لا توجد طلبات جوائز تحتاج إجراءً.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view,view.selectedLearner)}</section>${categoryForm(view)}${ruleForm(view)}${rewardForm(view)}${adjustmentForm(view,view.selectedLearner)}` : `<section class="panel fr-section"><h2>جوائزك والتقدّم نحوها</h2><div class="fr-card-grid">${(view.data.rewards || []).map(reward=>rewardCard(view,reward)).join('') || '<div class="empty">لم يضف الأهل جوائز متاحة لك بعد.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view)}</section>`}${!parent ? `<section class="panel fr-section"><h2>سلوكياتك بانتظار موافقة الأهل</h2><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('') || '<div class="empty">لا توجد سلوكيات بانتظار الموافقة.</div>'}</div></section>` : ''}${ledgerSection(view)}<details class="fr-section"><summary>${parent?'سجل السلوكيات والجوائز':'سلوكياتك وطلبات جوائزك'}</summary><h3>السلوكيات</h3><div class="fr-card-grid" data-fr-submissions>${submissions.map(row=>submissionCard(view,row)).join('') || '<div class="empty">لم تُسجّل سلوكيات بعد.</div>'}</div><h3>طلبات الجوائز وسجل التسليم</h3><div class="fr-card-grid">${claims.map(row=>claimCard(view,row)).join('') || '<div class="empty">لم تُطلب جوائز بعد.</div>'}</div>${message('')}</details>`;
+    view.ledgerBusy=false;
+    view.ledger=view.data.ledger||[];
+    view.ledgerCursor=null;
+    view.fullLedger=false;
+    const allSubmissions=view.data.submissions||[];
+    view.duplicateSubmissionIds=duplicateSubmissionIds(allSubmissions);
+    const submissions=allSubmissions.filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner), claims=(view.data.claims||[]).filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner);
+    const pendingBehaviors=allSubmissions.filter(row=>row.status==='pending');
+    const parent=view.role==='parent';
+    view.root.innerHTML=`${success?`<div class="success" role="status">${safe(success)}</div>`:''}${summary(view)}${parent?`<section class="panel fr-section" data-fr-approvals><h2>الطلبات والموافقات</h2>${view.approvalMessage?.type==='error'?'<div class="error" role="alert">'+safe(view.approvalMessage.text)+'</div>':''}${field('frReviewReason','سبب القرار أو ملاحظة المراجعة (اختياري)',`<textarea id="frReviewReason" maxlength="1000" rows="2"></textarea>`)}<h3>السلوكيات بانتظار المراجعة</h3>${pendingApprovalGroups(view,pendingBehaviors)}<h3>طلبات الجوائز</h3><div class="fr-card-grid">${claims.filter(row=>row.status==='pending'||row.status==='approved').map(row=>claimCard(view,row)).join('')||'<div class="empty">لا توجد طلبات جوائز تحتاج إجراءً.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view,view.selectedLearner)}</section>${categoryForm(view)}${ruleForm(view)}${rewardForm(view)}${adjustmentForm(view,view.selectedLearner)}`:`<section class="panel fr-section"><h2>جوائزك والتقدّم نحوها</h2><div class="fr-card-grid">${(view.data.rewards||[]).map(reward=>rewardCard(view,reward)).join('')||'<div class="empty">لم يضف الأهل جوائز متاحة لك بعد.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view)}</section>`}${!parent?`<section class="panel fr-section"><h2>سلوكياتك بانتظار موافقة الأهل</h2><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('')||'<div class="empty">لا توجد سلوكيات بانتظار الموافقة.</div>'}</div></section>`:''}${reportSection(view)}${ledgerSection(view)}<details class="fr-section"><summary>${parent?'سجل السلوكيات والجوائز':'سلوكياتك وطلبات جوائزك'}</summary><h3>السلوكيات</h3><div class="fr-card-grid" data-fr-submissions>${submissions.map(row=>submissionCard(view,row)).join('')||'<div class="empty">لم تُسجّل سلوكيات بعد.</div>'}</div><h3>طلبات الجوائز وسجل التسليم</h3><div class="fr-card-grid">${claims.map(row=>claimCard(view,row)).join('')||'<div class="empty">لم تُطلب جوائز بعد.</div>'}</div>${message('')}</details>`;
     bind(view);
     if(view.refreshRequired)savedRefreshNotice(view);
   }
@@ -146,7 +362,9 @@
     if (!current(view)) return;
     view.data = data;
     if (view.role === 'parent' && view.selectedLearner && !learners(view).some(learner=>learner.id===view.selectedLearner)) view.selectedLearner='';
+    if (view.role === 'parent' && (!view.reportLearner || !learners(view).some(learner=>learner.id===view.reportLearner))) view.reportLearner=learners(view)[0]?.id||'';
     view.refreshRequired=false;
+    await loadReport(view);
     const savedMessage=success||view.savedMessage||'';delete view.savedMessage;
     paint(view,savedMessage);
   }
@@ -163,8 +381,10 @@
       payload.idempotency_key = keyHolder.dataset.idempotencyKey;
     }
     try {
-      await call(view,action,payload);
+      const result=await call(view,action,payload);
       if (!current(view)) return;
+      if(action==='behavior_submit'&&result?.duplicate_pending)success='هذا السلوك مسجّل مسبقًا وبانتظار موافقة الأهل.';
+      if(action==='behavior_review')view.approvalMessage=null;
       // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
       if(action==='reward_request')requestKeys.delete(`${view.token}:${payload.reward_id}`);
@@ -206,10 +426,11 @@
   }
   function syncCadence(form) { const cadence=form.querySelector('#frRuleCadence'),limit=form.querySelector('#frRuleLimit');if(cadence&&limit){limit.disabled=cadence.value==='unlimited';limit.required=cadence.value!=='unlimited';} }
   function syncAdhkar(view,prefix) {
-    const select=view.root.querySelector(`#${prefix}Rule`),wrap=view.root.querySelector(`[data-fr-adhkar="${prefix}"]`),box=view.root.querySelector(`#${prefix}Adhkar`);
+    const select=view.root.querySelector(`#${prefix}Rule`),wrap=view.root.querySelector(`[data-fr-adhkar="${prefix}"]`),box=view.root.querySelector(`#${prefix}Adhkar`),points=view.root.querySelector(`[data-fr-adhkar-points="${prefix}"]`);
     if(!select||!wrap||!box)return;
-    const rule=(view.data.rules||[]).find(row=>row.id===select.value),enabled=adhkarBonus(rule)>0;
+    const rule=(view.data.rules||[]).find(row=>row.id===select.value),bonus=adhkarBonus(rule),enabled=bonus>0;
     wrap.hidden=!enabled;
+    if(points)points.innerHTML=enabled?` (+${isolated(bonus)} نقطة)`:'';
     if(!enabled)box.checked=false;
   }
   function bindForm(view,id,action,makePayload,success) {
@@ -233,9 +454,17 @@
     root.querySelectorAll('[data-fr-breakdown-category]').forEach(button=>button.onclick=()=>{if(button.dataset.frBreakdownLearner){view.selectedLearner=button.dataset.frBreakdownLearner;paint(view);}root.querySelector('#frLedgerCategory').value=button.dataset.frBreakdownCategory;root.querySelector('#frLedgerSource').value=sourceFilter(button.dataset.frBreakdownSource);loadLedger(view);root.querySelector('[data-fr-ledger-section]').scrollIntoView({behavior:'smooth'});});
     root.querySelectorAll('[data-fr-scope]').forEach(fieldset=>{const select=root.querySelector(`#${fieldset.dataset.frScope}Scope`);select.onchange=()=>fieldset.hidden=select.value!=='selected';});
     root.querySelector('#frRuleCadence')?.addEventListener('change',event=>syncCadence(event.target.form));
-    for(const prefix of ['frOccurrence','frSelfReport']){const select=root.querySelector(`#${prefix}Rule`);if(select){select.addEventListener('change',()=>syncAdhkar(view,prefix));syncAdhkar(view,prefix);}}
+    for(const prefix of ['frOccurrence','frSelfReport']){
+      const category=root.querySelector(`#${prefix}Category`), ruleSelect=root.querySelector(`#${prefix}Rule`), dateMode=root.querySelector(`#${prefix}DateMode`), timeMode=root.querySelector(`#${prefix}TimeMode`);
+      category?.addEventListener('change',()=>syncBehaviorPicker(view,prefix));
+      ruleSelect?.addEventListener('change',()=>syncAdhkar(view,prefix));
+      dateMode?.addEventListener('change',()=>syncOccurrenceWhen(view,prefix));
+      timeMode?.addEventListener('change',()=>syncOccurrenceWhen(view,prefix));
+      syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);
+    }
+    root.querySelector('#frOccurrenceLearner')?.addEventListener('change',()=>{const category=root.querySelector('#frOccurrenceCategory');if(category)category.value='';syncOccurrenceCategories(view,'frOccurrence');});
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
-    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`)syncAdhkar(view,prefix);const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
+    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
     ['category','rule','reward'].forEach(kind=>{
       root.querySelectorAll(`[data-fr-edit-${kind}]`).forEach(button=>button.onclick=()=>edit(view,kind,button.getAttribute(`data-fr-edit-${kind}`)));
       root.querySelectorAll(`[data-fr-toggle-${kind}]`).forEach(button=>button.onclick=()=>{const rows=view.data[kind==='category'?'categories':`${kind}s`]||[],row=rows.find(row=>row.id===button.getAttribute(`data-fr-toggle-${kind}`));if(!row)return;mutation(view,button,`${kind}_save`,{...row,is_active:row.is_active===false},row.is_active===false?'تم التفعيل.':'تم التعطيل.');});
@@ -243,11 +472,16 @@
     bindForm(view,'frCategoryForm','category_save',form=>({title:value(form,'frCategoryTitle'),description:value(form,'frCategoryDescription'),is_active:checked(form,'frCategoryActive')}),'تم حفظ الفئة.');
     bindForm(view,'frRuleForm','rule_save',form=>({title:value(form,'frRuleTitle'),description:value(form,'frRuleDescription'),category_id:value(form,'frRuleCategory'),base_points:optionalNumber(form,'frRuleBase'),initiative_bonus_points:optionalNumber(form,'frRuleBonus'),...scopePayload(form,'frRule'),cadence:value(form,'frRuleCadence'),max_awards:value(form,'frRuleCadence')==='unlimited'?null:optionalNumber(form,'frRuleLimit'),self_report_allowed:checked(form,'frRuleSelfReport'),parent_approval_required:checked(form,'frRuleApproval'),is_active:checked(form,'frRuleActive')}),'تم حفظ السلوك.');
     bindForm(view,'frRewardForm','reward_save',form=>{const criteria={};for(const [id,key]of[['frRewardStreak','current_streak'],['frRewardLongestStreak','longest_streak'],['frRewardXp','min_xp']]){const n=optionalNumber(form,id);if(n!==null)criteria[key]=n;}const badges=[...form.querySelectorAll('[name="required_badge_codes"]:checked')].map(element=>element.value);if(badges.length)criteria.required_badge_codes=badges;return{title:value(form,'frRewardTitle'),description:value(form,'frRewardDescription'),reward_type:value(form,'frRewardType'),required_reward_points:optionalNumber(form,'frRewardPoints'),required_level:optionalNumber(form,'frRewardLevel'),criteria,...scopePayload(form,'frReward'),available_from:datetime(value(form,'frRewardFrom')),available_until:datetime(value(form,'frRewardUntil')),max_redemptions_per_learner:optionalNumber(form,'frRewardLimit'),parent_approval_required:true,is_active:checked(form,'frRewardActive')};},'تم حفظ الجائزة.');
-    for(const [prefix,action]of[['frOccurrence','behavior_record'],['frSelfReport','behavior_submit']])bindForm(view,`${prefix}Form`,action,form=>({...(view.role==='parent'?{learner_id:value(form,'frOccurrenceLearner')}:{}),rule_id:value(form,`${prefix}Rule`),initiative:checked(form,`${prefix}Initiative`),adhkar_completed:checked(form,`${prefix}Adhkar`),occurred_at:datetime(value(form,`${prefix}At`)),reason:value(form,`${prefix}Reason`),idempotency_key:true}),view.role==='parent'?'تم اعتماد السلوك وتحديث الرصيد.':'وصل طلبك إلى الأهل. نقاطك تظل كما هي حتى الموافقة.');
+    for(const [prefix,action]of[['frOccurrence','behavior_record'],['frSelfReport','behavior_submit']])bindForm(view,`${prefix}Form`,action,form=>({...(view.role==='parent'?{learner_id:value(form,'frOccurrenceLearner')}:{}),rule_id:value(form,`${prefix}Rule`),initiative:checked(form,`${prefix}Initiative`),adhkar_completed:checked(form,`${prefix}Adhkar`),occurred_at:occurrenceAt(form,prefix),reason:value(form,`${prefix}Reason`),idempotency_key:true}),view.role==='parent'?'تم اعتماد السلوك وتحديث الرصيد.':'وصل طلبك إلى الأهل. نقاطك تظل كما هي حتى الموافقة.');
     bindForm(view,'frAdjustmentForm','points_adjust',form=>({learner_id:value(form,'frAdjustmentLearner'),delta:optionalNumber(form,'frAdjustmentDelta'),reason:value(form,'frAdjustmentReason'),...(value(form,'frAdjustmentReversal')?{reversal_event_id:value(form,'frAdjustmentReversal')}:{}),idempotency_key:true}),'تم تسجيل الحركة التعويضية في السجل.');
     for(const [kind,idField,action]of[['behavior','submission_id','behavior_review'],['claim','claim_id','reward_review']])for(const [suffix,decision]of[['approve','approved'],['reject','rejected']])root.querySelectorAll(`[data-fr-${kind}-${suffix}]`).forEach(button=>button.onclick=()=>mutation(view,button,action,{[idField]:button.getAttribute(`data-fr-${kind}-${suffix}`),decision,reason:root.querySelector('#frReviewReason')?.value.trim()||''},decision==='approved'?'تم الاعتماد وتحديث السجل.':'تم رفض الطلب دون تغيير النقاط.'));
     root.querySelectorAll('[data-fr-claim-redeem]').forEach(button=>button.onclick=()=>mutation(view,button,'reward_redeem',{claim_id:button.dataset.frClaimRedeem,reason:root.querySelector('#frReviewReason')?.value.trim()||''},'تم تسجيل تسليم الجائزة؛ لا يوجد خصم إضافي.'));
     root.querySelectorAll('[data-fr-request-reward]').forEach(button=>button.onclick=()=>{const id=button.dataset.frRequestReward,key=`${view.token}:${id}`;if(requestKeys.has(key))button.dataset.idempotencyKey=requestKeys.get(key);else{button.dataset.idempotencyKey=crypto.randomUUID();requestKeys.set(key,button.dataset.idempotencyKey);}mutation(view,button,'reward_request',{reward_id:id,idempotency_key:true},'طلب الجائزة بانتظار موافقة الأهل.');});
+    root.querySelectorAll('[data-fr-approve-all]').forEach(button=>button.onclick=()=>approveAllForLearner(view,button,button.dataset.frApproveAll));
+    root.querySelector('#frReportLearner')?.addEventListener('change',async event=>{view.reportLearner=event.target.value;await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportCategory')?.addEventListener('change',async event=>{view.reportCategory=event.target.value;view.reportRule='';syncReportRuleOptions(view);await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportRule')?.addEventListener('change',async event=>{view.reportRule=event.target.value;await loadReport(view,{repaint:true});});
+    root.querySelector('#frReportPeriod')?.addEventListener('change',async event=>{view.reportPeriod=event.target.value;await loadReport(view,{repaint:true});});
     root.querySelector('#frLedgerCategory').onchange=()=>loadLedger(view);
     root.querySelector('#frLedgerSource').onchange=()=>loadLedger(view);
     root.querySelector('[data-fr-ledger-all]').onclick=()=>loadLedger(view);
@@ -260,7 +494,7 @@
     if(!role){screen=null;requestKeys.clear();return;}
     const token=tokenFor(role);
     if(!token){location.hash=role==='parent'?'parents':'student';return;}
-    const view={role,token,generation,data:{},selectedLearner:'',ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
+    const view={role,token,generation,data:{},selectedLearner:'',approvalMessage:null,reportLearner:'',reportCategory:'',reportRule:'',reportPeriod:'last7',reportData:{rows:[],summary:{}},reportError:'',reportSerial:0,reportBusy:false,ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
     shell(role==='parent'?'🎁 الجوائز والعادات':'🎁 جوائزي وعاداتي',role==='parent'?'نقاط واضحة، سلوكيات تشجّعها العائلة، وجوائز باعتماد الأهل.':'تقدّمك الشخصي ومصدر نقاطك، خطوة بخطوة.',`<div class="actions fr-page-actions"><a class="btn btn-soft" href="#${role==='parent'?'parents':'student'}">رجوع ${role==='parent'?'للوحة الأهل':'إلى صفحتي'}</a><button class="btn btn-soft" data-fr-refresh>تحديث</button></div><div data-family-rewards data-role="${role}"><div class="loading-card" role="status">جارٍ تحميل النقاط والجوائز…</div></div>`);
     view.root=document.querySelector('[data-family-rewards]');
     document.querySelector('[data-fr-refresh]').onclick=async()=>{try{await refresh(view);}catch(error){if(current(view)){if(view.refreshRequired)savedRefreshNotice(view);else reportError(view.root,error);}}};
