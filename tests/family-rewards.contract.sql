@@ -128,6 +128,11 @@ begin
   perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.status='pending' and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'exact pending duplicate creates one row only');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA duplicate pending cleanup'));
   perform pg_temp.family_assert(result->'submission'->>'status'='rejected','duplicate pending fixture can be rejected without points');
+  second := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','QA duplicate pending retry','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text and second->'submission'->>'status'='rejected','reused pending alias retry resolves to the original submission after its status changes');
+  perform pg_temp.family_assert((select count(*) from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.rule_id=duplicate_rule and s.occurred_at=v_occurred_at-interval '10 minutes')=1,'lost reused response retry cannot create a second occurrence after review');
+  result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '10 minutes','reason','Changed alias payload','idempotency_key','qa-duplicate-pending-b'));
+  perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','reused alias key remains bound to the normalized request that created it');
 
   insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points,request_payload)
   values(w,l,duplicate_rule,false,v_occurred_at-interval '20 minutes','learner','QA legacy approved duplicate','qa-legacy-approved-duplicate','approved',now()-interval '20 minutes',now()-interval '19 minutes',2,0,2,'{}'::jsonb);
