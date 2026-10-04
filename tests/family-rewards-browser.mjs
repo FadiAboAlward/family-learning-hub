@@ -276,7 +276,7 @@ async function runBrowserSuite() {
   try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     const { name, ...contextOptions } = device;
-    const context = await browser.newContext(contextOptions);
+    const context = await browser.newContext({ ...contextOptions, timezoneId: 'UTC' });
     const page = await context.newPage();
     const server = createRewardsFixture();
     const errors = [];
@@ -376,6 +376,7 @@ async function runBrowserSuite() {
     await balance(page, 20);
     const retryKey = server.last('behavior_record').idempotency_key;
     assert.match(retryKey, /^[0-9a-f-]{36}$/i, 'occurrence has a durable retry key');
+    assert.equal(server.last('behavior_record').occurred_at, '2026-10-01T09:00:00.000Z', '12:00 Istanbul is submitted as the same instant even when the browser runs in UTC');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'));
     assert.equal(server.last('behavior_record').idempotency_key, retryKey, 'retry reuses the original key after a lost response');
     await balance(page, 28);
@@ -398,6 +399,7 @@ async function runBrowserSuite() {
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-02', '12:00');
     await page.locator('#frSelfReportReason').fill('بادرت بترتيب الغرفة');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
+    assert.equal(server.last('behavior_submit').occurred_at, '2026-10-02T09:00:00.000Z', 'learner custom time is interpreted in Istanbul rather than the browser timezone');
     assert.equal('learner_id' in server.last('behavior_submit'), false, 'self-report identity is session-derived');
     await balance(page, 28);
     const pendingId = server.catalog.submissions[0].id;
