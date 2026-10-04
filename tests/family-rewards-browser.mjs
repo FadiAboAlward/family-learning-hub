@@ -706,6 +706,15 @@ async function runBrowserSuite() {
     assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'parent report summarizes approved, pending and awarded points for the filtered recent set');
     await screenshot(page, `family-rewards-${device.name}-report`, page.locator('[data-fr-report]'));
 
+    server.failBefore('parent_behavior_report', 'SERVER_ERROR', 500, true);
+    await page.locator('#frReportPeriod').selectOption('last30');
+    await page.locator('[data-fr-report] [role="alert"]').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-fr-report] .fr-report-item').count(), 0, 'failed filtered report does not retain stale rows from the previous selection');
+    assert.match(await page.locator('[data-fr-report] .fr-report-summary').innerText(), /0\s*معتمد.*0\s*بانتظار الموافقة.*0\s*نقطة/s, 'failed filtered report clears stale totals');
+    server.clearFailure();
+    await page.locator('#frReportPeriod').selectOption('last7');
+    await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
+
     await open(page, 'student');
     assert.equal(await page.locator('#frReportLearner').count(), 0, 'learner report cannot switch to a sibling');
     await page.locator('#frReportCategory').selectOption(categoryId);
