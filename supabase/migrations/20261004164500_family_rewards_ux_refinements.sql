@@ -42,6 +42,9 @@ declare
   v_cursor bigint;
   v_request_payload jsonb;
   v_explicit_occurred_at timestamptz;
+  v_report_category_id uuid;
+  v_report_rule_id uuid;
+  v_period text;
 begin
   if p_workspace_id is null or p_payload is null or jsonb_typeof(p_payload) <> 'object' then return jsonb_build_object('error','INVALID_INPUT'); end if;
   if v_parent then
@@ -54,6 +57,59 @@ begin
     select * into v_learner from public.learners where workspace_id = p_workspace_id and id = p_learner_id and is_active;
     if not found then return jsonb_build_object('error','LEARNER_NOT_FOUND'); end if;
   end if;
+  if p_action in ('parent_report','student_report') then
+    if p_action='parent_report' and not v_parent then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN'); end if;
+    if p_learner_id is null then return jsonb_build_object('error','LEARNER_NOT_FOUND'); end if;
+    v_period := coalesce(nullif(p_payload->>'period',''),'last7');
+    if v_period not in ('last7','last30') then return jsonb_build_object('error','INVALID_INPUT'); end if;
+    begin
+      v_report_category_id := nullif(p_payload->>'category_id','')::uuid;
+      v_report_rule_id := nullif(p_payload->>'rule_id','')::uuid;
+    exception when invalid_text_representation then
+      return jsonb_build_object('error','INVALID_INPUT');
+    end;
+    if v_report_category_id is not null and not exists(
+      select 1 from public.behavior_categories c
+      where c.id=v_report_category_id and c.workspace_id=p_workspace_id
+    ) then return jsonb_build_object('error','CATEGORY_NOT_FOUND'); end if;
+    if v_report_rule_id is not null and not exists(
+      select 1 from public.behavior_rules r
+      where r.id=v_report_rule_id and r.workspace_id=p_workspace_id
+        and (v_report_category_id is null or r.category_id=v_report_category_id)
+    ) then return jsonb_build_object('error','RULE_NOT_FOUND'); end if;
+    with ranked as (
+      select
+        s.*,
+        r.category_id,
+        coalesce(s.snapshot->>'rule_title',r.title) as rule_title,
+        coalesce(s.snapshot->>'category_title',c.title) as category_title,
+        row_number() over(order by s.occurred_at desc,s.requested_at desc,s.id desc) as report_rank
+      from public.behavior_submissions s
+      join public.behavior_rules r on r.id=s.rule_id and r.workspace_id=s.workspace_id
+      join public.behavior_categories c on c.id=r.category_id and c.workspace_id=r.workspace_id
+      where s.workspace_id=p_workspace_id
+        and s.learner_id=p_learner_id
+        and (v_report_category_id is null or r.category_id=v_report_category_id)
+        and (v_report_rule_id is null or r.id=v_report_rule_id)
+        and (v_period<>'last30' or s.occurred_at>=v_now-interval '30 days')
+    ),
+    visible as (
+      select * from ranked
+      where v_period='last30' or report_rank<=7
+    )
+    select jsonb_build_object(
+      'ok',true,
+      'rows',coalesce(jsonb_agg((to_jsonb(v)-'report_rank') order by v.occurred_at desc,v.requested_at desc,v.id desc),'[]'::jsonb),
+      'summary',jsonb_build_object(
+        'approved_count',count(*) filter(where v.status='approved'),
+        'pending_count',count(*) filter(where v.status='pending'),
+        'total_points',coalesce(sum(case when v.status='approved' then v.total_points else 0 end),0)
+      )
+    ) into v_result
+    from visible v;
+    return v_result;
+  end if;
+
   if p_action in ('parent_ledger','student_ledger') then
     if p_action='parent_ledger' and not v_parent then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN'); end if;
     v_page_size := greatest(1,least(100,coalesce((p_payload->>'page_size')::integer,50)));
@@ -337,5 +393,5 @@ exception
 end $$;
 revoke all on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) from public, anon, authenticated;
 grant execute on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) to service_role;
-comment on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) is 'FLH-FEAT-2026-010 v1.1 + FLH-FEAT-2026-017. Service-only atomic family rewards command with exact pending self-report reuse and duplicate-occurrence approval guard.';
+comment on function public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb) is 'FLH-FEAT-2026-010 v1.1 + FLH-FEAT-2026-017. Service-only atomic family rewards command with exact pending self-report reuse, duplicate-occurrence approval guard, and complete learner-scoped behavior reports.';
 
