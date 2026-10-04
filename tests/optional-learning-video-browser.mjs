@@ -67,21 +67,22 @@ function createFixture({ video = videoFixture(), language = 'tr', resumed = fals
       }
       if (body.action === 'save_video_report') {
         assert.ok(video, 'no viewing report without a video');
+        const reportVideo = (Array.isArray(video.videos) ? video.videos : [video]).find(item => item.id === body.video_id);
+        assert.ok(reportVideo, 'report is scoped to one video from the current sequence');
         assert.deepEqual(Object.keys(body).sort(), REPORT_KEYS.slice().sort(), 'report contains only explicit self-report and concurrency identifiers');
         assert.equal(body.attempt_id, ATTEMPT_ID);
-        assert.equal(body.video_id, VIDEO_ID);
         assert.ok(ALLOWED_REPORTS.includes(body.self_report), 'only explicit supported self-report values');
         assert.match(body.request_id, /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i, 'stable request UUID');
         if (delayPromise) await delayPromise;
         const injected = failure;
         failure = null;
-        if (injected?.kind === 'before') return { body: { error: injected.error, self_report: video.self_report, report_revision: video.report_revision }, status: injected.status };
+        if (injected?.kind === 'before') return { body: { error: injected.error, self_report: reportVideo.self_report, report_revision: reportVideo.report_revision }, status: injected.status };
         let result = reportResults.get(body.request_id);
         if (!result) {
-          if (body.expected_revision !== video.report_revision) return { body: { error: 'REPORT_CONFLICT', self_report: video.self_report, report_revision: video.report_revision }, status: 409 };
-          video.self_report = body.self_report;
-          video.report_revision += 1;
-          result = { ok: true, self_report: video.self_report, report_revision: video.report_revision };
+          if (body.expected_revision !== reportVideo.report_revision) return { body: { error: 'REPORT_CONFLICT', self_report: reportVideo.self_report, report_revision: reportVideo.report_revision }, status: 409 };
+          reportVideo.self_report = body.self_report;
+          reportVideo.report_revision += 1;
+          result = { ok: true, self_report: reportVideo.self_report, report_revision: reportVideo.report_revision };
           reportResults.set(body.request_id, clone(result));
         }
         if (injected?.kind === 'after') return { body: { error: injected.error }, status: injected.status };
@@ -252,6 +253,43 @@ async function explicitReports(browser, device) {
     assert.equal(fixture.count('finish_quiz'), 1);
     assert.ok(fixture.last('finish_quiz').duration_seconds >= 1 && fixture.last('finish_quiz').duration_seconds < 60, 'academic duration excludes five minutes spent on optional video card');
     await test.verifyAndClose(`${device.name} reports`);
+  } catch (error) { await test.context.close(); throw error; }
+}
+
+async function orderedSequence(browser, device) {
+  const secondId = '11111111-1111-4111-8111-111111111114';
+  const first = videoFixture({ position: 1, language: 'ar', title: 'الدرس الأول — علم بلادي' });
+  const second = videoFixture({ id: secondId, position: 2, video_ref: 'qaVideo0002', language: 'ar', title: 'الدرس الثاني — المجرد والمزيد' });
+  const sequence = { ...clone(first), videos: [first, second] };
+  const test = await setup(browser, device, { video: sequence, language: 'ar' });
+  const { page, fixture } = test;
+  try {
+    await start(page);
+    await page.locator('#flhOptionalVideo').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('.flh-video-sequence-item').count(), 2, 'ordered sequence exposes one lesson control per video');
+    assert.equal(await page.locator('.flh-video-sequence-item').nth(0).getAttribute('aria-current'), 'true');
+    assert.match(await page.locator('#flhVideoLesson h3').innerText(), /علم بلادي/);
+    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 1);
+    await page.locator('.flh-video-sequence-item').nth(1).click();
+    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 2);
+    assert.equal(await page.evaluate(() => window.__qaVideoProvider.destroyed), 1, 'switching lesson disposes the previous player');
+    assert.equal(await page.locator('.flh-video-sequence-item').nth(1).getAttribute('aria-current'), 'true');
+    assert.match(await page.locator('#flhVideoLesson h3').innerText(), /المجرد والمزيد/);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'ordered video navigation has no horizontal overflow');
+    await page.locator('#flhVideoReport').selectOption('watched_full');
+    const saved = reportResponse(page);
+    await page.locator('#flhVideoSave').click();
+    assert.equal((await saved).status(), 200);
+    await page.waitForFunction(() => !document.getElementById('flhVideoSave')?.disabled);
+    assert.equal(fixture.video.videos[1].self_report, 'watched_full', 'report saves only for the active lesson');
+    assert.equal(fixture.video.videos[0].self_report, 'not_reported', 'other lesson report remains independent');
+    await page.locator('.flh-video-sequence-item').nth(0).click();
+    assert.equal(await page.locator('#flhVideoReport').inputValue(), 'not_reported', 'switching restores each lesson self-report state');
+    await page.locator('#flhVideoStart').click();
+    await questionReady(page);
+    assert.equal(await page.locator('#flhOptionalVideo, #flhVideoFrame').count(), 0, 'starting practice removes the whole sequence');
+    assert.equal(await page.evaluate(() => window.__qaVideoProvider.instances.every(player => player.destroyed)), true, 'starting practice disposes every created player');
+    await test.verifyAndClose(`${device.name} ordered video sequence`);
   } catch (error) { await test.context.close(); throw error; }
 }
 
@@ -439,6 +477,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     await explicitReports(browser, device);
+    await orderedSequence(browser, device);
     await skipWithoutReport(browser, device);
     await resumeAndRetry(browser, device);
     await reportPendingDoesNotGate(browser, device);
