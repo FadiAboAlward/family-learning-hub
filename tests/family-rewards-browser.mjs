@@ -702,6 +702,7 @@ async function runBrowserSuite() {
     await page.locator('#frReportLearner').selectOption(LEARNER_ID);
     await page.locator('#frReportCategory').selectOption(categoryId);
     await page.locator('#frReportRule').selectOption(reportRuleId);
+    await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
     assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'parent report summarizes approved, pending and awarded points for the filtered recent set');
     await screenshot(page, `family-rewards-${device.name}-report`, page.locator('[data-fr-report]'));
 
@@ -709,6 +710,7 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('#frReportLearner').count(), 0, 'learner report cannot switch to a sibling');
     await page.locator('#frReportCategory').selectOption(categoryId);
     await page.locator('#frReportRule').selectOption(reportRuleId);
+    await page.locator('[data-fr-report] .fr-report-summary').getByText('3', { exact: true }).waitFor({ state: 'visible' });
     assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'learner sees the same report summary for self only');
     await assertLayout(page, `${device.name} rewards report`);
 
