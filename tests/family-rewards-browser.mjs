@@ -173,6 +173,29 @@ export function createRewardsFixture() {
         const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || (body.source_type === 'academic' ? academicSource(row.source_type) : row.source_type === body.source_type)));
         return respond({ ledger: clone(ledger), next_cursor: null });
       }
+      if (action === 'parent_behavior_report' || action === 'student_behavior_report') {
+        const learnerId = action === 'parent_behavior_report' ? body.learner_id : LEARNER_ID;
+        let rows = catalog.submissions.filter(row => {
+          const rule = find(catalog.rules,row.rule_id);
+          return row.learner_id === learnerId &&
+            (!body.category_id || (row.category_id || rule?.category_id) === body.category_id) &&
+            (!body.rule_id || row.rule_id === body.rule_id);
+        });
+        rows.sort((a,b)=>new Date(b.occurred_at||b.requested_at||0)-new Date(a.occurred_at||a.requested_at||0));
+        if (body.period === 'last30') {
+          const cutoff = Date.parse(NOW) - 30*24*60*60*1000;
+          rows = rows.filter(row => new Date(row.occurred_at||row.requested_at||0).getTime() >= cutoff);
+        } else rows = rows.slice(0,7);
+        return respond({
+          ok:true,
+          rows:clone(rows),
+          summary:{
+            approved_count:rows.filter(row=>row.status==='approved').length,
+            pending_count:rows.filter(row=>row.status==='pending').length,
+            total_points:rows.filter(row=>row.status==='approved').reduce((sum,row)=>sum+Number(row.total_points||0),0),
+          },
+        });
+      }
       const key = `${action}:${body.idempotency_key || ''}`;
       const result = results.has(key) && body.idempotency_key ? results.get(key) : mutate(body);
       if (body.idempotency_key) results.set(key, clone(result));
