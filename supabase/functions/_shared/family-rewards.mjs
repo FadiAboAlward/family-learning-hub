@@ -2,12 +2,14 @@
 const parentActions = new Map([
   ['parent_rewards_dashboard', 'parent_catalog'],
   ['parent_rewards_ledger', 'parent_ledger'],
+  ['parent_behavior_report', 'parent_report'],
   ...['category_save', 'rule_save', 'reward_save', 'behavior_record', 'behavior_review',
     'reward_review', 'reward_redeem', 'points_adjust'].map(action => [action, action]),
 ]);
 const learnerActions = new Map([
   ['student_rewards_dashboard', 'student_catalog'],
   ['student_rewards_ledger', 'student_ledger'],
+  ['student_behavior_report', 'student_report'],
   ['behavior_submit', 'behavior_submit'],
   ['reward_request', 'reward_request'],
 ]);
@@ -16,6 +18,8 @@ const fields = {
   student_catalog: [],
   parent_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],
   student_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],
+  parent_report: ['period', 'category_id', 'rule_id'],
+  student_report: ['period', 'category_id', 'rule_id'],
   category_save: ['id', 'title', 'description', 'is_active'],
   rule_save: ['id', 'title', 'description', 'category_id', 'base_points', 'initiative_bonus_points',
     'learner_scope', 'learner_ids', 'cadence', 'max_awards', 'self_report_allowed',
@@ -62,11 +66,11 @@ export async function executeFamilyRewardsAction(action, body, dependencies) {
     const identity = await dependencies.parentIdentity();
     if (!canManageRewardsRole(identity.member?.role)) throw new Error('NOT_REWARDS_ADMIN');
     actorId = identity.user.id;
-    if (['behavior_record', 'points_adjust', 'parent_ledger'].includes(command) && body.learner_id != null) {
+    if (['behavior_record', 'points_adjust', 'parent_ledger', 'parent_report'].includes(command) && body.learner_id != null) {
       if (typeof body.learner_id !== 'string' || !uuid.test(body.learner_id)) throw new Error('INVALID_LEARNER_ID');
       learnerId = body.learner_id;
     }
-    if (['behavior_record', 'points_adjust'].includes(command) && !learnerId) throw new Error('INVALID_LEARNER_ID');
+    if (['behavior_record', 'points_adjust', 'parent_report'].includes(command) && !learnerId) throw new Error('INVALID_LEARNER_ID');
   } else {
     const identity = await dependencies.learnerIdentity();
     learnerId = identity.learner_id;
@@ -99,7 +103,7 @@ const publicErrors = new Set([
   'PARENT_MANAGE_FORBIDDEN', 'INVALID_INPUT', 'RULE_SCOPE_FORBIDDEN', 'SELF_REPORT_FORBIDDEN',
   'INVALID_OCCURRED_AT', 'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'REWARD_SCOPE_FORBIDDEN',
   'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING',
-  'ADJUSTMENT_REASON_REQUIRED', 'REVERSAL_EVENT_NOT_FOUND', 'INVALID_ADJUSTMENT',
+  'ADJUSTMENT_REASON_REQUIRED', 'REVERSAL_EVENT_NOT_FOUND', 'INVALID_ADJUSTMENT', 'DUPLICATE_OCCURRENCE',
 ]);
 
 /** Never return raw SQL/PostgREST messages, details or submitted free text to the browser. */
@@ -116,7 +120,7 @@ export function rewardsErrorStatus(code) {
   if (code.endsWith('_NOT_FOUND')) return 404;
   if (['IDEMPOTENCY_CONFLICT', 'CADENCE_LIMIT', 'RULE_INACTIVE', 'CATEGORY_INACTIVE', 'REWARD_UNAVAILABLE',
     'REWARD_INELIGIBLE', 'INSUFFICIENT_POINTS', 'REDEMPTION_LIMIT', 'INVALID_TRANSITION', 'ALREADY_REVERSED',
-    'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING'].includes(code)) return 409;
+    'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING', 'DUPLICATE_OCCURRENCE'].includes(code)) return 409;
   if (publicErrors.has(code)) return 400;
   return 500;
 }
