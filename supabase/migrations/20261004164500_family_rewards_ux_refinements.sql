@@ -75,7 +75,6 @@ begin
     if v_report_rule_id is not null and not exists(
       select 1 from public.behavior_rules r
       where r.id=v_report_rule_id and r.workspace_id=p_workspace_id
-        and (v_report_category_id is null or r.category_id=v_report_category_id)
     ) then return jsonb_build_object('error','RULE_NOT_FOUND'); end if;
     with ranked as (
       select
