@@ -127,6 +127,10 @@ begin
 
   insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,reason,idempotency_key,status,requested_at,approved_at,base_points,initiative_bonus_points,total_points,request_payload)
   values(w,l,duplicate_rule,false,v_occurred_at-interval '20 minutes','learner','QA legacy approved duplicate','qa-legacy-approved-duplicate','approved',now()-interval '20 minutes',now()-interval '19 minutes',2,0,2,'{}'::jsonb);
+  select reward_points into points_before from public.learner_gamification_state where learner_id=l;
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '20 minutes','reason','QA duplicate direct','idempotency_key','qa-duplicate-direct'));
+  perform pg_temp.family_assert(result->>'error'='DUPLICATE_OCCURRENCE','direct parent record cannot award an already approved exact occurrence');
+  perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=points_before and not exists(select 1 from public.behavior_submissions s where s.workspace_id=w and s.learner_id=l and s.idempotency_key='qa-duplicate-direct'),'blocked direct duplicate leaves neither points nor a pending submission');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',duplicate_rule,'occurred_at',v_occurred_at-interval '20 minutes','reason','QA legacy pending duplicate','idempotency_key','qa-legacy-pending-duplicate'));
   sid := (result->'submission'->>'id')::uuid;
   select reward_points into points_before from public.learner_gamification_state where learner_id=l;
