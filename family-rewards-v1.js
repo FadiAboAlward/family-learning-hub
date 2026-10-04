@@ -273,12 +273,9 @@
         ? `تم اعتماد ${approved} من ${rows.length}. تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`
         : `تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`;
       view.savedMessage=statusText;
+      view.approvalMessage=failures.length?{type:'error',text:statusText}:null;
       try{
         await refresh(view,statusText);
-        if(failures.length&&current(view)){
-          const host=view.root.querySelector('[data-fr-approvals] .fr-message');
-          if(host)host.innerHTML=`<div class="error" role="alert">${safe(statusText)}</div>`;
-        }
       }catch(error){
         if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));
       }
