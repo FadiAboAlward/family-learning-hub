@@ -4,10 +4,12 @@
   const mode = (params.get('mode') || '').trim().toLowerCase();
   const learner = (params.get('learner') || '').trim().toLowerCase();
   const attemptId = (params.get('attempt') || '').trim().toLowerCase();
+  const videoPreview = (params.get('videos') || '').trim() === '1';
   const validSlug = /^[a-z0-9][a-z0-9-]{2,120}$/.test(quizSlug);
   const validMode = mode === 'learning' || mode === 'exam';
   const validAttempt = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(attemptId);
   const quizRoute = validSlug && validMode;
+  const videoRoute = quizRoute && mode === 'learning' && videoPreview;
   const attemptRoute = validAttempt;
   if (!quizRoute && !attemptRoute) return;
 
@@ -21,6 +23,7 @@
     next.searchParams.delete('mode');
     next.searchParams.delete('learner');
     next.searchParams.delete('attempt');
+    next.searchParams.delete('videos');
     history.replaceState(null, '', `${next.pathname}${next.search}${next.hash}`);
   }
 
@@ -61,7 +64,7 @@
       return;
     }
 
-    const starter = mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz;
+    const starter = videoRoute ? window.FLH?.openLearningVideos : (mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz);
     if (typeof starter !== 'function') return;
     launched = true;
     cleanUrl();

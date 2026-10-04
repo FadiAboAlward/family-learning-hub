@@ -24,6 +24,17 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
   return data;
 }
 
+async function previewVideos(learnerId:string,slug:string,trace:any){
+  if(!slug)throw new Error("QUIZ_NOT_FOUND");
+  const{data,error}=await trace.measure("video.preview.rpc",{dbOperations:1},()=>admin.rpc("flh_learning_video_preview",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_quiz_slug:slug}));
+  if(error){
+    console.error("Learning video preview RPC failed",{code:error.code,message:error.message});
+    throw new Error("VIDEO_NOT_AVAILABLE");
+  }
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
 async function videoAuthor(req:Request){
   const auth=req.headers.get('authorization')||'';
   if(!auth.startsWith('Bearer '))throw new Error('AUTH_REQUIRED');
@@ -71,7 +82,7 @@ Deno.serve(async(req:Request)=>{
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
     const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status"]);
-    const allowed=new Set(["start_quiz","save_draft","request_hint","answer","finish_quiz","save_video_report",...parentActions]);
+    const allowed=new Set(["start_quiz","preview_videos","save_draft","request_hint","answer","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
     let output;
@@ -82,6 +93,7 @@ Deno.serve(async(req:Request)=>{
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
+      else if(action==="preview_videos")output=await previewVideos(lid,String(b.quiz_slug||""),trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
       else if(action==="request_hint")output=await requestHint(lid,b,trace);
       else if(action==="answer")output=await answerQuestion(lid,b,trace);

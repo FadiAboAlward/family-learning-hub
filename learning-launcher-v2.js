@@ -18,6 +18,37 @@
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   function home(){if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile);}
 
+  async function openLearningVideos(slug){
+    if(!slug||typeof shell!=='function')return;
+    globalThis.FLHOptionalVideo?.dispose();
+    shell('🎬 جاري تجهيز فيديوهات الدرس','لن نغيّر أي إجابة أو تقدّم محفوظ.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
+    let preview;
+    try{preview=await call('preview_videos',{quiz_slug:slug});}
+    catch{
+      shell('الفيديوهات غير متاحة الآن','يمكنك متابعة التدريب من نفس المكان الذي توقفت عنده.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="flhVideoContinueFallback">متابعة التدريب</button><button class="btn btn-soft" id="flhVideoBackFallback">رجوع لمكتبتي</button></div></section>');
+      document.getElementById('flhVideoContinueFallback')?.addEventListener('click',()=>startLearningQuiz(slug));
+      document.getElementById('flhVideoBackFallback')?.addEventListener('click',home);
+      return;
+    }
+    const title=preview?.quiz?.title||'فيديوهات الدرس';
+    const vshell=html=>shell(`🎬 ${safe(title)}`,'شاهد الدروس بالترتيب، ثم تابع تدريبك المحفوظ متى شئت.',html);
+    try{
+      if(globalThis.FLHOptionalVideo?.show({
+        video:preview.optional_video,
+        attemptId:null,
+        call,
+        renderShell:vshell,
+        reportEnabled:false,
+        startLabel:'متابعة التدريب',
+        onStart:()=>startLearningQuiz(slug),
+        onExit:home
+      }))return;
+    }catch{globalThis.FLHOptionalVideo?.dispose();}
+    shell('الفيديوهات غير متاحة الآن','يمكنك متابعة التدريب من نفس المكان الذي توقفت عنده.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="flhVideoContinueFallback">متابعة التدريب</button><button class="btn btn-soft" id="flhVideoBackFallback">رجوع لمكتبتي</button></div></section>');
+    document.getElementById('flhVideoContinueFallback')?.addEventListener('click',()=>startLearningQuiz(slug));
+    document.getElementById('flhVideoBackFallback')?.addEventListener('click',home);
+  }
+
   async function startLearningQuiz(slug){
     if(!slug||typeof shell!=='function')return;
     globalThis.FLHOptionalVideo?.dispose();
@@ -146,5 +177,7 @@
     try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:()=>{started=Date.now();render();},onExit:home}))return;}catch{globalThis.FLHOptionalVideo?.dispose();}
     render();
   }
-  window.FLH=window.FLH||{};window.FLH.startLearningQuiz=startLearningQuiz;
+  window.FLH=window.FLH||{};
+  window.FLH.startLearningQuiz=startLearningQuiz;
+  window.FLH.openLearningVideos=openLearningVideos;
 })();

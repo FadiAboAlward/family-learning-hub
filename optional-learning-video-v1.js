@@ -28,7 +28,7 @@
 
   function dispose() { disposeCurrent(); disposeCurrent = () => {}; }
 
-  function show({video, attemptId, call, renderShell, onStart, onExit}) {
+  function show({video, attemptId, call, renderShell, onStart, onExit, reportEnabled=true, startLabel='ابدأ التدريب الآن بدون انتظار'}) {
     dispose();
     const raw = Array.isArray(video?.videos) && video.videos.length ? video.videos : [video];
     const videos = raw
@@ -48,7 +48,7 @@
     renderShell(`<section class="panel flh-optional-video" id="flhOptionalVideo" aria-labelledby="flhVideoHeading">
       <h2 id="flhVideoHeading">فيديوهات تعليمية اختيارية</h2>
       <p>يمكنك مشاهدة درس واحد أو أكثر، أو بدء التدريب الآن. المشاهدة ليست شرطًا ولا تؤثر على نقاطك.</p>
-      <div class="actions"><button class="btn btn-primary" id="flhVideoStart">ابدأ التدريب الآن بدون انتظار</button></div>
+      <div class="actions"><button class="btn btn-primary" id="flhVideoStart">${escape(startLabel)}</button></div>
       ${videos.length > 1 ? `<div class="flh-video-sequence" role="navigation" aria-label="دروس الفيديو">
         ${videos.map((item,index)=>`<button class="btn btn-soft flh-video-sequence-item" type="button" data-video-index="${index}" aria-current="${index===0?'true':'false'}">الدرس ${escape(item.position || index+1)}</button>`).join('')}
       </div>` : ''}
@@ -105,46 +105,48 @@
         ${isAvailable ? `<div class="flh-video-player"><iframe id="flhVideoFrame" title="${escape('فيديو YouTube اختياري: ' + (item.title || 'شرح للمهارة الحالية'))}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
         <p id="flhVideoFallback" role="status" ${isAvailable ? 'hidden' : ''}>هذا الفيديو غير متاح الآن. يمكنك اختيار درس آخر أو بدء التدريب مباشرة.</p>
         <button class="btn btn-soft" id="flhVideoUnavailable" ${isAvailable ? '' : 'hidden'}>الفيديو لا يعمل</button>
-        <fieldset class="flh-video-report"><legend>إفادتك عن مشاهدة هذا الدرس — اختيارية</legend>
+        ${reportEnabled ? `<fieldset class="flh-video-report"><legend>إفادتك عن مشاهدة هذا الدرس — اختيارية</legend>
           <p class="muted" id="flhVideoReportHelp">هذه إفادتك أنت في Family Learning Hub؛ لم نقِس مشاهدتك من YouTube. يمكنك تركها فارغة.</p>
           <label for="flhVideoReport">ماذا شاهدت؟ (اختياري)</label>
           <select id="flhVideoReport" aria-describedby="flhVideoReportHelp">${[...reports].map(value => `<option value="${value}" ${value === state.selfReport ? 'selected' : ''}>${labels[value]}</option>`).join('')}</select>
           <button class="btn btn-soft" id="flhVideoSave">حفظ إفادتي</button>
           <p id="flhVideoReportStatus" role="status">${state.selfReport === 'not_reported' ? 'لم تُقدّم إفادة عن المشاهدة.' : `إفادتك المحفوظة: ${labels[state.selfReport]}.`}</p>
-        </fieldset>`;
+        </fieldset>` : ''}`;
       markActive();
-      const select = lesson.querySelector('#flhVideoReport');
-      const save = lesson.querySelector('#flhVideoSave');
-      const status = lesson.querySelector('#flhVideoReportStatus');
       lesson.querySelector('#flhVideoUnavailable')?.addEventListener('click', fallback);
       lesson.querySelector('#flhVideoFrame')?.addEventListener('error', fallback);
-      select.addEventListener('change', () => { state.pendingRequest = null; });
-      save.addEventListener('click', async () => {
-        if (state.saving || !alive || !reports.has(select.value)) return;
-        state.saving = true; save.disabled = true; select.disabled = true;
-        state.pendingRequest ||= {attempt_id:attemptId,video_id:item.id,self_report:select.value,expected_revision:state.revision,request_id:crypto.randomUUID()};
-        status.textContent = 'جارٍ حفظ إفادتك. يمكنك بدء التدريب الآن.';
-        try {
-          const result = await call('save_video_report', state.pendingRequest);
-          if (!alive) return;
-          if (!reports.has(result.self_report) || !Number.isSafeInteger(result.report_revision)) throw new Error('REPORT_UNAVAILABLE');
-          state.selfReport = result.self_report; state.revision = result.report_revision; state.pendingRequest = null;
-          if (activeIndex === index && status.isConnected) {
-            select.value = state.selfReport;
-            status.textContent = `إفادتك المحفوظة: ${labels[state.selfReport]}.`;
+      if (reportEnabled) {
+        const select = lesson.querySelector('#flhVideoReport');
+        const save = lesson.querySelector('#flhVideoSave');
+        const status = lesson.querySelector('#flhVideoReportStatus');
+        select?.addEventListener('change', () => { state.pendingRequest = null; });
+        save?.addEventListener('click', async () => {
+          if (state.saving || !alive || !select || !save || !status || !reports.has(select.value)) return;
+          state.saving = true; save.disabled = true; select.disabled = true;
+          state.pendingRequest ||= {attempt_id:attemptId,video_id:item.id,self_report:select.value,expected_revision:state.revision,request_id:crypto.randomUUID()};
+          status.textContent = 'جارٍ حفظ إفادتك. يمكنك بدء التدريب الآن.';
+          try {
+            const result = await call('save_video_report', state.pendingRequest);
+            if (!alive) return;
+            if (!reports.has(result.self_report) || !Number.isSafeInteger(result.report_revision)) throw new Error('REPORT_UNAVAILABLE');
+            state.selfReport = result.self_report; state.revision = result.report_revision; state.pendingRequest = null;
+            if (activeIndex === index && status.isConnected) {
+              select.value = state.selfReport;
+              status.textContent = `إفادتك المحفوظة: ${labels[state.selfReport]}.`;
+            }
+          } catch (error) {
+            if (!alive) return;
+            const current = error?.data;
+            if (error.message === 'REPORT_CONFLICT' && reports.has(current?.self_report) && Number.isSafeInteger(current?.report_revision)) {
+              state.revision = current.report_revision; state.pendingRequest = null;
+              if (activeIndex === index && status.isConnected) status.textContent = 'تغيّرت إفادتك في جلسة أخرى. يمكنك حفظ اختيارك مجددًا أو بدء التدريب الآن.';
+            } else if (activeIndex === index && status.isConnected) status.textContent = 'تعذر التأكد من حفظ إفادتك. أعد المحاولة أو ابدأ التدريب الآن.';
+          } finally {
+            state.saving = false;
+            if (activeIndex === index && save.isConnected) { save.disabled = false; select.disabled = false; }
           }
-        } catch (error) {
-          if (!alive) return;
-          const current = error?.data;
-          if (error.message === 'REPORT_CONFLICT' && reports.has(current?.self_report) && Number.isSafeInteger(current?.report_revision)) {
-            state.revision = current.report_revision; state.pendingRequest = null;
-            if (activeIndex === index && status.isConnected) status.textContent = 'تغيّرت إفادتك في جلسة أخرى. يمكنك حفظ اختيارك مجددًا أو بدء التدريب الآن.';
-          } else if (activeIndex === index && status.isConnected) status.textContent = 'تعذر التأكد من حفظ إفادتك. أعد المحاولة أو ابدأ التدريب الآن.';
-        } finally {
-          state.saving = false;
-          if (activeIndex === index && save.isConnected) { save.disabled = false; select.disabled = false; }
-        }
-      });
+        });
+      }
       activatePlayer(item);
     }
 
