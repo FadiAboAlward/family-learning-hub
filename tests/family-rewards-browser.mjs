@@ -671,6 +671,7 @@ async function runBrowserSuite() {
     assert.equal(server.catalog.submissions.find(row => row.id === secondLearnerPending.id).status, 'pending', 'learner-level approve all never crosses into another learner');
     assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'approved').length, 1, 'bulk approval awards one of two exact duplicate occurrences');
     assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'pending').length, 1, 'the conflicting duplicate remains pending for an explicit parent decision');
+    assert.equal(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] .fr-duplicate`).count(), 1, 'a pending occurrence matching an approved occurrence stays flagged after partial bulk approval');
 
     await page.locator('#frReportLearner').selectOption(LEARNER_ID);
     await page.locator('#frReportCategory').selectOption(categoryId);
