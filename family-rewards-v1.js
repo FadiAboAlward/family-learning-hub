@@ -67,14 +67,52 @@
   }
   function scopePayload(form, prefix) { return {learner_scope:value(form, `${prefix}Scope`), learner_ids:[...form.querySelectorAll('[name="learner_ids"]:checked')].map(element => element.value)}; }
   function selectOptions(rows, label, selected = '') { return `<option value="">${safe(label)}</option>${rows.map(row => `<option value="${safe(row.id)}" ${row.id === selected ? 'selected' : ''}>${safe(row.title || row.display_name)}${row.is_active === false ? ' (معطّل)' : ''}</option>`).join('')}`; }
-  const localYmd = dateValue => {
-    const value = new Date(dateValue);
-    return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
+  const OCCURRENCE_TIME_ZONE='Europe/Istanbul';
+  const occurrenceZoneParts = dateValue => Object.fromEntries(
+    new Intl.DateTimeFormat('en-US',{
+      timeZone:OCCURRENCE_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
+    }).formatToParts(new Date(dateValue)).filter(part=>part.type!=='literal').map(part=>[part.type,part.value])
+  );
+  const zonedYmd = dateValue => {
+    const parts=occurrenceZoneParts(dateValue);
+    return `${parts.year}-${parts.month}-${parts.day}`;
   };
-  const localHm = dateValue => {
-    const value = new Date(dateValue);
-    return `${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
+  const zonedHm = dateValue => {
+    const parts=occurrenceZoneParts(dateValue);
+    return `${parts.hour}:${parts.minute}`;
   };
+  function shiftYmd(day,deltaDays){
+    const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||'');
+    if(!match)throw new Error('INVALID_OCCURRED_AT');
+    const shifted=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])+deltaDays));
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth()+1).padStart(2,'0')}-${String(shifted.getUTCDate()).padStart(2,'0')}`;
+  }
+  function zonedLocalIso(day,clock){
+    const dayMatch=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||'');
+    const timeMatch=/^(\d{2}):(\d{2})$/.exec(clock||'');
+    if(!dayMatch||!timeMatch)throw new Error('INVALID_OCCURRED_AT');
+    const expected={
+      year:Number(dayMatch[1]),month:Number(dayMatch[2]),day:Number(dayMatch[3]),
+      hour:Number(timeMatch[1]),minute:Number(timeMatch[2]),second:0,
+    };
+    if(expected.month<1||expected.month>12||expected.day<1||expected.day>31||expected.hour>23||expected.minute>59)throw new Error('INVALID_OCCURRED_AT');
+    const targetUtc=Date.UTC(expected.year,expected.month-1,expected.day,expected.hour,expected.minute,0);
+    let guess=targetUtc;
+    for(let i=0;i<4;i++){
+      const parts=occurrenceZoneParts(new Date(guess));
+      const seenUtc=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),Number(parts.hour),Number(parts.minute),Number(parts.second));
+      const correction=targetUtc-seenUtc;
+      guess+=correction;
+      if(correction===0)break;
+    }
+    const finalParts=occurrenceZoneParts(new Date(guess));
+    if(
+      Number(finalParts.year)!==expected.year||Number(finalParts.month)!==expected.month||Number(finalParts.day)!==expected.day||
+      Number(finalParts.hour)!==expected.hour||Number(finalParts.minute)!==expected.minute
+    )throw new Error('INVALID_OCCURRED_AT');
+    return new Date(guess).toISOString();
+  }
   function ruleEligibleForLearner(rule, learnerId) {
     return rule.learner_scope !== 'selected' || !learnerId || (rule.learner_ids || []).includes(learnerId);
   }
@@ -115,20 +153,18 @@
   function occurrenceAt(form,prefix) {
     const now=new Date(), dateMode=value(form,`${prefix}DateMode`), timeMode=value(form,`${prefix}TimeMode`);
     let day;
-    if(dateMode==='today')day=localYmd(now);
-    else if(dateMode==='yesterday'){const d=new Date(now);d.setDate(d.getDate()-1);day=localYmd(d);}
+    if(dateMode==='today')day=zonedYmd(now);
+    else if(dateMode==='yesterday')day=shiftYmd(zonedYmd(now),-1);
     else day=value(form,`${prefix}Date`);
     if(!day)throw new Error('INVALID_OCCURRED_AT');
     let clock;
-    if(timeMode==='now'){if(dateMode!=='today')throw new Error('INVALID_OCCURRED_AT');clock=localHm(now);}
+    if(timeMode==='now'){if(dateMode!=='today')throw new Error('INVALID_OCCURRED_AT');clock=zonedHm(now);}
     else if(timeMode==='morning')clock='08:00';
     else if(timeMode==='afternoon')clock='15:00';
     else if(timeMode==='evening')clock='19:00';
     else clock=value(form,`${prefix}Time`);
     if(!clock)throw new Error('INVALID_OCCURRED_AT');
-    const parsed=new Date(`${day}T${clock}:00`);
-    if(!Number.isFinite(parsed.getTime()))throw new Error('INVALID_OCCURRED_AT');
-    return parsed.toISOString();
+    return zonedLocalIso(day,clock);
   }
   function exactOccurrenceKey(row) {
     if(!row?.learner_id||!row?.rule_id||!row?.occurred_at)return '';
@@ -139,7 +175,7 @@
     const seen=new Map(), duplicates=new Set(), approved=new Set(rows.filter(row=>row.status==='approved').map(exactOccurrenceKey).filter(Boolean));
     for(const row of rows.filter(row=>row.status==='pending')){
       const key=exactOccurrenceKey(row); if(!key)continue;
-      if(approved.has(key))duplicates.add(row.id);
+      if(row.possible_duplicate||approved.has(key))duplicates.add(row.id);
       if(seen.has(key)){duplicates.add(seen.get(key));duplicates.add(row.id);} else seen.set(key,row.id);
     }
     return duplicates;
