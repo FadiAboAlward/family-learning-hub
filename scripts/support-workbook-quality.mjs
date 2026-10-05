@@ -5,6 +5,15 @@ const markup = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);|<\/?[a-z][^>]*>/iu;
 const external = /(?:kitab[ıiuü]|sayfa(?:ya|da)|kayna(?:ğa|kta)|افتح\s+(?:الكتاب|الصفحة)|راجع\s+(?:الكتاب|الصفحة)|look\s+at\s+(?:the\s+)?(?:book|page)|open\s+(?:the\s+)?(?:book|page))/iu;
 
 function push(list,code,path,message){list.push({code,path,message});}
+function visibleTextChecks(errors,path,value,{selfContained=true,arabic=false}={}){
+  const t=clean(value);
+  if(!t)return;
+  if(markup.test(t))push(errors,'LEARNER_TEXT_MARKUP_FORBIDDEN',path,'Learner-visible text must be plain text.');
+  if(selfContained&&external.test(t))push(errors,'EXTERNAL_SOURCE_DEPENDENCY',path,'Learner-visible text must be self-contained.');
+  const duplicate=t.match(/\b([\p{L}\p{M}\p{N}]+)\s+\1\b/iu);
+  if(duplicate)push(errors,'ADJACENT_DUPLICATE_WORD',path,'Learner-visible text repeats an adjacent word.');
+  if(arabic&&!/[\u0600-\u06FF]/u.test(t))push(errors,'ARABIC_FEEDBACK_REQUIRED',path,'Arabic feedback must contain Arabic-script learner text.');
+}
 function answerCandidates(q){
   if(!q||q.grading_mode==='ungraded'||!q.answer)return[];
   if(q.type==='single_choice'){
@@ -80,12 +89,10 @@ export function validateSupportWorkbookPackage(pkg){
       if(!['single_choice','numeric','short_answer'].includes(q?.type))push(errors,'UNSUPPORTED_QUESTION_TYPE',qp+'.type','Unsupported support-workbook question type.');
       if(!['book_exact','book_adapted'].includes(q?.origin))push(errors,'INVALID_ORIGIN',qp+'.origin','Origin must be book_exact or book_adapted.');
       if(q?.origin==='book_adapted'&&!clean(q?.source_note))push(errors,'BOOK_ADAPTATION_NOTE_REQUIRED',qp+'.source_note','Visual semantic adaptations need an explicit note.');
+      else if(clean(q?.source_note))visibleTextChecks(errors,qp+'.source_note',q.source_note,{selfContained:false});
       const prompt=clean(q?.prompt);
       if(!prompt)push(errors,'PROMPT_REQUIRED',qp+'.prompt','Prompt is required.');
-      else{
-        if(markup.test(prompt))push(errors,'LEARNER_TEXT_MARKUP_FORBIDDEN',qp+'.prompt','Prompt must be plain text.');
-        if(external.test(prompt))push(errors,'EXTERNAL_SOURCE_DEPENDENCY',qp+'.prompt','Prompt must be self-contained.');
-      }
+      else visibleTextChecks(errors,qp+'.prompt',prompt);
       if(!Number.isInteger(q?.pdf_page)||q.pdf_page<1||q.pdf_page>source.pdf_pages)push(errors,'SOURCE_PAGE_INVALID',qp+'.pdf_page','Invalid original PDF page.');
       else if(!pages.includes(q.pdf_page))push(errors,'SOURCE_PAGE_OUTSIDE_SESSION',qp+'.pdf_page','Question page must belong to its session.');
       const hs=profiles[clean(q?.hint_profile)];
@@ -98,10 +105,12 @@ export function validateSupportWorkbookPackage(pkg){
         if(Number(q?.points)<=0)push(errors,'GRADED_POINTS_REQUIRED',qp+'.points','Graded question needs positive points.');
         if(!q?.answer||typeof q.answer!=='object')push(errors,'ANSWER_KEY_REQUIRED',qp+'.answer','Graded question requires an answer.');
         if(!clean(q?.explanation_ar))push(errors,'GRADED_EXPLANATION_REQUIRED',qp+'.explanation_ar','Graded question requires Arabic learner feedback.');
+        else visibleTextChecks(errors,qp+'.explanation_ar',q.explanation_ar,{arabic:true});
       }
       if(q?.type==='single_choice'){
         const opts=Array.isArray(q.options)?q.options:[];
         if(opts.length<2||opts.length>6||opts.some(x=>!clean(x)))push(errors,'OPTION_COUNT_OR_CONTENT_INVALID',qp+'.options','Official single-choice item requires 2–6 options.');
+        opts.forEach((option,oi)=>visibleTextChecks(errors,qp+'.options['+oi+']',option));
         const pos=Number(q?.answer?.option_position);
         if(grading==='graded'&&(!Number.isInteger(pos)||pos<1||pos>opts.length))push(errors,'SINGLE_CHOICE_ANSWER_INVALID',qp+'.answer.option_position','Answer position must reference an option.');
       }
