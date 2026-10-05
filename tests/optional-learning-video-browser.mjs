@@ -153,6 +153,7 @@ async function setup(browser, device, options = {}) {
     providerRequests.push({ pathname: url.pathname, search: url.search });
     if (url.pathname === '/iframe_api') {
       if (options.providerMode === 'network-error') { injectedFailures.push('net::ERR_FAILED'); return route.abort('failed'); }
+      if (options.providerMode === 'api-delay') await new Promise(resolve => setTimeout(resolve, 500));
       return route.fulfill({ status: 200, contentType: 'application/javascript', body: PROVIDER_SCRIPT });
     }
     return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html lang="en"><title>Synthetic Testing embed</title><body>Testing provider fixture</body></html>' });
@@ -294,6 +295,29 @@ async function orderedSequence(browser, device) {
     assert.equal(await page.locator('#flhOptionalVideo, #flhVideoFrame').count(), 0, 'starting practice removes the whole sequence');
     assert.equal(await page.evaluate(() => window.__qaVideoProvider.instances.every(player => player.destroyed)), true, 'starting practice disposes every created player');
     await test.verifyAndClose(`${device.name} ordered video sequence`);
+  } catch (error) { await test.context.close(); throw error; }
+}
+
+async function stalePlayerInitialization(browser, device) {
+  const secondId = '11111111-1111-4111-8111-111111111114';
+  const first = videoFixture({ position: 1, language: 'ar', title: 'الدرس الأول — علم بلادي' });
+  const second = videoFixture({ id: secondId, position: 2, video_ref: 'qaVideo0002', language: 'ar', title: 'الدرس الثاني — المجرد والمزيد' });
+  const sequence = { ...clone(first), videos: [first, second] };
+  const test = await setup(browser, device, { video: sequence, language: 'ar', providerMode: 'api-delay' });
+  const { page } = test;
+  try {
+    await start(page);
+    await page.locator('#flhOptionalVideo').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => window.__qaVideoProvider.instances.length), 0, 'delayed provider keeps first player initialization pending');
+    await page.locator('.flh-video-sequence-item').nth(1).click();
+    assert.match(await page.locator('#flhVideoLesson h3').innerText(), /المجرد والمزيد/);
+    await page.waitForFunction(() => window.__qaVideoProvider.instances.length >= 1);
+    await page.waitForTimeout(100);
+    assert.equal(await page.evaluate(() => window.__qaVideoProvider.instances.length), 1, 'stale initialization cannot create a second controller on the active iframe');
+    assert.equal(await page.evaluate(() => window.__qaVideoProvider.destroyed), 0, 'stale initialization is rejected before creating a player');
+    assert.equal(await page.locator('#flhVideoFallback').isHidden(), true, 'stale callback cannot hide the active lesson');
+    assert.equal(await page.locator('.flh-video-sequence-item').nth(1).getAttribute('aria-current'), 'true');
+    await test.verifyAndClose(`${device.name} stale player initialization`);
   } catch (error) { await test.context.close(); throw error; }
 }
 
@@ -525,6 +549,7 @@ try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     await explicitReports(browser, device);
     await orderedSequence(browser, device);
+    await stalePlayerInitialization(browser, device);
     await skipWithoutReport(browser, device);
     await resumeAndRetry(browser, device);
     await reportPendingDoesNotGate(browser, device);
