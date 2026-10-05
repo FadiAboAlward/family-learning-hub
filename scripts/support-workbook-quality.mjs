@@ -5,13 +5,13 @@ const markup = /&(?:#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);|<\/?[a-z][^>]*>/iu;
 const external = /(?:kitab[ıiuü]|sayfa(?:ya|da)|kayna(?:ğa|kta)|افتح\s+(?:الكتاب|الصفحة)|راجع\s+(?:الكتاب|الصفحة)|look\s+at\s+(?:the\s+)?(?:book|page)|open\s+(?:the\s+)?(?:book|page))/iu;
 
 function push(list,code,path,message){list.push({code,path,message});}
-function visibleTextChecks(errors,path,value,{selfContained=true,arabic=false}={}){
+function visibleTextChecks(errors,path,value,{selfContained=true,arabic=false,duplicate=true}={}){
   const t=clean(value);
   if(!t)return;
   if(markup.test(t))push(errors,'LEARNER_TEXT_MARKUP_FORBIDDEN',path,'Learner-visible text must be plain text.');
   if(selfContained&&external.test(t))push(errors,'EXTERNAL_SOURCE_DEPENDENCY',path,'Learner-visible text must be self-contained.');
-  const duplicate=t.match(/\b([\p{L}\p{M}\p{N}]+)\s+\1\b/iu);
-  if(duplicate)push(errors,'ADJACENT_DUPLICATE_WORD',path,'Learner-visible text repeats an adjacent word.');
+  const repeated=duplicate?t.match(/([\p{L}\p{M}]{2,})\s+\1(?=\s|[.,;:!?]|$)/iu):null;
+  if(repeated)push(errors,'ADJACENT_DUPLICATE_WORD',path,'Learner-visible text repeats an adjacent word.');
   if(arabic&&!/[\u0600-\u06FF]/u.test(t))push(errors,'ARABIC_FEEDBACK_REQUIRED',path,'Arabic feedback must contain Arabic-script learner text.');
 }
 function answerCandidates(q){
@@ -89,7 +89,7 @@ export function validateSupportWorkbookPackage(pkg){
       if(!['single_choice','numeric','short_answer'].includes(q?.type))push(errors,'UNSUPPORTED_QUESTION_TYPE',qp+'.type','Unsupported support-workbook question type.');
       if(!['book_exact','book_adapted'].includes(q?.origin))push(errors,'INVALID_ORIGIN',qp+'.origin','Origin must be book_exact or book_adapted.');
       if(q?.origin==='book_adapted'&&!clean(q?.source_note))push(errors,'BOOK_ADAPTATION_NOTE_REQUIRED',qp+'.source_note','Visual semantic adaptations need an explicit note.');
-      else if(clean(q?.source_note))visibleTextChecks(errors,qp+'.source_note',q.source_note,{selfContained:false});
+      else if(clean(q?.source_note))visibleTextChecks(errors,qp+'.source_note',q.source_note,{selfContained:false,duplicate:false});
       const prompt=clean(q?.prompt);
       if(!prompt)push(errors,'PROMPT_REQUIRED',qp+'.prompt','Prompt is required.');
       else visibleTextChecks(errors,qp+'.prompt',prompt);
