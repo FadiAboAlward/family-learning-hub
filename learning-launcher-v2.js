@@ -80,7 +80,11 @@
     function typedValue(row){return String(row?.draft_response?.value??'')}
     function saveTypedDraft(row){
       const q=row?.question,value=typedValue(row);
-      if(!q||!['numeric','short_answer'].includes(q.question_type)||!value.trim())return;
+      if(!q||!['numeric','short_answer'].includes(q.question_type)||busy)return;
+      if(!value.trim()){
+        call('clear_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id}).catch(()=>{});
+        return;
+      }
       call('save_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id,response:{value}}).catch(()=>{});
     }
 
