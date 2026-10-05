@@ -138,6 +138,23 @@ begin
     return jsonb_build_object('error', 'QUIZ_NOT_AVAILABLE');
   end if;
 
+  -- A completed paper delivery of an official support session is the same
+  -- evidence event as digital Learning for this immutable version. Do not let
+  -- the learner create duplicate mastery evidence by starting Learning later.
+  if coalesce((v_version.settings->>'support_source')::boolean,false)
+     and exists (
+       select 1
+       from public.quiz_attempts a
+       where a.workspace_id=p_workspace_id
+         and a.learner_id=p_learner_id
+         and a.quiz_version_id=v_version.id
+         and a.status='submitted'
+         and a.delivery_mode='exam'
+         and nullif(a.metadata->>'paper_model_code','') is not null
+     ) then
+    return jsonb_build_object('error','QUIZ_NOT_AVAILABLE');
+  end if;
+
   -- Serialize one learner/version start. The second simultaneous call sees the
   -- committed attempt and resumes it instead of creating a duplicate attempt
   -- or queue. This lock is released automatically at transaction end.
