@@ -381,13 +381,19 @@ begin
       and m.evidence_count=7 and m.total_question_count=7
       and m.mastery_score=57.14
       and m.metadata->>'mastery_engine'='primary-concept-running-evidence-v1'
-      and m.metadata->>'last_evidence_mode'='exam'
+      and m.metadata->>'last_evidence_mode'='support_paper'
   ) then raise exception 'SUPPORT_PAPER_MASTERY_DELTA_INVALID'; end if;
 
   -- A successful DO statement commits, so explicitly remove only this
   -- contract's attempt and mastery fixtures. Failures roll back the DO statement.
   delete from public.quiz_attempts a
   where a.workspace_id=w and a.id in (v_attempt_id,v_attempt_id2);
+
+  delete from public.quiz_assignments qa
+  where qa.workspace_id=w
+    and qa.learner_id=l
+    and qa.quiz_version_id in (v,v2)
+    and qa.metadata->>'source'='support_workbook_paper';
 
   delete from public.learner_concept_mastery m
   where m.workspace_id=w
