@@ -8,6 +8,10 @@ declare
   v_slug text := 'tr-g5-meb-support-s2-decimals';
   request_one uuid := '73000000-0000-4000-8000-000000000001';
   request_two uuid := '73000000-0000-4000-8000-000000000002';
+  request_bad_extra uuid := '73000000-0000-4000-8000-000000000003';
+  request_bad_missing uuid := '73000000-0000-4000-8000-000000000004';
+  responses jsonb;
+  first_code text;
   r jsonb;
   retry jsonb;
   blocked jsonb;
@@ -33,8 +37,48 @@ begin
     and coalesce((qv.settings->>'support_source')::boolean,false)
   order by qv.version_no desc limit 1;
 
+  select jsonb_object_agg(q.question_code,'{"support_unanswered":true}'::jsonb order by q.position)
+    into strict responses
+  from public.quiz_questions q
+  where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core';
+
+  select q.question_code into strict first_code
+  from public.quiz_questions q
+  where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core'
+  order by q.position
+  limit 1;
+
   set local role service_role;
-  r:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,'{}'::jsonb);
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_extra,
+    responses || jsonb_build_object('TYPO-UNKNOWN-CODE','{"support_unanswered":true}'::jsonb)
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_MAP_INVALID' then
+    raise exception 'SUPPORT_PAPER_UNKNOWN_CODE_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_extra::text
+  ) then raise exception 'SUPPORT_PAPER_UNKNOWN_CODE_CREATED_EVIDENCE'; end if;
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_missing,responses-first_code
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_MAP_INVALID' then
+    raise exception 'SUPPORT_PAPER_MISSING_CODE_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_missing::text
+  ) then raise exception 'SUPPORT_PAPER_MISSING_CODE_CREATED_EVIDENCE'; end if;
+
+  set local role service_role;
+  r:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
   reset role;
 
   if coalesce((r->>'ok')::boolean,false) is not true
@@ -68,7 +112,7 @@ begin
   ) then raise exception 'SUPPORT_PAPER_LEGACY_BLANK_REUSED'; end if;
 
   set local role service_role;
-  retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,'{}'::jsonb);
+  retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
   reset role;
   if retry<>r then raise exception 'SUPPORT_PAPER_IDEMPOTENT_RESULT_DRIFT'; end if;
   if (select count(*) from public.quiz_attempts where workspace_id=w and learner_id=l and quiz_version_id=v and status='submitted')<>1 then
@@ -76,7 +120,7 @@ begin
   end if;
 
   set local role service_role;
-  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_two,'{}'::jsonb);
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_two,responses);
   reset role;
   if blocked->>'error' is distinct from 'SESSION_ALREADY_COMPLETED' then
     raise exception 'SUPPORT_PAPER_SECOND_TRANSCRIPTION_NOT_BLOCKED:%',blocked;
