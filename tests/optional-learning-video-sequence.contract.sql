@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-018 v1.2 ordered optional video sequence contract.
+-- FLH-FEAT-2026-018 v1.5 ordered optional video sequence contract.
 -- Synthetic Testing-only fixtures; the whole block rolls back on success.
 do $contract$
 declare
@@ -41,13 +41,17 @@ begin
 
     update public.workspace_settings set value='{"enabled":true,"test_only":true}' where workspace_id=w and key='optional_learning_videos';
     set local role service_role;
-    result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_one,'position',1,'video_ref','qaSeqVid001'));
-    perform pg_temp.sequence_assert(result->>'ok'='true' and result->>'position'='1','position 1 attaches');
+    result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_one,'video_ref','qaSeqVid001'));
+    perform pg_temp.sequence_assert(result->>'ok'='true' and result->>'position'='1','single-video authoring may omit position and defaults to position 1');
     video_one:=(result->>'video_id')::uuid;
     result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_two,'position',2,'video_ref','qaSeqVid002'));
     perform pg_temp.sequence_assert(result->>'ok'='true' and result->>'position'='2','position 2 attaches');
     video_two:=(result->>'video_id')::uuid;
     perform pg_temp.sequence_assert((select count(*)=2 from public.learning_video_assignments where workspace_id=w and learner_id=l and quiz_version_id=version),'two assignments coexist for one learner/version');
+
+    result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_one,'video_ref','qaSeqVid004'));
+    perform pg_temp.sequence_assert(result->>'error'='INVALID_VIDEO_INPUT','omitted position is rejected after a higher sequence position exists');
+    perform pg_temp.sequence_assert((select video_ref='qaSeqVid001' from public.learning_video_assignments where workspace_id=w and learner_id=l and quiz_version_id=version and position=1),'rejected omitted position cannot replace slot 1');
 
     result:=public.flh_learning_start(w,l,'qa-optional-video-sequence');
     attempt:=(result->>'attempt_id')::uuid;
