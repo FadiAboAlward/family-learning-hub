@@ -11,7 +11,7 @@ declare
   r jsonb;
   retry jsonb;
   blocked jsonb;
-  attempt_id uuid;
+  v_attempt_id uuid;
 begin
   select id into strict w from public.workspaces where slug='family-learning-hub';
   select id into strict l
@@ -49,22 +49,22 @@ begin
     raise exception 'SUPPORT_PAPER_RESULT_INVALID:%',r;
   end if;
 
-  attempt_id:=(r->>'attempt_id')::uuid;
+  v_attempt_id:=(r->>'attempt_id')::uuid;
   if not exists(
-    select 1 from public.quiz_attempts
-    where id=attempt_id and workspace_id=w and learner_id=l
-      and status='submitted' and delivery_mode='learning'
-      and metadata->>'engine'='support-paper-v1'
-      and metadata->>'delivery_surface'='paper'
-      and coalesce((metadata->>'paper_ingested')::boolean,false)
+    select 1 from public.quiz_attempts a
+    where a.id=v_attempt_id and a.workspace_id=w and a.learner_id=l
+      and a.status='submitted' and a.delivery_mode='learning'
+      and a.metadata->>'engine'='support-paper-v1'
+      and a.metadata->>'delivery_surface'='paper'
+      and coalesce((a.metadata->>'paper_ingested')::boolean,false)
   ) then raise exception 'SUPPORT_PAPER_ATTEMPT_METADATA_INVALID'; end if;
 
-  if (select count(*) from public.quiz_attempt_answers where attempt_id=attempt_id and response='{"support_unanswered":true}'::jsonb)<>8 then
+  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"support_unanswered":true}'::jsonb)<>8 then
     raise exception 'SUPPORT_PAPER_BLANK_REPRESENTATION_INVALID';
   end if;
   if exists(
-    select 1 from public.quiz_attempt_answers
-    where attempt_id=attempt_id and response='{"unanswered":true}'::jsonb
+    select 1 from public.quiz_attempt_answers aa
+    where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb
   ) then raise exception 'SUPPORT_PAPER_LEGACY_BLANK_REUSED'; end if;
 
   set local role service_role;
@@ -84,8 +84,8 @@ begin
 
   -- A successful DO statement commits, so explicitly remove only this
   -- contract's attempt and mastery fixtures. Failures roll back the DO statement.
-  delete from public.quiz_attempts
-  where workspace_id=w and id=attempt_id;
+  delete from public.quiz_attempts a
+  where a.workspace_id=w and a.id=v_attempt_id;
 
   delete from public.learner_concept_mastery m
   where m.workspace_id=w
