@@ -39,10 +39,24 @@ function hintLeaks(hint,candidate){
     }
     return rawH.includes(rawA);
   }
+  if(/[0-9٠-٩%/.,<>=+*−-]/u.test(rawA))return normalized(hint).includes(normalized(candidate));
+  const phrase=rawA.trim().replace(/\s+/gu,' ');
+  const escaped=phrase.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
+  const rawH=clean(hint).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
+  const rawA=clean(candidate).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
+  if(!rawA)return false;
+  if(rawA.length===1){
+    if(/[\p{L}\p{N}]/u.test(rawA)){
+      return (rawH.match(/[\p{L}\p{M}\p{N}]+/gu)||[]).some(token=>token===rawA);
+    }
+    return rawH.includes(rawA);
+  }
   const h=normalized(hint),a=normalized(candidate);
   if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
   const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
   return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
+}').replace(/\ /g,'\\s+');
+  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(rawH);
 }
 
 export function validateSupportWorkbookPackage(pkg){
