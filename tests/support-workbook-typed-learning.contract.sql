@@ -10,6 +10,10 @@ declare
   v_concept_id uuid;
   a1 uuid := '72000000-0000-4000-8000-000000000001';
   a2 uuid := '72000000-0000-4000-8000-000000000002';
+  a3 uuid := '72000000-0000-4000-8000-000000000003';
+  v2 uuid;
+  q_short uuid;
+  v_concept_short uuid;
   r jsonb;
   retry jsonb;
 begin
@@ -145,15 +149,50 @@ begin
     raise exception 'SUPPORT_TYPED_UNGRADED_AFFECTED_MASTERY';
   end if;
 
+  select qv.id,qq.id,qc.concept_id
+    into strict v2,q_short,v_concept_short
+  from public.quizzes quiz
+  join public.quiz_versions qv on qv.workspace_id=quiz.workspace_id and qv.quiz_id=quiz.id and qv.state='published'
+  join public.quiz_questions qq on qq.workspace_id=qv.workspace_id and qq.quiz_version_id=qv.id
+  join public.quiz_question_concepts qc on qc.workspace_id=qq.workspace_id and qc.question_id=qq.id and qc.is_primary
+  where quiz.workspace_id=w
+    and quiz.slug='tr-g5-meb-support-s6-space-crisis-scan'
+    and qq.question_code='Q-202610050048';
+
+  delete from public.learner_concept_mastery
+  where workspace_id=w and learner_id=l and concept_id=v_concept_short;
+
+  insert into public.quiz_attempts(id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata)
+  values(a3,w,l,v2,'in_progress','learning','{"qa_scope":"support_typed_contract_whitespace"}'::jsonb);
+  insert into public.quiz_attempt_question_queue(
+    workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status
+  )
+  select w,a3,1,q_short,v_concept_short,difficulty_level,'active'
+  from public.quiz_questions where id=q_short;
+
+  set local role service_role;
+  r:=public.flh_learning_answer_response(w,l,a3,q_short,'{"value":"1, 2, 3"}'::jsonb);
+  reset role;
+  if r->>'is_correct' is distinct from 'true'
+     or r->>'finalized' is distinct from 'true'
+     or r->>'attempt_no' is distinct from '1' then
+    raise exception 'SUPPORT_TYPED_SPACED_SHORT_ANSWER_INVALID:%',r;
+  end if;
+  if not exists(
+    select 1 from public.quiz_attempt_answers
+    where attempt_id=a3 and question_id=q_short
+      and evaluation='correct' and is_correct=true and points_awarded=1
+  ) then raise exception 'SUPPORT_TYPED_SPACED_SHORT_ANSWER_NOT_PERSISTED'; end if;
+
   -- A successful DO statement commits, so explicitly remove only this
   -- contract's fixtures. Any raised exception rolls the whole DO statement back.
   delete from public.quiz_attempts
-  where workspace_id=w and id in (a1,a2);
+  where workspace_id=w and id in (a1,a2,a3);
 
   delete from public.learner_concept_mastery
   where workspace_id=w
     and learner_id=l
-    and concept_id=v_concept_id
+    and concept_id in (v_concept_id,v_concept_short)
     and metadata->>'engine'='learning-api-v2';
 end;
 $contract$;
