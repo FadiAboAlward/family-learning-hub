@@ -36,7 +36,10 @@ begin
 
   if has_function_privilege('anon','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
      or has_function_privilege('authenticated','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
-     or not has_function_privilege('service_role','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE') then
+     or not has_function_privilege('service_role','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE')
+     or has_function_privilege('authenticated','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE')
+     or not has_function_privilege('service_role','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE') then
     raise exception 'SUPPORT_PAPER_ACL_INVALID';
   end if;
 
