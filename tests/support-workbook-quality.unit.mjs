@@ -61,6 +61,23 @@ const codes=result=>new Set(result.errors.map(e=>e.code));
 }
 {
   const pkg=basePackage();
+  const q=pkg.sessions[0].questions[0];
+  q.type='numeric'; q.options=[]; q.answer={};
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('NUMERIC_ANSWER_INVALID'),'empty numeric answer key must fail');
+}
+{
+  const pkg=basePackage();
+  const q=pkg.sessions[0].questions[0];
+  q.options=['<','>','=']; q.answer={option_position:1};
+  pkg.hint_profiles.compare[0]=[
+    '• قارن القيمتين بهدوء وحدد اتجاه العلاقة قبل اختيار الرمز، لكن لا تنتقل مباشرة إلى التثبيت حتى تراجع معنى كل طرف في المسألة المعطاة.',
+    '• الرمز < هو الإجابة النهائية هنا، وهذا تسريب مقصود داخل اختبار الوحدة للتأكد من أن حتى الإجابات ذات المحرف الواحد لا تمر من بوابة النشر.',
+    '• استخدم المقارنة العددية للتحقق من العلاقة، ثم راجع أن الرمز الذي اخترته يعبّر عن اتجاه المقارنة نفسه قبل إرسال الإجابة للطالب.'
+  ].join('\n');
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('HINT_ANSWER_LEAK'),'one-character answer leak must fail');
+}
+{
+  const pkg=basePackage();
   delete pkg.sessions[0].questions[0].prompt_language;
   assert(codes(validateSupportWorkbookPackage(pkg)).has('PROMPT_LANGUAGE_REQUIRED'),'missing prompt_language must fail');
 }
