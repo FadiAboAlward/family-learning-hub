@@ -12,6 +12,7 @@ declare
   request_bad_missing uuid := '73000000-0000-4000-8000-000000000004';
   request_no_access uuid := '73000000-0000-4000-8000-000000000006';
   request_inactive_program uuid := '73000000-0000-4000-8000-000000000007';
+  request_bad_ungraded uuid := '73000000-0000-4000-8000-000000000008';
   v_program uuid;
   responses jsonb;
   first_code text;
@@ -145,6 +146,26 @@ begin
 
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_ungraded,
+    jsonb_set(
+      responses,
+      array['Q-202610050012'],
+      '{}'::jsonb,
+      true
+    )
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_INVALID' then
+    raise exception 'SUPPORT_PAPER_MALFORMED_UNGRADED_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_ungraded::text
+  ) then raise exception 'SUPPORT_PAPER_MALFORMED_UNGRADED_CREATED_EVIDENCE'; end if;
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
     w,l,v,v_slug,request_bad_extra,
     responses || jsonb_build_object('TYPO-UNKNOWN-CODE','{"support_unanswered":true}'::jsonb)
   );
@@ -192,19 +213,22 @@ begin
   if not exists(
     select 1 from public.quiz_attempts a
     where a.id=v_attempt_id and a.workspace_id=w and a.learner_id=l
-      and a.status='submitted' and a.delivery_mode='learning'
-      and a.metadata->>'engine'='support-paper-v1'
+      and a.status='submitted' and a.delivery_mode='exam'
+      and a.metadata->>'engine'='support-paper-exam-v1'
       and a.metadata->>'delivery_surface'='paper'
+      and coalesce((a.metadata->>'support_workbook_paper')::boolean,false)
+      and coalesce((a.metadata->>'paper_queue_validated')::boolean,false)
+      and nullif(a.metadata->>'support_question_map_hash','') is not null
       and coalesce((a.metadata->>'paper_ingested')::boolean,false)
   ) then raise exception 'SUPPORT_PAPER_ATTEMPT_METADATA_INVALID'; end if;
 
-  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"support_unanswered":true}'::jsonb)<>8 then
+  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb)<>8 then
     raise exception 'SUPPORT_PAPER_BLANK_REPRESENTATION_INVALID';
   end if;
   if exists(
     select 1 from public.quiz_attempt_answers aa
-    where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb
-  ) then raise exception 'SUPPORT_PAPER_LEGACY_BLANK_REUSED'; end if;
+    where aa.attempt_id=v_attempt_id and aa.response ? 'support_unanswered'
+  ) then raise exception 'SUPPORT_PAPER_NONCANONICAL_BLANK_STORED'; end if;
 
   set local role service_role;
   retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
@@ -302,7 +326,7 @@ begin
     from public.quiz_attempt_answers aa
     join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
     where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050046'
-      and aa.response='{"support_unanswered":true}'::jsonb and aa.evaluation='incorrect'
+      and aa.response='{"unanswered":true}'::jsonb and aa.evaluation='incorrect'
   ) then raise exception 'SUPPORT_PAPER_EXPLICIT_BLANK_NOT_RECORDED'; end if;
   if not exists(
     select 1
@@ -317,7 +341,8 @@ begin
     where m.workspace_id=w and m.learner_id=l and m.concept_id=v_concept2
       and m.evidence_count=7 and m.total_question_count=7
       and m.mastery_score=57.14
-      and m.metadata->>'engine'='support-paper-v1'
+      and m.metadata->>'mastery_engine'='primary-concept-running-evidence-v1'
+      and m.metadata->>'last_evidence_mode'='exam'
   ) then raise exception 'SUPPORT_PAPER_MASTERY_DELTA_INVALID'; end if;
 
   -- A successful DO statement commits, so explicitly remove only this
@@ -328,7 +353,7 @@ begin
   delete from public.learner_concept_mastery m
   where m.workspace_id=w
     and m.learner_id=l
-    and m.metadata->>'engine'='support-paper-v1'
+    and m.metadata->>'last_exam_attempt_id' in (v_attempt_id::text,v_attempt_id2::text)
     and exists (
       select 1
       from public.quiz_question_concepts qc
