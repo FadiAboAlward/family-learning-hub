@@ -10,7 +10,8 @@ function visibleTextChecks(errors,path,value,{selfContained=true,arabic=false,du
   if(!t)return;
   if(markup.test(t))push(errors,'LEARNER_TEXT_MARKUP_FORBIDDEN',path,'Learner-visible text must be plain text.');
   if(selfContained&&external.test(t))push(errors,'EXTERNAL_SOURCE_DEPENDENCY',path,'Learner-visible text must be self-contained.');
-  const repeated=duplicate?t.match(/([\p{L}\p{M}]{2,})\s+\1(?=\s|[.,;:!?]|$)/iu):null;
+  const lexical=duplicate?(t.match(/\p{L}[\p{L}\p{M}]*/gu)||[]):[];
+  const repeated=lexical.find((token,i)=>i>0&&token.length>1&&token.toLocaleLowerCase('und')===lexical[i-1].toLocaleLowerCase('und'));
   if(repeated)push(errors,'ADJACENT_DUPLICATE_WORD',path,'Learner-visible text repeats an adjacent word.');
   if(arabic&&!/[\u0600-\u06FF]/u.test(t))push(errors,'ARABIC_FEEDBACK_REQUIRED',path,'Arabic feedback must contain Arabic-script learner text.');
 }
