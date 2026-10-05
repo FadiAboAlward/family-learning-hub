@@ -2360,6 +2360,12 @@ declare
   v_option_position integer;
   v_grading text;
   v_existing_version uuid;
+  v_paper_map jsonb;
+  v_paper_canonical jsonb;
+  v_paper_hash text;
+  v_paper_model_code text;
+  v_session_no integer;
+  v_paper_question_count integer;
 begin
   select id into strict v_workspace from public.workspaces where slug='family-learning-hub';
   select id into strict v_curriculum from public.curricula where code='turkiye-meb' and is_active;
@@ -2637,6 +2643,71 @@ begin
     else
       v_version:=v_existing_version;
     end if;
+
+    v_session_no:=coalesce((regexp_match(v_session->>'slug','s([0-9]+)'))[1]::integer,0);
+    v_paper_model_code:='TR-G5-MEB-S1-S'||lpad(v_session_no::text,2,'0')||'-PAPER-20261005';
+
+    select count(*),
+           jsonb_object_agg(
+             q.position::text,
+             jsonb_build_object(
+               'question_id',q.id::text,
+               'question_code',q.question_code,
+               'option_positions',coalesce((
+                 select jsonb_object_agg(coalesce(o.label,o.position::text),o.position::text order by o.position)
+                 from public.quiz_question_options o
+                 where o.workspace_id=q.workspace_id and o.question_id=q.id
+               ),'{}'::jsonb)
+             )
+             order by q.position
+           )
+      into v_paper_question_count,v_paper_map
+    from public.quiz_questions q
+    where q.workspace_id=v_workspace
+      and q.quiz_version_id=v_version
+      and q.delivery_role='core';
+
+    if v_paper_question_count<1
+       or v_paper_map is null
+       or jsonb_object_length(v_paper_map)<>v_paper_question_count then
+      raise exception 'FLH020_SUPPORT_PAPER_MAP_INVALID:%',v_session->>'slug';
+    end if;
+
+    update public.quiz_versions
+    set settings=jsonb_set(
+      settings,
+      '{paper_exam}',
+      jsonb_build_object(
+        'paper_model_code',v_paper_model_code,
+        'paper_question_count',v_paper_question_count,
+        'paper_question_map',v_paper_map,
+        'paper_support_workbook',true,
+        'feature_id','FLH-FEAT-2026-020',
+        'spec_version','1.0'
+      ),
+      true
+    )
+    where workspace_id=v_workspace and id=v_version;
+
+    v_paper_canonical:=public.flh_support_paper_runtime_package(v_workspace,v_version);
+    if v_paper_canonical is null
+       or jsonb_array_length(v_paper_canonical)<>v_paper_question_count then
+      raise exception 'FLH020_SUPPORT_PAPER_CANONICAL_INVALID:%',v_session->>'slug';
+    end if;
+    v_paper_hash:=encode(
+      extensions.digest(convert_to(v_paper_canonical::text,'UTF8'),'sha256'),
+      'hex'
+    );
+
+    update public.quiz_versions
+    set settings=jsonb_set(
+      jsonb_set(
+        jsonb_set(settings,'{paper_exam,paper_canonical_package}',v_paper_canonical,true),
+        '{paper_exam,paper_content_hash}',to_jsonb(v_paper_hash),true
+      ),
+      '{paper_exam,paper_runtime_content_hash}',to_jsonb(v_paper_hash),true
+    )
+    where workspace_id=v_workspace and id=v_version;
 
     insert into public.program_quizzes(workspace_id,program_id,quiz_id,program_subject_id,sort_order,availability,metadata)
     values(
