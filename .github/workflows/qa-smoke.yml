@@ -118,6 +118,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-videos.contract.sql
       - name: Verify ordered optional Learning video sequence contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-sequence.contract.sql
+      - name: Verify optional Learning video sequence concurrency
+        run: node tests/optional-learning-video-sequence.concurrency.mjs
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify support-workbook paper ingestion
