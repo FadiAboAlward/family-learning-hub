@@ -419,8 +419,9 @@ async function typedDraftResumeSkipsIntroVideo(browser, device) {
     assert.match(typedDirection.unicodeBidi,/isolate/i,'typed math response must keep bidi isolation');
     assert.equal(await page.locator('.flh-resume-note').count(), 1, 'typed draft resume is visibly identified as resumed Learning');
     await page.locator('#flhTypedResponse').fill('');
+    const cleared=page.waitForRequest(request=>request.url().endsWith('/learning-api')&&request.postDataJSON()?.action==='clear_response_draft');
     await page.locator('#flhTypedResponse').blur();
-    await page.waitForTimeout(50);
+    await cleared;
     assert.equal(fixture.count('clear_response_draft'),1,'deleting a restored typed draft must persist a server-side clear');
     assert.equal(fixture.row.draft_response,null,'server fixture no longer retains the deleted typed draft');
     assert.equal(fixture.count('save_video_report'), 0, 'resuming a typed draft creates no video evidence');
