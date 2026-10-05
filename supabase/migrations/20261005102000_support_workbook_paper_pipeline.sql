@@ -44,7 +44,7 @@ begin
   if v_count is null or v_count < 1 then return null; end if;
 
   v_map := v_paper->'paper_question_map';
-  if v_map is null or jsonb_typeof(v_map) <> 'object' or jsonb_object_length(v_map) <> v_count then
+  if v_map is null or jsonb_typeof(v_map) <> 'object' or public.jsonb_object_length(v_map) <> v_count then
     return null;
   end if;
 
@@ -157,7 +157,7 @@ begin
   end if;
 
   v_map := v_paper->'paper_question_map';
-  if v_map is null or jsonb_typeof(v_map) <> 'object' or jsonb_object_length(v_map) <> v_count then
+  if v_map is null or jsonb_typeof(v_map) <> 'object' or public.jsonb_object_length(v_map) <> v_count then
     return jsonb_build_object('ok',false,'error','PAPER_QUESTION_MAP_INVALID');
   end if;
 
@@ -219,17 +219,17 @@ begin
   select count(*) into v_bad_option_maps
   from generate_series(1,v_count) g(n)
   where jsonb_typeof(v_map->(g.n::text)->'option_positions') is distinct from 'object'
-     or jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) < 1
+     or public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) < 1
      or (
        select count(distinct m.value)
        from jsonb_each_text(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) m
-     ) <> jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
+     ) <> public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
      or (
        select count(*)
        from public.quiz_question_options o
        where o.workspace_id=p_workspace_id
          and o.question_id::text=v_map->(g.n::text)->>'question_id'
-     ) <> jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
+     ) <> public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
      or exists (
        select 1
        from jsonb_each_text(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) m
@@ -335,7 +335,7 @@ begin
   v_map := v_paper->'paper_question_map';
   if v_count is null or v_count < 1
      or v_map is null or jsonb_typeof(v_map) <> 'object'
-     or jsonb_object_length(v_map) <> v_count
+     or public.jsonb_object_length(v_map) <> v_count
      or nullif(v_paper->>'paper_content_hash','') is null then
     return jsonb_build_object('error','PAPER_BINDING_INVALID');
   end if;
@@ -646,7 +646,7 @@ begin
   exception when others then return null; end;
   if v_count is null or v_count<1 then return null; end if;
   v_map:=v_paper->'paper_question_map';
-  if v_map is null or jsonb_typeof(v_map)<>'object' or jsonb_object_length(v_map)<>v_count then return null; end if;
+  if v_map is null or jsonb_typeof(v_map)<>'object' or public.jsonb_object_length(v_map)<>v_count then return null; end if;
 
   for i in 1..v_count loop
     v_item:=v_map->(i::text);
@@ -750,7 +750,7 @@ begin
   begin v_count:=(v_paper->>'paper_question_count')::integer;
   exception when others then return jsonb_build_object('ok',false,'error','PAPER_QUESTION_COUNT_INVALID'); end;
   v_map:=v_paper->'paper_question_map';
-  if v_count is null or v_count<1 or v_map is null or jsonb_typeof(v_map)<>'object' or jsonb_object_length(v_map)<>v_count then
+  if v_count is null or v_count<1 or v_map is null or jsonb_typeof(v_map)<>'object' or public.jsonb_object_length(v_map)<>v_count then
     return jsonb_build_object('ok',false,'error','PAPER_QUESTION_MAP_INVALID');
   end if;
 
@@ -797,11 +797,11 @@ begin
   where
     (q.question_type='single_choice' and (
       jsonb_typeof(v_map->(g.n::text)->'option_positions') is distinct from 'object'
-      or jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))<2
+      or public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))<2
       or (select count(distinct m.value) from jsonb_each_text(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) m)
-         <>jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
+         <>public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
       or (select count(*) from public.quiz_question_options o where o.workspace_id=p_workspace_id and o.question_id=q.id)
-         <>jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
+         <>public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))
       or exists (
         select 1 from jsonb_each_text(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb)) m
         where m.value!~'^[1-9][0-9]*$'
@@ -814,7 +814,7 @@ begin
     or
     (q.question_type<>'single_choice' and (
       jsonb_typeof(v_map->(g.n::text)->'option_positions') is distinct from 'object'
-      or jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))<>0
+      or public.jsonb_object_length(coalesce(v_map->(g.n::text)->'option_positions','{}'::jsonb))<>0
     ));
   if v_bad_maps<>0 then return jsonb_build_object('ok',false,'error','PAPER_OPTION_MAP_MISMATCH'); end if;
 
@@ -935,7 +935,7 @@ begin
   exception when others then return jsonb_build_object('error','PAPER_QUESTION_COUNT_INVALID'); end;
   v_map:=v_paper->'paper_question_map';
   if v_count is null or v_count<1 or v_map is null or jsonb_typeof(v_map)<>'object'
-     or jsonb_object_length(v_map)<>v_count or nullif(v_paper->>'paper_content_hash','') is null then
+     or public.jsonb_object_length(v_map)<>v_count or nullif(v_paper->>'paper_content_hash','') is null then
     return jsonb_build_object('error','PAPER_BINDING_INVALID');
   end if;
 
@@ -1091,7 +1091,7 @@ begin
   if not found then return jsonb_build_object('error','ATTEMPT_OR_QUESTION_NOT_ACTIVE'); end if;
 
   if v_question.question_type='single_choice' then
-    if jsonb_object_length(p_response)<>1 or not (p_response?'option_position') then
+    if public.jsonb_object_length(p_response)<>1 or not (p_response?'option_position') then
       return jsonb_build_object('error','INVALID_ANSWER');
     end if;
     begin v_position:=nullif(p_response->>'option_position','')::integer;
@@ -1101,7 +1101,7 @@ begin
       where o.workspace_id=p_workspace_id and o.question_id=p_question_id and o.position=v_position
     ) then return jsonb_build_object('error','INVALID_ANSWER'); end if;
   elsif v_question.question_type in ('numeric','short_answer') then
-    if jsonb_object_length(p_response)<>1 or not (p_response?'value') or jsonb_typeof(p_response->'value')<>'string' then
+    if public.jsonb_object_length(p_response)<>1 or not (p_response?'value') or jsonb_typeof(p_response->'value')<>'string' then
       return jsonb_build_object('error','INVALID_ANSWER');
     end if;
     v_value:=p_response->>'value';
@@ -1647,7 +1647,7 @@ begin
 
     if v_question_type='single_choice' then
       if jsonb_typeof(new.response)<>'object'
-         or jsonb_object_length(new.response)<>1
+         or public.jsonb_object_length(new.response)<>1
          or not(new.response?'option_position') then
         raise exception 'PAPER_ANSWER_INVALID';
       end if;
@@ -1668,7 +1668,7 @@ begin
     end if;
 
     if jsonb_typeof(new.response)<>'object'
-       or jsonb_object_length(new.response)<>1
+       or public.jsonb_object_length(new.response)<>1
        or not(new.response?'value')
        or jsonb_typeof(new.response->'value')<>'string' then
       raise exception 'PAPER_ANSWER_INVALID';
