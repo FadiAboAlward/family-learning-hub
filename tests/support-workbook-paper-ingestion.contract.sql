@@ -53,6 +53,13 @@ begin
   from public.quiz_questions q
   where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core';
 
+  responses:=jsonb_set(
+    responses,
+    array['Q-202610050012'],
+    '{"value":"Kırk dört tam yüzde elli."}'::jsonb,
+    true
+  );
+
   select q.question_code into strict first_code
   from public.quiz_questions q
   where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core'
@@ -202,7 +209,7 @@ begin
      or (r->>'question_count')::integer<>8
      or (r->>'graded_count')::integer<>7
      or (r->>'ungraded_count')::integer<>1
-     or (r->>'unanswered_count')::integer<>8
+     or (r->>'unanswered_count')::integer<>7
      or (r->>'max_points')::numeric<>7
      or (r->>'score_points')::numeric<>0
      or (r->>'percentage')::numeric<>0 then
@@ -222,13 +229,34 @@ begin
       and coalesce((a.metadata->>'paper_ingested')::boolean,false)
   ) then raise exception 'SUPPORT_PAPER_ATTEMPT_METADATA_INVALID'; end if;
 
-  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb)<>8 then
+  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb)<>7 then
     raise exception 'SUPPORT_PAPER_BLANK_REPRESENTATION_INVALID';
   end if;
   if exists(
     select 1 from public.quiz_attempt_answers aa
     where aa.attempt_id=v_attempt_id and aa.response ? 'support_unanswered'
   ) then raise exception 'SUPPORT_PAPER_NONCANONICAL_BLANK_STORED'; end if;
+
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q
+      on q.workspace_id=aa.workspace_id and q.id=aa.question_id
+    where aa.attempt_id=v_attempt_id
+      and q.question_code='Q-202610050012'
+      and aa.response='{"value":"Kırk dört tam yüzde elli."}'::jsonb
+      and aa.evaluation='ungraded'
+      and aa.is_correct is null
+      and aa.points_awarded=0
+      and aa.mastery_result is null
+  ) then raise exception 'SUPPORT_PAPER_UNGRADED_REFLECTION_NOT_PRESERVED'; end if;
+
+  if not exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.id=v_attempt_id
+      and coalesce((a.metadata->>'concept_mastery_recorded')::boolean,false)
+      and (a.metadata->>'concept_mastery_evidence_count')::integer=7
+  ) then raise exception 'SUPPORT_PAPER_UNGRADED_REFLECTION_AFFECTED_MASTERY'; end if;
 
   set local role service_role;
   retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
