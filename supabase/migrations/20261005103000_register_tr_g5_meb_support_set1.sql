@@ -7,6 +7,7 @@ declare
   v_curriculum uuid;
   v_subject bigint;
   v_program uuid;
+  v_program_subject uuid;
   v_book uuid;
   v_unit_repr uuid;
   v_unit_cmp uuid;
@@ -2005,14 +2006,17 @@ declare
   v_hint text;
   v_hint_level integer;
   v_profile text;
+  v_option_position integer;
   v_grading text;
   v_existing_version uuid;
 begin
   select id into strict v_workspace from public.workspaces where slug='family-learning-hub';
-  select id into strict v_curriculum from public.curricula where code='TR-MEB-2026-2027' or (country_code='TR' and school_year='2026-2027') order by created_at limit 1;
+  select id into strict v_curriculum from public.curricula where code='turkiye-meb' and is_active;
   select id into strict v_subject from public.subjects where code='math';
   select id into strict v_program from public.learning_programs
     where workspace_id=v_workspace and slug='tr-g5-2026-2027';
+  select id into strict v_program_subject from public.program_subjects
+    where workspace_id=v_workspace and program_id=v_program and subject_id=v_subject;
 
   select id into v_book from public.books where code='TR-MEB-G5-MATH-SUPPORT-SET1-2026';
   if v_book is null then
@@ -2032,8 +2036,8 @@ begin
     ) returning id into v_book;
   end if;
 
-  insert into public.program_books(workspace_id,program_id,book_id,is_required,sort_order)
-  values(v_workspace,v_program,v_book,false,10)
+  insert into public.program_books(workspace_id,program_id,book_id,program_subject_id,is_required,sort_order,metadata)
+  values(v_workspace,v_program,v_book,v_program_subject,false,10,jsonb_build_object('support_source',true,'feature_id','FLH-FEAT-2026-020'))
   on conflict (program_id,book_id) do update
     set is_required=false,sort_order=excluded.sort_order;
 
@@ -2148,16 +2152,12 @@ begin
         values(v_workspace,v_question,v_concept,true,1);
 
         if v_item->>'type'='single_choice' then
-          v_pos:=v_pos; -- keep question position stable; option counter is separate below
-          declare
-            v_option_position integer:=0;
-          begin
-            for v_opt in select value from jsonb_array_elements(v_item->'options') loop
-              v_option_position:=v_option_position+1;
-              insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
-              values(v_workspace,v_question,v_option_position,chr(64+v_option_position),trim(both '"' from v_opt::text));
-            end loop;
-          end;
+          v_option_position:=0;
+          for v_opt in select value from jsonb_array_elements(v_item->'options') loop
+            v_option_position:=v_option_position+1;
+            insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
+            values(v_workspace,v_question,v_option_position,chr(64+v_option_position),v_opt #>> '{}');
+          end loop;
         end if;
 
         if v_grading<>'ungraded' then
@@ -2193,11 +2193,12 @@ begin
       v_version:=v_existing_version;
     end if;
 
-    insert into public.program_quizzes(workspace_id,program_id,quiz_id,sort_order,availability)
+    insert into public.program_quizzes(workspace_id,program_id,quiz_id,program_subject_id,sort_order,availability,metadata)
     values(
-      v_workspace,v_program,v_quiz,
+      v_workspace,v_program,v_quiz,v_program_subject,
       100 + coalesce((regexp_match(v_session->>'slug','s([0-9]+)'))[1]::integer,0),
-      'available'
+      'available',
+      jsonb_build_object('support_source',true,'feature_id','FLH-FEAT-2026-020')
     )
     on conflict (program_id,quiz_id) do update
       set sort_order=excluded.sort_order,availability='available';
