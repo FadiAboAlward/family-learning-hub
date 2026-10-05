@@ -21,7 +21,10 @@ begin
 
   if has_function_privilege('anon','public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
      or has_function_privilege('authenticated','public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
-     or not has_function_privilege('service_role','public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)','EXECUTE') then
+     or not has_function_privilege('service_role','public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('authenticated','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
+     or not has_function_privilege('service_role','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE') then
     raise exception 'SUPPORT_TYPED_ACL_INVALID';
   end if;
 
@@ -40,10 +43,20 @@ begin
   insert into public.quiz_attempts(id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata)
   values(a1,w,l,v,'in_progress','learning','{"qa_scope":"support_typed_contract"}'::jsonb);
   insert into public.quiz_attempt_question_queue(
-    workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status,interaction_metadata
+    workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status
   )
-  select w,a1,1,q_numeric,v_concept_id,difficulty_level,'active','{"draft_response":{"value":"2,5"}}'::jsonb
+  select w,a1,1,q_numeric,v_concept_id,difficulty_level,'active'
   from public.quiz_questions where id=q_numeric;
+
+  set local role service_role;
+  r:=public.flh_learning_save_response_draft(w,l,a1,q_numeric,'{"value":"2,5"}'::jsonb);
+  reset role;
+  if coalesce((r->>'ok')::boolean,false) is not true
+     or (select interaction_metadata->'draft_response'
+         from public.quiz_attempt_question_queue
+         where quiz_attempt_id=a1 and question_id=q_numeric) <> '{"value":"2,5"}'::jsonb then
+    raise exception 'SUPPORT_TYPED_DRAFT_SAVE_INVALID:%',r;
+  end if;
 
   set local role service_role;
   r:=public.flh_learning_answer_response(w,l,a1,q_numeric,'{"value":"9,9"}'::jsonb);
