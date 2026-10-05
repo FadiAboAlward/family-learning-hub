@@ -226,7 +226,7 @@ begin
 
     if new.response ? 'unanswered'
        or jsonb_typeof(new.response)<>'object'
-       or jsonb_object_length(new.response)<>1 then
+       or (select count(*) from pg_catalog.jsonb_object_keys(new.response))<>1 then
       raise exception 'PAPER_ANSWER_INVALID';
     end if;
 
@@ -675,7 +675,7 @@ begin
     end if;
 
     if jsonb_typeof(v_input_response)<>'object'
-       or jsonb_object_length(v_input_response)<>1 then
+       or (select count(*) from pg_catalog.jsonb_object_keys(v_input_response))<>1 then
       return jsonb_build_object('error','PAPER_RESPONSE_INVALID','question_code',v_question.question_code);
     end if;
 
