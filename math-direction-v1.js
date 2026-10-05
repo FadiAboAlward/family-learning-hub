@@ -63,7 +63,7 @@
 
   const originalMath = typeof globalThis.math === 'function' ? globalThis.math : null;
   if (originalMath && !originalMath.__flhDirectionSafe) {
-    const directionSafeMath = value => originalMath(isolateMathHtml(value));
+    const directionSafeMath = value => isolateMathHtml(originalMath(value));
     directionSafeMath.__flhDirectionSafe = true;
     directionSafeMath.__flhOriginalMath = originalMath;
     globalThis.math = directionSafeMath;
