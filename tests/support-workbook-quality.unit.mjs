@@ -18,6 +18,7 @@ function basePackage(){
       slug:'s1',unit:'u1',title:'Session 1',pages:[2],
       questions:[{
         question_code:'Q-1',type:'single_choice',prompt:'2/5 ile 3/5 karşılaştırıldığında hangisi daha büyüktür?',
+        prompt_language:'tr',decomposable:false,
         pdf_page:2,hint_profile:'compare',answer:{option_position:2},options:['2/5','3/5'],
         grading_mode:'graded',points:1,origin:'book_exact',difficulty:2,
         explanation_ar:'لأن المقامين متساويان نقارن البسطين، و3 أكبر من 2؛ لذلك 3/5 هو الكسر الأكبر.',
@@ -57,6 +58,21 @@ const codes=result=>new Set(result.errors.map(e=>e.code));
   const pkg=basePackage();
   pkg.sessions[0].questions[0].explanation_ar='This is not Arabic learner feedback.';
   assert(codes(validateSupportWorkbookPackage(pkg)).has('ARABIC_FEEDBACK_REQUIRED'),'non-Arabic explanation_ar must fail');
+}
+{
+  const pkg=basePackage();
+  delete pkg.sessions[0].questions[0].prompt_language;
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('PROMPT_LANGUAGE_REQUIRED'),'missing prompt_language must fail');
+}
+{
+  const pkg=basePackage();
+  delete pkg.sessions[0].questions[0].decomposable;
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('DECOMPOSABLE_CLASSIFICATION_REQUIRED'),'missing decomposable classification must fail');
+}
+{
+  const pkg=basePackage();
+  pkg.sessions[0].questions[0].decomposable=true;
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('DECOMPOSITION_PROFILE_REQUIRED'),'decomposable question without 3/6 profile must fail');
 }
 {
   const result=validateSupportWorkbookPackage(basePackage());
