@@ -76,6 +76,7 @@ begin
     'public.flh_learning_start(uuid,uuid,text)',
     'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)',
     'public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)',
+    'public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid)',
     'public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)',
     'public.flh_learning_finish(uuid,uuid,uuid,integer)',
     'public.flh_exam_start(uuid,uuid,text)',
