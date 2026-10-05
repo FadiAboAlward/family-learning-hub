@@ -60,6 +60,15 @@ async function saveResponseDraft(learnerId:string,b:any,trace:any){
   return data;
 }
 
+async function clearResponseDraft(learnerId:string,b:any,trace:any){
+  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||"");
+  if(!attemptId||!questionId)throw new Error("INVALID_ANSWER");
+  const{data,error}=await trace.measure("draft.clear_response_rpc",{dbOperations:1},()=>admin.rpc("flh_learning_clear_response_draft",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId}));
+  if(error){console.error("Learning typed draft clear RPC failed",{code:error.code,message:error.message});throw new Error("DRAFT_SAVE_FAILED");}
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
 async function answerResponse(learnerId:string,b:any,trace:any){
   const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=typedResponsePayload(b.response);
   if(!attemptId||!questionId)throw new Error("INVALID_ANSWER");
@@ -104,7 +113,7 @@ Deno.serve(async(req:Request)=>{
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
     const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status"]);
-    const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
+    const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
     let output;
@@ -118,6 +127,7 @@ Deno.serve(async(req:Request)=>{
       else if(action==="preview_videos")output=await previewVideos(lid,String(b.quiz_slug||""),trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
       else if(action==="save_response_draft")output=await saveResponseDraft(lid,b,trace);
+      else if(action==="clear_response_draft")output=await clearResponseDraft(lid,b,trace);
       else if(action==="request_hint")output=await requestHint(lid,b,trace);
       else if(action==="answer")output=await answerQuestion(lid,b,trace);
       else if(action==="answer_response")output=await answerResponse(lid,b,trace);
