@@ -26,6 +26,9 @@ begin
      or p_question_id is null
      or p_response is null
      or jsonb_typeof(p_response) <> 'object'
+     or jsonb_typeof(p_response->'value') <> 'string'
+     or (select count(*) from jsonb_object_keys(p_response)) <> 1
+     or length(p_response->>'value') > 2000
      or nullif(btrim(coalesce(p_response->>'value','')),'') is null then
     return jsonb_build_object('error','INVALID_ANSWER');
   end if;
@@ -142,7 +145,11 @@ begin
      or p_attempt_id is null
      or p_question_id is null
      or p_response is null
-     or jsonb_typeof(p_response) <> 'object' then
+     or jsonb_typeof(p_response) <> 'object'
+     or jsonb_typeof(p_response->'value') <> 'string'
+     or (select count(*) from jsonb_object_keys(p_response)) <> 1
+     or length(p_response->>'value') > 2000
+     or nullif(btrim(coalesce(p_response->>'value','')),'') is null then
     return jsonb_build_object('error','INVALID_ANSWER');
   end if;
 
@@ -305,7 +312,7 @@ begin
     end;
     v_is_correct:=abs(v_numeric_response-v_numeric_correct)<=greatest(v_tolerance,0);
   else
-    v_text_response:=lower(regexp_replace(btrim(coalesce(p_response->>'value','')),'[[:space:]]+',' ','g'));
+    v_text_response:=lower(regexp_replace(btrim(coalesce(p_response->>'value','')),'[[:space:]]+','','g'));
     if v_text_response='' then
       return jsonb_build_object('error','INVALID_ANSWER');
     end if;
@@ -314,10 +321,10 @@ begin
       select exists(
         select 1
         from jsonb_array_elements_text(v_key.correct_answer->'accepted_text') t(value)
-        where lower(regexp_replace(btrim(t.value),'[[:space:]]+',' ','g'))=v_text_response
+        where lower(regexp_replace(btrim(t.value),'[[:space:]]+','','g'))=v_text_response
       ) into v_is_correct;
     else
-      v_text_correct:=lower(regexp_replace(btrim(coalesce(v_key.correct_answer->>'value','')),'[[:space:]]+',' ','g'));
+      v_text_correct:=lower(regexp_replace(btrim(coalesce(v_key.correct_answer->>'value','')),'[[:space:]]+','','g'));
       if v_text_correct='' then
         return jsonb_build_object('error','ANSWER_KEY_NOT_FOUND');
       end if;
