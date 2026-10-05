@@ -26,7 +26,10 @@ try{
     const input=document.getElementById('numericAnswer');
     const inputStyle=getComputedStyle(input);
     const latex=document.getElementById('latexFraction');
-    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0},input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi,value:input.value}};
+    const frac=latex?.querySelector('.frac');
+    const fracWrapper=frac?.closest('.flh-math-ltr[dir="ltr"]');
+    const fracWrapperStyle=fracWrapper?getComputedStyle(fracWrapper):null;
+    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0,wrapperCount:frac?Number(Boolean(fracWrapper)):0,wrapperDirection:fracWrapperStyle?.direction||'',wrapperUnicodeBidi:fracWrapperStyle?.unicodeBidi||''},input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi,value:input.value}};
   });
 
   const assert=(ok,msg)=>{if(!ok)throw new Error(`${msg}\n${JSON.stringify(result,null,2)}`)};
@@ -34,6 +37,7 @@ try{
   assert(result.fallback.mathText==='(-7) - 19','DOM fallback did not preserve the opposite operand order.');
   assert(result.answer.mathText==='-26','Negative answer did not preserve the leading minus.');
   assert(result.latex.fracCount===1&&!result.latex.text.includes('\\frac'),'LaTeX-style fraction did not render through the shared fraction markup.');
+  assert(result.latex.wrapperCount===1&&result.latex.wrapperDirection==='ltr'&&result.latex.wrapperUnicodeBidi==='isolate','Rendered fraction must stay inside one LTR bidi-isolation wrapper.');
   for(const entry of [result.wrapped,result.fallback,result.answer]){
     assert(entry.dir==='ltr'&&entry.direction==='ltr',`Math run is not LTR: ${entry.mathText}`);
     assert(entry.unicodeBidi==='isolate',`Math run is not bidi-isolated: ${entry.mathText}`);
