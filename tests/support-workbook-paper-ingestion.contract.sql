@@ -83,7 +83,24 @@ begin
   if blocked->>'error' is distinct from 'SESSION_ALREADY_COMPLETED' then
     raise exception 'SUPPORT_PAPER_SECOND_TRANSCRIPTION_NOT_BLOCKED:%',blocked;
   end if;
+
+  -- A successful DO statement commits, so explicitly remove only this
+  -- contract's attempt and mastery fixtures. Failures roll back the DO statement.
+  delete from public.quiz_attempts
+  where workspace_id=w and id=attempt_id;
+
+  delete from public.learner_concept_mastery m
+  where m.workspace_id=w
+    and m.learner_id=l
+    and m.metadata->>'engine'='support-paper-v1'
+    and exists (
+      select 1
+      from public.quiz_question_concepts qc
+      join public.quiz_questions q
+        on q.workspace_id=qc.workspace_id and q.id=qc.question_id
+      where qc.workspace_id=w
+        and qc.concept_id=m.concept_id
+        and q.quiz_version_id=v
+    );
 end;
 $contract$;
-
-rollback;
