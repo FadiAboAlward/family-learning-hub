@@ -92,8 +92,8 @@
       const typedDraft=typedValue(row);
       const opts=typed?'':(q.options||[]).map(o=>{const pos=Number(o.position),sel=pos===selected,label=optionLabel(pos);return`<button class="answer flh-learn-answer ${sel?'selected confirm-ready':''}" data-pos="${pos}" ${busy?'disabled':''}><span class="answer-number">${sel?`✓ ${label}`:label}</span><span>${renderMath(o.content)}</span></button>`}).join('');
       const responseControl=typed?(q.question_type==='numeric'
-        ?`<div class="flh-typed-answer"><label for="flhTypedResponse">اكتب الإجابة</label><input id="flhTypedResponse" class="input" inputmode="decimal" autocomplete="off" value="${safe(typedDraft)}" ${busy?'disabled':''}></div>`
-        :`<div class="flh-typed-answer"><label for="flhTypedResponse">اكتب إجابتك</label><textarea id="flhTypedResponse" class="input" rows="4" ${busy?'disabled':''}>${safe(typedDraft)}</textarea></div>`)
+        ?`<div class="flh-typed-answer"><label for="flhTypedResponse">اكتب الإجابة</label><input id="flhTypedResponse" class="input" dir="ltr" inputmode="decimal" autocomplete="off" value="${safe(typedDraft)}" ${busy?'disabled':''}></div>`
+        :`<div class="flh-typed-answer"><label for="flhTypedResponse">اكتب إجابتك</label><textarea id="flhTypedResponse" class="input" dir="ltr" rows="4" ${busy?'disabled':''}>${safe(typedDraft)}</textarea></div>`)
         :`<div class="answer-grid answer-layout-v8" ${questionAttrs(q)}>${opts}</div>`;
       const restored=session.resumed?'<div class="flh-resume-note">↩️ رجعناك لنفس التدريب، وكل ما حفظته موجود.</div>':'';
       const hintBox=currentHint?.content?`<div class="flh-hint-card"><b>💡 تلميح ${Number(currentHint.hint_level||row.hint_level_requested||1)}</b><div class="flh-hint-content" ${hintAttrs(currentHint,q)}>${hintContentHtml(currentHint.content)}</div></div>`:(Number(row.hint_level_requested||0)>0?`<div class="muted">استخدمت ${Number(row.hint_level_requested)} تلميح/تلميحات سابقًا في هذا السؤال.</div>`:'');
