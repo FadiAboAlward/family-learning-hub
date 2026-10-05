@@ -33,26 +33,15 @@ function hintLeaks(hint,candidate){
   const rawH=clean(hint).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
   const rawA=clean(candidate).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
   if(!rawA)return false;
-  const escapedRaw=rawA.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
-  const h=normalized(hint),a=normalized(candidate);
-  if(!a||a.length<2)return false;
-  if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
-  const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
-  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
-}');
   if(rawA.length===1){
-    if(/[\\p{L}\\p{N}]/u.test(rawA))return new RegExp('(^|[^\\p{L}\\p{N}])'+escapedRaw+'([^\\p{L}\\p{N}]|$)','u').test(rawH);
+    if(/[\p{L}\p{N}]/u.test(rawA)){
+      return (rawH.match(/[\p{L}\p{M}\p{N}]+/gu)||[]).some(token=>token===rawA);
+    }
     return rawH.includes(rawA);
   }
   const h=normalized(hint),a=normalized(candidate);
   if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
-  const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
-  const h=normalized(hint),a=normalized(candidate);
-  if(!a||a.length<2)return false;
-  if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
   const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
-  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
-}');
   return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
 }
 
