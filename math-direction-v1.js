@@ -59,7 +59,7 @@
       ? `<bdi class="${MATH_CLASS}" dir="ltr">${part.text}</bdi>`
       : part.text
     ).join('');
-    const fractionRe=/<span class="frac"><span class="n">[\s\S]*?<\/span><span class="d">[\s\S]*?<\/span><\/span>/g;
+    const fractionRe=/<span class="frac"><span class="n">\d+<\/span><span class="d">\d+<\/span><\/span>/g;
     let last=0,result='',match;
     while((match=fractionRe.exec(text))){
       result+=isolatePlain(text.slice(last,match.index));
