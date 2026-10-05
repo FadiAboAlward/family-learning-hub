@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateSupportWorkbookPackage } from './support-workbook-quality.mjs';
 
 const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
@@ -394,6 +395,7 @@ function softSourceReference(value) {
 }
 
 export function validateAcademicPackage(pkg) {
+  if (pkg && pkg.package_type === 'support_workbook') return validateSupportWorkbookPackage(pkg);
   const errors = [];
   const warnings = [];
 
