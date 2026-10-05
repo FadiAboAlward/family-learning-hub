@@ -182,8 +182,13 @@ begin
     and quiz.slug='tr-g5-meb-support-s6-space-crisis-scan'
     and qq.question_code='Q-202610050048';
 
-  delete from public.learner_concept_mastery
-  where workspace_id=w and learner_id=l and concept_id=v_concept_short;
+  if exists (
+    select 1
+    from public.learner_concept_mastery
+    where workspace_id=w and learner_id=l and concept_id=v_concept_short
+  ) then
+    raise exception 'SUPPORT_TYPED_MASTERY_PRECONDITION_INVALID';
+  end if;
 
   insert into public.quiz_attempts(id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata)
   values(a3,w,l,v2,'in_progress','learning','{"qa_scope":"support_typed_contract_whitespace"}'::jsonb);
