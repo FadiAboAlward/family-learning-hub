@@ -1582,9 +1582,8 @@ declare
   v_entry jsonb;
   v_validation jsonb;
   v_option_position integer;
-  v_support boolean := false;
+  v_support boolean:=false;
   v_question_type text;
-  v_grading_mode text;
   v_value text;
 begin
   select quiz_version_id,metadata into v_attempt
@@ -1603,7 +1602,7 @@ begin
     raise exception 'PAPER_QUEUE_NOT_VALIDATED';
   end if;
 
-  v_validation := public.flh_paper_exam_validate_queue(new.workspace_id,new.attempt_id);
+  v_validation:=public.flh_paper_exam_validate_queue(new.workspace_id,new.attempt_id);
   if coalesce((v_validation->>'ok')::boolean,false) is not true then
     raise exception 'PAPER_QUEUE_VALIDATION_FAILED:%',coalesce(v_validation->>'error','UNKNOWN');
   end if;
@@ -1620,18 +1619,11 @@ begin
   from jsonb_each(v_paper->'paper_question_map')
   where value->>'question_id'=new.question_id::text
   limit 1;
+  if v_entry is null then raise exception 'PAPER_QUESTION_NOT_MAPPED'; end if;
 
-  if v_entry is null then
-    raise exception 'PAPER_QUESTION_NOT_MAPPED';
-  end if;
-
-  -- A blank printed response is a first-class paper response, never a fake option.
-  -- Keep the representation exact so extra/contradictory fields fail closed.
-  if new.response = '{"unanswered":true}'::jsonb then
-    -- Only creation/transition to an unanswered row requires the declared-submit
-    -- context. Later grading updates may keep the already-declared response.
-    if (tg_op = 'INSERT' or old.response is distinct from new.response)
-       and current_setting('flh.paper_unanswered_attempt_id', true) is distinct from new.attempt_id::text then
+  if new.response='{"unanswered":true}'::jsonb then
+    if (tg_op='INSERT' or old.response is distinct from new.response)
+       and current_setting('flh.paper_unanswered_attempt_id',true) is distinct from new.attempt_id::text then
       raise exception 'PAPER_UNANSWERED_REQUIRES_DECLARED_SUBMIT';
     end if;
     if new.attempts_used is distinct from 0 or new.hints_used is distinct from 0 then
@@ -1640,19 +1632,15 @@ begin
     return new;
   end if;
 
-  if new.response ? 'unanswered' then
-    raise exception 'PAPER_ANSWER_INVALID';
-  end if;
+  if new.response ? 'unanswered' then raise exception 'PAPER_ANSWER_INVALID'; end if;
 
   if v_support then
-    select q.question_type,coalesce(q.source_metadata->>'grading_mode','graded')
-      into v_question_type,v_grading_mode
+    select q.question_type into v_question_type
     from public.quiz_questions q
     where q.workspace_id=new.workspace_id
       and q.id=new.question_id
       and q.quiz_version_id=v_attempt.quiz_version_id
     limit 1;
-
     if not found or v_question_type not in ('single_choice','numeric','short_answer') then
       raise exception 'PAPER_ANSWER_INVALID';
     end if;
@@ -1660,34 +1648,18 @@ begin
     if v_question_type='single_choice' then
       if jsonb_typeof(new.response)<>'object'
          or jsonb_object_length(new.response)<>1
-         or not (new.response ? 'option_position') then
+         or not(new.response?'option_position') then
         raise exception 'PAPER_ANSWER_INVALID';
       end if;
       begin
-        v_option_position := nullif(new.response->>'option_position','')::integer;
+        v_option_position:=nullif(new.response->>'option_position','')::integer;
       exception when others then
         raise exception 'PAPER_ANSWER_INVALID';
       end;
       if v_option_position is null or not exists (
         select 1
         from jsonb_each_text(coalesce(v_entry->'option_positions','{}'::jsonb)) p
-        where p.value ~ '^[1-9][0-9]*
-  exception when others then
-    raise exception 'PAPER_ANSWER_INVALID';
-  end;
-
-  if v_option_position is null or not exists (
-    select 1
-    from jsonb_each_text(v_entry->'option_positions') p
-    where p.value ~ '^[1-9][0-9]*$'
-      and p.value::integer=v_option_position
-  ) then
-    raise exception 'PAPER_OPTION_NOT_MAPPED';
-  end if;
-
-  return new;
-end;
-$function$;
+        where p.value ~ '^[1-9][0-9]*$'
           and p.value::integer=v_option_position
       ) then
         raise exception 'PAPER_OPTION_NOT_MAPPED';
@@ -1697,7 +1669,7 @@ $function$;
 
     if jsonb_typeof(new.response)<>'object'
        or jsonb_object_length(new.response)<>1
-       or not (new.response ? 'value')
+       or not(new.response?'value')
        or jsonb_typeof(new.response->'value')<>'string' then
       raise exception 'PAPER_ANSWER_INVALID';
     end if;
@@ -1716,7 +1688,7 @@ $function$;
   end if;
 
   begin
-    v_option_position := nullif(new.response->>'option_position','')::integer;
+    v_option_position:=nullif(new.response->>'option_position','')::integer;
   exception when others then
     raise exception 'PAPER_ANSWER_INVALID';
   end;
@@ -1734,6 +1706,8 @@ $function$;
 end;
 $function$;
 
+revoke all on function public.flh_guard_paper_attempt_answer() from public;
+revoke all on function public.flh_guard_paper_attempt_answer() from anon,authenticated;
 
 create or replace function public.flh_record_exam_mastery_on_submit()
 returns trigger
