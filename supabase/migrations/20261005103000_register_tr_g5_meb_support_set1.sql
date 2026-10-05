@@ -2278,7 +2278,7 @@ begin
           coalesce((v_item->>'points')::numeric,1),
           coalesce((v_item->>'difficulty')::smallint,2),
           case when v_grading='ungraded' then 1 else 4 end,
-          3,
+          case when v_grading='ungraded' then 1 else 3 end,
           v_grading<>'ungraded',
           'core','tr','dual_term',v_item->>'question_code'
         ) returning id into v_question;
