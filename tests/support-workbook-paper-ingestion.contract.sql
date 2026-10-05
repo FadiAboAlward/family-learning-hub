@@ -10,6 +10,7 @@ declare
   request_two uuid := '73000000-0000-4000-8000-000000000002';
   request_bad_extra uuid := '73000000-0000-4000-8000-000000000003';
   request_bad_missing uuid := '73000000-0000-4000-8000-000000000004';
+  request_no_access uuid := '73000000-0000-4000-8000-000000000006';
   responses jsonb;
   first_code text;
   r jsonb;
@@ -54,6 +55,56 @@ begin
   where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core'
   order by q.position
   limit 1;
+
+  if exists(
+    select 1 from public.quiz_assignments qa
+    where qa.workspace_id=w and qa.learner_id=l and qa.quiz_version_id=v
+      and qa.status in ('assigned','in_progress')
+      and (qa.available_at is null or qa.available_at<=now())
+      and (qa.due_at is null or qa.due_at>=now())
+  ) then raise exception 'SUPPORT_PAPER_ENTITLEMENT_TEST_PRECONDITION_INVALID'; end if;
+
+  update public.learner_program_enrollments e
+  set status='qa_disabled'
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='active'
+    and exists(
+      select 1 from public.program_quizzes pq
+      join public.quiz_versions qv
+        on qv.workspace_id=pq.workspace_id and qv.quiz_id=pq.quiz_id
+      where pq.workspace_id=e.workspace_id
+        and pq.program_id=e.program_id
+        and pq.availability='available'
+        and qv.id=v
+    );
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_no_access,responses);
+  reset role;
+  if blocked->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_UNENTITLED_LEARNER_NOT_BLOCKED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_no_access::text
+  ) then raise exception 'SUPPORT_PAPER_UNENTITLED_LEARNER_CREATED_EVIDENCE'; end if;
+
+  update public.learner_program_enrollments e
+  set status='active'
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='qa_disabled'
+    and exists(
+      select 1 from public.program_quizzes pq
+      join public.quiz_versions qv
+        on qv.workspace_id=pq.workspace_id and qv.quiz_id=pq.quiz_id
+      where pq.workspace_id=e.workspace_id
+        and pq.program_id=e.program_id
+        and pq.availability='available'
+        and qv.id=v
+    );
 
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
