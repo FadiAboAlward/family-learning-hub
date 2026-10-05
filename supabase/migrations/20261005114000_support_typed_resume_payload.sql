@@ -1,7 +1,8 @@
 -- FLH-FEAT-2026-020 v1.0
--- Forward-only reconciliation: include persisted typed-response drafts in the
--- existing Learning start/resume RPC payload without adding a second Edge DB call.
--- Historical migrations remain immutable.
+-- Forward-only reconciliation of the current Learning start RPC.
+-- Preserve the latest optional-video/start contract exactly while adding only
+-- the persisted typed-response draft to each queue row. Edge still performs
+-- one DB operation for start/resume.
 
 create or replace function public.flh_learning_start(
   p_workspace_id uuid,
@@ -23,6 +24,7 @@ declare
   v_resumed boolean := false;
   v_queue jsonb := '[]'::jsonb;
   v_create_stage text := 'attempt';
+  v_optional_video jsonb := null;
 begin
   if p_workspace_id is null
      or p_learner_id is null
@@ -329,7 +331,15 @@ begin
       and qq.quiz_attempt_id = v_attempt.id
   ) payload;
 
+  begin
+    v_optional_video := private.flh_learning_optional_video(p_workspace_id,p_learner_id,v_attempt.id,v_version.id);
+  exception when others then
+    raise warning 'flh_learning_start optional video skipped (SQLSTATE %)', sqlstate;
+    v_optional_video := null; -- Optional failures never roll back an authorized start.
+  end;
+
   return jsonb_build_object(
+    'optional_video', v_optional_video,
     'attempt_id', v_attempt.id,
     'started_at', v_attempt.started_at,
     'resumed', v_resumed,
