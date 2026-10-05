@@ -47,9 +47,13 @@ async function videoAuthor(req:Request){
 
 async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested,interaction_metadata").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
 async function saveDraft(learnerId:string,b:any,trace:any){const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),pos=Number(b.option_position);if(!attemptId||!questionId||!Number.isInteger(pos))throw new Error("INVALID_ANSWER");const{queue}=await activeLearningQuestion(learnerId,attemptId,questionId,trace);const{data:o}=await trace.measure("draft.option",{dbOperations:1},()=>admin.from("quiz_question_options").select("id").eq("workspace_id",WORKSPACE_ID).eq("question_id",questionId).eq("position",pos).maybeSingle());if(!o)throw new Error("INVALID_ANSWER");await trace.measure("draft.persist",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").update({draft_option_position:pos,interaction_metadata:{draft_saved_at:new Date().toISOString()}}).eq("id",queue.id));return{ok:true,option_position:pos};}
+function typedResponsePayload(response:any){
+  if(!response||typeof response!=="object"||Array.isArray(response)||Object.keys(response).length!==1||typeof response.value!=="string"||response.value.length>2000||!response.value.trim())throw new Error("INVALID_ANSWER");
+  return{value:response.value};
+}
 async function saveResponseDraft(learnerId:string,b:any,trace:any){
-  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=b.response;
-  if(!attemptId||!questionId||!response||typeof response!=="object")throw new Error("INVALID_ANSWER");
+  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=typedResponsePayload(b.response);
+  if(!attemptId||!questionId)throw new Error("INVALID_ANSWER");
   const{data,error}=await trace.measure("draft.response_rpc",{dbOperations:1},()=>admin.rpc("flh_learning_save_response_draft",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_response:response}));
   if(error){console.error("Learning typed draft RPC failed",{code:error.code,message:error.message});throw new Error("DRAFT_SAVE_FAILED");}
   if((data as any)?.error)throw new Error(String((data as any).error));
@@ -57,8 +61,8 @@ async function saveResponseDraft(learnerId:string,b:any,trace:any){
 }
 
 async function answerResponse(learnerId:string,b:any,trace:any){
-  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=b.response;
-  if(!attemptId||!questionId||!response||typeof response!=="object")throw new Error("INVALID_ANSWER");
+  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=typedResponsePayload(b.response);
+  if(!attemptId||!questionId)throw new Error("INVALID_ANSWER");
   const{data,error}=await trace.measure("answer.response_rpc",{dbOperations:1},()=>admin.rpc("flh_learning_answer_response",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_response:response}));
   if(error){console.error("Learning typed response RPC failed",{code:error.code,message:error.message});throw new Error("ANSWER_SAVE_FAILED");}
   if((data as any)?.error)throw new Error(String((data as any).error));
