@@ -11,6 +11,8 @@ declare
   request_bad_extra uuid := '73000000-0000-4000-8000-000000000003';
   request_bad_missing uuid := '73000000-0000-4000-8000-000000000004';
   request_no_access uuid := '73000000-0000-4000-8000-000000000006';
+  request_inactive_program uuid := '73000000-0000-4000-8000-000000000007';
+  v_program uuid;
   responses jsonb;
   first_code text;
   r jsonb;
@@ -105,6 +107,41 @@ begin
         and pq.availability='available'
         and qv.id=v
     );
+
+  select e.program_id into strict v_program
+  from public.learner_program_enrollments e
+  join public.program_quizzes pq
+    on pq.workspace_id=e.workspace_id
+   and pq.program_id=e.program_id
+   and pq.availability='available'
+  join public.quiz_versions qv
+    on qv.workspace_id=pq.workspace_id
+   and qv.quiz_id=pq.quiz_id
+   and qv.id=v
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='active'
+  limit 1;
+
+  update public.learning_programs
+  set status='archived'
+  where workspace_id=w and id=v_program and status='active';
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_inactive_program,responses);
+  reset role;
+  if blocked->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_INACTIVE_PROGRAM_NOT_BLOCKED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_inactive_program::text
+  ) then raise exception 'SUPPORT_PAPER_INACTIVE_PROGRAM_CREATED_EVIDENCE'; end if;
+
+  update public.learning_programs
+  set status='active'
+  where workspace_id=w and id=v_program and status='archived';
 
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
