@@ -133,7 +133,16 @@ begin
   if (select evidence_count from public.learner_concept_mastery where learner_id=l and concept_id=concept_id)<>1 then
     raise exception 'SUPPORT_TYPED_UNGRADED_AFFECTED_MASTERY';
   end if;
+
+  -- A successful DO statement commits, so explicitly remove only this
+  -- contract's fixtures. Any raised exception rolls the whole DO statement back.
+  delete from public.quiz_attempts
+  where workspace_id=w and id in (a1,a2);
+
+  delete from public.learner_concept_mastery
+  where workspace_id=w
+    and learner_id=l
+    and concept_id=concept_id
+    and metadata->>'engine'='learning-api-v2';
 end;
 $contract$;
-
-rollback;
