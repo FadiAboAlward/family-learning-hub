@@ -27,6 +27,7 @@ declare
   mixed jsonb;
   v_attempt_id2 uuid;
   v_concept2 uuid;
+  v_stage text := 'setup';
 begin
   select id into strict w from public.workspaces where slug='family-learning-hub';
   select id into strict l
@@ -92,6 +93,7 @@ begin
         and qv.id=v
     );
 
+  v_stage:='unentitled';
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_no_access,responses);
   reset role;
@@ -138,6 +140,7 @@ begin
   set status='archived'
   where workspace_id=w and id=v_program and status='active';
 
+  v_stage:='inactive_program';
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_inactive_program,responses);
   reset role;
@@ -154,6 +157,7 @@ begin
   set status='active'
   where workspace_id=w and id=v_program and status='archived';
 
+  v_stage:='malformed_ungraded';
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
     w,l,v,v_slug,request_bad_ungraded,
@@ -174,6 +178,7 @@ begin
       and a.metadata->>'support_paper_request_id'=request_bad_ungraded::text
   ) then raise exception 'SUPPORT_PAPER_MALFORMED_UNGRADED_CREATED_EVIDENCE'; end if;
 
+  v_stage:='unknown_code';
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
     w,l,v,v_slug,request_bad_extra,
@@ -189,6 +194,7 @@ begin
       and a.metadata->>'support_paper_request_id'=request_bad_extra::text
   ) then raise exception 'SUPPORT_PAPER_UNKNOWN_CODE_CREATED_EVIDENCE'; end if;
 
+  v_stage:='missing_code';
   set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(
     w,l,v,v_slug,request_bad_missing,responses-first_code
@@ -203,6 +209,7 @@ begin
       and a.metadata->>'support_paper_request_id'=request_bad_missing::text
   ) then raise exception 'SUPPORT_PAPER_MISSING_CODE_CREATED_EVIDENCE'; end if;
 
+  v_stage:='primary_ingest';
   set local role service_role;
   r:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
   reset role;
@@ -321,6 +328,7 @@ begin
     'Q-202610050048',jsonb_build_object('value','1, 2, 3')
   );
 
+  v_stage:='mixed_ingest';
   set local role service_role;
   mixed:=public.flh_support_workbook_paper_ingest(w,l,v2,v_slug2,request_mixed,responses_mixed);
   reset role;
@@ -394,5 +402,7 @@ begin
         and qc.concept_id=m.concept_id
         and q.quiz_version_id in (v,v2)
     );
+exception when others then
+  raise exception 'SUPPORT_PAPER_CONTRACT_STAGE=% SQLSTATE=% ERROR=%',v_stage,sqlstate,sqlerrm;
 end;
 $contract$;
