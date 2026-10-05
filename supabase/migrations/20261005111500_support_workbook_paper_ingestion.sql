@@ -142,6 +142,31 @@ begin
     return jsonb_build_object('error','SESSION_ALREADY_COMPLETED');
   end if;
 
+  -- The paper transcription must name every immutable session question exactly
+  -- once. Missing answers are explicit support_unanswered objects; unknown or
+  -- misspelled question codes are rejected before any learner evidence exists.
+  if exists (
+    select 1
+    from jsonb_object_keys(p_responses) response_key(question_code)
+    where not exists (
+      select 1
+      from public.quiz_questions q
+      where q.workspace_id=p_workspace_id
+        and q.quiz_version_id=p_quiz_version_id
+        and q.delivery_role='core'
+        and q.question_code=response_key.question_code
+    )
+  ) or exists (
+    select 1
+    from public.quiz_questions q
+    where q.workspace_id=p_workspace_id
+      and q.quiz_version_id=p_quiz_version_id
+      and q.delivery_role='core'
+      and not (p_responses ? q.question_code)
+  ) then
+    return jsonb_build_object('error','PAPER_RESPONSE_MAP_INVALID');
+  end if;
+
   -- One immutable support session contributes one completion evidence event.
   -- A completed digital attempt blocks a later paper copy from double-counting,
   -- and a completed paper attempt blocks a second transcription.
@@ -219,9 +244,6 @@ begin
     v_question_count:=v_question_count+1;
     v_grading:=coalesce(v_question.source_metadata->>'grading_mode','graded');
     v_response:=p_responses->v_question.question_code;
-    if v_response is null then
-      v_response:='{"support_unanswered":true}'::jsonb;
-    end if;
 
     select qc.concept_id into v_concept_id
     from public.quiz_question_concepts qc
