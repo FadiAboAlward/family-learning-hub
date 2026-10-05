@@ -326,7 +326,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "100 + 40 + 2 + 0.50 = 142.50 TL.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
     },
@@ -358,7 +358,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "Bir tam 10/10 eder; buna 3/10 eklenince 13/10 olur.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050015",
@@ -376,7 +376,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "Bir tam ve üç onda = 1.3.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050016",
@@ -397,7 +397,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "İki tam 200/100 eder; 14/100 daha eklenince 214/100 olur.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050017",
@@ -415,7 +415,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "İki tam ve on dört yüzde = 2.14.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050018",
@@ -551,7 +551,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "خمسة أقسام منها ثلاثة ممتلئة، إذن الكسر 3/5.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050025",
@@ -569,7 +569,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "3/5 = 6/10 = 0.6.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050026",
@@ -587,7 +587,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "3/5 = 60/100 = %60.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050027",
@@ -686,7 +686,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "5/10 sadeleşince 1/2 olur.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050032",
@@ -704,7 +704,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "1/2 = 0.5.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050033",
@@ -722,7 +722,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "Yarısı dolu olduğundan %50.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
     },
@@ -791,7 +791,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "40 tam hücre + 3 hücre = 43/100.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050037",
@@ -809,7 +809,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "43/100 = 0.43.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050038",
@@ -827,7 +827,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "43/100 = %43.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050039",
@@ -866,7 +866,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "19’dan 60’a 41 hücre gerekir. 1×9 + 4×8 = 41 ve toplam 5 fırça kullanımıdır.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050041",
@@ -887,7 +887,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "Eş değerli gösterimler M-O-D-E-L-L-E-M-E harflerini verir.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
     },
@@ -1166,7 +1166,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "B’nin ölçüleri 0.8 ve 0.45; C’nin 1.2 ve 0.4’tür. İkisi de kabine sığar; A’nın uzunluğu 0.9 m ile fazladır.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050054",
@@ -1311,7 +1311,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "C’de protein 6.75 g ile en yüksek, yağ 0.42 g ile en düşüktür.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050060",
@@ -1381,7 +1381,7 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
           "question_code": "Q-202610050063",
@@ -1403,7 +1403,7 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "1. projede atölye 0.36 ve depo 0.20; 3. projede atölye 0.40 ve depo 0.21. İkisi koşulu sağlar ama 3. projenin atölyesi daha büyüktür.",
-          "source_note": null
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
     },
@@ -1966,7 +1966,7 @@ declare
       "• تذكري أن yüzde تعني «من كل 100»، لذلك ابدئي بمحاولة كتابة الكمية على مقام 100.\\n• إذا كان لديك كسر بمقام 5 أو 10 أو 20 أو 25، ابحثي عن العدد الذي يوصله إلى 100.\\n• لا تحسبي النتيجة النهائية قبل تثبيت هذا الربط.",
       "• للتحويل إلى عدد عشري، يمكنك أولًا الوصول إلى كسر مقامه 10 أو 100، ثم كتابة المنازل العشرية المناسبة.\\n• للتحويل إلى نسبة مئوية، اقرئي البسط عندما يصبح المقام 100.\\n• قارني التمثيلين وتحققي أنهما يصفان الجزء نفسه.",
       "• إذا كان التمثيل بصريًا، احسبي عدد الأجزاء الكلي وعدد الأجزاء المملوءة قبل أي تحويل.\\n• اكتبي الكسر أولًا، ثم حوّليه إلى عشري، وبعدها إلى yüzde؛ هذا يقلل الأخطاء.\\n• راجعي أن القيم الثلاث متساوية وليست مجرد أرقام متشابهة.",
-      "• استخدمي مرجعًا ذهنيًا: النصف يساوي 0,5 ويساوي %50، والربع يساوي 0,25 ويساوي %25.\\n• قيسي قيمة السؤال بالنسبة لهذه المراجع لتتأكدي من معقولية نتيجتك.\\n• بعد التأكد اكتبي الشكل المطلوب فقط في خانة الإجابة."
+      "• Önce kesir, ondalık ve yüzde gösterimlerinin aynı miktarı farklı biçimlerde anlattığını hatırla; sembollerin görünüşüne göre karar verme.\n• Kendi sonucunu başka bir gösterime dönüştürerek büyüklüğün değişmediğini kontrol et ve gerektiğinde 100 paydalı eşdeğer kesir kullan.\n• Son adımda yalnızca sorunun istediği gösterimi yaz; ara dönüşümleri zihninde veya notunda doğrulama amacıyla tut."
     ],
     "model": [
       "• اقرئي النموذج كأجزاء متساوية: حددي عدد الأجزاء في الكامل، ثم عدّي الأجزاء الملوّنة أو المستخدمة.\\n• إذا وُجد أكثر من كامل، حوّلي كل كامل إلى عدد الأجزاء نفسه قبل الجمع.\\n• لا تستنتجي الكسر من شكل اللون وحده؛ اعتمدي على عدد الأجزاء المتساوية.",
@@ -1992,6 +1992,55 @@ declare
       "• إذا كان السؤال عن صلاحية نموذج، تحققي هل يحافظ النموذج على قيمة الكمية ويعرض الأجزاء المتساوية والعلاقة المطلوبة.\\n• اشرحي كيف يمكن قراءة القيمة من النموذج خطوة بخطوة.\\n• أضيفي متى قد يكون نموذج آخر أفضل، فهذا يجعل التبرير أقوى.",
       "• رتبي إجابتك في ثلاث جمل: اختياري، السبب الرياضي، ثم مثال أو تحقق.\\n• تأكدي أن السبب يتحدث عن الكسور أو التمثيلات نفسها لا عن شكل الصورة فقط.\\n• لا تبحثي عن جملة محفوظة؛ المهم أن يكون استدلالك متسقًا مع المعطيات."
     ]
+  },
+  "package_type": "support_workbook",
+  "runtime_external_dependencies": [],
+  "academic_context": {
+    "student_ref": "aya",
+    "grade": "5",
+    "curriculum": "Türkiye MEB",
+    "subject": "Mathematics",
+    "book_code": "TR-MEB-G5-MATH-SUPPORT-SET1-2026",
+    "confirmed_scope": "Official supplementary workbook Set 1 — MAT.5.1.3 / MAT.5.1.4",
+    "learner_state_ref": "supabase:aya:tr-g5-math:2026-10-05",
+    "evidence_refs": [
+      "baseline:no-submitted-tr-g5-math-mastery-evidence:2026-10-05"
+    ],
+    "next_target": "supplementary baseline evidence only; core curriculum cursor remains authoritative",
+    "concept_targets": [
+      {
+        "concept_code": "tr-g5-fractions-representations",
+        "state": "UNKNOWN_BASELINE",
+        "target_difficulty": 2,
+        "evidence_refs": [
+          "baseline:no-submitted-tr-g5-math-mastery-evidence:2026-10-05"
+        ]
+      },
+      {
+        "concept_code": "tr-g5-fractions-comparison",
+        "state": "UNKNOWN_BASELINE",
+        "target_difficulty": 2,
+        "evidence_refs": [
+          "baseline:no-submitted-tr-g5-math-mastery-evidence:2026-10-05"
+        ]
+      }
+    ],
+    "coverage_plan": {
+      "ordered_scope_ref": "TR-MATH-G5-2026-2027-K1",
+      "coverage_cursor": "core textbook cursor unchanged by support package",
+      "cursor_order": 1,
+      "next_sequential_target": "core textbook next sequential target remains authoritative",
+      "next_target_order": 1,
+      "decision": "BASELINE",
+      "primary_target_concepts": [
+        "tr-g5-fractions-representations",
+        "tr-g5-fractions-comparison"
+      ],
+      "evidence_refs": [
+        "baseline:no-submitted-tr-g5-math-mastery-evidence:2026-10-05"
+      ]
+    },
+    "difficulty_distribution_justification": "This package preserves official MEB workbook items and their source difficulty rather than forcing a generated 4/12/4 distribution."
   }
 }$pkg$::jsonb;
   v_session jsonb;
