@@ -23,19 +23,23 @@ function videoFixture(overrides = {}) {
   };
 }
 
-function createFixture({ video = videoFixture(), language = 'tr', resumed = false, progressed = false } = {}) {
+function createFixture({ video = videoFixture(), language = 'tr', resumed = false, progressed = false, typedDraft = null } = {}) {
   const calls = [];
   const reportResults = new Map();
   let failure = null;
   let delayPromise = null;
   let releaseDelay;
   let started = resumed;
+  const typed = typeof typedDraft === 'string';
   const row = {
     question_id: 'qa-optional-video-question', source_role: 'core', status: 'active',
-    draft_option_position: progressed ? 1 : null, hint_level_requested: 0,
+    draft_option_position: typed ? null : (progressed ? 1 : null),
+    draft_response: typed ? { value: typedDraft } : null,
+    hint_level_requested: 0,
     question: { id: 'qa-optional-video-question', question_code: 'QA-OPTIONAL-VIDEO', prompt_language: language,
+      question_type: typed ? 'numeric' : 'single_choice',
       prompt: language === 'ar' ? 'احسب: 19 - (-7)' : '19 - (-7) işleminin sonucu nedir?',
-      options: [{ position: 1, content: '26' }, { position: 2, content: '-26' }], assets: [] },
+      options: typed ? [] : [{ position: 1, content: '26' }, { position: 2, content: '-26' }], assets: [] },
   };
   return {
     calls, row, video,
@@ -396,6 +400,25 @@ async function resumeAndRetry(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
+async function typedDraftResumeSkipsIntroVideo(browser, device) {
+  const test = await setup(browser, device, {
+    resumed: true,
+    typedDraft: '2,5',
+    video: videoFixture({ only_before_first_question: true }),
+  });
+  const { page, fixture } = test;
+  try {
+    await start(page);
+    await page.locator('#flhTypedResponse').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#flhOptionalVideo').count(), 0, 'restored typed draft counts as Learning progress and skips the intro video');
+    assert.equal(await page.locator('#flhTypedResponse').inputValue(), '2,5', 'typed draft is restored into the active response control');
+    assert.equal(await page.locator('.flh-resume-note').count(), 1, 'typed draft resume is visibly identified as resumed Learning');
+    assert.equal(fixture.count('save_video_report'), 0, 'resuming a typed draft creates no video evidence');
+    assert.equal(test.providerRequests.length, 0, 'resuming a typed draft does not initialize the video provider');
+    await test.verifyAndClose(`${device.name} typed draft resume`);
+  } catch (error) { await test.context.close(); throw error; }
+}
+
 async function reportPendingDoesNotGate(browser, device) {
   const test = await setup(browser, device);
   const { page, fixture } = test;
@@ -552,6 +575,7 @@ try {
     await stalePlayerInitialization(browser, device);
     await skipWithoutReport(browser, device);
     await resumeAndRetry(browser, device);
+    await typedDraftResumeSkipsIntroVideo(browser, device);
     await reportPendingDoesNotGate(browser, device);
     await priorInteractionResume(browser, device);
     await directPreviewDeepLink(browser, device);
