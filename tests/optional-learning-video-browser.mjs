@@ -412,6 +412,9 @@ async function typedDraftResumeSkipsIntroVideo(browser, device) {
     await page.locator('#flhTypedResponse').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#flhOptionalVideo').count(), 0, 'restored typed draft counts as Learning progress and skips the intro video');
     assert.equal(await page.locator('#flhTypedResponse').inputValue(), '2,5', 'typed draft is restored into the active response control');
+    const typedDirection=await page.locator('#flhTypedResponse').evaluate(node=>({dir:node.getAttribute('dir'),unicodeBidi:getComputedStyle(node).unicodeBidi}));
+    assert.equal(typedDirection.dir,'ltr','typed math response must remain LTR inside the RTL shell');
+    assert.match(typedDirection.unicodeBidi,/isolate/i,'typed math response must keep bidi isolation');
     assert.equal(await page.locator('.flh-resume-note').count(), 1, 'typed draft resume is visibly identified as resumed Learning');
     assert.equal(fixture.count('save_video_report'), 0, 'resuming a typed draft creates no video evidence');
     assert.equal(test.providerRequests.length, 0, 'resuming a typed draft does not initialize the video provider');
