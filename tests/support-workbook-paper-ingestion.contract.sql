@@ -65,7 +65,7 @@ begin
   ) then raise exception 'SUPPORT_PAPER_ENTITLEMENT_TEST_PRECONDITION_INVALID'; end if;
 
   update public.learner_program_enrollments e
-  set status='qa_disabled'
+  set status='paused'
   where e.workspace_id=w
     and e.learner_id=l
     and e.status='active'
@@ -95,7 +95,7 @@ begin
   set status='active'
   where e.workspace_id=w
     and e.learner_id=l
-    and e.status='qa_disabled'
+    and e.status='paused'
     and exists(
       select 1 from public.program_quizzes pq
       join public.quiz_versions qv
