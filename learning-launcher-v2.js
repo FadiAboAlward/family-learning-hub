@@ -196,7 +196,7 @@
     }
 
     // A resumed question with existing interaction goes straight back to learning.
-    const untouched=session.optional_video?.only_before_first_question!==false&&index===0&&queue.length>0&&queue.every(row=>!['completed','skipped'].includes(row.status)&&!row.draft_option_position&&!Number(row.hint_level_requested||0));
+    const untouched=session.optional_video?.only_before_first_question!==false&&index===0&&queue.length>0&&queue.every(row=>!['completed','skipped'].includes(row.status)&&!row.draft_option_position&&!row.draft_response&&!Number(row.hint_level_requested||0));
     try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:()=>{started=Date.now();render();},onExit:home}))return;}catch{globalThis.FLHOptionalVideo?.dispose();}
     render();
   }
