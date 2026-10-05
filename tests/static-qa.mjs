@@ -22,6 +22,11 @@ if(exists('content/tr-math-g5-meb-support-set1-v1.json')&&exists('supabase/migra
     const cardQuestion=supportQuestions.find(question=>question.question_code==='Q-202610050041');
     const requiredCardMappings=['1,4→B','6/50→E','1/4→D','9,25→T','0,1→A','0,4→O','%50→M','3/5→İ','0,36→L','3/10→S','3,6→K','1,2→N'];
     if(!cardQuestion||requiredCardMappings.some(mapping=>!String(cardQuestion.prompt||'').includes(mapping)))fail('Support workbook card-matching question must embed the source value-to-letter mapping for self-contained solving.');
+    const supportByCode=new Map(supportQuestions.map(question=>[question.question_code,question]));
+    const accepted=(code)=>supportByCode.get(code)?.answer?.accepted_text||[];
+    if(!accepted('Q-202610050001').includes('4/6'))fail('Q-202610050001 must accept the direct equivalent 4/6 response because simplest form is not required.');
+    if(!accepted('Q-202610050053').includes('C ve B'))fail('Q-202610050053 must accept the unordered equivalent C ve B.');
+    if(!accepted('Q-202610050060').includes('Cemre, Mete, Eda'))fail('Q-202610050060 must accept valid name-order permutations.');
   }catch(error){fail(`Support workbook package/migration parity check failed: ${error.message}`);}
 }
 
