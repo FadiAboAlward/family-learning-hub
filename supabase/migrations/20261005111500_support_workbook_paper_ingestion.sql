@@ -135,6 +135,9 @@ begin
   limit 1;
 
   if found then
+    if v_attempt.metadata->>'support_paper_response_md5' is distinct from md5(p_responses::text) then
+      return jsonb_build_object('error','PAPER_REQUEST_CONFLICT');
+    end if;
     v_existing_result:=v_attempt.metadata->'support_paper_result';
     if jsonb_typeof(v_existing_result)='object' then
       return v_existing_result;
@@ -203,6 +206,7 @@ begin
       'support_source_code',v_version.settings->>'source_code',
       'support_session_slug',p_session_slug,
       'support_paper_request_id',p_request_id::text,
+      'support_paper_response_md5',md5(p_responses::text),
       'support_source_pdf_pages',coalesce(v_version.settings->'source_pdf_pages','[]'::jsonb),
       'paper_ingested',false,
       'server_graded',true
