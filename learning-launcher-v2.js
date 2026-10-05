@@ -114,9 +114,12 @@
     async function exitLearning(){
       if(busy)return;
       const row=queue[index],q=row?.question;
-      if(q&&['numeric','short_answer'].includes(q.question_type)&&row.typed_draft_dirty){
-        const saved=await (row.typed_draft_save||saveTypedDraft(row));
-        if(!saved){row.typed_draft_error=true;render();return;}
+      if(q&&['numeric','short_answer'].includes(q.question_type)){
+        while(row.typed_draft_dirty){
+          const saved=await (row.typed_draft_save||saveTypedDraft(row));
+          if(!saved){row.typed_draft_error=true;render();return;}
+          if(busy)return;
+        }
       }
       home();
     }
