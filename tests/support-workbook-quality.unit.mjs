@@ -78,6 +78,17 @@ const codes=result=>new Set(result.errors.map(e=>e.code));
 }
 {
   const pkg=basePackage();
+  const q=pkg.sessions[0].questions[0];
+  q.options=['A','B ve C']; q.answer={option_position:2};
+  pkg.hint_profiles.compare[0]=[
+    '• ابدأ بمقارنة القيم بهدوء واكتب العلاقات الوسيطة بوضوح، ولا تنتقل إلى النتيجة النهائية قبل أن تتأكد من كل شرط في المسألة.',
+    '• في هذا الاختبار المتعمد تظهر العبارة B ve C داخل جملة كاملة، ويجب أن تتعرف بوابة الجودة عليها كتسريب مباشر للإجابة المقبولة.',
+    '• بعد ذلك راجع خطوات المقارنة والتمثيل العددي، وتأكد أن التلميح الحقيقي لا يصرح باسم الخيار النهائي قبل أن يجيب الطالب بنفسه.'
+  ].join('\n');
+  assert(codes(validateSupportWorkbookPackage(pkg)).has('HINT_ANSWER_LEAK'),'multiword accepted answer leak must fail');
+}
+{
+  const pkg=basePackage();
   delete pkg.sessions[0].questions[0].prompt_language;
   assert(codes(validateSupportWorkbookPackage(pkg)).has('PROMPT_LANGUAGE_REQUIRED'),'missing prompt_language must fail');
 }
