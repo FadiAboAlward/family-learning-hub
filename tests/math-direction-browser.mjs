@@ -13,6 +13,7 @@ try{
       <div class="question" id="wrappedQuestion">احسب: ${window.math('19 - (-7)')}</div>
       <div class="question" id="fallbackQuestion">احسب: (-7) - 19</div>
       <div class="review-body" id="negativeAnswer">إجابتك: -26</div>
+      <div class="question" id="latexFraction">Kesir: ${window.math('\\frac{9}{8}')}</div>
       <input id="numericAnswer" inputmode="numeric" value="-26">
     </section>`;
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -24,13 +25,15 @@ try{
     };
     const input=document.getElementById('numericAnswer');
     const inputStyle=getComputedStyle(input);
-    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi,value:input.value}};
+    const latex=document.getElementById('latexFraction');
+    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0},input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi,value:input.value}};
   });
 
   const assert=(ok,msg)=>{if(!ok)throw new Error(`${msg}\n${JSON.stringify(result,null,2)}`)};
   assert(result.wrapped.mathText==='19 - (-7)','Wrapped mixed Arabic/math question did not preserve source order.');
   assert(result.fallback.mathText==='(-7) - 19','DOM fallback did not preserve the opposite operand order.');
   assert(result.answer.mathText==='-26','Negative answer did not preserve the leading minus.');
+  assert(result.latex.fracCount===1&&!result.latex.text.includes('\\frac'),'LaTeX-style fraction did not render through the shared fraction markup.');
   for(const entry of [result.wrapped,result.fallback,result.answer]){
     assert(entry.dir==='ltr'&&entry.direction==='ltr',`Math run is not LTR: ${entry.mathText}`);
     assert(entry.unicodeBidi==='isolate',`Math run is not bidi-isolated: ${entry.mathText}`);
