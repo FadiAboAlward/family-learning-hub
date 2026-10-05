@@ -66,7 +66,9 @@ declare
             "accepted_text": [
               "2/3",
               "⅔",
-              "2 / 3"
+              "2 / 3",
+              "4/6",
+              "4 / 6"
             ]
           },
           "options": [],
@@ -1262,7 +1264,10 @@ declare
             "accepted_text": [
               "B ve C",
               "B,C",
-              "B C"
+              "B C",
+              "C ve B",
+              "C,B",
+              "C B"
             ]
           },
           "options": [],
@@ -1443,7 +1448,22 @@ declare
             "accepted_text": [
               "Eda, Mete, Cemre",
               "Eda Mete Cemre",
-              "Eda-Mete-Cemre"
+              "Eda-Mete-Cemre",
+              "Eda, Cemre, Mete",
+              "Mete, Eda, Cemre",
+              "Mete, Cemre, Eda",
+              "Cemre, Eda, Mete",
+              "Cemre, Mete, Eda",
+              "Eda Cemre Mete",
+              "Mete Eda Cemre",
+              "Mete Cemre Eda",
+              "Cemre Eda Mete",
+              "Cemre Mete Eda",
+              "Eda-Cemre-Mete",
+              "Mete-Eda-Cemre",
+              "Mete-Cemre-Eda",
+              "Cemre-Eda-Mete",
+              "Cemre-Mete-Eda"
             ]
           },
           "options": [],
