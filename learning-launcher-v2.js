@@ -78,14 +78,47 @@
     }
 
     function typedValue(row){return String(row?.draft_response?.value??'')}
+    function typedDraftStatus(row,message){
+      if(queue[index]!==row)return;
+      const status=document.getElementById('flhLearnStatus');
+      if(status)status.textContent=message;
+    }
     function saveTypedDraft(row){
       const q=row?.question,value=typedValue(row);
-      if(!q||!['numeric','short_answer'].includes(q.question_type)||busy)return;
-      if(!value.trim()){
-        call('clear_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id}).catch(()=>{});
-        return;
+      if(!q||!['numeric','short_answer'].includes(q.question_type)||busy)return Promise.resolve(true);
+      if(row.typed_draft_save)return row.typed_draft_save;
+      const snapshot=value;
+      row.typed_draft_dirty=true;
+      const action=snapshot.trim()
+        ?call('save_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id,response:{value:snapshot}})
+        :call('clear_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id});
+      const pending=action.then(()=>{
+        if(typedValue(row)===snapshot){
+          row.typed_draft_dirty=false;
+          row.typed_draft_error=false;
+          typedDraftStatus(row,snapshot.trim()?'تم حفظ المسودة. يمكنك المتابعة أو الرجوع لمكتبتك.':'تم مسح المسودة المحفوظة.');
+        }
+        return true;
+      }).catch(()=>{
+        if(row.status==='completed')return true;
+        if(typedValue(row)===snapshot){
+          row.typed_draft_dirty=true;
+          row.typed_draft_error=true;
+          typedDraftStatus(row,'تعذر حفظ المسودة الآن. لن نخرج من التدريب قبل إعادة محاولة الحفظ، أو يمكنك تأكيد الإجابة.');
+        }
+        return false;
+      }).finally(()=>{if(row.typed_draft_save===pending)row.typed_draft_save=null;});
+      row.typed_draft_save=pending;
+      return pending;
+    }
+    async function exitLearning(){
+      if(busy)return;
+      const row=queue[index],q=row?.question;
+      if(q&&['numeric','short_answer'].includes(q.question_type)&&row.typed_draft_dirty){
+        const saved=await (row.typed_draft_save||saveTypedDraft(row));
+        if(!saved){row.typed_draft_error=true;render();return;}
       }
-      call('save_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id,response:{value}}).catch(()=>{});
+      home();
     }
 
     function render(){
@@ -105,15 +138,15 @@
       const misconceptionBox=misconception?.content?`<div class="flh-misconception-feedback" role="status"><b>ملاحظة تساعدك</b><div ${hintAttrs(misconception,q)}>${renderMath(misconception.content)}</div></div>`:'';
       const hintNotice=row.hint_unavailable_local?'<div class="flh-hint-notice" role="status">المساعدة الإضافية غير متاحة لهذا السؤال الآن. استخدم آخر تلميح ظهر لك وحاول من جديد.</div>':row.hint_error_local?'<div class="flh-hint-notice error" role="status">تعذر تحميل المساعدة الآن. جرّب مرة ثانية بعد قليل.</div>':'';
       const ready=typed?Boolean(typedDraft.trim()):Boolean(selected);
-      const status=busy?'جارٍ إرسال الإجابة…':ready?(typed?'الإجابة جاهزة. اضغط «تأكيد الإجابة» عندما تتأكد.':'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'):(typed?'اكتب إجابتك.':'اختر إجابتك.');
+      const status=row.typed_draft_error?'تعذر حفظ المسودة الآن. اضغط «رجوع لمكتبتي» لإعادة محاولة الحفظ، أو أكّد الإجابة.':busy?'جارٍ إرسال الإجابة…':ready?(typed?'الإجابة جاهزة. اضغط «تأكيد الإجابة» عندما تتأكد.':'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'):(typed?'اكتب إجابتك.':'اختر إجابتك.');
       const sourceNote=q.source_metadata?.support_source_derived?'<div class="muted flh-source-note">📚 سؤال من مصدر MEB الداعم الرسمي؛ التلميحات والشرح من Family Learning Hub.</div>':'';
-      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
-      document.getElementById('flhLearnExit')?.addEventListener('click',home);
+      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted" role="status" aria-live="polite">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      document.getElementById('flhLearnExit')?.addEventListener('click',exitLearning);
       document.getElementById('flhHelp')?.addEventListener('click',help);
       document.getElementById('flhConfirmAnswer')?.addEventListener('click',confirmAnswer);
       document.querySelectorAll('.flh-learn-answer').forEach(b=>b.addEventListener('click',()=>choose(b)));
       const typedInput=document.getElementById('flhTypedResponse');
-      typedInput?.addEventListener('input',e=>{row.draft_response={value:e.target.value};const btn=document.getElementById('flhConfirmAnswer');if(btn)btn.disabled=busy||!String(e.target.value||'').trim();});
+      typedInput?.addEventListener('input',e=>{row.draft_response={value:e.target.value};row.typed_draft_dirty=true;row.typed_draft_error=false;const btn=document.getElementById('flhConfirmAnswer');if(btn)btn.disabled=busy||!String(e.target.value||'').trim();});
       typedInput?.addEventListener('blur',()=>saveTypedDraft(row));
       const ni=queue.findIndex((x,i)=>i>index&&!['completed','skipped'].includes(x.status));if(ni>=0)preloadQuestion(queue[ni]?.question);
       if(session.resumed)session.resumed=false;
