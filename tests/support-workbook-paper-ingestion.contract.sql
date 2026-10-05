@@ -127,6 +127,19 @@ begin
   end if;
 
   set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_one,
+    jsonb_set(responses,array[first_code],jsonb_build_object('value','changed transcription'),true)
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_REQUEST_CONFLICT' then
+    raise exception 'SUPPORT_PAPER_CHANGED_RETRY_NOT_REJECTED:%',blocked;
+  end if;
+  if (select count(*) from public.quiz_attempts where workspace_id=w and learner_id=l and quiz_version_id=v and status='submitted')<>1 then
+    raise exception 'SUPPORT_PAPER_CHANGED_RETRY_CREATED_ATTEMPT';
+  end if;
+
+  set local role service_role;
   blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_two,responses);
   reset role;
   if blocked->>'error' is distinct from 'SESSION_ALREADY_COMPLETED' then
