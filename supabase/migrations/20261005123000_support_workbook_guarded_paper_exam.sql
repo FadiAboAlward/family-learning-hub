@@ -110,7 +110,6 @@ begin
     return jsonb_build_object('ok',false,'error','SUPPORT_PAPER_QUEUE_MAP_MISMATCH');
   end if;
 
-  v_stage:='runtime_map';
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'sequence_no',x.sequence_no,
