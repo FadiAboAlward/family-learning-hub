@@ -2669,7 +2669,7 @@ begin
 
     if v_paper_question_count<1
        or v_paper_map is null
-       or jsonb_object_length(v_paper_map)<>v_paper_question_count then
+       or public.jsonb_object_length(v_paper_map)<>v_paper_question_count then
       raise exception 'FLH020_SUPPORT_PAPER_MAP_INVALID:%',v_session->>'slug';
     end if;
 
