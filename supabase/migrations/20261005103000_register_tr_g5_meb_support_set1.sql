@@ -327,7 +327,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "100 + 40 + 2 + 0.50 = 142.50 TL.",
+          "explanation_ar": "نجمع 100 + 40 + 2 + 0.50 = 142.50 ليرة تركية.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
@@ -359,7 +359,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Bir tam 10/10 eder; buna 3/10 eklenince 13/10 olur.",
+          "explanation_ar": "الواحد الصحيح يساوي 10/10؛ وبإضافة 3/10 يصبح المجموع 13/10.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -377,7 +377,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Bir tam ve üç onda = 1.3.",
+          "explanation_ar": "واحد صحيح وثلاثة أعشار يساوي 1.3.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -398,7 +398,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "İki tam 200/100 eder; 14/100 daha eklenince 214/100 olur.",
+          "explanation_ar": "العددان الصحيحان يساويان 200/100؛ وبإضافة 14/100 يصبح المجموع 214/100.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -416,7 +416,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "İki tam ve on dört yüzde = 2.14.",
+          "explanation_ar": "اثنان صحيحان وأربعة عشر جزءًا من مئة يساوي 2.14.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -438,7 +438,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "25 = 8×3 + 1 olduğundan 25/8 = 3 ve 1/8.",
+          "explanation_ar": "لأن 25 = 8×3 + 1، فإن 25/8 يساوي 3 و1/8.",
           "source_note": null
         },
         {
@@ -504,7 +504,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "5/20 sadeleşince 1/4 olur; 1/4 = 0.25.",
+          "explanation_ar": "بتبسيط 5/20 نحصل على 1/4؛ و1/4 = 0.25.",
           "source_note": null
         }
       ]
@@ -687,7 +687,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "5/10 sadeleşince 1/2 olur.",
+          "explanation_ar": "بتبسيط 5/10 نحصل على 1/2.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -723,7 +723,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Yarısı dolu olduğundan %50.",
+          "explanation_ar": "لأن الإناء ممتلئ إلى النصف، فالنسبة هي %50.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
@@ -755,7 +755,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Dört eş parçanın üçü dolu: 3/4.",
+          "explanation_ar": "ثلاثة من أربعة أجزاء متساوية ممتلئة؛ إذن الكسر هو 3/4.",
           "source_note": null
         },
         {
@@ -792,7 +792,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "40 tam hücre + 3 hücre = 43/100.",
+          "explanation_ar": "أربعون خلية كاملة مع ثلاث خلايا إضافية تساوي 43/100.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -867,7 +867,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "19’dan 60’a 41 hücre gerekir. 1×9 + 4×8 = 41 ve toplam 5 fırça kullanımıdır.",
+          "explanation_ar": "نحتاج للانتقال من 19 إلى 60 إلى 41 خلية. ‏1×9 + 4×8 = 41، أي خمس مرات لاستخدام الفرشاة.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -888,7 +888,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "Eş değerli gösterimler M-O-D-E-L-L-E-M-E harflerini verir.",
+          "explanation_ar": "التمثيلات المتكافئة تعطي الأحرف M-O-D-E-L-L-E-M-E بالترتيب.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
@@ -919,7 +919,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "5/20 dörtte bire sadeleşir.",
+          "explanation_ar": "يتبسط الكسر 5/20 إلى 1/4.",
           "source_note": null
         },
         {
@@ -940,7 +940,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Toplam 20, B odasında 3: 3/20.",
+          "explanation_ar": "المجموع 20، وفي الغرفة B العدد 3؛ لذلك الكسر هو 3/20.",
           "source_note": null
         },
         {
@@ -961,7 +961,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "12/20 sadeleşince 3/5 olur.",
+          "explanation_ar": "بتبسيط 12/20 نحصل على 3/5.",
           "source_note": null
         },
         {
@@ -983,7 +983,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "12 en büyük sayı olduğundan C odası.",
+          "explanation_ar": "بما أن 12 هو العدد الأكبر، فالإجابة هي الغرفة C.",
           "source_note": null
         },
         {
@@ -1004,7 +1004,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Paydalar aynı; 4/5, 1/5’ten büyüktür.",
+          "explanation_ar": "المقامات متساوية؛ لذلك 4/5 أكبر من 1/5.",
           "source_note": null
         },
         {
@@ -1025,7 +1025,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Paylar aynı olduğunda paydası küçük olan kesir daha büyüktür: 3/4 > 3/7.",
+          "explanation_ar": "عندما تتساوى البسوط، يكون الكسر ذو المقام الأصغر أكبر؛ لذلك 3/4 > 3/7.",
           "source_note": null
         },
         {
@@ -1047,7 +1047,7 @@ declare
           "origin": "book_exact",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "5/6 yaklaşık 1’e, 4/9 yaklaşık 1/2’ye, 1/11 ise 0’a yakındır.",
+          "explanation_ar": "الكسر 5/6 قريب من 1، و4/9 قريب من 1/2، و1/11 قريب من 0.",
           "source_note": null
         }
       ]
@@ -1080,7 +1080,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%75 en büyük doluluk oranıdır.",
+          "explanation_ar": "النسبة %75 هي أكبر نسبة امتلاء.",
           "source_note": null
         },
         {
@@ -1123,7 +1123,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%80 = 0.8; diğerleri 0.45 ve 0.2’dir.",
+          "explanation_ar": "النسبة %80 تساوي 0.8، والقيمتان الأخريان هما 0.45 و0.2.",
           "source_note": null
         },
         {
@@ -1145,7 +1145,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "Paydalar aynı olduğundan payları karşılaştırırız: 12 < 21.",
+          "explanation_ar": "بما أن المقامين متساويان، نقارن البسطين؛ فنجد أن 12 < 21.",
           "source_note": null
         },
         {
@@ -1167,7 +1167,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "B’nin ölçüleri 0.8 ve 0.45; C’nin 1.2 ve 0.4’tür. İkisi de kabine sığar; A’nın uzunluğu 0.9 m ile fazladır.",
+          "explanation_ar": "قياسا B هما 0.8 و0.45، وقياسا C هما 1.2 و0.4؛ كلاهما يلائم الحجرة، أما طول A فهو 0.9 متر ويتجاوز الحد.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -1215,7 +1215,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "7/10 = 0.7, 2/5 = 0.4; L daha doludur.",
+          "explanation_ar": "لدينا 7/10 = 0.7 و2/5 = 0.4؛ لذلك L أكثر امتلاء.",
           "source_note": null
         },
         {
@@ -1236,7 +1236,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.75 < 0.8, fakat 0.84 > 0.8.",
+          "explanation_ar": "لدينا 0.75 < 0.8، بينما 0.84 > 0.8.",
           "source_note": null
         },
         {
@@ -1257,7 +1257,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.49 ile 0.50 arasındaki fark 0.01; 0.46 ile fark 0.04’tür.",
+          "explanation_ar": "الفرق بين 0.49 و0.50 هو 0.01، والفرق بين 0.46 و0.50 هو 0.04.",
           "source_note": null
         }
       ]
@@ -1290,7 +1290,7 @@ declare
           "origin": "book_exact",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "T=0.8, S=0.6, R=0.45, P=0.2.",
+          "explanation_ar": "بعد التحويل: T=0.8 وS=0.6 وR=0.45 وP=0.2؛ لذا الترتيب من الأكبر إلى الأصغر هو T ثم S ثم R ثم P.",
           "source_note": null
         },
         {
@@ -1312,7 +1312,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "C’de protein 6.75 g ile en yüksek, yağ 0.42 g ile en düşüktür.",
+          "explanation_ar": "في C كمية البروتين 6.75 غ وهي الأعلى، وكمية الدهون 0.42 غ وهي الأقل.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -1334,7 +1334,7 @@ declare
           "origin": "book_exact",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "Sınır 7.5 saattir. Eda 8.05, Mete 7.8, Cemre 8.5 ile sınırı aşar.",
+          "explanation_ar": "الحد هو 7.5 ساعات. إيدا 8.05، ومته 7.8، وجمره 8.5؛ جميعهم تجاوزوا الحد.",
           "source_note": null
         }
       ]
@@ -1366,7 +1366,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "6/8 = 3/4 = %75, bu da %48’den büyüktür.",
+          "explanation_ar": "لدينا 6/8 = 3/4 = %75، وهي أكبر من %48.",
           "source_note": null
         },
         {
@@ -1404,7 +1404,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "1. projede atölye 0.36 ve depo 0.20; 3. projede atölye 0.40 ve depo 0.21. İkisi koşulu sağlar ama 3. projenin atölyesi daha büyüktür.",
+          "explanation_ar": "في المشروع 1 الورشة 0.36 والمستودع 0.20، وفي المشروع 3 الورشة 0.40 والمستودع 0.21. كلاهما يحقق الشرط، لكن مساحة الورشة في المشروع 3 أكبر.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         }
       ]
@@ -1421,7 +1421,7 @@ declare
         {
           "question_code": "Q-202610050064",
           "type": "single_choice",
-          "prompt": "“0,5 ondalık gösterimi %50’den büyüktür.” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “0,5 ondalık gösterimi %50’den büyüktür.”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1433,16 +1433,16 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.5 = %50, daha büyük değildir.",
-          "source_note": null
+          "explanation_ar": "لدينا 0.5 = %50؛ لذلك ليست 0.5 أكبر من %50.",
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050065",
           "type": "single_choice",
-          "prompt": "“3/5 kesri 0,6 ondalık gösterimine eşittir.” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “3/5 kesri 0,6 ondalık gösterimine eşittir.”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1454,16 +1454,16 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "3/5 = 6/10 = 0.6.",
-          "source_note": null
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050066",
           "type": "single_choice",
-          "prompt": "“1/4 kesri 0,4 ondalık gösteriminden büyüktür.” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “1/4 kesri 0,4 ondalık gösteriminden büyüktür.”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1475,16 +1475,16 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "1/4 = 0.25 ve 0.25 < 0.4.",
-          "source_note": null
+          "explanation_ar": "لدينا 1/4 = 0.25، و0.25 < 0.4.",
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050067",
           "type": "single_choice",
-          "prompt": "“3/4 kesri %75’e eşittir.” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “3/4 kesri %75’e eşittir.”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1496,16 +1496,16 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "3/4 = 75/100 = %75.",
-          "source_note": null
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050068",
           "type": "single_choice",
-          "prompt": "“0,7 > %7” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “0,7 > %7”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1517,16 +1517,16 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.7 = %70, dolayısıyla %7’den büyüktür.",
-          "source_note": null
+          "explanation_ar": "لدينا 0.7 = %70؛ لذلك 0.7 أكبر من %7.",
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050069",
           "type": "single_choice",
-          "prompt": "“0,08 ondalık gösterimi %80’e eşittir.” ifadesi doğru mu yanlıştır?",
+          "prompt": "Aşağıdaki ifadeyi değerlendiriniz. Doğruysa (D), yanlışsa (Y) seçiniz: “0,08 ondalık gösterimi %80’e eşittir.”",
           "pdf_page": 23,
           "hint_profile": "compare",
           "answer": {
@@ -1538,11 +1538,11 @@ declare
           ],
           "grading_mode": "graded",
           "points": 1,
-          "origin": "book_exact",
+          "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.08 = %8, %80 değildir.",
-          "source_note": null
+          "explanation_ar": "لدينا 0.08 = %8، وليس %80.",
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
           "question_code": "Q-202610050070",
@@ -1562,7 +1562,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "12/20 = 0.6; %75 = 0.75, B daha doludur.",
+          "explanation_ar": "لدينا 12/20 = 0.6، و%75 = 0.75؛ إذن B أكثر امتلاء.",
           "source_note": null
         },
         {
@@ -1585,7 +1585,7 @@ declare
           "origin": "book_exact",
           "difficulty": 3,
           "activity": null,
-          "explanation_ar": "%85=0.85 > 0.8 > 0.5 olduğundan C sıralaması doğrudur.",
+          "explanation_ar": "لدينا %85 = 0.85 > 0.8 > 0.5؛ لذلك الخيار C هو الترتيب الصحيح.",
           "source_note": null
         },
         {
@@ -1606,7 +1606,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "4/10 = %40 ve %40 > %35.",
+          "explanation_ar": "لدينا 4/10 = %40، و%40 > %35.",
           "source_note": null
         },
         {
@@ -1628,7 +1628,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "A=0.4, B=0.38, C=0.6; C en büyüktür.",
+          "explanation_ar": "بعد التحويل: A=0.4 وB=0.38 وC=0.6؛ إذن C هو الأكبر.",
           "source_note": null
         },
         {
@@ -1649,7 +1649,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%89 = 0.89 ve 0.89 < 0.92; hedefe ulaşılmadı.",
+          "explanation_ar": "لدينا %89 = 0.89، و0.89 < 0.92؛ لذلك لم نصل إلى الهدف.",
           "source_note": null
         },
         {
@@ -1671,7 +1671,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "A=0.70, B=0.75, C=0.85; C en büyüktür.",
+          "explanation_ar": "بعد التحويل: A=0.70 وB=0.75 وC=0.85؛ إذن C هو الأكبر.",
           "source_note": null
         }
       ]
@@ -1703,7 +1703,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "19/5 = 3.8, 4.40’tan küçüktür.",
+          "explanation_ar": "لدينا 19/5 = 3.8، وهو أصغر من 4.40.",
           "source_note": null
         },
         {
@@ -1725,7 +1725,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3 6/10 = 3.6; 3.4 < 3.6.",
+          "explanation_ar": "لدينا 3 6/10 = 3.6، ولذلك 3.4 < 3.6.",
           "source_note": null
         },
         {
@@ -1747,7 +1747,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "1/2 = 0.5; 0.3 < 0.5.",
+          "explanation_ar": "لدينا 1/2 = 0.5، ولذلك 0.3 < 0.5.",
           "source_note": null
         },
         {
@@ -1791,7 +1791,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "1 4/7 = 11/7, yani eşittir.",
+          "explanation_ar": "لدينا 1 4/7 = 11/7؛ لذلك القيمتان متساويتان.",
           "source_note": null
         },
         {
@@ -1813,7 +1813,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "6 3/5 = 6.6; 6.06 daha küçüktür.",
+          "explanation_ar": "لدينا 6 3/5 = 6.6؛ لذلك 6.06 أصغر.",
           "source_note": null
         },
         {
@@ -1835,7 +1835,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%55 = 0.55; 0.45 daha küçüktür.",
+          "explanation_ar": "لدينا %55 = 0.55؛ لذلك 0.45 أصغر.",
           "source_note": null
         },
         {
@@ -1857,7 +1857,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "5 3/4 = 5.75; 5.45 daha küçüktür.",
+          "explanation_ar": "لدينا 5 3/4 = 5.75؛ لذلك 5.45 أصغر.",
           "source_note": null
         },
         {
@@ -1879,7 +1879,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "15/10=1.5; 1.5 > 0.15.",
+          "explanation_ar": "لدينا 15/10 = 1.5؛ ولذلك 1.5 > 0.15.",
           "source_note": null
         },
         {
@@ -1901,7 +1901,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3 1/2 = 3.5; 3.5 > 3.45.",
+          "explanation_ar": "لدينا 3 1/2 = 3.5؛ ولذلك 3.5 > 3.45.",
           "source_note": null
         },
         {
@@ -1968,7 +1968,7 @@ declare
       "• تذكري أن yüzde تعني «من كل 100»، لذلك ابدئي بمحاولة كتابة الكمية على مقام 100.\n• إذا كان لديك كسر بمقام 5 أو 10 أو 20 أو 25، ابحثي عن العدد الذي يوصله إلى 100.\n• لا تحسبي النتيجة النهائية قبل تثبيت هذا الربط.",
       "• للتحويل إلى عدد عشري، يمكنك أولًا الوصول إلى كسر مقامه 10 أو 100، ثم كتابة المنازل العشرية المناسبة.\n• للتحويل إلى نسبة مئوية، اقرئي البسط عندما يصبح المقام 100.\n• قارني التمثيلين وتحققي أنهما يصفان الجزء نفسه.",
       "• إذا كان التمثيل بصريًا، احسبي عدد الأجزاء الكلي وعدد الأجزاء المملوءة قبل أي تحويل.\n• اكتبي الكسر أولًا، ثم حوّليه إلى عشري، وبعدها إلى yüzde؛ هذا يقلل الأخطاء.\n• راجعي أن القيم الثلاث متساوية وليست مجرد أرقام متشابهة.",
-      "• Önce kesir, ondalık ve yüzde gösterimlerinin aynı miktarı farklı biçimlerde anlattığını hatırla; sembollerin görünüşüne göre karar verme.\n• Kendi sonucunu başka bir gösterime dönüştürerek büyüklüğün değişmediğini kontrol et ve gerektiğinde 100 paydalı eşdeğer kesir kullan.\n• Son adımda yalnızca sorunun istediği gösterimi yaz; ara dönüşümleri zihninde veya notunda doğrulama amacıyla tut."
+      "• تذكّر أولًا أن الكسر والعدد العشري والنسبة المئوية يمكن أن تمثل المقدار نفسه بصور مختلفة؛ لذلك لا تحكم من شكل الرموز وحده، بل ابحث عن قيمة مشتركة للمقارنة.\n• حوّل نتيجتك إلى تمثيل آخر مناسب، مثل كسر مقامه 100 أو عدد عشري، ثم تحقق أن قيمة المقدار لم تتغير أثناء التحويل وأن خطواتك متسقة.\n• في الخطوة الأخيرة اكتب التمثيل الذي طلبه السؤال فقط، واحتفظ بالتحويلات الوسيطة للمراجعة والتأكد من صحة الإجابة قبل تثبيتها."
     ],
     "model": [
       "• اقرئي النموذج كأجزاء متساوية: حددي عدد الأجزاء في الكامل، ثم عدّي الأجزاء الملوّنة أو المستخدمة.\n• إذا وُجد أكثر من كامل، حوّلي كل كامل إلى عدد الأجزاء نفسه قبل الجمع.\n• لا تستنتجي الكسر من شكل اللون وحده؛ اعتمدي على عدد الأجزاء المتساوية.",
