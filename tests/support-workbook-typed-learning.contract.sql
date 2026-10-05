@@ -28,7 +28,10 @@ begin
      or not has_function_privilege('service_role','public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
      or has_function_privilege('anon','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
      or has_function_privilege('authenticated','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
-     or not has_function_privilege('service_role','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE') then
+     or not has_function_privilege('service_role','public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid)','EXECUTE')
+     or has_function_privilege('authenticated','public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid)','EXECUTE')
+     or not has_function_privilege('service_role','public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid)','EXECUTE') then
     raise exception 'SUPPORT_TYPED_ACL_INVALID';
   end if;
 
@@ -60,6 +63,26 @@ begin
          from public.quiz_attempt_question_queue
          where quiz_attempt_id=a1 and question_id=q_numeric) <> '{"value":"2,5"}'::jsonb then
     raise exception 'SUPPORT_TYPED_DRAFT_SAVE_INVALID:%',r;
+  end if;
+
+  set local role service_role;
+  r:=public.flh_learning_clear_response_draft(w,l,a1,q_numeric);
+  reset role;
+  if coalesce((r->>'ok')::boolean,false) is not true
+     or r->>'cleared' is distinct from 'true'
+     or exists(
+       select 1 from public.quiz_attempt_question_queue
+       where quiz_attempt_id=a1 and question_id=q_numeric
+         and (interaction_metadata ? 'draft_response' or interaction_metadata ? 'draft_saved_at')
+     ) then
+    raise exception 'SUPPORT_TYPED_DRAFT_CLEAR_INVALID:%',r;
+  end if;
+
+  set local role service_role;
+  r:=public.flh_learning_save_response_draft(w,l,a1,q_numeric,'{"value":"2,5"}'::jsonb);
+  reset role;
+  if coalesce((r->>'ok')::boolean,false) is not true then
+    raise exception 'SUPPORT_TYPED_DRAFT_RESAVE_INVALID:%',r;
   end if;
 
   set local role service_role;
