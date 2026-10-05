@@ -110,6 +110,36 @@ begin
     return jsonb_build_object('error','SUPPORT_SESSION_MISMATCH');
   end if;
 
+  -- Match flh_learning_start entitlement. Paper transcription is allowed only
+  -- when the learner can access this quiz through an active enrolled program
+  -- or an active assignment to this exact immutable version.
+  if not (
+    exists (
+      select 1
+      from public.learner_program_enrollments e
+      join public.program_quizzes pq
+        on pq.workspace_id=e.workspace_id
+       and pq.program_id=e.program_id
+       and pq.quiz_id=v_quiz.id
+       and pq.availability='available'
+      where e.workspace_id=p_workspace_id
+        and e.learner_id=p_learner_id
+        and e.status='active'
+    )
+    or exists (
+      select 1
+      from public.quiz_assignments qa
+      where qa.workspace_id=p_workspace_id
+        and qa.learner_id=p_learner_id
+        and qa.quiz_version_id=p_quiz_version_id
+        and qa.status in ('assigned','in_progress')
+        and (qa.available_at is null or qa.available_at<=now())
+        and (qa.due_at is null or qa.due_at>=now())
+    )
+  ) then
+    return jsonb_build_object('error','QUIZ_NOT_AVAILABLE');
+  end if;
+
   if exists (
     select 1
     from public.quiz_attempts a
