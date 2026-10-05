@@ -91,6 +91,13 @@ try {
 
   const draft=spawnPsql(draftSql);
   children.push(draft);
+  const draftDeadline=Date.now()+4000;
+  let draftWaiting=false;
+  while(!draftWaiting&&Date.now()<draftDeadline){
+    draftWaiting=Number(await psql(`select count(*)::text from pg_stat_activity where wait_event_type='Lock' and query like '%flh_learning_save_response_draft%' and query like '%${attemptId}%'`))>=1;
+    if(!draftWaiting) await new Promise(resolve=>setTimeout(resolve,25));
+  }
+  assert.equal(draftWaiting,true,'draft must be waiting on the production attempt-row lock');
   const [blockerOutput,answerOutput,draftOutput]=await Promise.all([blocker.done,answer.done,draft.done]);
   assert.match(blockerOutput,new RegExp(attemptId));
 
