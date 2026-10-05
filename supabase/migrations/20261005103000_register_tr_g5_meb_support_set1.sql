@@ -1,0 +1,2206 @@
+-- FLH-FEAT-2026-020 v1.0
+-- Exact academic package: content/tr-math-g5-meb-support-set1-v1.json
+-- Scope: Aya-accessible Türkiye G5 program; MEB Mathematics supplementary Set 1 only.
+do $migration$
+declare
+  v_workspace uuid;
+  v_curriculum uuid;
+  v_subject bigint;
+  v_program uuid;
+  v_book uuid;
+  v_unit_repr uuid;
+  v_unit_cmp uuid;
+  v_concept_repr uuid;
+  v_concept_cmp uuid;
+  v_pkg jsonb := $pkg${
+  "feature_id": "FLH-FEAT-2026-020",
+  "spec_version": "1.0",
+  "source": {
+    "code": "TR-MEB-G5-MATH-SUPPORT-SET1-2026",
+    "title": "Türkiye Yüzyılı Maarif Modeli Öğrenme Etkinlikleri — 5. Sınıf Matematik — Set 1",
+    "publisher": "MEB",
+    "official": true,
+    "pdf_pages": 25,
+    "source_url": "https://cdn.eba.gov.tr/yardimcikaynaklar/2026/02/etkinlik/mat5_2.pdf",
+    "math_mode": "VISUAL_AUTHORITATIVE"
+  },
+  "curriculum": {
+    "grade": 5,
+    "school_year": "2026-2027",
+    "language": "tr",
+    "subject": "Matematik"
+  },
+  "units": [
+    {
+      "key": "representations",
+      "title": "MAT.5.1.3 — Kesirlerin Farklı Gösterimleri",
+      "outcome": "MAT.5.1.3",
+      "reference_pdf_page": 14
+    },
+    {
+      "key": "comparison",
+      "title": "MAT.5.1.4 — Kesirlerin Karşılaştırılması",
+      "outcome": "MAT.5.1.4"
+    }
+  ],
+  "sessions": [
+    {
+      "slug": "tr-g5-meb-support-s1-fractions-convert",
+      "unit": "representations",
+      "title": "Etkinlik 1 — Kesirleri Dönüştürüyorum",
+      "pages": [
+        5,
+        6
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050001",
+          "type": "short_answer",
+          "prompt": "4 pizzayı 6 kişiye, herkes eşit miktar alacak biçimde paylaştırınız. Bir kişinin alacağı pizza miktarını kesir olarak yazınız.",
+          "pdf_page": 5,
+          "hint_profile": "representation",
+          "answer": {
+            "accepted_text": [
+              "2/3",
+              "⅔",
+              "2 / 3"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": "Antik Mısır’dan Günümüze Kesirlerin Farklı Gösterimleri",
+          "explanation_ar": "أربع بيتزات لستة أشخاص تعني 4/6، وبالتبسيط تصبح 2/3 لكل شخص.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050002",
+          "type": "single_choice",
+          "prompt": "\\frac{9}{8} bileşik kesrine denk olan tam sayılı kesri seçiniz.",
+          "pdf_page": 6,
+          "hint_profile": "representation",
+          "answer": {
+            "option_position": 6
+          },
+          "options": [
+            "2 5/6",
+            "1 6/9",
+            "1 5/13",
+            "3 3/6",
+            "1 8/13",
+            "1 1/8"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "نقسم 9 على 8: الناتج 1 والباقي 1، لذلك يساوي 1 و1/8.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050003",
+          "type": "single_choice",
+          "prompt": "\\frac{18}{13} bileşik kesrine denk olan tam sayılı kesri seçiniz.",
+          "pdf_page": 6,
+          "hint_profile": "representation",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "2 5/6",
+            "1 6/9",
+            "1 5/13",
+            "3 3/6",
+            "1 8/13",
+            "1 1/8"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "18 = 13 + 5، لذلك الكسر يساوي 1 و5/13.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050004",
+          "type": "single_choice",
+          "prompt": "\\frac{21}{6} bileşik kesrine denk olan tam sayılı kesri seçiniz.",
+          "pdf_page": 6,
+          "hint_profile": "representation",
+          "answer": {
+            "option_position": 4
+          },
+          "options": [
+            "2 5/6",
+            "1 6/9",
+            "1 5/13",
+            "3 3/6",
+            "1 8/13",
+            "1 1/8"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "21 = 18 + 3، و18/6 = 3؛ إذن الناتج 3 و3/6.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050005",
+          "type": "single_choice",
+          "prompt": "\\frac{15}{9} bileşik kesrine denk olan tam sayılı kesri seçiniz.",
+          "pdf_page": 6,
+          "hint_profile": "representation",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "2 5/6",
+            "1 6/9",
+            "1 5/13",
+            "3 3/6",
+            "1 8/13",
+            "1 1/8"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "15 = 9 + 6، لذلك يساوي 1 و6/9.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s2-decimals",
+      "unit": "representations",
+      "title": "Etkinlik 2 — Ondalık Gösterimler",
+      "pages": [
+        7
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050006",
+          "type": "numeric",
+          "prompt": "\\frac{25}{10} kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "2.5"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "المقام 10، لذلك 25/10 = 2.5.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050007",
+          "type": "numeric",
+          "prompt": "\\frac{87}{10} kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "8.7"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "87/10 يساوي 8.7.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050008",
+          "type": "numeric",
+          "prompt": "\\frac{85}{100} kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "0.85"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "المقام 100 يعني منزلتين عشريتين: 0.85.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050009",
+          "type": "numeric",
+          "prompt": "1 \\frac{25}{100} tam sayılı kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "1.25"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "1 + 25/100 = 1.25.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050010",
+          "type": "numeric",
+          "prompt": "\\frac{2}{100} kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "0.02"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "2/100 = 0.02.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050011",
+          "type": "numeric",
+          "prompt": "3 \\frac{2}{10} tam sayılı kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "3.2"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3 + 2/10 = 3.2.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050012",
+          "type": "short_answer",
+          "prompt": "Tartının ekranında 44,50 yazmaktadır. Bu ondalık gösterimin Türkçe okunuşunu yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": "Görseldeki tartı ekranı semantik olarak 44,50 biçiminde aktarılmıştır."
+        },
+        {
+          "question_code": "Q-202610050013",
+          "type": "numeric",
+          "prompt": "Görselde iki 50 TL, iki 20 TL, iki 1 TL madeni para ve bir 50 kuruş bulunmaktadır. Toplam para miktarını TL cinsinden ondalık gösterimle yazınız.",
+          "pdf_page": 7,
+          "hint_profile": "context",
+          "answer": {
+            "value": "142.5"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "100 + 40 + 2 + 0.50 = 142.50 TL.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s3-models",
+      "unit": "representations",
+      "title": "Etkinlik 3 — Modellerle Gösterim",
+      "pages": [
+        8,
+        9
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050014",
+          "type": "short_answer",
+          "prompt": "Model 1’de bir bütün tamamen boyalıdır. Yanındaki bütün 10 eş parçaya ayrılmış ve 3 parçası boyalıdır. Toplam miktarı bileşik kesir olarak yazınız.",
+          "pdf_page": 8,
+          "hint_profile": "model",
+          "answer": {
+            "accepted_text": [
+              "13/10",
+              "13 / 10"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Bir tam 10/10 eder; buna 3/10 eklenince 13/10 olur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050015",
+          "type": "numeric",
+          "prompt": "Model 1’de bir bütün tamamen boyalı, ikinci bütünün 10 eş parçasından 3’ü boyalıdır. Ondalık gösterimi yazınız.",
+          "pdf_page": 8,
+          "hint_profile": "model",
+          "answer": {
+            "value": "1.3"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Bir tam ve üç onda = 1.3.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050016",
+          "type": "short_answer",
+          "prompt": "Model 2’de iki bütün tamamen boyalıdır. Yüzlük kartın 100 hücresinden 14’ü boyalıdır. Toplam miktarı bileşik kesir olarak yazınız.",
+          "pdf_page": 8,
+          "hint_profile": "model",
+          "answer": {
+            "accepted_text": [
+              "214/100",
+              "214 / 100"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "İki tam 200/100 eder; 14/100 daha eklenince 214/100 olur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050017",
+          "type": "numeric",
+          "prompt": "Model 2’de iki bütün tamamen boyalıdır ve yüzlük kartın 14 hücresi boyalıdır. Ondalık gösterimi yazınız.",
+          "pdf_page": 8,
+          "hint_profile": "model",
+          "answer": {
+            "value": "2.14"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "İki tam ve on dört yüzde = 2.14.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050018",
+          "type": "short_answer",
+          "prompt": "\\frac{25}{8} bileşik kesrini tam sayılı kesre dönüştürünüz.",
+          "pdf_page": 8,
+          "hint_profile": "representation",
+          "answer": {
+            "accepted_text": [
+              "3 1/8",
+              "3 1 / 8",
+              "3 tam 1/8"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "25 = 8×3 + 1 olduğundan 25/8 = 3 ve 1/8.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050019",
+          "type": "short_answer",
+          "prompt": "\\frac{25}{8} ile 3 \\frac{1}{8} arasındaki ilişkiyi göstermede sayı doğrusunun kullanışlı olup olmadığını gerekçenizle açıklayınız.",
+          "pdf_page": 8,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050020",
+          "type": "short_answer",
+          "prompt": "Bir oyun 4 kategoriden oluşuyor ve her kategoride 6 bölüm var. Aslı 3 kategoriyi tamamlamış, son kategoride tamamlamadığı 4 bölüm kalmıştır. Aslı’nın oyunu tamamlama durumunu bir model kullanarak açıklayınız.",
+          "pdf_page": 9,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050021",
+          "type": "short_answer",
+          "prompt": "Mustafa, \\frac{2}{5}=\\frac{4}{10}=0,4 ilişkisini alan modeliyle göstermiştir. Bu modelin kullanışlı olup olmadığını gerekçenizle açıklayınız.",
+          "pdf_page": 9,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050022",
+          "type": "numeric",
+          "prompt": "\\frac{5}{20} kesrinin ondalık gösterimini yazınız.",
+          "pdf_page": 9,
+          "hint_profile": "decimal",
+          "answer": {
+            "value": "0.25"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "5/20 sadeleşince 1/4 olur; 1/4 = 0.25.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s4-percentages",
+      "unit": "representations",
+      "title": "Etkinlik 4 — Yüzdeler",
+      "pages": [
+        10,
+        11
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050023",
+          "type": "short_answer",
+          "prompt": "Günlük yaşamda yüzde (%) sembolünün kullanıldığı bir duruma örnek yazınız.",
+          "pdf_page": 10,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050024",
+          "type": "short_answer",
+          "prompt": "Telefon bataryası 5 eş bölümden oluşuyor ve 3 bölüm dolu görünüyor. Doluluk miktarını kesir olarak yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "accepted_text": [
+              "3/5",
+              "3 / 5"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "خمسة أقسام منها ثلاثة ممتلئة، إذن الكسر 3/5.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050025",
+          "type": "numeric",
+          "prompt": "Telefon bataryası 5 eş bölümden oluşuyor ve 3 bölüm dolu. Ondalık gösterimini yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "0.6"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3/5 = 6/10 = 0.6.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050026",
+          "type": "numeric",
+          "prompt": "Telefon bataryası 5 eş bölümden oluşuyor ve 3 bölüm dolu. Yüzde değerini sayı olarak yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "60"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3/5 = 60/100 = %60.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050027",
+          "type": "short_answer",
+          "prompt": "%30 indirime denk gelen kesri en sade biçimde yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "accepted_text": [
+              "3/10",
+              "3 / 10"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%30 = 30/100 = 3/10.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050028",
+          "type": "numeric",
+          "prompt": "%30 indirimin ondalık gösterimini yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "0.3"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%30 = 0.30 = 0.3.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050029",
+          "type": "short_answer",
+          "prompt": "%75 indirime denk gelen kesri en sade biçimde yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "accepted_text": [
+              "3/4",
+              "3 / 4"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%75 = 75/100 = 3/4.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050030",
+          "type": "numeric",
+          "prompt": "%75 indirimin ondalık gösterimini yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "0.75"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%75 = 0.75.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050031",
+          "type": "short_answer",
+          "prompt": "Sürahi 10 eş bölmeye ayrılmış ve 5 bölmesi doludur. Doluluk miktarını kesir olarak en sade biçimde yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "accepted_text": [
+              "1/2",
+              "1 / 2"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "5/10 sadeleşince 1/2 olur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050032",
+          "type": "numeric",
+          "prompt": "Sürahi 10 eş bölmeye ayrılmış ve 5 bölmesi doludur. Ondalık gösterimini yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "0.5"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "1/2 = 0.5.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050033",
+          "type": "numeric",
+          "prompt": "Sürahi 10 eş bölmeye ayrılmış ve 5 bölmesi doludur. Yüzde değerini sayı olarak yazınız.",
+          "pdf_page": 11,
+          "hint_profile": "percent",
+          "answer": {
+            "value": "50"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Yarısı dolu olduğundan %50.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s5-percent-model-game",
+      "unit": "representations",
+      "title": "Etkinlik 5 — Yüzde Modeli ve Oyun",
+      "pages": [
+        12,
+        13
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050034",
+          "type": "short_answer",
+          "prompt": "Can, deponun 4’te 3’ünün dolu olduğunu söylüyor. Yakıt miktarını kesir olarak yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "percent",
+          "answer": {
+            "accepted_text": [
+              "3/4",
+              "3 / 4"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Dört eş parçanın üçü dolu: 3/4.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050035",
+          "type": "short_answer",
+          "prompt": "\\frac{3}{4} doluluğu yüzde biçiminde göstermek için hangi modeli seçerdiniz? Seçiminizi gerekçenizle yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050036",
+          "type": "short_answer",
+          "prompt": "10×10’luk yüzlük kartta ilk 4 sıra tamamen, 5. sırada ise 3 hücre boyalıdır. Boyanan kısmı kesir olarak yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "model",
+          "answer": {
+            "accepted_text": [
+              "43/100",
+              "43 / 100"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "40 tam hücre + 3 hücre = 43/100.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050037",
+          "type": "numeric",
+          "prompt": "10×10’luk yüzlük kartta 43 hücre boyalıdır. Ondalık gösterimini yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "model",
+          "answer": {
+            "value": "0.43"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "43/100 = 0.43.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050038",
+          "type": "numeric",
+          "prompt": "10×10’luk yüzlük kartta 43 hücre boyalıdır. Yüzde değerini sayı olarak yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "model",
+          "answer": {
+            "value": "43"
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "43/100 = %43.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050039",
+          "type": "short_answer",
+          "prompt": "Sayı doğrusu, yüzlük kart, şekil modeli ve somut materyali kullanışlılık açısından karşılaştırınız. Kesirlerin anlamını en iyi yansıttığını düşündüğünüz modeli gerekçenizle yazınız.",
+          "pdf_page": 12,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050040",
+          "type": "short_answer",
+          "prompt": "Yüzlük kartta başlangıçta 19 hücre mavidir. Hedef \\frac{3}{5}=60 hücredir. A fırçası her kullanımda 9, B fırçası 8, C fırçası 1 hücre boyuyor. En az fırça kullanımıyla hangi fırçaları kaç kez kullanırsınız?",
+          "pdf_page": 13,
+          "hint_profile": "context",
+          "answer": {
+            "accepted_text": [
+              "A 1, B 4",
+              "A:1 B:4",
+              "1 A ve 4 B",
+              "A fırçası 1 kez, B fırçası 4 kez"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "19’dan 60’a 41 hücre gerekir. 1×9 + 4×8 = 41 ve toplam 5 fırça kullanımıdır.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050041",
+          "type": "short_answer",
+          "prompt": "Kart eşleştirme oyununda sırasıyla 1/2, %40, 0,25, 0,12, 9/25, %36, 3/25, 0,5, %12 gösterimlerine karşılık gelen harfler bir anahtar kelime oluşturuyor. Anahtar kelimeyi yazınız.",
+          "pdf_page": 13,
+          "hint_profile": "context",
+          "answer": {
+            "accepted_text": [
+              "MODELLEME",
+              "modelleme"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "Eş değerli gösterimler M-O-D-E-L-L-E-M-E harflerini verir.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s6-space-crisis-scan",
+      "unit": "comparison",
+      "title": "Etkinlik 6 — Uzay İstasyonunda Kriz: Hızlı Kontrol",
+      "pages": [
+        15
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050042",
+          "type": "short_answer",
+          "prompt": "20 oksijen tüpünden A odasında 5 tüp vardır. A odasındaki miktarı toplamın kesri olarak en sade biçimde yazınız.",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "1/4",
+              "1 / 4"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "5/20 dörtte bire sadeleşir.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050043",
+          "type": "short_answer",
+          "prompt": "20 oksijen tüpünden B odasında 3 tüp vardır. B odasındaki miktarı toplamın kesri olarak yazınız.",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "3/20",
+              "3 / 20"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Toplam 20, B odasında 3: 3/20.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050044",
+          "type": "short_answer",
+          "prompt": "20 oksijen tüpünden C odasında 12 tüp vardır. C odasındaki miktarı toplamın kesri olarak en sade biçimde yazınız.",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "3/5",
+              "3 / 5"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "12/20 sadeleşince 3/5 olur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050045",
+          "type": "single_choice",
+          "prompt": "A odasında 5, B odasında 3, C odasında 12 oksijen tüpü vardır. En fazla tüp hangi odadadır?",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "12 en büyük sayı olduğundan C odası.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050046",
+          "type": "single_choice",
+          "prompt": "1. batarya bölümünün 1/5’i, 2. batarya bölümünün 4/5’i doludur. Hangisi daha doludur?",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "1. bölüm",
+            "2. bölüm"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Paydalar aynı; 4/5, 1/5’ten büyüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050047",
+          "type": "single_choice",
+          "prompt": "Aysel güç kaynağının 3/4’ünü, İrem başka bir özdeş güç kaynağının 3/7’sini kullanmıştır. Kim daha fazla kullanmıştır?",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "Aysel",
+            "İrem"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Paylar aynı olduğunda paydası küçük olan kesir daha büyüktür: 3/4 > 3/7.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050048",
+          "type": "short_answer",
+          "prompt": "Uzay araçlarının oksijen depoları sırasıyla 5/6, 4/9 ve 1/11 doludur. Tam doluya, yarım doluya ve boşa en yakın araç numaralarını bu sırayla yazınız.",
+          "pdf_page": 15,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "1,2,3",
+              "1 2 3",
+              "1-2-3"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "5/6 yaklaşık 1’e, 4/9 yaklaşık 1/2’ye, 1/11 ise 0’a yakındır.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s7-space-methods",
+      "unit": "comparison",
+      "title": "Etkinlik 7 — Karşılaştırma Yöntemleri",
+      "pages": [
+        16,
+        17
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050049",
+          "type": "single_choice",
+          "prompt": "Üç özdeş yakıt deposu sırasıyla %75, %50 ve %15 doludur. En fazla yakıt hangi araçtadır?",
+          "pdf_page": 16,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "1. araç",
+            "2. araç",
+            "3. araç"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%75 en büyük doluluk oranıdır.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050050",
+          "type": "single_choice",
+          "prompt": "1. güneş paneli 0,3; 2. güneş paneli 0,6 oranında enerji üretebilmektedir. Hangisi daha fazla üretir?",
+          "pdf_page": 16,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "1. panel",
+            "2. panel"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.6 > 0.3.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050051",
+          "type": "single_choice",
+          "prompt": "Su tankları sırasıyla %80, 0,45 ve 1/5 doludur. Doluluk miktarı en fazla olan tank hangisidir?",
+          "pdf_page": 16,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "1. tank",
+            "2. tank",
+            "3. tank"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%80 = 0.8; diğerleri 0.45 ve 0.2’dir.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050052",
+          "type": "short_answer",
+          "prompt": "Depo A’nın 12/25’i, Depo B’nin 21/25’i kontrol edilmiştir. Karşılaştırmayı sembolle yazınız.",
+          "pdf_page": 16,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "12/25 < 21/25",
+              "12 / 25 < 21 / 25",
+              "12/25<21/25"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "Paydalar aynı olduğundan payları karşılaştırırız: 12 < 21.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050053",
+          "type": "short_answer",
+          "prompt": "Batarya kabininin yüksekliği 12/10 m, uzunluğu 45/100 m’dir. A: yükseklik 7/12 m, uzunluk 45/50 m. B: 4/5 m ve 9/20 m. C: 1 1/5 m ve 4/10 m. Her iki ölçüsü de kabinden büyük olmayan bataryaları yazınız.",
+          "pdf_page": 17,
+          "hint_profile": "context",
+          "answer": {
+            "accepted_text": [
+              "B ve C",
+              "B,C",
+              "B C"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "B’nin ölçüleri 0.8 ve 0.45; C’nin 1.2 ve 0.4’tür. İkisi de kabine sığar; A’nın uzunluğu 0.9 m ile fazladır.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050054",
+          "type": "short_answer",
+          "prompt": "Kesirleri karşılaştırırken kullandığınız yöntemlerden yola çıkarak genel bir karşılaştırma kuralı veya stratejisi yazınız.",
+          "pdf_page": 17,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s8-space-model-check",
+      "unit": "comparison",
+      "title": "Etkinlik 8 — Modelleyerek Kontrol",
+      "pages": [
+        18,
+        19
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050055",
+          "type": "single_choice",
+          "prompt": "Batarya bölümlerinde L = 7/10 ve N = 2/5 doludur. Oksijen üretimine daha dolu olan bölüm seçilecektir. Hangisi seçilmelidir?",
+          "pdf_page": 18,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "L",
+            "N"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "7/10 = 0.7, 2/5 = 0.4; L daha doludur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050056",
+          "type": "single_choice",
+          "prompt": "K bölümü 0,75 ve M bölümü 0,84 doludur. 0,8’den az olan bölüm ısıtmaya seçilecektir. Hangisi seçilmelidir?",
+          "pdf_page": 19,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "K",
+            "M"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.75 < 0.8, fakat 0.84 > 0.8.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050057",
+          "type": "single_choice",
+          "prompt": "P bölümü 0,49 ve R bölümü 0,46 doludur. 0,5’e daha yakın olan bölüm iletişime seçilecektir. Hangisi seçilmelidir?",
+          "pdf_page": 19,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "P",
+            "R"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.49 ile 0.50 arasındaki fark 0.01; 0.46 ile fark 0.04’tür.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s9-kitchen-sleep",
+      "unit": "comparison",
+      "title": "Etkinlik 9 — Mutfak ve Uyku Odası",
+      "pages": [
+        20,
+        21
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050058",
+          "type": "short_answer",
+          "prompt": "Konteyner dolulukları P=1/5, R=0,45, S=%60, T=20/25’tir. Büyükten küçüğe doğru konteyner harflerini yazınız.",
+          "pdf_page": 20,
+          "hint_profile": "compare",
+          "answer": {
+            "accepted_text": [
+              "T>S>R>P",
+              "T > S > R > P",
+              "T,S,R,P"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "T=0.8, S=0.6, R=0.45, P=0.2.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050059",
+          "type": "single_choice",
+          "prompt": "100 g yiyecekte A’nın protein miktarı 2 4/10 g ve yağı 23/10 g; B’nin proteini 3/5 g ve yağı 0,75 g; C’nin proteini 27/4 g ve yağı 0,42 g’dır. Protein en fazla, yağ en az olan yiyecek hangisidir?",
+          "pdf_page": 20,
+          "hint_profile": "context",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "C’de protein 6.75 g ile en yüksek, yağ 0.42 g ile en düşüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050060",
+          "type": "short_answer",
+          "prompt": "Bir günde en fazla 7 1/2 saat uyunmalıdır. Eda 8,05; Mete 7 4/5; Cemre 17/2; Hatice 7,25; Çetin 6 3/4 saat uyumuştur. Uyandırılması gereken kişileri yazınız.",
+          "pdf_page": 21,
+          "hint_profile": "context",
+          "answer": {
+            "accepted_text": [
+              "Eda, Mete, Cemre",
+              "Eda Mete Cemre",
+              "Eda-Mete-Cemre"
+            ]
+          },
+          "options": [],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "Sınır 7.5 saattir. Eda 8.05, Mete 7.8, Cemre 8.5 ile sınırı aşar.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s10-space-evaluation",
+      "unit": "comparison",
+      "title": "Etkinlik 10 — Değerlendirme",
+      "pages": [
+        21,
+        22
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050061",
+          "type": "single_choice",
+          "prompt": "Yedek batarya miktarını artırmak için iki öneri vardır: %48 artırmak veya 6/8 artırmak. Daha büyük artış hangisidir?",
+          "pdf_page": 21,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "%48",
+            "6/8"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "6/8 = 3/4 = %75, bu da %48’den büyüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050062",
+          "type": "short_answer",
+          "prompt": "Oksijen deposu başlangıçta tam doludur. Kalan miktar aynı değeri üç ekranda %60, 0,6 ve 6/10 olarak gösteriyor. Başlangıç ile kalanı daha hızlı karşılaştırmak için hangi ekranı tercih edersiniz? Gerekçenizi yazınız.",
+          "pdf_page": 22,
+          "hint_profile": "reflection",
+          "answer": null,
+          "options": [],
+          "grading_mode": "ungraded",
+          "points": 0,
+          "origin": "book_adapted",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": null,
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050063",
+          "type": "single_choice",
+          "prompt": "S bölümü için projeler: 1) atölye 0,36, depo 1/5. 2) atölye %32, depo 0,43. 3) atölye 6/15, depo %21. Atölye alanı en büyük ve depo alanı 1/4’ten küçük olan proje seçilecektir. Hangisi seçilmelidir?",
+          "pdf_page": 22,
+          "hint_profile": "context",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "1. Proje",
+            "2. Proje",
+            "3. Proje"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_adapted",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "1. projede atölye 0.36 ve depo 0.20; 3. projede atölye 0.40 ve depo 0.21. İkisi koşulu sağlar ama 3. projenin atölyesi daha büyüktür.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s11-reinforcement-a",
+      "unit": "comparison",
+      "title": "Etkinlik 11 — Pekiştirelim 1–7",
+      "pages": [
+        23,
+        24
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050064",
+          "type": "single_choice",
+          "prompt": "“0,5 ondalık gösterimi %50’den büyüktür.” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.5 = %50, daha büyük değildir.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050065",
+          "type": "single_choice",
+          "prompt": "“3/5 kesri 0,6 ondalık gösterimine eşittir.” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3/5 = 6/10 = 0.6.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050066",
+          "type": "single_choice",
+          "prompt": "“1/4 kesri 0,4 ondalık gösteriminden büyüktür.” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "1/4 = 0.25 ve 0.25 < 0.4.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050067",
+          "type": "single_choice",
+          "prompt": "“3/4 kesri %75’e eşittir.” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3/4 = 75/100 = %75.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050068",
+          "type": "single_choice",
+          "prompt": "“0,7 > %7” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.7 = %70, dolayısıyla %7’den büyüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050069",
+          "type": "single_choice",
+          "prompt": "“0,08 ondalık gösterimi %80’e eşittir.” ifadesi doğru mu yanlıştır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "Doğru (D)",
+            "Yanlış (Y)"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "0.08 = %8, %80 değildir.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050070",
+          "type": "single_choice",
+          "prompt": "Özdeş şişelerde A şişesi 12/20, B şişesi %75 doludur. Hangisinde daha çok su vardır?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "A",
+            "B"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "12/20 = 0.6; %75 = 0.75, B daha doludur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050071",
+          "type": "single_choice",
+          "prompt": "Aşağıdaki sıralamalardan hangisi doğrudur?",
+          "pdf_page": 23,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "0,71 > %75 > 1/4",
+            "3/2 > 1,7 > %75",
+            "%85 > 0,8 > 1/2",
+            "%55 > 2/5 > 0,5"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 3,
+          "activity": null,
+          "explanation_ar": "%85=0.85 > 0.8 > 0.5 olduğundan C sıralaması doğrudur.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050072",
+          "type": "single_choice",
+          "prompt": "Fiyatları aynı matkaplarda kırmızı matkapta 4/10, sarı matkapta %35 indirim vardır. Hangisinde indirim daha fazladır?",
+          "pdf_page": 24,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "Kırmızı",
+            "Sarı"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "4/10 = %40 ve %40 > %35.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050073",
+          "type": "single_choice",
+          "prompt": "Özdeş yakıt depolarında A=2/5, B=0,38, C=%60 doludur. En çok yakıt hangi depodadır?",
+          "pdf_page": 24,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "A=0.4, B=0.38, C=0.6; C en büyüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050074",
+          "type": "single_choice",
+          "prompt": "Gerekli oksijen miktarı en az 0,92’dir. Şu anki durum %89’dur. Belirlenen miktara ulaşıldı mı?",
+          "pdf_page": 24,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "Evet",
+            "Hayır"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%89 = 0.89 ve 0.89 < 0.92; hedefe ulaşılmadı.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050075",
+          "type": "single_choice",
+          "prompt": "A anteni %70, B anteni 3/4, C anteni 0,85 güçte yayın yapıyor. En güçlü yayın hangisidir?",
+          "pdf_page": 24,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "A=0.70, B=0.75, C=0.85; C en büyüktür.",
+          "source_note": null
+        }
+      ]
+    },
+    {
+      "slug": "tr-g5-meb-support-s12-reinforcement-b",
+      "unit": "comparison",
+      "title": "Etkinlik 12 — Pekiştirelim 8–9",
+      "pages": [
+        25
+      ],
+      "questions": [
+        {
+          "question_code": "Q-202610050076",
+          "type": "single_choice",
+          "prompt": "19/5 ile 4,40’ı karşılaştırınız.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "19/5 = 3.8, 4.40’tan küçüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050077",
+          "type": "single_choice",
+          "prompt": "3,4 ile 3 6/10’u karşılaştırınız.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3 6/10 = 3.6; 3.4 < 3.6.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050078",
+          "type": "single_choice",
+          "prompt": "0,3 ile 1/2’yi karşılaştırınız.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "1/2 = 0.5; 0.3 < 0.5.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050079",
+          "type": "single_choice",
+          "prompt": "2/5 … 3/4 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "2/5=0.4 ve 3/4=0.75.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050080",
+          "type": "single_choice",
+          "prompt": "1 4/7 … 11/7 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "1 4/7 = 11/7, yani eşittir.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050081",
+          "type": "single_choice",
+          "prompt": "6,06 … 6 3/5 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "6 3/5 = 6.6; 6.06 daha küçüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050082",
+          "type": "single_choice",
+          "prompt": "0,45 … %55 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%55 = 0.55; 0.45 daha küçüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050083",
+          "type": "single_choice",
+          "prompt": "5,45 … 5 3/4 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 1
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "5 3/4 = 5.75; 5.45 daha küçüktür.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050084",
+          "type": "single_choice",
+          "prompt": "15/10 … 0,15 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "15/10=1.5; 1.5 > 0.15.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050085",
+          "type": "single_choice",
+          "prompt": "3 1/2 … 3,45 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 2
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "3 1/2 = 3.5; 3.5 > 3.45.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050086",
+          "type": "single_choice",
+          "prompt": "%25 … 1/4 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%25 = 0.25 = 1/4.",
+          "source_note": null
+        },
+        {
+          "question_code": "Q-202610050087",
+          "type": "single_choice",
+          "prompt": "%75 … 0,75 için doğru sembolü seçiniz.",
+          "pdf_page": 25,
+          "hint_profile": "compare",
+          "answer": {
+            "option_position": 3
+          },
+          "options": [
+            "<",
+            ">",
+            "="
+          ],
+          "grading_mode": "graded",
+          "points": 1,
+          "origin": "book_exact",
+          "difficulty": 2,
+          "activity": null,
+          "explanation_ar": "%75 = 0.75.",
+          "source_note": null
+        }
+      ]
+    }
+  ],
+  "hint_profiles": {
+    "representation": [
+      "• ابدئي بتحديد نوع التمثيل المطلوب: كسر اعتيادي، كسر غير حقيقي (bileşik kesir) أو عدد كسري (tam sayılı kesir).\\n• اكتبي ما يمثّل «الكامل» أولًا، ثم الجزء المتبقي، من دون إجراء التحويل النهائي مباشرة.\\n• راجعي أن البسط والمقام يعبّران عن عدد الأجزاء نفسها في التمثيلين قبل اختيار الإجابة.",
+      "• عند التحويل من كسر غير حقيقي إلى عدد كسري، فكري بالقسمة: كم مرة يدخل المقام كاملًا في البسط؟\\n• العدد الناتج من القسمة يعطي الجزء الصحيح، والباقي يصبح بسط الجزء الكسري مع بقاء المقام نفسه.\\n• اختبري فكرتك بإعادة تركيب العدد الصحيح والجزء الكسري إلى كسر واحد.",
+      "• إذا كنتِ تتحققين من تكافؤ تمثيلين، حوّلي العدد الكسري إلى كسر غير حقيقي بضرب الصحيح في المقام ثم إضافة البسط.\\n• لا تغيّري المقام أثناء هذه الخطوة؛ الهدف هو مقارنة قيمتين تمثلان الكمية نفسها.\\n• بعد التحويل قارني بالعدد الأصلي وتحققي أن القيم متساوية.",
+      "• استخدمي مثالًا صغيرًا مشابهًا قبل السؤال: 9/4 يعني مجموعتين كاملتين من 4 ويتبقى جزء واحد.\\n• طبّقي الفكرة نفسها على أرقام السؤال وحددي الكامل والباقي بوضوح.\\n• اكتبي النتيجة بالشكل الذي يطلبه السؤال فقط، ثم راجعيها عكسيًا للتأكد."
+    ],
+    "decimal": [
+      "• حددي أولًا هل المقام 10 أم 100؛ هذا يخبرك بعدد المنازل العشرية التي تحتاجينها.\\n• المقام 10 يعني أعشارًا، والمقام 100 يعني أجزاء من مئة، فلا تحركي الفاصلة عشوائيًا.\\n• إذا وُجد عدد صحيح، أبقيه يسار الفاصلة وأضيفي الجزء الكسري يمينها.",
+      "• فكري في الكسر كقسمة البسط على المقام، لكن استفيدي من المقامات 10 و100 لأنها تتحول مباشرة إلى كتابة عشرية.\\n• أضيفي صفرًا قبل الفاصلة عندما تكون القيمة أصغر من واحد.\\n• راجعي عدد الأرقام بعد الفاصلة بحسب الأعشار أو الأجزاء من مئة.",
+      "• قارني إجابتك بتقدير سريع: إذا كان البسط أكبر من المقام فالناتج أكبر من 1، وإذا كان أصغر فالناتج أقل من 1.\\n• هذا التقدير يكشف أخطاء موضع الفاصلة بسرعة.\\n• بعد ذلك أعيدي كتابة العشري ككسر على 10 أو 100 للتأكد.",
+      "• في الأعداد الكسرية، افصلي الجزء الصحيح عن الكسر ثم حوّلي الجزء الكسري وحده إلى عدد عشري.\\n• اجمعي الجزأين بعد ذلك من دون تغيير قيمة الصحيح.\\n• تحققي أخيرًا بتحويل العدد العشري إلى كسر ومقارنته بالتمثيل الأصلي."
+    ],
+    "percent": [
+      "• تذكري أن yüzde تعني «من كل 100»، لذلك ابدئي بمحاولة كتابة الكمية على مقام 100.\\n• إذا كان لديك كسر بمقام 5 أو 10 أو 20 أو 25، ابحثي عن العدد الذي يوصله إلى 100.\\n• لا تحسبي النتيجة النهائية قبل تثبيت هذا الربط.",
+      "• للتحويل إلى عدد عشري، يمكنك أولًا الوصول إلى كسر مقامه 10 أو 100، ثم كتابة المنازل العشرية المناسبة.\\n• للتحويل إلى نسبة مئوية، اقرئي البسط عندما يصبح المقام 100.\\n• قارني التمثيلين وتحققي أنهما يصفان الجزء نفسه.",
+      "• إذا كان التمثيل بصريًا، احسبي عدد الأجزاء الكلي وعدد الأجزاء المملوءة قبل أي تحويل.\\n• اكتبي الكسر أولًا، ثم حوّليه إلى عشري، وبعدها إلى yüzde؛ هذا يقلل الأخطاء.\\n• راجعي أن القيم الثلاث متساوية وليست مجرد أرقام متشابهة.",
+      "• استخدمي مرجعًا ذهنيًا: النصف يساوي 0,5 ويساوي %50، والربع يساوي 0,25 ويساوي %25.\\n• قيسي قيمة السؤال بالنسبة لهذه المراجع لتتأكدي من معقولية نتيجتك.\\n• بعد التأكد اكتبي الشكل المطلوب فقط في خانة الإجابة."
+    ],
+    "model": [
+      "• اقرئي النموذج كأجزاء متساوية: حددي عدد الأجزاء في الكامل، ثم عدّي الأجزاء الملوّنة أو المستخدمة.\\n• إذا وُجد أكثر من كامل، حوّلي كل كامل إلى عدد الأجزاء نفسه قبل الجمع.\\n• لا تستنتجي الكسر من شكل اللون وحده؛ اعتمدي على عدد الأجزاء المتساوية.",
+      "• بعد حساب الأجزاء، اكتبي الكسر الذي يمثّل مجموع الأجزاء الملوّنة على عدد أجزاء الكامل الواحد.\\n• إذا كان المطلوب عشريًا، حاولي جعل المقام 10 أو 100.\\n• احتفظي بوحدة القياس نفسها أثناء التحويل حتى لا تختلط الكميات.",
+      "• اختبري النموذج بطريقة ثانية: حوّلي الكسر الذي حصلتِ عليه إلى عدد عشري أو نسبة مئوية ثم قارنيه بحجم الجزء الملوّن بصريًا.\\n• إذا كانت القيمة أكبر من واحد، يجب أن يظهر في النموذج كامل واحد على الأقل.\\n• إذا لم يحدث ذلك، أعيدي العد.",
+      "• ركزي على العلاقة بين «عدد الأجزاء» و«قيمة كل جزء»؛ زيادة عدد التقسيمات لا تغيّر الكمية إذا بقيت المساحة الممثلة نفسها.\\n• اكتبي التمثيل العددي بعد أن تتأكدي من العد.\\n• ثم راجعيه بتحويل عكسي إلى الشكل الآخر المطلوب في السؤال."
+    ],
+    "compare": [
+      "• قبل المقارنة، اجعلي القيم بلغة واحدة: كسور بمقامات مناسبة، أو أعدادًا عشرية، أو نسبًا مئوية.\\n• لا تقارني شكل الرموز؛ قارني القيمة التي يمثلها كل رمز.\\n• اختاري التمثيل الأسرع حسب المعطيات ثم اكتبي علاقة أكبر أو أصغر أو يساوي.",
+      "• إذا كان المقامان متساويين، يكفي مقارنة البسطين؛ وإذا كان البسطان متساويين، فكري في حجم الجزء الذي يصنعه كل مقام.\\n• عند اختلاف التمثيلين كثيرًا، التحويل إلى عشري أو إلى مقام 100 غالبًا أسهل.\\n• اكتبي القيم الوسيطة لتجنب الخطأ.",
+      "• استخدمي نقاطًا مرجعية مثل 0، 1/2، 1 أو 0,5 و1,0 لتقدير مكان كل قيمة.\\n• التقدير لا يستبدل الحساب، لكنه يكشف بسرعة إذا كانت إشارة المقارنة غير منطقية.\\n• بعد التقدير نفذي التحويل الدقيق وتأكدي من ترتيب القيم.",
+      "• افحصي الفرق بين القيم عندما يُسأل عن «الأقرب»: احسبي المسافة العددية إلى القيمة المرجعية بدل الاكتفاء بالنظر.\\n• في مسائل الأكبر أو الأصغر رتبي القيم بعد توحيد تمثيلها.\\n• راجعي النتيجة مرة أخيرة بإعادة كل قيمة إلى تمثيلها الأصلي."
+    ],
+    "context": [
+      "• استخرجي من نص المسألة الكميات التي يجب مقارنتها أو جمعها، واكتبي كل كمية منفصلة مع وحدتها.\\n• حوّلي التمثيلات المختلفة إلى شكل واحد قبل اتخاذ القرار.\\n• لا تدخلي معلومات القصة غير اللازمة في الحساب؛ ركزي على الأرقام والشرط المطلوب.",
+      "• حددي معيار القرار في السؤال: الأكبر، الأصغر، الأقرب، أو تحقيق شرطين معًا.\\n• إذا كان هناك أكثر من شرط، افحصي كل بديل مقابل الشرط الأول ثم الثاني.\\n• استبعدي أي بديل يفشل شرطًا واحدًا حتى لو بدا جيدًا في الشرط الآخر.",
+      "• اكتبي التحويلات بجانب كل خيار، مثل كسر → عشري أو yüzde → عشري، ثم رتبي القيم في سطر واحد.\\n• هذا يجعل المقارنة مباشرة ويقلل أخطاء قراءة القصة.\\n• بعد اختيار النتيجة ارجعي إلى السؤال وتأكدي أنها تجيب المطلوب تحديدًا.",
+      "• استخدمي فحصًا عكسيًا: ضعي اختيارك داخل سياق المسألة واسألي هل يحقق جميع القيود فعلًا؟\\n• إذا كانت الإجابة تعتمد على أقل عدد خطوات أو أكبر قيمة، احسبي الفرق أو المجموع للتأكد.\\n• اتركي القرار النهائي للخطوة الأخيرة بعد التحقق من الحساب."
+    ],
+    "reflection": [
+      "• حددي أولًا الفكرة الرياضية التي يطلب منك السؤال تفسيرها، وليس مجرد النتيجة الرقمية.\\n• اذكري النموذج أو الطريقة التي اخترتها وما الذي توضحه عن الكسر أو العشري أو النسبة.\\n• استخدمي مثالًا صغيرًا من معطيات السؤال لتدعيم تفسيرك دون نسخ السؤال نفسه.",
+      "• قارني بين طريقتين محتملتين: ما الذي يظهر بوضوح في كل طريقة، وما الذي قد يكون أصعب على الطالب عند استخدامها؟\\n• اربطي اختيارك بهدف السؤال مثل المقارنة أو رؤية الجزء من الكل.\\n• اكتبي سببًا رياضيًا واضحًا بدل عبارة عامة مثل «أسهل فقط».",
+      "• إذا كان السؤال عن صلاحية نموذج، تحققي هل يحافظ النموذج على قيمة الكمية ويعرض الأجزاء المتساوية والعلاقة المطلوبة.\\n• اشرحي كيف يمكن قراءة القيمة من النموذج خطوة بخطوة.\\n• أضيفي متى قد يكون نموذج آخر أفضل، فهذا يجعل التبرير أقوى.",
+      "• رتبي إجابتك في ثلاث جمل: اختياري، السبب الرياضي، ثم مثال أو تحقق.\\n• تأكدي أن السبب يتحدث عن الكسور أو التمثيلات نفسها لا عن شكل الصورة فقط.\\n• لا تبحثي عن جملة محفوظة؛ المهم أن يكون استدلالك متسقًا مع المعطيات."
+    ]
+  }
+}$pkg$::jsonb;
+  v_session jsonb;
+  v_item jsonb;
+  v_quiz uuid;
+  v_version uuid;
+  v_unit uuid;
+  v_concept uuid;
+  v_question uuid;
+  v_opt jsonb;
+  v_pos integer;
+  v_hint text;
+  v_hint_level integer;
+  v_profile text;
+  v_grading text;
+  v_existing_version uuid;
+begin
+  select id into strict v_workspace from public.workspaces where slug='family-learning-hub';
+  select id into strict v_curriculum from public.curricula where code='TR-MEB-2026-2027' or (country_code='TR' and school_year='2026-2027') order by created_at limit 1;
+  select id into strict v_subject from public.subjects where code='math';
+  select id into strict v_program from public.learning_programs
+    where workspace_id=v_workspace and slug='tr-g5-2026-2027';
+
+  select id into v_book from public.books where code='TR-MEB-G5-MATH-SUPPORT-SET1-2026';
+  if v_book is null then
+    insert into public.books(subject_id,code,title,grade_level,school_year,language,pdf_pages,source_metadata,curriculum_id,source_kind)
+    values(
+      v_subject,'TR-MEB-G5-MATH-SUPPORT-SET1-2026','MEB Öğrenme Etkinlikleri — 5. Sınıf Matematik — Set 1',5,'2026-2027','tr',25,
+      jsonb_build_object(
+        'publisher','MEB','official',true,'support_source',true,
+        'source_url','https://cdn.eba.gov.tr/yardimcikaynaklar/2026/02/etkinlik/mat5_2.pdf',
+        'drive_file_id','1VWpHJRBaaBBQpi15ZjNp30NWYhD_YUqg',
+        'math_mode','VISUAL_AUTHORITATIVE',
+        'feature_id','FLH-FEAT-2026-020','spec_version','1.0',
+        'source_period','2026-02-02/2026-03-16',
+        'core_book_replacement',false
+      ),
+      v_curriculum,'worksheet'
+    ) returning id into v_book;
+  end if;
+
+  insert into public.program_books(workspace_id,program_id,book_id,is_required,sort_order)
+  values(v_workspace,v_program,v_book,false,10)
+  on conflict (program_id,book_id) do update
+    set is_required=false,sort_order=excluded.sort_order;
+
+  select id into v_unit_repr from public.units where book_id=v_book and slug='mat-5-1-3-representations';
+  if v_unit_repr is null then
+    insert into public.units(book_id,slug,title,sort_order,metadata)
+    values(v_book,'mat-5-1-3-representations','MAT.5.1.3 — Kesirlerin Farklı Gösterimleri',1,
+      jsonb_build_object('learning_outcome','MAT.5.1.3','reference_pdf_page',14,'support_source',true))
+    returning id into v_unit_repr;
+  end if;
+
+  select id into v_unit_cmp from public.units where book_id=v_book and slug='mat-5-1-4-comparison';
+  if v_unit_cmp is null then
+    insert into public.units(book_id,slug,title,sort_order,metadata)
+    values(v_book,'mat-5-1-4-comparison','MAT.5.1.4 — Kesirlerin Karşılaştırılması',2,
+      jsonb_build_object('learning_outcome','MAT.5.1.4','support_source',true))
+    returning id into v_unit_cmp;
+  end if;
+
+  select id into v_concept_repr from public.learning_concepts
+    where workspace_id=v_workspace and code='tr-g5-fractions-representations';
+  if v_concept_repr is null then
+    insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,code,title,description,grade_level,metadata)
+    values(v_workspace,v_subject,v_curriculum,'tr-g5-fractions-representations','Kesirlerin farklı gösterimleri',
+      'MAT.5.1.3 — kesir, tam sayılı kesir, ondalık ve yüzde temsilleri',5,
+      jsonb_build_object('learning_outcome','MAT.5.1.3','support_source_code','TR-MEB-G5-MATH-SUPPORT-SET1-2026'))
+    returning id into v_concept_repr;
+  end if;
+
+  select id into v_concept_cmp from public.learning_concepts
+    where workspace_id=v_workspace and code='tr-g5-fractions-comparison';
+  if v_concept_cmp is null then
+    insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,code,title,description,grade_level,metadata)
+    values(v_workspace,v_subject,v_curriculum,'tr-g5-fractions-comparison','Farklı gösterimlerde kesirleri karşılaştırma',
+      'MAT.5.1.4 — kesir, ondalık ve yüzde gösterimlerini karşılaştırma',5,
+      jsonb_build_object('learning_outcome','MAT.5.1.4','support_source_code','TR-MEB-G5-MATH-SUPPORT-SET1-2026'))
+    returning id into v_concept_cmp;
+  end if;
+
+  for v_session in select value from jsonb_array_elements(v_pkg->'sessions') loop
+    v_unit := case when v_session->>'unit'='representations' then v_unit_repr else v_unit_cmp end;
+    v_concept := case when v_session->>'unit'='representations' then v_concept_repr else v_concept_cmp end;
+
+    select id into v_quiz from public.quizzes where workspace_id=v_workspace and slug=v_session->>'slug';
+    if v_quiz is null then
+      insert into public.quizzes(
+        workspace_id,subject_id,book_id,slug,title,description,status,curriculum_id,unit_id,quiz_kind,delivery_config
+      ) values (
+        v_workspace,v_subject,v_book,v_session->>'slug',v_session->>'title',
+        'MEB resmi destek kaynağı · PDF sayfaları ' || array_to_string(array(select jsonb_array_elements_text(v_session->'pages')), ', '),
+        'active',v_curriculum,v_unit,'practice',
+        jsonb_build_object(
+          'support_session',true,
+          'source_code','TR-MEB-G5-MATH-SUPPORT-SET1-2026',
+          'learning',jsonb_build_object('enabled',true,'hints',true,'retry',true,'instant_feedback',true),
+          'exam',jsonb_build_object('enabled',false)
+        )
+      ) returning id into v_quiz;
+    end if;
+
+    select id into v_existing_version from public.quiz_versions
+      where workspace_id=v_workspace and quiz_id=v_quiz and state='published'
+      order by version_no desc limit 1;
+
+    if v_existing_version is null then
+      insert into public.quiz_versions(
+        workspace_id,quiz_id,version_no,state,instructions,settings,published_at,
+        question_language,explanation_language,terminology_display_mode
+      ) values (
+        v_workspace,v_quiz,1,'published',
+        'MEB destek etkinliğini sırayla çöz. İstersen yardım iste; açık uçlu düşünme soruları notlandırılmaz.',
+        jsonb_build_object(
+          'attempt_scores',jsonb_build_array(100,75,50,25),
+          'support_source',true,'source_code','TR-MEB-G5-MATH-SUPPORT-SET1-2026',
+          'feature_id','FLH-FEAT-2026-020','spec_version','1.0',
+          'source_pdf_pages',v_session->'pages'
+        ),
+        now(),'tr','ar','dual_term'
+      ) returning id into v_version;
+
+      v_pos:=0;
+      for v_item in select value from jsonb_array_elements(v_session->'questions') loop
+        v_pos:=v_pos+1;
+        v_grading:=coalesce(v_item->>'grading_mode','graded');
+        insert into public.quiz_questions(
+          workspace_id,quiz_version_id,position,question_type,prompt,origin,
+          source_page_start,source_page_end,source_metadata,points,difficulty_level,
+          max_attempts,remediation_after_attempt,adaptive_enabled,delivery_role,
+          prompt_language,terminology_display_mode,question_code
+        ) values (
+          v_workspace,v_version,v_pos,v_item->>'type',v_item->>'prompt',v_item->>'origin',
+          (v_item->>'pdf_page')::integer,(v_item->>'pdf_page')::integer,
+          jsonb_strip_nulls(jsonb_build_object(
+            'support_source_derived',true,
+            'support_source_code','TR-MEB-G5-MATH-SUPPORT-SET1-2026',
+            'source_pdf_page',(v_item->>'pdf_page')::integer,
+            'source_activity',v_item->'activity',
+            'source_note',v_item->'source_note',
+            'grading_mode',v_grading,
+            'feature_id','FLH-FEAT-2026-020',
+            'source_fidelity',case when v_item->>'origin'='book_exact' then 'exact_text_semantics' else 'semantic_visual_transcription' end
+          )),
+          coalesce((v_item->>'points')::numeric,1),
+          coalesce((v_item->>'difficulty')::smallint,2),
+          case when v_grading='ungraded' then 1 else 4 end,
+          3,
+          v_grading<>'ungraded',
+          'core','tr','dual_term',v_item->>'question_code'
+        ) returning id into v_question;
+
+        insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
+        values(v_workspace,v_question,v_concept,true,1);
+
+        if v_item->>'type'='single_choice' then
+          v_pos:=v_pos; -- keep question position stable; option counter is separate below
+          declare
+            v_option_position integer:=0;
+          begin
+            for v_opt in select value from jsonb_array_elements(v_item->'options') loop
+              v_option_position:=v_option_position+1;
+              insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
+              values(v_workspace,v_question,v_option_position,chr(64+v_option_position),trim(both '"' from v_opt::text));
+            end loop;
+          end;
+        end if;
+
+        if v_grading<>'ungraded' then
+          insert into public.quiz_question_answer_keys(
+            question_id,workspace_id,correct_answer,explanation,grading_config,
+            correct_explanation,final_incorrect_explanation
+          ) values (
+            v_question,v_workspace,v_item->'answer',v_item->>'explanation_ar',
+            case when v_item->>'type'='numeric' then jsonb_build_object('absolute_tolerance',0.0001) else '{}'::jsonb end,
+            v_item->>'explanation_ar',v_item->>'explanation_ar'
+          );
+        end if;
+
+        v_profile:=coalesce(v_item->>'hint_profile','reflection');
+        v_hint_level:=0;
+        for v_hint in
+          select value
+          from jsonb_array_elements_text(v_pkg->'hint_profiles'->v_profile)
+        loop
+          v_hint_level:=v_hint_level+1;
+          insert into public.quiz_question_hints(
+            workspace_id,question_id,hint_level,pedagogical_role,content,metadata,language,terminology_display_mode
+          ) values (
+            v_workspace,v_question,v_hint_level,
+            (array['nudge','guide','strong_guide','near_solution'])[v_hint_level],
+            v_hint,
+            jsonb_build_object('generated_support',true,'feature_id','FLH-FEAT-2026-020','source_attribution','Family Learning Hub'),
+            'ar','dual_term'
+          );
+        end loop;
+      end loop;
+    else
+      v_version:=v_existing_version;
+    end if;
+
+    insert into public.program_quizzes(workspace_id,program_id,quiz_id,sort_order,availability)
+    values(
+      v_workspace,v_program,v_quiz,
+      100 + coalesce((regexp_match(v_session->>'slug','s([0-9]+)'))[1]::integer,0),
+      'available'
+    )
+    on conflict (program_id,quiz_id) do update
+      set sort_order=excluded.sort_order,availability='available';
+  end loop;
+end;
+$migration$;
