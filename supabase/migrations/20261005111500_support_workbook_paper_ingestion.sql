@@ -117,6 +117,10 @@ begin
     exists (
       select 1
       from public.learner_program_enrollments e
+      join public.learning_programs lp
+        on lp.workspace_id=e.workspace_id
+       and lp.id=e.program_id
+       and lp.status='active'
       join public.program_quizzes pq
         on pq.workspace_id=e.workspace_id
        and pq.program_id=e.program_id
