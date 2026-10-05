@@ -21,13 +21,7 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
     throw new Error("START_QUIZ_FAILED");
   }
   if((data as any)?.error)throw new Error(String((data as any).error));
-  const payload:any=data;
-  if(payload?.attempt_id&&Array.isArray(payload?.queue)&&payload.queue.length){
-    const{data:drafts}=await trace.measure("start.typed_drafts",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("question_id,interaction_metadata").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",String(payload.attempt_id)));
-    const byQuestion=new Map((drafts||[]).map((row:any)=>[String(row.question_id),row.interaction_metadata?.draft_response??null]));
-    payload.queue=payload.queue.map((row:any)=>({...row,draft_response:byQuestion.get(String(row.question_id))??null}));
-  }
-  return payload;
+  return data;
 }
 
 async function previewVideos(learnerId:string,slug:string,trace:any){
