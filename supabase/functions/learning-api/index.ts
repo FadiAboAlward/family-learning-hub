@@ -50,12 +50,10 @@ async function saveDraft(learnerId:string,b:any,trace:any){const attemptId=Strin
 async function saveResponseDraft(learnerId:string,b:any,trace:any){
   const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=b.response;
   if(!attemptId||!questionId||!response||typeof response!=="object")throw new Error("INVALID_ANSWER");
-  const{queue}=await activeLearningQuestion(learnerId,attemptId,questionId,trace);
-  const{data:q}=await trace.measure("draft.question",{dbOperations:1},()=>admin.from("quiz_questions").select("question_type").eq("workspace_id",WORKSPACE_ID).eq("id",questionId).maybeSingle());
-  if(!q||!["numeric","short_answer"].includes(String(q.question_type)))throw new Error("UNSUPPORTED_QUESTION_TYPE");
-  const nextMeta={...(queue.interaction_metadata||{}),draft_response:response,draft_saved_at:new Date().toISOString()};
-  await trace.measure("draft.persist_response",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").update({interaction_metadata:nextMeta}).eq("id",queue.id));
-  return{ok:true,response};
+  const{data,error}=await trace.measure("draft.response_rpc",{dbOperations:1},()=>admin.rpc("flh_learning_save_response_draft",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_response:response}));
+  if(error){console.error("Learning typed draft RPC failed",{code:error.code,message:error.message});throw new Error("DRAFT_SAVE_FAILED");}
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
 }
 
 async function answerResponse(learnerId:string,b:any,trace:any){
