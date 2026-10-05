@@ -119,7 +119,7 @@ begin
   reset role;
   if r->>'finalized' is distinct from 'true'
      or r->>'ungraded' is distinct from 'true'
-     or r->'is_correct' is not null then
+     or r->>'is_correct' is not null then
     raise exception 'SUPPORT_TYPED_UNGRADED_RESULT_INVALID:%',r;
   end if;
   if not exists(
