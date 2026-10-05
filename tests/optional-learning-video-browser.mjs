@@ -96,6 +96,8 @@ function createFixture({ video = videoFixture(), language = 'tr', resumed = fals
         return { body: clone(result) };
       }
       if (body.action === 'save_draft') { row.draft_option_position = body.option_position; return { body: { ok: true } }; }
+      if (body.action === 'save_response_draft') { row.draft_response = clone(body.response); return { body: { ok: true, response: clone(body.response) } }; }
+      if (body.action === 'clear_response_draft') { row.draft_response = null; return { body: { ok: true, cleared: true } }; }
       if (body.action === 'answer') { row.status = 'completed'; return { body: { is_correct: true, finalized: true, explanation: '19 - (-7) = 26' } }; }
       if (body.action === 'finish_quiz') return { body: { percentage: 100, first_try_correct: 1, hints_used: 0, award: { already_awarded: true }, review: [] } };
       throw new Error(`Unconfigured synthetic Learning action: ${body.action}`);
@@ -416,6 +418,11 @@ async function typedDraftResumeSkipsIntroVideo(browser, device) {
     assert.equal(typedDirection.dir,'ltr','typed math response must remain LTR inside the RTL shell');
     assert.match(typedDirection.unicodeBidi,/isolate/i,'typed math response must keep bidi isolation');
     assert.equal(await page.locator('.flh-resume-note').count(), 1, 'typed draft resume is visibly identified as resumed Learning');
+    await page.locator('#flhTypedResponse').fill('');
+    await page.locator('#flhTypedResponse').blur();
+    await page.waitForTimeout(50);
+    assert.equal(fixture.count('clear_response_draft'),1,'deleting a restored typed draft must persist a server-side clear');
+    assert.equal(fixture.row.draft_response,null,'server fixture no longer retains the deleted typed draft');
     assert.equal(fixture.count('save_video_report'), 0, 'resuming a typed draft creates no video evidence');
     assert.equal(test.providerRequests.length, 0, 'resuming a typed draft does not initialize the video provider');
     await test.verifyAndClose(`${device.name} typed draft resume`);
