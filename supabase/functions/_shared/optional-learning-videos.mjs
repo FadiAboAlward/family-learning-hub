@@ -13,10 +13,10 @@ export function validateVideoCandidate(value) {
   if (Object.keys(value).some(key => !allowed.has(key))) invalid();
   const result = {};
   for (const key of ['learner_id','quiz_version_id','program_id','curriculum_id','concept_id']) result[key] = uuid(value[key]);
-  const position = value.position == null ? 1 : value.position;
-  if (!Number.isInteger(value.grade_level) || value.grade_level < 1 || value.grade_level > 12 || !Number.isSafeInteger(value.subject_id) || value.subject_id < 1 || !Number.isInteger(position) || position < 1 || position > 20) invalid();
+  const hasPosition = Object.prototype.hasOwnProperty.call(value,'position');
+  if (!Number.isInteger(value.grade_level) || value.grade_level < 1 || value.grade_level > 12 || !Number.isSafeInteger(value.subject_id) || value.subject_id < 1 || (hasPosition && (!Number.isInteger(value.position) || value.position < 1 || value.position > 20))) invalid();
   if (!VIDEO_ID.test(value.video_ref || '') || !['ar','tr','en'].includes(value.language)) invalid();
-  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,position,video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000)};
+  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,...(hasPosition ? {position:value.position} : {}),video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000)};
 }
 
 export function validateVideoReport(value) {

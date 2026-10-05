@@ -43,7 +43,7 @@
       pendingRequest:null,
       saving:false,
     }));
-    let activeIndex = 0, alive = true, player, playerTimeout;
+    let activeIndex = 0, alive = true, player, playerTimeout, renderGeneration = 0;
 
     renderShell(`<section class="panel flh-optional-video" id="flhOptionalVideo" aria-labelledby="flhVideoHeading">
       <h2 id="flhVideoHeading">فيديوهات تعليمية اختيارية</h2>
@@ -61,7 +61,9 @@
     if (!card || !lesson) return false;
 
     function stopPlayer() {
+      renderGeneration += 1;
       clearTimeout(playerTimeout);
+      playerTimeout = null;
       try { player?.destroy(); } catch {}
       player = null;
       card.querySelector('#flhVideoFrame')?.remove();
@@ -73,29 +75,37 @@
     function markActive() {
       card.querySelectorAll('.flh-video-sequence-item').forEach((button,index) => button.setAttribute('aria-current', index === activeIndex ? 'true' : 'false'));
     }
-    function fallback() {
-      if (!alive) return;
+    function isCurrentRender(generation, index, frame) {
+      return alive && generation === renderGeneration && index === activeIndex && frame?.isConnected && card.querySelector('#flhVideoFrame') === frame;
+    }
+    function fallback(generation, index) {
+      if (!alive || generation !== renderGeneration || index !== activeIndex) return;
       stopPlayer();
       card.querySelector('#flhVideoFallback')?.removeAttribute('hidden');
       const unavailable = card.querySelector('#flhVideoUnavailable');
       if (unavailable) unavailable.hidden = true;
     }
-    function activatePlayer(item) {
+    function activatePlayer(item, index, generation) {
       if (!available(item)) return;
       const params = new URLSearchParams({autoplay:'0',rel:'0',controls:'1',playsinline:'1',enablejsapi:'1',origin:location.origin});
       const source = `https://www.youtube-nocookie.com/embed/${item.video_ref}?${params}`;
       const frame = card.querySelector('#flhVideoFrame');
-      if (frame) frame.src = source;
-      playerTimeout = setTimeout(fallback, 10000);
+      if (!frame) return;
+      frame.src = source;
+      playerTimeout = setTimeout(() => fallback(generation, index), 10000);
       loadPlayerApi().then(YT => {
-        if (!alive || !card.querySelector('#flhVideoFrame')) return;
-        const created = new YT.Player('flhVideoFrame', {events:{onReady:() => clearTimeout(playerTimeout),onError:fallback}});
-        if (!alive || !card.querySelector('#flhVideoFrame')) { try { created.destroy(); } catch {} }
+        if (!isCurrentRender(generation, index, frame)) return;
+        const created = new YT.Player(frame, {events:{
+          onReady:() => { if (isCurrentRender(generation, index, frame)) clearTimeout(playerTimeout); },
+          onError:() => fallback(generation, index),
+        }});
+        if (!isCurrentRender(generation, index, frame)) { try { created.destroy(); } catch {} }
         else player = created;
-      }).catch(fallback);
+      }).catch(() => fallback(generation, index));
     }
     function renderActive() {
       stopPlayer();
+      const generation = renderGeneration;
       const index = activeIndex, state = states[index], item = state.video;
       const language = ['ar','tr','en'].includes(item.language) ? item.language : 'ar';
       const isAvailable = available(item);
@@ -113,8 +123,8 @@
           <p id="flhVideoReportStatus" role="status">${state.selfReport === 'not_reported' ? 'لم تُقدّم إفادة عن المشاهدة.' : `إفادتك المحفوظة: ${labels[state.selfReport]}.`}</p>
         </fieldset>` : ''}`;
       markActive();
-      lesson.querySelector('#flhVideoUnavailable')?.addEventListener('click', fallback);
-      lesson.querySelector('#flhVideoFrame')?.addEventListener('error', fallback);
+      lesson.querySelector('#flhVideoUnavailable')?.addEventListener('click', () => fallback(generation, index));
+      lesson.querySelector('#flhVideoFrame')?.addEventListener('error', () => fallback(generation, index));
       if (reportEnabled) {
         const select = lesson.querySelector('#flhVideoReport');
         const save = lesson.querySelector('#flhVideoSave');
@@ -147,7 +157,7 @@
           }
         });
       }
-      activatePlayer(item);
+      activatePlayer(item, index, generation);
     }
 
     const observer = new MutationObserver(() => { if (!card.isConnected) cleanup(); });
