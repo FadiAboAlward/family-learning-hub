@@ -315,8 +315,13 @@ begin
   order by q.position
   limit 1;
 
-  delete from public.learner_concept_mastery
-  where workspace_id=w and learner_id=l and concept_id=v_concept2;
+  if exists (
+    select 1
+    from public.learner_concept_mastery
+    where workspace_id=w and learner_id=l and concept_id=v_concept2
+  ) then
+    raise exception 'SUPPORT_PAPER_MASTERY_PRECONDITION_INVALID';
+  end if;
 
   responses_mixed:=jsonb_build_object(
     'Q-202610050042',jsonb_build_object('value','1 / 4'),
