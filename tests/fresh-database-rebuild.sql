@@ -81,6 +81,7 @@ begin
     'public.flh_learning_finish(uuid,uuid,uuid,integer)',
     'public.flh_exam_start(uuid,uuid,text)',
     'public.flh_paper_exam_start(uuid,uuid,uuid,text,text)',
+    'public.flh_support_workbook_paper_validate_queue(uuid,uuid)',
     'public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)',
     'public.flh_record_exam_concept_mastery(uuid,uuid)'
   ] loop
