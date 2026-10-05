@@ -110,6 +110,7 @@ begin
     return jsonb_build_object('ok',false,'error','SUPPORT_PAPER_QUEUE_MAP_MISMATCH');
   end if;
 
+  v_stage:='runtime_map';
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'sequence_no',x.sequence_no,
@@ -555,7 +556,9 @@ declare
   v_model_code text;
   v_validation jsonb;
   v_sequence integer:=0;
+  v_stage text:='init';
 begin
+  v_stage:='input_validation';
   if p_workspace_id is null
      or p_learner_id is null
      or p_quiz_version_id is null
@@ -575,12 +578,14 @@ begin
     return jsonb_build_object('error','LEARNER_NOT_FOUND');
   end if;
 
+  v_stage:='lock';
   perform pg_advisory_xact_lock(hashtextextended(
     p_workspace_id::text||':'||p_learner_id::text||':'||
     p_quiz_version_id::text||':support-paper',
     0
   ));
 
+  v_stage:='load_version';
   select qv.* into v_version
   from public.quiz_versions qv
   where qv.workspace_id=p_workspace_id
@@ -594,6 +599,7 @@ begin
     return jsonb_build_object('error','SUPPORT_VERSION_NOT_FOUND');
   end if;
 
+  v_stage:='load_quiz';
   select q.* into v_quiz
   from public.quizzes q
   where q.workspace_id=p_workspace_id
@@ -605,6 +611,7 @@ begin
 
   if not found then return jsonb_build_object('error','SUPPORT_SESSION_MISMATCH'); end if;
 
+  v_stage:='entitlement';
   if not (
     exists (
       select 1
@@ -636,6 +643,7 @@ begin
     return jsonb_build_object('error','QUIZ_NOT_AVAILABLE');
   end if;
 
+  v_stage:='response_map';
   if exists (
     select 1
     from jsonb_object_keys(p_responses) response_key(question_code)
@@ -658,6 +666,7 @@ begin
     return jsonb_build_object('error','PAPER_RESPONSE_MAP_INVALID');
   end if;
 
+  v_stage:='response_preflight';
   -- Validate every transcription shape before any attempt/evidence row exists.
   for v_question in
     select q.*
@@ -720,6 +729,7 @@ begin
     end if;
   end loop;
 
+  v_stage:='request_hash';
   v_request_hash:=encode(
     extensions.digest(
       convert_to(jsonb_build_object(
@@ -732,6 +742,7 @@ begin
     'hex'
   );
 
+  v_stage:='request_idempotency';
   select a.* into v_attempt
   from public.quiz_attempts a
   where a.workspace_id=p_workspace_id
@@ -802,6 +813,7 @@ begin
   );
   v_model_code:='SUPPORT:'||v_version.settings->>'source_code'||':'||p_session_slug||':v'||v_version.version_no::text;
 
+  v_stage:='insert_attempt';
   insert into public.quiz_attempts(
     workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
   ) values (
@@ -825,6 +837,7 @@ begin
     )
   ) returning * into v_attempt;
 
+  v_stage:='insert_queue';
   insert into public.quiz_attempt_question_queue(
     workspace_id,quiz_attempt_id,sequence_no,question_id,source_role,
     concept_id,difficulty_level,status,selection_reason
@@ -849,15 +862,18 @@ begin
     and q.delivery_role='core'
   order by q.position,q.id;
 
+  v_stage:='validate_queue';
   v_validation:=public.flh_support_workbook_paper_validate_queue(p_workspace_id,v_attempt.id);
   if coalesce((v_validation->>'ok')::boolean,false) is not true then
     raise exception 'SUPPORT_PAPER_QUEUE_VALIDATION_FAILED:%',coalesce(v_validation->>'error','UNKNOWN');
   end if;
 
+  v_stage:='mark_queue_validated';
   update public.quiz_attempts
   set metadata=metadata||jsonb_build_object('paper_queue_validated',true)
   where workspace_id=p_workspace_id and id=v_attempt.id;
 
+  v_stage:='set_guard_context';
   perform set_config('flh.support_paper_attempt_id',v_attempt.id::text,true);
 
   v_sequence:=0;
@@ -870,6 +886,7 @@ begin
     order by q.position,q.id
   loop
     v_sequence:=v_sequence+1;
+    v_stage:='answer:'||coalesce(v_question.question_code,'?');
     v_question_count:=v_question_count+1;
     v_grading:=coalesce(v_question.source_metadata->>'grading_mode','graded');
     v_input_response:=p_responses->v_question.question_code;
@@ -985,6 +1002,7 @@ begin
 
   if v_question_count=0 then raise exception 'SUPPORT_PAPER_EMPTY_SESSION'; end if;
 
+  v_stage:='build_result';
   v_percentage:=case when v_max>0 then round(v_score/v_max*100,2) else 0 end;
   v_result:=jsonb_build_object(
     'ok',true,
@@ -1002,6 +1020,7 @@ begin
     'delivery_mode','exam'
   );
 
+  v_stage:='submit_attempt';
   update public.quiz_attempts
   set status='submitted',
       submitted_at=clock_timestamp(),
@@ -1019,12 +1038,15 @@ begin
     and learner_id=p_learner_id
     and status='in_progress';
 
+  v_stage:='complete_queue';
   update public.quiz_attempt_question_queue
   set status='completed'
   where workspace_id=p_workspace_id
     and quiz_attempt_id=v_attempt.id;
 
   return v_result;
+exception when others then
+  raise exception 'SUPPORT_PAPER_INGEST_STAGE=% SQLSTATE=% ERROR=%',v_stage,sqlstate,sqlerrm;
 end;
 $function$;
 
