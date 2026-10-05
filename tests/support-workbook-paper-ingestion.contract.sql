@@ -27,6 +27,7 @@ declare
   mixed jsonb;
   v_attempt_id2 uuid;
   v_concept2 uuid;
+  learning_after_paper jsonb;
   v_stage text := 'setup';
 begin
   select id into strict w from public.workspaces where slug='family-learning-hub';
@@ -267,6 +268,18 @@ begin
       and coalesce((a.metadata->>'concept_mastery_recorded')::boolean,false)
       and (a.metadata->>'concept_mastery_evidence_count')::integer=7
   ) then raise exception 'SUPPORT_PAPER_UNGRADED_REFLECTION_AFFECTED_MASTERY'; end if;
+
+  set local role service_role;
+  learning_after_paper:=public.flh_learning_start(w,l,v_slug);
+  reset role;
+  if learning_after_paper->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_DID_NOT_BLOCK_LATER_LEARNING:%',learning_after_paper;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l and a.quiz_version_id=v
+      and a.delivery_mode='learning' and a.status='in_progress'
+  ) then raise exception 'SUPPORT_PAPER_LATER_LEARNING_CREATED_DUPLICATE_ATTEMPT'; end if;
 
   set local role service_role;
   retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
