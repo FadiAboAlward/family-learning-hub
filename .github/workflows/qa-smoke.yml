@@ -98,6 +98,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-answer-rpc.contract.sql
       - name: Verify typed support-workbook Learning responses
         run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-typed-learning.contract.sql
+      - name: Verify typed support-workbook draft and answer concurrency
+        run: node tests/support-workbook-typed-learning.concurrency.mjs
       - name: Verify Learning answer concurrency and idempotency
         run: node tests/learning-answer-rpc.concurrency.mjs
       - name: Verify Learning start RPC contract
