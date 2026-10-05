@@ -5,7 +5,7 @@ declare
   w uuid;
   l uuid;
   v uuid;
-  slug text := 'tr-g5-meb-support-s2-decimals';
+  v_slug text := 'tr-g5-meb-support-s2-decimals';
   request_one uuid := '73000000-0000-4000-8000-000000000001';
   request_two uuid := '73000000-0000-4000-8000-000000000002';
   r jsonb;
@@ -28,13 +28,13 @@ begin
   select qv.id into strict v
   from public.quizzes q
   join public.quiz_versions qv on qv.workspace_id=q.workspace_id and qv.quiz_id=q.id and qv.state='published'
-  where q.workspace_id=w and q.slug=slug
+  where q.workspace_id=w and q.slug=v_slug
     and coalesce((q.delivery_config->>'support_session')::boolean,false)
     and coalesce((qv.settings->>'support_source')::boolean,false)
   order by qv.version_no desc limit 1;
 
   set local role service_role;
-  r:=public.flh_support_workbook_paper_ingest(w,l,v,slug,request_one,'{}'::jsonb);
+  r:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,'{}'::jsonb);
   reset role;
 
   if coalesce((r->>'ok')::boolean,false) is not true
@@ -68,7 +68,7 @@ begin
   ) then raise exception 'SUPPORT_PAPER_LEGACY_BLANK_REUSED'; end if;
 
   set local role service_role;
-  retry:=public.flh_support_workbook_paper_ingest(w,l,v,slug,request_one,'{}'::jsonb);
+  retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,'{}'::jsonb);
   reset role;
   if retry<>r then raise exception 'SUPPORT_PAPER_IDEMPOTENT_RESULT_DRIFT'; end if;
   if (select count(*) from public.quiz_attempts where workspace_id=w and learner_id=l and quiz_version_id=v and status='submitted')<>1 then
@@ -76,7 +76,7 @@ begin
   end if;
 
   set local role service_role;
-  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,slug,request_two,'{}'::jsonb);
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_two,'{}'::jsonb);
   reset role;
   if blocked->>'error' is distinct from 'SESSION_ALREADY_COMPLETED' then
     raise exception 'SUPPORT_PAPER_SECOND_TRANSCRIPTION_NOT_BLOCKED:%',blocked;
