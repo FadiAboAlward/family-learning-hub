@@ -170,9 +170,10 @@ begin
   insert into public.quiz_attempts(
     workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
   ) values (
-    p_workspace_id,p_learner_id,p_quiz_version_id,'in_progress','exam',
+    p_workspace_id,p_learner_id,p_quiz_version_id,'in_progress','learning',
     jsonb_build_object(
       'engine','support-paper-v1',
+      'delivery_surface','paper',
       'support_source',true,
       'support_source_code',v_version.settings->>'source_code',
       'support_session_slug',p_session_slug,
@@ -410,4 +411,4 @@ revoke all on function public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,t
 grant execute on function public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb) to service_role;
 
 comment on function public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb) is
-  'Ingests one exact immutable support-workbook session solved on paper. Blocks duplicate digital/paper completion evidence and never resolves a latest version.';
+  'Ingests one exact immutable support-workbook session solved on paper. Stores it as support-learning evidence with delivery_surface=paper, blocks duplicate digital/paper completion evidence, and never resolves a latest version.';
