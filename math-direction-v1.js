@@ -54,16 +54,24 @@
 
   function isolateMathHtml(value) {
     const text = String(value ?? '');
-    if (!text || text.includes(`class=\"${MATH_CLASS}\"`) || text.includes(`class='${MATH_CLASS}'`)) return text;
-    return splitMathText(text).map(part => part.math
+    if (!text || text.includes(`class="${MATH_CLASS}"`) || text.includes(`class='${MATH_CLASS}'`)) return text;
+    const isolatePlain = plain => splitMathText(plain).map(part => part.math
       ? `<bdi class="${MATH_CLASS}" dir="ltr">${part.text}</bdi>`
       : part.text
     ).join('');
+    const fractionRe=/<span class="frac"><span class="n">\d+<\/span><span class="d">\d+<\/span><\/span>/g;
+    let last=0,result='',match;
+    while((match=fractionRe.exec(text))){
+      result+=isolatePlain(text.slice(last,match.index));
+      result+=`<bdi class="${MATH_CLASS}" dir="ltr">${match[0]}</bdi>`;
+      last=fractionRe.lastIndex;
+    }
+    return result+isolatePlain(text.slice(last));
   }
 
   const originalMath = typeof globalThis.math === 'function' ? globalThis.math : null;
   if (originalMath && !originalMath.__flhDirectionSafe) {
-    const directionSafeMath = value => originalMath(isolateMathHtml(value));
+    const directionSafeMath = value => isolateMathHtml(originalMath(value));
     directionSafeMath.__flhDirectionSafe = true;
     directionSafeMath.__flhOriginalMath = originalMath;
     globalThis.math = directionSafeMath;

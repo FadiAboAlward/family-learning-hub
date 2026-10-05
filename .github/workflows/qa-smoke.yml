@@ -57,6 +57,8 @@ jobs:
         run: node tests/static-qa.mjs
       - name: Academic content quality guard
         run: node tests/academic-content-quality.mjs
+      - name: Official support workbook content guard
+        run: node scripts/academic-content-quality.mjs content/tr-math-g5-meb-support-set1-v1.json
       - name: Math rendering architecture guard
         run: node tests/math-rendering-guard.mjs
       - name: Math direction regression
@@ -94,6 +96,10 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/catalog-normalization.contract.sql
       - name: Verify Learning answer RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-answer-rpc.contract.sql
+      - name: Verify typed support-workbook Learning responses
+        run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-typed-learning.contract.sql
+      - name: Verify typed support-workbook draft and answer concurrency
+        run: node tests/support-workbook-typed-learning.concurrency.mjs
       - name: Verify Learning answer concurrency and idempotency
         run: node tests/learning-answer-rpc.concurrency.mjs
       - name: Verify Learning start RPC contract
@@ -118,6 +124,8 @@ jobs:
         run: node tests/optional-learning-video-sequence.concurrency.mjs
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
+      - name: Verify support-workbook paper ingestion
+        run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-paper-ingestion.contract.sql
       - name: Verify Exam answer save/submit concurrency
         run: node tests/exam-save-submit-race.concurrency.mjs
       - name: Lint reconstructed database

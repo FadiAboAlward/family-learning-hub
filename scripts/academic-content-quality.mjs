@@ -769,14 +769,20 @@ export function validateAcademicPackage(pkg) {
   return { ok: errors.length === 0, errors, warnings };
 }
 
-function main() {
+async function main() {
   const file = process.argv[2];
   if (!file) {
     console.error('Usage: node scripts/academic-content-quality.mjs <academic-package.json>');
     process.exit(2);
   }
   const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const result = validateAcademicPackage(pkg);
+  let result;
+  if (pkg && pkg.package_type === 'support_workbook') {
+    const { validateSupportWorkbookPackage } = await import('./support-workbook-quality.mjs');
+    result = validateSupportWorkbookPackage(pkg);
+  } else {
+    result = validateAcademicPackage(pkg);
+  }
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) process.exit(1);
 }
@@ -794,4 +800,4 @@ if (process.argv[1]) {
 const sameEntrypoint = process.platform === 'win32'
   ? entryPath.toLocaleLowerCase('en-US') === modulePath.toLocaleLowerCase('en-US')
   : entryPath === modulePath;
-if (entryPath && sameEntrypoint) main();
+if (entryPath && sameEntrypoint) await main();

@@ -8,6 +8,28 @@ const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
 const index=read('index.html');
 
+if(exists('content/tr-math-g5-meb-support-set1-v1.json')&&exists('supabase/migrations/20261005103000_register_tr_g5_meb_support_set1.sql')){
+  try{
+    const contentPackage=JSON.parse(read('content/tr-math-g5-meb-support-set1-v1.json'));
+    const migration=read('supabase/migrations/20261005103000_register_tr_g5_meb_support_set1.sql');
+    const match=migration.match(/v_pkg\s+jsonb\s*:=\s*\$pkg\$([\s\S]*?)\$pkg\$::jsonb;/);
+    if(!match)fail('Support workbook migration is missing its embedded validated package payload.');
+    else{
+      const embedded=JSON.parse(match[1]);
+      if(JSON.stringify(embedded)!==JSON.stringify(contentPackage))fail('Support workbook migration payload drifted from the validated content package.');
+    }
+    const supportQuestions=(contentPackage.sessions||[]).flatMap(session=>session.questions||[]);
+    const cardQuestion=supportQuestions.find(question=>question.question_code==='Q-202610050041');
+    const requiredCardMappings=['1,4→B','6/50→E','1/4→D','9,25→T','0,1→A','0,4→O','%50→M','3/5→İ','0,36→L','3/10→S','3,6→K','1,2→N'];
+    if(!cardQuestion||requiredCardMappings.some(mapping=>!String(cardQuestion.prompt||'').includes(mapping)))fail('Support workbook card-matching question must embed the source value-to-letter mapping for self-contained solving.');
+    const supportByCode=new Map(supportQuestions.map(question=>[question.question_code,question]));
+    const accepted=(code)=>supportByCode.get(code)?.answer?.accepted_text||[];
+    if(!accepted('Q-202610050001').includes('4/6'))fail('Q-202610050001 must accept the direct equivalent 4/6 response because simplest form is not required.');
+    if(!accepted('Q-202610050053').includes('C ve B'))fail('Q-202610050053 must accept the unordered equivalent C ve B.');
+    if(!accepted('Q-202610050060').includes('Cemre, Mete, Eda'))fail('Q-202610050060 must accept valid name-order permutations.');
+  }catch(error){fail(`Support workbook package/migration parity check failed: ${error.message}`);}
+}
+
 /** Extract one active top-level GitHub Actions job block by YAML indentation. */
 function yamlJobBlock(yaml,jobName){
   const lines=yaml.split(/\r?\n/),start=lines.findIndex(line=>line.trimEnd()===`  ${jobName}:`);
@@ -138,6 +160,11 @@ if(!learning.includes('id="flhConfirmAnswer"'))fail('Learning Mode needs a dedic
 if(!learning.includes('تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'))fail('Learning selection guidance missing.');
 if(!learning.includes('row.draft_option_position=pos;\n      render();'))fail('Learning selection must render locally before draft persistence.');
 if(!learning.includes("call('save_draft'"))fail('Learning draft persistence missing.');
+if(!learning.includes("call('save_response_draft'")||!learning.includes("call('clear_response_draft'"))fail('Typed Learning draft persistence missing.');
+if(!learning.includes('row.typed_draft_dirty=true')||!learning.includes('row.typed_draft_error=true'))fail('Typed Learning drafts must retain dirty/error state when persistence is uncertain.');
+if(!learning.includes('async function exitLearning()')||!learning.includes('await (row.typed_draft_save||saveTypedDraft(row))')||!learning.includes("addEventListener('click',exitLearning)"))fail('Typed Learning exit must await/retry dirty draft persistence instead of silently discarding it.');
+if(learning.includes("save_response_draft',{attempt_id:session.attempt_id,question_id:row.question_id,response:{value}}).catch(()=>{})"))fail('Typed Learning draft save failures must not be silently swallowed.');
+if(!learning.includes('role="status" aria-live="polite"'))fail('Learning draft persistence status must be announced accessibly.');
 if(!learning.includes('draftController?.abort()'))fail('Learning must cancel stale draft requests before newer/final state.');
 if(!learning.includes('class="answer-grid answer-layout-v8"'))fail('Learning answer grid must opt into shared layout immediately.');
 if(!exam.includes('class="answers answer-layout-v8"'))fail('Exam must use shared answer layout.');

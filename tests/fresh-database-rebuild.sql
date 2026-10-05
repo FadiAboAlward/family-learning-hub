@@ -75,9 +75,20 @@ begin
     'public.verify_and_upgrade_learner_pin(uuid,uuid,text)',
     'public.flh_learning_start(uuid,uuid,text)',
     'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)',
+    'public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb)',
+    'public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid)',
+    'public.flh_learning_answer_response(uuid,uuid,uuid,uuid,jsonb)',
     'public.flh_learning_finish(uuid,uuid,uuid,integer)',
     'public.flh_exam_start(uuid,uuid,text)',
     'public.flh_paper_exam_start(uuid,uuid,uuid,text,text)',
+    'public.flh_support_paper_runtime_package(uuid,uuid)',
+    'public.flh_support_paper_validate_queue(uuid,uuid)',
+    'public.flh_support_workbook_paper_validate_queue(uuid,uuid)',
+    'public.flh_support_paper_start(uuid,uuid,uuid,text,text)',
+    'public.flh_support_paper_exam_save_response(uuid,uuid,uuid,uuid,jsonb)',
+    'public.flh_support_paper_exam_submit(uuid,uuid,uuid,integer[])',
+    'public.flh_support_record_exam_concept_mastery(uuid,uuid)',
+    'public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)',
     'public.flh_record_exam_concept_mastery(uuid,uuid)'
   ] loop
     if to_regprocedure(v_function) is null then
@@ -124,6 +135,38 @@ begin
     where workspace_id = v_workspace and quiz_version_id = v_paper_version
   ) <> 20 then
     raise exception 'FRESH_REBUILD_PAPER_MODEL_QUESTION_COUNT_INVALID';
+  end if;
+
+  if (
+    select count(*)
+    from public.quiz_versions v
+    join public.quizzes q
+      on q.workspace_id=v.workspace_id and q.id=v.quiz_id
+    where v.workspace_id=v_workspace
+      and v.state='published'
+      and coalesce((v.settings->>'support_source')::boolean,false)
+      and q.slug like 'tr-g5-meb-support-s%'
+      and nullif(v.settings->'paper_exam'->>'paper_model_code','') is not null
+      and v.settings->'paper_exam'->'paper_canonical_package' is not null
+      and nullif(v.settings->'paper_exam'->>'paper_content_hash','') is not null
+      and nullif(v.settings->'paper_exam'->>'paper_runtime_content_hash','') is not null
+  ) <> 12 then
+    raise exception 'FRESH_REBUILD_SUPPORT_PAPER_MODELS_INVALID';
+  end if;
+
+  if exists (
+    select 1
+    from public.quiz_versions v
+    join public.quizzes q
+      on q.workspace_id=v.workspace_id and q.id=v.quiz_id
+    where v.workspace_id=v_workspace
+      and v.state='published'
+      and coalesce((v.settings->>'support_source')::boolean,false)
+      and q.slug like 'tr-g5-meb-support-s%'
+      and public.flh_paper_exam_runtime_hash(v.workspace_id,v.id)
+          is distinct from v.settings->'paper_exam'->>'paper_runtime_content_hash'
+  ) then
+    raise exception 'FRESH_REBUILD_SUPPORT_PAPER_RUNTIME_HASH_DRIFT';
   end if;
 
   if exists (

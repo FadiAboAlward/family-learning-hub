@@ -1,0 +1,432 @@
+-- FLH-FEAT-2026-020 v1.0
+-- Exact-version paper ingestion contract for one official support session.
+do $contract$
+declare
+  w uuid;
+  l uuid;
+  v uuid;
+  v_slug text := 'tr-g5-meb-support-s2-decimals';
+  request_one uuid := '73000000-0000-4000-8000-000000000001';
+  request_two uuid := '73000000-0000-4000-8000-000000000002';
+  request_bad_extra uuid := '73000000-0000-4000-8000-000000000003';
+  request_bad_missing uuid := '73000000-0000-4000-8000-000000000004';
+  request_no_access uuid := '73000000-0000-4000-8000-000000000006';
+  request_inactive_program uuid := '73000000-0000-4000-8000-000000000007';
+  request_bad_ungraded uuid := '73000000-0000-4000-8000-000000000008';
+  v_program uuid;
+  responses jsonb;
+  first_code text;
+  r jsonb;
+  retry jsonb;
+  blocked jsonb;
+  v_attempt_id uuid;
+  v2 uuid;
+  v_slug2 text := 'tr-g5-meb-support-s6-space-crisis-scan';
+  request_mixed uuid := '73000000-0000-4000-8000-000000000005';
+  responses_mixed jsonb;
+  mixed jsonb;
+  v_attempt_id2 uuid;
+  v_concept2 uuid;
+  learning_after_paper jsonb;
+  v_stage text := 'setup';
+begin
+  select id into strict w from public.workspaces where slug='family-learning-hub';
+  select id into strict l
+  from public.learners
+  where workspace_id=w and slug='test' and is_active
+    and coalesce((metadata->>'is_test')::boolean,false);
+
+  if has_function_privilege('anon','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('authenticated','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
+     or not has_function_privilege('service_role','public.flh_support_workbook_paper_ingest(uuid,uuid,uuid,text,uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE')
+     or has_function_privilege('authenticated','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE')
+     or not has_function_privilege('service_role','public.flh_support_workbook_paper_validate_queue(uuid,uuid)','EXECUTE') then
+    raise exception 'SUPPORT_PAPER_ACL_INVALID';
+  end if;
+
+  select qv.id into strict v
+  from public.quizzes q
+  join public.quiz_versions qv on qv.workspace_id=q.workspace_id and qv.quiz_id=q.id and qv.state='published'
+  where q.workspace_id=w and q.slug=v_slug
+    and coalesce((q.delivery_config->>'support_session')::boolean,false)
+    and coalesce((qv.settings->>'support_source')::boolean,false)
+  order by qv.version_no desc limit 1;
+
+  select jsonb_object_agg(q.question_code,'{"support_unanswered":true}'::jsonb order by q.position)
+    into strict responses
+  from public.quiz_questions q
+  where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core';
+
+  responses:=jsonb_set(
+    responses,
+    array['Q-202610050012'],
+    '{"value":"Kırk dört tam yüzde elli."}'::jsonb,
+    true
+  );
+
+  select q.question_code into strict first_code
+  from public.quiz_questions q
+  where q.workspace_id=w and q.quiz_version_id=v and q.delivery_role='core'
+  order by q.position
+  limit 1;
+
+  if exists(
+    select 1 from public.quiz_assignments qa
+    where qa.workspace_id=w and qa.learner_id=l and qa.quiz_version_id=v
+      and qa.status in ('assigned','in_progress')
+      and (qa.available_at is null or qa.available_at<=now())
+      and (qa.due_at is null or qa.due_at>=now())
+  ) then raise exception 'SUPPORT_PAPER_ENTITLEMENT_TEST_PRECONDITION_INVALID'; end if;
+
+  update public.learner_program_enrollments e
+  set status='paused'
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='active'
+    and exists(
+      select 1 from public.program_quizzes pq
+      join public.quiz_versions qv
+        on qv.workspace_id=pq.workspace_id and qv.quiz_id=pq.quiz_id
+      where pq.workspace_id=e.workspace_id
+        and pq.program_id=e.program_id
+        and pq.availability='available'
+        and qv.id=v
+    );
+
+  v_stage:='unentitled';
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_no_access,responses);
+  reset role;
+  if blocked->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_UNENTITLED_LEARNER_NOT_BLOCKED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_no_access::text
+  ) then raise exception 'SUPPORT_PAPER_UNENTITLED_LEARNER_CREATED_EVIDENCE'; end if;
+
+  update public.learner_program_enrollments e
+  set status='active'
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='paused'
+    and exists(
+      select 1 from public.program_quizzes pq
+      join public.quiz_versions qv
+        on qv.workspace_id=pq.workspace_id and qv.quiz_id=pq.quiz_id
+      where pq.workspace_id=e.workspace_id
+        and pq.program_id=e.program_id
+        and pq.availability='available'
+        and qv.id=v
+    );
+
+  select e.program_id into strict v_program
+  from public.learner_program_enrollments e
+  join public.program_quizzes pq
+    on pq.workspace_id=e.workspace_id
+   and pq.program_id=e.program_id
+   and pq.availability='available'
+  join public.quiz_versions qv
+    on qv.workspace_id=pq.workspace_id
+   and qv.quiz_id=pq.quiz_id
+   and qv.id=v
+  where e.workspace_id=w
+    and e.learner_id=l
+    and e.status='active'
+  limit 1;
+
+  update public.learning_programs
+  set status='archived'
+  where workspace_id=w and id=v_program and status='active';
+
+  v_stage:='inactive_program';
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_inactive_program,responses);
+  reset role;
+  if blocked->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_INACTIVE_PROGRAM_NOT_BLOCKED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_inactive_program::text
+  ) then raise exception 'SUPPORT_PAPER_INACTIVE_PROGRAM_CREATED_EVIDENCE'; end if;
+
+  update public.learning_programs
+  set status='active'
+  where workspace_id=w and id=v_program and status='archived';
+
+  v_stage:='malformed_ungraded';
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_ungraded,
+    jsonb_set(
+      responses,
+      array['Q-202610050012'],
+      '{}'::jsonb,
+      true
+    )
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_INVALID' then
+    raise exception 'SUPPORT_PAPER_MALFORMED_UNGRADED_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_ungraded::text
+  ) then raise exception 'SUPPORT_PAPER_MALFORMED_UNGRADED_CREATED_EVIDENCE'; end if;
+
+  v_stage:='unknown_code';
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_extra,
+    responses || jsonb_build_object('TYPO-UNKNOWN-CODE','{"support_unanswered":true}'::jsonb)
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_MAP_INVALID' then
+    raise exception 'SUPPORT_PAPER_UNKNOWN_CODE_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_extra::text
+  ) then raise exception 'SUPPORT_PAPER_UNKNOWN_CODE_CREATED_EVIDENCE'; end if;
+
+  v_stage:='missing_code';
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_bad_missing,responses-first_code
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_RESPONSE_MAP_INVALID' then
+    raise exception 'SUPPORT_PAPER_MISSING_CODE_NOT_REJECTED:%',blocked;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l
+      and a.metadata->>'support_paper_request_id'=request_bad_missing::text
+  ) then raise exception 'SUPPORT_PAPER_MISSING_CODE_CREATED_EVIDENCE'; end if;
+
+  v_stage:='primary_ingest';
+  set local role service_role;
+  r:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
+  reset role;
+
+  if coalesce((r->>'ok')::boolean,false) is not true
+     or r->>'paper_ingested' is distinct from 'true'
+     or (r->>'question_count')::integer<>8
+     or (r->>'graded_count')::integer<>7
+     or (r->>'ungraded_count')::integer<>1
+     or (r->>'unanswered_count')::integer<>7
+     or (r->>'max_points')::numeric<>7
+     or (r->>'score_points')::numeric<>0
+     or (r->>'percentage')::numeric<>0 then
+    raise exception 'SUPPORT_PAPER_RESULT_INVALID:%',r;
+  end if;
+
+  v_attempt_id:=(r->>'attempt_id')::uuid;
+  if not exists(
+    select 1 from public.quiz_attempts a
+    where a.id=v_attempt_id and a.workspace_id=w and a.learner_id=l
+      and a.status='submitted' and a.delivery_mode='exam'
+      and a.metadata->>'engine'='support-paper-exam-v1'
+      and a.metadata->>'delivery_surface'='paper'
+      and coalesce((a.metadata->>'support_workbook_paper')::boolean,false)
+      and coalesce((a.metadata->>'paper_queue_validated')::boolean,false)
+      and nullif(a.metadata->>'support_question_map_hash','') is not null
+      and coalesce((a.metadata->>'paper_ingested')::boolean,false)
+  ) then raise exception 'SUPPORT_PAPER_ATTEMPT_METADATA_INVALID'; end if;
+
+  if (select count(*) from public.quiz_attempt_answers aa where aa.attempt_id=v_attempt_id and aa.response='{"unanswered":true}'::jsonb)<>7 then
+    raise exception 'SUPPORT_PAPER_BLANK_REPRESENTATION_INVALID';
+  end if;
+  if exists(
+    select 1 from public.quiz_attempt_answers aa
+    where aa.attempt_id=v_attempt_id and aa.response ? 'support_unanswered'
+  ) then raise exception 'SUPPORT_PAPER_NONCANONICAL_BLANK_STORED'; end if;
+
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q
+      on q.workspace_id=aa.workspace_id and q.id=aa.question_id
+    where aa.attempt_id=v_attempt_id
+      and q.question_code='Q-202610050012'
+      and aa.response='{"value":"Kırk dört tam yüzde elli."}'::jsonb
+      and aa.evaluation='ungraded'
+      and aa.is_correct is null
+      and aa.points_awarded=0
+      and aa.mastery_result is null
+  ) then raise exception 'SUPPORT_PAPER_UNGRADED_REFLECTION_NOT_PRESERVED'; end if;
+
+  if not exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.id=v_attempt_id
+      and coalesce((a.metadata->>'concept_mastery_recorded')::boolean,false)
+      and (a.metadata->>'concept_mastery_evidence_count')::integer=7
+  ) then raise exception 'SUPPORT_PAPER_UNGRADED_REFLECTION_AFFECTED_MASTERY'; end if;
+
+  set local role service_role;
+  learning_after_paper:=public.flh_learning_start(w,l,v_slug);
+  reset role;
+  if learning_after_paper->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
+    raise exception 'SUPPORT_PAPER_DID_NOT_BLOCK_LATER_LEARNING:%',learning_after_paper;
+  end if;
+  if exists(
+    select 1 from public.quiz_attempts a
+    where a.workspace_id=w and a.learner_id=l and a.quiz_version_id=v
+      and a.delivery_mode='learning' and a.status='in_progress'
+  ) then raise exception 'SUPPORT_PAPER_LATER_LEARNING_CREATED_DUPLICATE_ATTEMPT'; end if;
+
+  set local role service_role;
+  retry:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_one,responses);
+  reset role;
+  if retry<>r then raise exception 'SUPPORT_PAPER_IDEMPOTENT_RESULT_DRIFT'; end if;
+  if (select count(*) from public.quiz_attempts where workspace_id=w and learner_id=l and quiz_version_id=v and status='submitted')<>1 then
+    raise exception 'SUPPORT_PAPER_IDEMPOTENT_ATTEMPT_DUPLICATION';
+  end if;
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(
+    w,l,v,v_slug,request_one,
+    jsonb_set(responses,array[first_code],jsonb_build_object('value','changed transcription'),true)
+  );
+  reset role;
+  if blocked->>'error' is distinct from 'PAPER_REQUEST_CONFLICT' then
+    raise exception 'SUPPORT_PAPER_CHANGED_RETRY_NOT_REJECTED:%',blocked;
+  end if;
+  if (select count(*) from public.quiz_attempts where workspace_id=w and learner_id=l and quiz_version_id=v and status='submitted')<>1 then
+    raise exception 'SUPPORT_PAPER_CHANGED_RETRY_CREATED_ATTEMPT';
+  end if;
+
+  set local role service_role;
+  blocked:=public.flh_support_workbook_paper_ingest(w,l,v,v_slug,request_two,responses);
+  reset role;
+  if blocked->>'error' is distinct from 'SESSION_ALREADY_COMPLETED' then
+    raise exception 'SUPPORT_PAPER_SECOND_TRANSCRIPTION_NOT_BLOCKED:%',blocked;
+  end if;
+
+  -- Mixed scoring contract on a second immutable support session: accepted
+  -- short answers (including spaced punctuation), one correct option, one wrong
+  -- option, and one explicit paper blank must grade deterministically.
+  select qv.id into strict v2
+  from public.quizzes q
+  join public.quiz_versions qv on qv.workspace_id=q.workspace_id and qv.quiz_id=q.id and qv.state='published'
+  where q.workspace_id=w and q.slug=v_slug2
+    and coalesce((q.delivery_config->>'support_session')::boolean,false)
+    and coalesce((qv.settings->>'support_source')::boolean,false)
+  order by qv.version_no desc limit 1;
+
+  select qc.concept_id into strict v_concept2
+  from public.quiz_questions q
+  join public.quiz_question_concepts qc
+    on qc.workspace_id=q.workspace_id and qc.question_id=q.id and qc.is_primary
+  where q.workspace_id=w and q.quiz_version_id=v2
+  order by q.position
+  limit 1;
+
+  if exists (
+    select 1
+    from public.learner_concept_mastery
+    where workspace_id=w and learner_id=l and concept_id=v_concept2
+  ) then
+    raise exception 'SUPPORT_PAPER_MASTERY_PRECONDITION_INVALID';
+  end if;
+
+  responses_mixed:=jsonb_build_object(
+    'Q-202610050042',jsonb_build_object('value','1 / 4'),
+    'Q-202610050043',jsonb_build_object('value','9 / 9'),
+    'Q-202610050044',jsonb_build_object('value','3 / 5'),
+    'Q-202610050045',jsonb_build_object('option_position',3),
+    'Q-202610050046','{"support_unanswered":true}'::jsonb,
+    'Q-202610050047',jsonb_build_object('option_position',2),
+    'Q-202610050048',jsonb_build_object('value','1, 2, 3')
+  );
+
+  v_stage:='mixed_ingest';
+  set local role service_role;
+  mixed:=public.flh_support_workbook_paper_ingest(w,l,v2,v_slug2,request_mixed,responses_mixed);
+  reset role;
+
+  if coalesce((mixed->>'ok')::boolean,false) is not true
+     or (mixed->>'score_points')::numeric<>4
+     or (mixed->>'max_points')::numeric<>7
+     or (mixed->>'percentage')::numeric<>57.14
+     or (mixed->>'unanswered_count')::integer<>1 then
+    raise exception 'SUPPORT_PAPER_MIXED_SCORE_INVALID:%',mixed;
+  end if;
+
+  v_attempt_id2:=(mixed->>'attempt_id')::uuid;
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050042' and aa.evaluation='correct' and aa.is_correct=true
+  ) then raise exception 'SUPPORT_PAPER_SHORT_ANSWER_NOT_GRADED_CORRECT'; end if;
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050043' and aa.evaluation='incorrect' and aa.is_correct=false
+  ) then raise exception 'SUPPORT_PAPER_SHORT_ANSWER_INCORRECT_NOT_RECORDED'; end if;
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050045' and aa.evaluation='correct' and aa.is_correct=true
+  ) then raise exception 'SUPPORT_PAPER_OPTION_NOT_GRADED_CORRECT'; end if;
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050046'
+      and aa.response='{"unanswered":true}'::jsonb and aa.evaluation='incorrect'
+  ) then raise exception 'SUPPORT_PAPER_EXPLICIT_BLANK_NOT_RECORDED'; end if;
+  if not exists(
+    select 1
+    from public.quiz_attempt_answers aa
+    join public.quiz_questions q on q.id=aa.question_id and q.workspace_id=aa.workspace_id
+    where aa.attempt_id=v_attempt_id2 and q.question_code='Q-202610050048'
+      and aa.evaluation='correct' and aa.is_correct=true
+  ) then raise exception 'SUPPORT_PAPER_SPACED_SHORT_ANSWER_NOT_NORMALIZED'; end if;
+
+  if not exists(
+    select 1 from public.learner_concept_mastery m
+    where m.workspace_id=w and m.learner_id=l and m.concept_id=v_concept2
+      and m.evidence_count=7 and m.total_question_count=7
+      and m.mastery_score=57.14
+      and m.metadata->>'mastery_engine'='primary-concept-running-evidence-v1'
+      and m.metadata->>'last_evidence_mode'='support_paper'
+  ) then raise exception 'SUPPORT_PAPER_MASTERY_DELTA_INVALID'; end if;
+
+  -- A successful DO statement commits, so explicitly remove only this
+  -- contract's attempt and mastery fixtures. Failures roll back the DO statement.
+  delete from public.quiz_attempts a
+  where a.workspace_id=w and a.id in (v_attempt_id,v_attempt_id2);
+
+  delete from public.quiz_assignments qa
+  where qa.workspace_id=w
+    and qa.learner_id=l
+    and qa.quiz_version_id in (v,v2)
+    and qa.metadata->>'source'='support_workbook_paper';
+
+  delete from public.learner_concept_mastery m
+  where m.workspace_id=w
+    and m.learner_id=l
+    and m.metadata->>'last_exam_attempt_id' in (v_attempt_id::text,v_attempt_id2::text)
+    and exists (
+      select 1
+      from public.quiz_question_concepts qc
+      join public.quiz_questions q
+        on q.workspace_id=qc.workspace_id and q.id=qc.question_id
+      where qc.workspace_id=w
+        and qc.concept_id=m.concept_id
+        and q.quiz_version_id in (v,v2)
+    );
+exception when others then
+  raise exception 'SUPPORT_PAPER_CONTRACT_STAGE=% SQLSTATE=% ERROR=%',v_stage,sqlstate,sqlerrm;
+end;
+$contract$;

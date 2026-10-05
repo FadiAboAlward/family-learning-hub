@@ -23,19 +23,23 @@ function videoFixture(overrides = {}) {
   };
 }
 
-function createFixture({ video = videoFixture(), language = 'tr', resumed = false, progressed = false } = {}) {
+function createFixture({ video = videoFixture(), language = 'tr', resumed = false, progressed = false, typedDraft = null } = {}) {
   const calls = [];
   const reportResults = new Map();
   let failure = null;
   let delayPromise = null;
   let releaseDelay;
   let started = resumed;
+  const typed = typeof typedDraft === 'string';
   const row = {
     question_id: 'qa-optional-video-question', source_role: 'core', status: 'active',
-    draft_option_position: progressed ? 1 : null, hint_level_requested: 0,
+    draft_option_position: typed ? null : (progressed ? 1 : null),
+    draft_response: typed ? { value: typedDraft } : null,
+    hint_level_requested: 0,
     question: { id: 'qa-optional-video-question', question_code: 'QA-OPTIONAL-VIDEO', prompt_language: language,
+      question_type: typed ? 'numeric' : 'single_choice',
       prompt: language === 'ar' ? 'احسب: 19 - (-7)' : '19 - (-7) işleminin sonucu nedir?',
-      options: [{ position: 1, content: '26' }, { position: 2, content: '-26' }], assets: [] },
+      options: typed ? [] : [{ position: 1, content: '26' }, { position: 2, content: '-26' }], assets: [] },
   };
   return {
     calls, row, video,
@@ -92,6 +96,8 @@ function createFixture({ video = videoFixture(), language = 'tr', resumed = fals
         return { body: clone(result) };
       }
       if (body.action === 'save_draft') { row.draft_option_position = body.option_position; return { body: { ok: true } }; }
+      if (body.action === 'save_response_draft') { row.draft_response = clone(body.response); return { body: { ok: true, response: clone(body.response) } }; }
+      if (body.action === 'clear_response_draft') { row.draft_response = null; return { body: { ok: true, cleared: true } }; }
       if (body.action === 'answer') { row.status = 'completed'; return { body: { is_correct: true, finalized: true, explanation: '19 - (-7) = 26' } }; }
       if (body.action === 'finish_quiz') return { body: { percentage: 100, first_try_correct: 1, hints_used: 0, award: { already_awarded: true }, review: [] } };
       throw new Error(`Unconfigured synthetic Learning action: ${body.action}`);
@@ -396,6 +402,34 @@ async function resumeAndRetry(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
+async function typedDraftResumeSkipsIntroVideo(browser, device) {
+  const test = await setup(browser, device, {
+    resumed: true,
+    typedDraft: '2,5',
+    video: videoFixture({ only_before_first_question: true }),
+  });
+  const { page, fixture } = test;
+  try {
+    await start(page);
+    await page.locator('#flhTypedResponse').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#flhOptionalVideo').count(), 0, 'restored typed draft counts as Learning progress and skips the intro video');
+    assert.equal(await page.locator('#flhTypedResponse').inputValue(), '2,5', 'typed draft is restored into the active response control');
+    const typedDirection=await page.locator('#flhTypedResponse').evaluate(node=>({dir:node.getAttribute('dir'),unicodeBidi:getComputedStyle(node).unicodeBidi}));
+    assert.equal(typedDirection.dir,'ltr','typed math response must remain LTR inside the RTL shell');
+    assert.match(typedDirection.unicodeBidi,/isolate/i,'typed math response must keep bidi isolation');
+    assert.equal(await page.locator('.flh-resume-note').count(), 1, 'typed draft resume is visibly identified as resumed Learning');
+    await page.locator('#flhTypedResponse').fill('');
+    const cleared=page.waitForResponse(response=>response.url().endsWith('/learning-api')&&response.request().postDataJSON()?.action==='clear_response_draft');
+    await page.locator('#flhTypedResponse').blur();
+    await cleared;
+    assert.equal(fixture.count('clear_response_draft'),1,'deleting a restored typed draft must persist a server-side clear');
+    assert.equal(fixture.row.draft_response,null,'server fixture no longer retains the deleted typed draft');
+    assert.equal(fixture.count('save_video_report'), 0, 'resuming a typed draft creates no video evidence');
+    assert.equal(test.providerRequests.length, 0, 'resuming a typed draft does not initialize the video provider');
+    await test.verifyAndClose(`${device.name} typed draft resume`);
+  } catch (error) { await test.context.close(); throw error; }
+}
+
 async function reportPendingDoesNotGate(browser, device) {
   const test = await setup(browser, device);
   const { page, fixture } = test;
@@ -552,6 +586,7 @@ try {
     await stalePlayerInitialization(browser, device);
     await skipWithoutReport(browser, device);
     await resumeAndRetry(browser, device);
+    await typedDraftResumeSkipsIntroVideo(browser, device);
     await reportPendingDoesNotGate(browser, device);
     await priorInteractionResume(browser, device);
     await directPreviewDeepLink(browser, device);

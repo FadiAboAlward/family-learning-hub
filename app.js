@@ -8,7 +8,7 @@ const state = { learnerSession: localStorage.getItem('learner_session') || sessi
 function loadJson(k){ try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null} }
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function frac(n,d){return `<span class="frac"><span class="n">${n}</span><span class="d">${d}</span></span>`}
-function math(s){return String(s).replace(/(\d+)\/(\d+)/g,(_,n,d)=>frac(n,d))}
+function math(s){return String(s).replace(/\\frac\{(\d+)\}\{(\d+)\}|(\d+)\/(\d+)/g,(_,latexN,latexD,n,d)=>frac(latexN||n,latexD||d))}
 function errorText(code){
   const map={INVALID_LOGIN:'الاسم أو الرمز غير صحيح.',INVALID_OR_USED_INVITE:'رمز دعوة الأهل غير صحيح أو تم استخدامه.',PARENT_ACCOUNT_LIMIT:'تم إنشاء حسابَي الأهل المسموحين.',INVALID_REGISTRATION:'تأكد من البريد وكلمة المرور ورمز الدعوة.',CREATE_PARENT_FAILED:'تعذر إنشاء الحساب. جرّب بريدًا آخر أو كلمة مرور أقوى.',INVALID_PARENT_SESSION:'انتهت جلسة الدخول. سجل الدخول من جديد.',NOT_A_PARENT_MEMBER:'هذا الحساب غير مرتبط بالعائلة.'};
   return map[code]||'صار خطأ بسيط. جرّب مرة ثانية.';
