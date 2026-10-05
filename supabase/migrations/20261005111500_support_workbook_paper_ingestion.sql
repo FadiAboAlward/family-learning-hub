@@ -184,7 +184,7 @@ begin
     end if;
 
     if v_question.question_type='single_choice' then
-      if jsonb_object_length(v_response)<>1
+      if public.jsonb_object_length(v_response)<>1
          or not(v_response?'option_position') then
         return jsonb_build_object('error','PAPER_RESPONSE_INVALID','question_code',v_question.question_code);
       end if;
@@ -199,7 +199,7 @@ begin
         return jsonb_build_object('error','PAPER_RESPONSE_INVALID','question_code',v_question.question_code);
       end if;
     elsif v_question.question_type in ('numeric','short_answer') then
-      if jsonb_object_length(v_response)<>1
+      if public.jsonb_object_length(v_response)<>1
          or not(v_response?'value')
          or jsonb_typeof(v_response->'value')<>'string' then
         return jsonb_build_object('error','PAPER_RESPONSE_INVALID','question_code',v_question.question_code);
