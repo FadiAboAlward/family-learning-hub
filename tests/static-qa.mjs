@@ -8,6 +8,19 @@ const exists=p=>fs.existsSync(path.join(ROOT,p));
 const fail=m=>failures.push(m);
 const index=read('index.html');
 
+if(exists('content/tr-math-g5-meb-support-set1-v1.json')&&exists('supabase/migrations/20261005103000_register_tr_g5_meb_support_set1.sql')){
+  try{
+    const contentPackage=JSON.parse(read('content/tr-math-g5-meb-support-set1-v1.json'));
+    const migration=read('supabase/migrations/20261005103000_register_tr_g5_meb_support_set1.sql');
+    const match=migration.match(/v_pkg\s+jsonb\s*:=\s*\$pkg\$([\s\S]*?)\$pkg\$::jsonb;/);
+    if(!match)fail('Support workbook migration is missing its embedded validated package payload.');
+    else{
+      const embedded=JSON.parse(match[1]);
+      if(JSON.stringify(embedded)!==JSON.stringify(contentPackage))fail('Support workbook migration payload drifted from the validated content package.');
+    }
+  }catch(error){fail(`Support workbook package/migration parity check failed: ${error.message}`);}
+}
+
 /** Extract one active top-level GitHub Actions job block by YAML indentation. */
 function yamlJobBlock(yaml,jobName){
   const lines=yaml.split(/\r?\n/),start=lines.findIndex(line=>line.trimEnd()===`  ${jobName}:`);
