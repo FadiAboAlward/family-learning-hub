@@ -75,6 +75,13 @@ const codes=result=>new Set(result.errors.map(e=>e.code));
   assert(codes(validateSupportWorkbookPackage(pkg)).has('DECOMPOSITION_PROFILE_REQUIRED'),'decomposable question without 3/6 profile must fail');
 }
 {
+  const pkg=basePackage();
+  pkg.sessions[0].questions[0].prompt='\\frac{2}{5}=\\frac{4}{10} ilişkisini değerlendiriniz.';
+  pkg.sessions[0].questions[0].explanation_ar='نحتاج للانتقال من 19 إلى 60 إلى 41 خلية؛ الأرقام تفصل الكلمات المتكررة دلاليًا.';
+  const result=validateSupportWorkbookPackage(pkg);
+  assert(!codes(result).has('ADJACENT_DUPLICATE_WORD'),JSON.stringify(result.errors,null,2));
+}
+{
   const result=validateSupportWorkbookPackage(basePackage());
   assert.equal(result.ok,true,JSON.stringify(result.errors,null,2));
 }
