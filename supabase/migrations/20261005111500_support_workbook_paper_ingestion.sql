@@ -3,6 +3,21 @@
 -- session. The caller must name the exact immutable quiz version and session
 -- slug; no "latest" resolution is allowed.
 
+-- Keep the existing paper-exam blank representation exclusive to its
+-- guarded model. Support-workbook transcriptions use a distinct exact blank.
+alter table public.quiz_attempt_answers
+  drop constraint if exists quiz_attempt_answers_attempts_used_check;
+
+alter table public.quiz_attempt_answers
+  add constraint quiz_attempt_answers_attempts_used_check
+  check (
+    attempts_used between 1 and 10
+    or (
+      attempts_used = 0
+      and response in ('{"support_unanswered":true}'::jsonb,'{"support_unanswered":true}'::jsonb)
+    )
+  );
+
 create or replace function public.flh_support_workbook_paper_ingest(
   p_workspace_id uuid,
   p_learner_id uuid,
@@ -204,7 +219,7 @@ begin
     v_grading:=coalesce(v_question.source_metadata->>'grading_mode','graded');
     v_response:=p_responses->v_question.question_code;
     if v_response is null then
-      v_response:='{"unanswered":true}'::jsonb;
+      v_response:='{"support_unanswered":true}'::jsonb;
     end if;
 
     select qc.concept_id into v_concept_id
@@ -216,7 +231,7 @@ begin
 
     if v_grading='ungraded' then
       v_ungraded_count:=v_ungraded_count+1;
-      if v_response='{"unanswered":true}'::jsonb then
+      if v_response='{"support_unanswered":true}'::jsonb then
         v_unanswered_count:=v_unanswered_count+1;
       end if;
 
@@ -226,7 +241,7 @@ begin
       ) values (
         p_workspace_id,v_attempt.id,v_question.id,v_response,'ungraded',null,
         0,
-        case when v_response='{"unanswered":true}'::jsonb then 0 else 1 end,
+        case when v_response='{"support_unanswered":true}'::jsonb then 0 else 1 end,
         0,null,null
       );
       continue;
@@ -246,7 +261,7 @@ begin
       raise exception 'SUPPORT_PAPER_ANSWER_KEY_MISSING:%',v_question.question_code;
     end if;
 
-    if v_response='{"unanswered":true}'::jsonb then
+    if v_response='{"support_unanswered":true}'::jsonb then
       v_unanswered_count:=v_unanswered_count+1;
       v_is_correct:=false;
     elsif v_question.question_type='single_choice' then
@@ -308,9 +323,9 @@ begin
       p_workspace_id,v_attempt.id,v_question.id,v_response,
       case when v_is_correct then 'correct' else 'incorrect' end,
       v_is_correct,v_points,
-      case when v_response='{"unanswered":true}'::jsonb then 0 else 1 end,
+      case when v_response='{"support_unanswered":true}'::jsonb then 0 else 1 end,
       0,
-      case when v_response='{"unanswered":true}'::jsonb then false else v_is_correct end,
+      case when v_response='{"support_unanswered":true}'::jsonb then false else v_is_correct end,
       case when v_is_correct then 'mastered' else 'not_mastered' end
     );
 
