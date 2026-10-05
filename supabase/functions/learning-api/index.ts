@@ -21,7 +21,13 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
     throw new Error("START_QUIZ_FAILED");
   }
   if((data as any)?.error)throw new Error(String((data as any).error));
-  return data;
+  const payload:any=data;
+  if(payload?.attempt_id&&Array.isArray(payload?.queue)&&payload.queue.length){
+    const{data:drafts}=await trace.measure("start.typed_drafts",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("question_id,interaction_metadata").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",String(payload.attempt_id)));
+    const byQuestion=new Map((drafts||[]).map((row:any)=>[String(row.question_id),row.interaction_metadata?.draft_response??null]));
+    payload.queue=payload.queue.map((row:any)=>({...row,draft_response:byQuestion.get(String(row.question_id))??null}));
+  }
+  return payload;
 }
 
 async function previewVideos(learnerId:string,slug:string,trace:any){
@@ -45,8 +51,28 @@ async function videoAuthor(req:Request){
   return data.user.id;
 }
 
-async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
+async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested,interaction_metadata").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
 async function saveDraft(learnerId:string,b:any,trace:any){const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),pos=Number(b.option_position);if(!attemptId||!questionId||!Number.isInteger(pos))throw new Error("INVALID_ANSWER");const{queue}=await activeLearningQuestion(learnerId,attemptId,questionId,trace);const{data:o}=await trace.measure("draft.option",{dbOperations:1},()=>admin.from("quiz_question_options").select("id").eq("workspace_id",WORKSPACE_ID).eq("question_id",questionId).eq("position",pos).maybeSingle());if(!o)throw new Error("INVALID_ANSWER");await trace.measure("draft.persist",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").update({draft_option_position:pos,interaction_metadata:{draft_saved_at:new Date().toISOString()}}).eq("id",queue.id));return{ok:true,option_position:pos};}
+async function saveResponseDraft(learnerId:string,b:any,trace:any){
+  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=b.response;
+  if(!attemptId||!questionId||!response||typeof response!=="object")throw new Error("INVALID_ANSWER");
+  const{queue}=await activeLearningQuestion(learnerId,attemptId,questionId,trace);
+  const{data:q}=await trace.measure("draft.question",{dbOperations:1},()=>admin.from("quiz_questions").select("question_type").eq("workspace_id",WORKSPACE_ID).eq("id",questionId).maybeSingle());
+  if(!q||!["numeric","short_answer"].includes(String(q.question_type)))throw new Error("UNSUPPORTED_QUESTION_TYPE");
+  const nextMeta={...(queue.interaction_metadata||{}),draft_response:response,draft_saved_at:new Date().toISOString()};
+  await trace.measure("draft.persist_response",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").update({interaction_metadata:nextMeta}).eq("id",queue.id));
+  return{ok:true,response};
+}
+
+async function answerResponse(learnerId:string,b:any,trace:any){
+  const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),response=b.response;
+  if(!attemptId||!questionId||!response||typeof response!=="object")throw new Error("INVALID_ANSWER");
+  const{data,error}=await trace.measure("answer.response_rpc",{dbOperations:1},()=>admin.rpc("flh_learning_answer_response",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_response:response}));
+  if(error){console.error("Learning typed response RPC failed",{code:error.code,message:error.message});throw new Error("ANSWER_SAVE_FAILED");}
+  if((data as any)?.error)throw new Error(String((data as any).error));
+  return data;
+}
+
 async function requestHint(learnerId:string,b:any,trace:any){const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||"");if(!attemptId||!questionId)throw new Error("INVALID_HINT_REQUEST");const{queue}=await activeLearningQuestion(learnerId,attemptId,questionId,trace);const current=Number(queue.hint_level_requested||0);if(current>=4)return{ok:true,exhausted:true,hint:null,hint_level:current};const next=current+1;const{data:h}=await trace.measure("hint.lookup",{dbOperations:1},()=>admin.from("quiz_question_hints").select("hint_level,pedagogical_role,content,language,terminology_display_mode").eq("workspace_id",WORKSPACE_ID).eq("question_id",questionId).eq("hint_level",next).maybeSingle());if(!h)return{ok:true,exhausted:true,hint:null,hint_level:current};await trace.measure("hint.persist",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").update({hint_level_requested:next}).eq("id",queue.id));return{ok:true,exhausted:next>=4,hint:h,hint_level:next};}
 
 async function answerQuestion(learnerId:string,b:any,trace:any){
@@ -82,7 +108,7 @@ Deno.serve(async(req:Request)=>{
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
     const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status"]);
-    const allowed=new Set(["start_quiz","preview_videos","save_draft","request_hint","answer","finish_quiz","save_video_report",...parentActions]);
+    const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
     let output;
@@ -95,8 +121,10 @@ Deno.serve(async(req:Request)=>{
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
       else if(action==="preview_videos")output=await previewVideos(lid,String(b.quiz_slug||""),trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
+      else if(action==="save_response_draft")output=await saveResponseDraft(lid,b,trace);
       else if(action==="request_hint")output=await requestHint(lid,b,trace);
       else if(action==="answer")output=await answerQuestion(lid,b,trace);
+      else if(action==="answer_response")output=await answerResponse(lid,b,trace);
       else if(action==="save_video_report")output=await saveOptionalVideoReport(admin,WORKSPACE_ID,lid,b,trace);
       else output=await finishQuiz(lid,b,trace);
     }
