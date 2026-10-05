@@ -30,10 +30,29 @@ function answerCandidates(q){
 }
 function normalized(v){return clean(v).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.').replace(/\s+/gu,'');}
 function hintLeaks(hint,candidate){
+  const rawH=clean(hint).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
+  const rawA=clean(candidate).toLocaleLowerCase('und').replace(/[−–—]/gu,'-').replace(/[٫,]/gu,'.');
+  if(!rawA)return false;
+  const escapedRaw=rawA.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
   const h=normalized(hint),a=normalized(candidate);
   if(!a||a.length<2)return false;
   if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
   const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
+  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
+}');
+  if(rawA.length===1){
+    if(/[\\p{L}\\p{N}]/u.test(rawA))return new RegExp('(^|[^\\p{L}\\p{N}])'+escapedRaw+'([^\\p{L}\\p{N}]|$)','u').test(rawH);
+    return rawH.includes(rawA);
+  }
+  const h=normalized(hint),a=normalized(candidate);
+  if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
+  const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
+  const h=normalized(hint),a=normalized(candidate);
+  if(!a||a.length<2)return false;
+  if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
+  const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
+  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
+}');
   return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
 }
 
@@ -138,7 +157,10 @@ export function validateSupportWorkbookPackage(pkg){
         const pos=Number(q?.answer?.option_position);
         if(grading==='graded'&&(!Number.isInteger(pos)||pos<1||pos>opts.length))push(errors,'SINGLE_CHOICE_ANSWER_INVALID',qp+'.answer.option_position','Answer position must reference an option.');
       }
-      if(q?.type==='numeric'&&grading==='graded'&&!Number.isFinite(Number(clean(q?.answer?.value).replace(',','.'))))push(errors,'NUMERIC_ANSWER_INVALID',qp+'.answer.value','Numeric answer must be finite.');
+      if(q?.type==='numeric'&&grading==='graded'){
+        const numericAnswer=clean(q?.answer?.value);
+        if(!numericAnswer||!Number.isFinite(Number(numericAnswer.replace(',','.'))))push(errors,'NUMERIC_ANSWER_INVALID',qp+'.answer.value','Numeric answer must be a non-empty finite value.');
+      }
       if(q?.type==='short_answer'&&grading==='graded'){
         const accepted=Array.isArray(q?.answer?.accepted_text)?q.answer.accepted_text.map(clean).filter(Boolean):[];
         if(!accepted.length&&!clean(q?.answer?.value))push(errors,'SHORT_ANSWER_KEY_INVALID',qp+'.answer','Short answer needs accepted_text or value.');
