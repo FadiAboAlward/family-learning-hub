@@ -833,6 +833,23 @@ revoke all on function public.flh_support_paper_validate_queue(uuid,uuid) from p
 revoke all on function public.flh_support_paper_validate_queue(uuid,uuid) from anon,authenticated;
 grant execute on function public.flh_support_paper_validate_queue(uuid,uuid) to service_role;
 
+create or replace function public.flh_support_workbook_paper_validate_queue(
+  p_workspace_id uuid,
+  p_attempt_id uuid
+)
+returns jsonb
+language sql
+security definer
+stable
+set search_path to 'public'
+as $function$
+  select public.flh_support_paper_validate_queue(p_workspace_id,p_attempt_id);
+$function$;
+
+revoke all on function public.flh_support_workbook_paper_validate_queue(uuid,uuid) from public;
+revoke all on function public.flh_support_workbook_paper_validate_queue(uuid,uuid) from anon,authenticated;
+grant execute on function public.flh_support_workbook_paper_validate_queue(uuid,uuid) to service_role;
+
 create or replace function public.flh_support_paper_start(
   p_workspace_id uuid,
   p_learner_id uuid,
@@ -969,9 +986,11 @@ begin
   ) values (
     p_workspace_id,p_learner_id,p_quiz_version_id,v_assignment_id,'in_progress','exam',
     jsonb_build_object(
-      'engine','support-paper-v2','server_graded',true,'server_state',true,
+      'engine','support-paper-exam-v1','server_graded',true,'server_state',true,
+      'delivery_surface','paper','support_workbook_paper',true,
       'support_source',true,'support_source_code',v_version.settings->>'source_code',
       'support_session_slug',v_version.slug,
+      'support_question_map_hash',encode(extensions.digest(convert_to(v_map::text,'UTF8'),'sha256'),'hex'),
       'paper_model_code',p_paper_model_code,
       'paper_quiz_version_id',p_quiz_version_id::text,
       'paper_content_hash',v_paper->>'paper_content_hash',
@@ -1407,7 +1426,7 @@ begin
       percentage=case when v_max>0 then round(v_score/v_max*100,2) else 0 end,
       duration_seconds=v_duration,
       metadata=coalesce(metadata,'{}'::jsonb)||jsonb_build_object(
-        'engine','support-paper-v2','server_graded',true,'question_count',v_queue_count
+        'engine','support-paper-exam-v1','server_graded',true,'question_count',v_queue_count
       )
   where workspace_id=p_workspace_id and id=p_attempt_id and status='in_progress';
 
