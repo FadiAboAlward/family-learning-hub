@@ -5,8 +5,10 @@ do $migration$
 declare
   v_workspace uuid;
   v_curriculum uuid;
+  v_curriculum_subject uuid;
   v_subject bigint;
   v_program uuid;
+  v_test_learner uuid;
   v_program_subject uuid;
   v_book uuid;
   v_unit_repr uuid;
@@ -2062,10 +2064,94 @@ begin
   select id into strict v_workspace from public.workspaces where slug='family-learning-hub';
   select id into strict v_curriculum from public.curricula where code='turkiye-meb' and is_active;
   select id into strict v_subject from public.subjects where code='math';
-  select id into strict v_program from public.learning_programs
-    where workspace_id=v_workspace and slug='tr-g5-2026-2027';
-  select id into strict v_program_subject from public.program_subjects
-    where workspace_id=v_workspace and program_id=v_program and subject_id=v_subject;
+
+  select id into v_curriculum_subject
+  from public.curriculum_subjects
+  where curriculum_id=v_curriculum
+    and subject_id=v_subject
+    and grade_level=5
+    and school_year='2026-2027'
+  limit 1;
+
+  if v_curriculum_subject is null then
+    insert into public.curriculum_subjects(
+      curriculum_id,subject_id,grade_level,school_year,display_name,sort_order,metadata
+    ) values (
+      v_curriculum,v_subject,5,'2026-2027','Matematik — 5. Sınıf',1,
+      jsonb_build_object(
+        'model','Türkiye Yüzyılı Maarif Modeli',
+        'feature_id','FLH-FEAT-2026-020',
+        'created_for','official_support_catalog'
+      )
+    ) returning id into v_curriculum_subject;
+  end if;
+
+  select id into v_program
+  from public.learning_programs
+  where workspace_id=v_workspace and slug='tr-g5-2026-2027'
+  limit 1;
+
+  if v_program is null then
+    insert into public.learning_programs(
+      workspace_id,slug,code,title,description,program_type,curriculum_id,
+      grade_level,school_year,primary_language,status,metadata
+    ) values (
+      v_workspace,'tr-g5-2026-2027','TR-G5-2026-2027',
+      'المنهاج التركي — الصف الخامس — 2026–2027',
+      'برنامج الصف الخامس وفق منهج MEB التركي للعام 2026–2027.',
+      'curriculum',v_curriculum,5,'2026-2027','tr','active',
+      jsonb_build_object(
+        'created_reason','Turkish Grade 5 active curriculum catalog',
+        'feature_id','FLH-FEAT-2026-020'
+      )
+    ) returning id into v_program;
+  end if;
+
+  select id into v_program_subject
+  from public.program_subjects
+  where workspace_id=v_workspace
+    and program_id=v_program
+    and subject_id=v_subject
+  limit 1;
+
+  if v_program_subject is null then
+    insert into public.program_subjects(
+      workspace_id,program_id,subject_id,curriculum_subject_id,display_name,sort_order,metadata
+    ) values (
+      v_workspace,v_program,v_subject,v_curriculum_subject,'Matematik',1,
+      jsonb_build_object('language','tr','feature_id','FLH-FEAT-2026-020')
+    ) returning id into v_program_subject;
+  end if;
+
+  -- Fresh CI contains only the dedicated Testing learner. Give that learner
+  -- access to the support catalog for authenticated QA without fabricating
+  -- Aya/Mohammad or changing any real learner's primary program.
+  select id into v_test_learner
+  from public.learners
+  where workspace_id=v_workspace
+    and slug='test'
+    and is_active
+    and coalesce((metadata->>'is_test')::boolean,false)
+  limit 1;
+
+  if v_test_learner is not null then
+    insert into public.learner_program_enrollments(
+      workspace_id,learner_id,program_id,status,is_primary,started_at,metadata
+    ) values (
+      v_workspace,v_test_learner,v_program,'active',false,current_date,
+      jsonb_build_object(
+        'qa_preview',true,
+        'feature_id','FLH-FEAT-2026-020',
+        'skip_test_mirror',true
+      )
+    )
+    on conflict (learner_id,program_id) do update
+    set status='active',
+        is_primary=false,
+        ended_at=null,
+        metadata=public.learner_program_enrollments.metadata || excluded.metadata,
+        updated_at=now();
+  end if;
 
   select id into v_book from public.books where code='TR-MEB-G5-MATH-SUPPORT-SET1-2026';
   if v_book is null then
