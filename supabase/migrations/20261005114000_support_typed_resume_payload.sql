@@ -1,8 +1,7 @@
 -- FLH-FEAT-2026-020 v1.0
--- Forward-only reconciliation of the current Learning start RPC.
--- Preserve the latest optional-video/start contract exactly while adding only
--- the persisted typed-response draft to each queue row. Edge still performs
--- one DB operation for start/resume.
+-- Forward-only reconciliation: preserve the latest Learning start/resume payload
+-- (including optional_video) and add only persisted typed-response draft_response.
+-- Historical migrations remain immutable.
 
 create or replace function public.flh_learning_start(
   p_workspace_id uuid,
