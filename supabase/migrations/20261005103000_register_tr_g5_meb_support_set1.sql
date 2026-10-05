@@ -257,7 +257,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "1 + 25/100 = 1.25.",
+          "explanation_ar": "نضيف الجزء الكسري إلى العدد الصحيح: 1 + 25/100 = 1.25.",
           "source_note": null
         },
         {
@@ -275,7 +275,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "2/100 = 0.02.",
+          "explanation_ar": "اثنان من مئة يساويان 2/100 = 0.02.",
           "source_note": null
         },
         {
@@ -293,7 +293,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3 + 2/10 = 3.2.",
+          "explanation_ar": "نضيف الجزء الكسري إلى العدد الصحيح: 3 + 2/10 = 3.2.",
           "source_note": null
         },
         {
@@ -570,7 +570,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3/5 = 6/10 = 0.6.",
+          "explanation_ar": "ثلاثة أخماس تساوي ستة أعشار؛ لذلك 3/5 = 6/10 = 0.6.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -588,7 +588,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3/5 = 60/100 = %60.",
+          "explanation_ar": "ثلاثة أخماس تساوي ستين من مئة؛ لذلك 3/5 = 60/100 = %60.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -609,7 +609,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%30 = 30/100 = 3/10.",
+          "explanation_ar": "النسبة %30 تعني 30/100، وبالتبسيط نحصل على 3/10.",
           "source_note": null
         },
         {
@@ -627,7 +627,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%30 = 0.30 = 0.3.",
+          "explanation_ar": "النسبة %30 تساوي 0.30، ويمكن كتابتها 0.3.",
           "source_note": null
         },
         {
@@ -648,7 +648,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%75 = 75/100 = 3/4.",
+          "explanation_ar": "النسبة %75 تعني 75/100، وبالتبسيط نحصل على 3/4.",
           "source_note": null
         },
         {
@@ -666,7 +666,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%75 = 0.75.",
+          "explanation_ar": "النسبة %75 تساوي العدد العشري 0.75.",
           "source_note": null
         },
         {
@@ -705,7 +705,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "1/2 = 0.5.",
+          "explanation_ar": "النصف 1/2 يساوي العدد العشري 0.5.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -810,7 +810,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "43/100 = 0.43.",
+          "explanation_ar": "ثلاثة وأربعون من مئة تساوي 43/100 = 0.43.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -828,7 +828,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "43/100 = %43.",
+          "explanation_ar": "ثلاثة وأربعون من مئة تساوي النسبة %43.",
           "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
         },
         {
@@ -1101,7 +1101,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "0.6 > 0.3.",
+          "explanation_ar": "لدينا 0.6 > 0.3؛ لذلك اللوح الثاني ينتج طاقة أكثر.",
           "source_note": null
         },
         {
@@ -1457,7 +1457,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3/5 = 6/10 = 0.6.",
+          "explanation_ar": "ثلاثة أخماس تساوي ستة أعشار؛ لذلك 3/5 = 6/10 = 0.6 والعبارة صحيحة.",
           "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
@@ -1499,7 +1499,7 @@ declare
           "origin": "book_adapted",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "3/4 = 75/100 = %75.",
+          "explanation_ar": "ثلاثة أرباع تساوي 75/100، أي %75؛ لذلك العبارة صحيحة.",
           "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
         },
         {
@@ -1769,7 +1769,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "2/5=0.4 ve 3/4=0.75.",
+          "explanation_ar": "لدينا 2/5 = 0.4 و3/4 = 0.75؛ لذلك 2/5 أصغر من 3/4.",
           "source_note": null
         },
         {
@@ -1923,7 +1923,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%25 = 0.25 = 1/4.",
+          "explanation_ar": "النسبة %25 تساوي 0.25 وتساوي أيضًا 1/4؛ لذلك القيمتان متساويتان.",
           "source_note": null
         },
         {
@@ -1945,7 +1945,7 @@ declare
           "origin": "book_exact",
           "difficulty": 2,
           "activity": null,
-          "explanation_ar": "%75 = 0.75.",
+          "explanation_ar": "النسبة %75 تساوي 0.75؛ لذلك القيمتان متساويتان.",
           "source_note": null
         }
       ]
