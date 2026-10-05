@@ -32,12 +32,7 @@ function hintLeaks(hint,candidate){
   const h=normalized(hint),a=normalized(candidate);
   if(!a||a.length<2)return false;
   if(/[0-9٠-٩%/.,<>=+*−-]/u.test(a))return h.includes(a);
-  const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\function hintLeaks(hint,candidate){
-  const h=normalized(hint),a=normalized(candidate);
-  if(!a||a.length<2)return false;
   const escaped=a.replace(/[.*+?^$()|[\]{}\\]/g,'\\$&');
-  return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
-}');
   return new RegExp('(^|[^\\p{L}\\p{N}])'+escaped+'([^\\p{L}\\p{N}]|$)','u').test(h);
 }
 
