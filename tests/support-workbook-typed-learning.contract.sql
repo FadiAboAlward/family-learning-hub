@@ -1,7 +1,5 @@
 -- FLH-FEAT-2026-020 v1.0
 -- Typed Learning contract for official support-workbook sessions.
-begin;
-
 do $contract$
 declare
   w uuid;
