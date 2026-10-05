@@ -14,7 +14,7 @@ alter table public.quiz_attempt_answers
     attempts_used between 1 and 10
     or (
       attempts_used = 0
-      and response in ('{"support_unanswered":true}'::jsonb,'{"support_unanswered":true}'::jsonb)
+      and response in ('{"unanswered":true}'::jsonb,'{"support_unanswered":true}'::jsonb)
     )
   );
 
