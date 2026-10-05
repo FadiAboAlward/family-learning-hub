@@ -7,7 +7,7 @@ declare
   v uuid;
   q_numeric uuid;
   q_reflection uuid;
-  concept_id uuid;
+  v_concept_id uuid;
   a1 uuid := '72000000-0000-4000-8000-000000000001';
   a2 uuid := '72000000-0000-4000-8000-000000000002';
   r jsonb;
@@ -26,7 +26,7 @@ begin
   end if;
 
   select qv.id,qq.id,qc.concept_id
-    into strict v,q_numeric,concept_id
+    into strict v,q_numeric,v_concept_id
   from public.quizzes quiz
   join public.quiz_versions qv on qv.workspace_id=quiz.workspace_id and qv.quiz_id=quiz.id and qv.state='published'
   join public.quiz_questions qq on qq.workspace_id=qv.workspace_id and qq.quiz_version_id=qv.id
@@ -42,7 +42,7 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status,interaction_metadata
   )
-  select w,a1,1,q_numeric,concept_id,difficulty_level,'active','{"draft_response":{"value":"2,5"}}'::jsonb
+  select w,a1,1,q_numeric,v_concept_id,difficulty_level,'active','{"draft_response":{"value":"2,5"}}'::jsonb
   from public.quiz_questions where id=q_numeric;
 
   set local role service_role;
@@ -78,7 +78,7 @@ begin
   ) then raise exception 'SUPPORT_TYPED_FINAL_ANSWER_INVALID'; end if;
   if not exists(
     select 1 from public.learner_concept_mastery
-    where learner_id=l and concept_id=concept_id and mastery_score=75
+    where learner_id=l and concept_id=v_concept_id and mastery_score=75
       and evidence_count=1 and total_question_count=1 and total_hint_count=1
   ) then raise exception 'SUPPORT_TYPED_MASTERY_INVALID'; end if;
 
@@ -87,7 +87,7 @@ begin
   reset role;
   if retry<>r then raise exception 'SUPPORT_TYPED_IDEMPOTENT_RESULT_DRIFT'; end if;
   if (select count(*) from public.quiz_answer_attempts where quiz_attempt_id=a1 and question_id=q_numeric)<>2
-     or (select evidence_count from public.learner_concept_mastery where learner_id=l and concept_id=concept_id)<>1 then
+     or (select evidence_count from public.learner_concept_mastery where learner_id=l and concept_id=v_concept_id)<>1 then
     raise exception 'SUPPORT_TYPED_IDEMPOTENT_SIDE_EFFECT_DUPLICATION';
   end if;
 
@@ -128,7 +128,7 @@ begin
       and evaluation='ungraded' and is_correct is null
       and points_awarded=0 and mastery_result is null
   ) then raise exception 'SUPPORT_TYPED_UNGRADED_PERSISTENCE_INVALID'; end if;
-  if (select evidence_count from public.learner_concept_mastery where learner_id=l and concept_id=concept_id)<>1 then
+  if (select evidence_count from public.learner_concept_mastery where learner_id=l and concept_id=v_concept_id)<>1 then
     raise exception 'SUPPORT_TYPED_UNGRADED_AFFECTED_MASTERY';
   end if;
 
@@ -140,7 +140,7 @@ begin
   delete from public.learner_concept_mastery
   where workspace_id=w
     and learner_id=l
-    and concept_id=concept_id
+    and concept_id=v_concept_id
     and metadata->>'engine'='learning-api-v2';
 end;
 $contract$;
