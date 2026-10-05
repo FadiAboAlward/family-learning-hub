@@ -317,7 +317,7 @@ begin
       end;
       v_is_correct:=abs(v_numeric_response-v_numeric_correct)<=greatest(v_tolerance,0);
     elsif v_question.question_type='short_answer' then
-      v_text_response:=lower(regexp_replace(btrim(coalesce(v_response->>'value','')),'[[:space:]]+',' ','g'));
+      v_text_response:=lower(regexp_replace(btrim(coalesce(v_response->>'value','')),'[[:space:]]+','','g'));
       if v_text_response='' then
         raise exception 'SUPPORT_PAPER_RESPONSE_INVALID:%',v_question.question_code;
       end if;
@@ -325,10 +325,10 @@ begin
         select exists(
           select 1
           from jsonb_array_elements_text(v_key.correct_answer->'accepted_text') t(value)
-          where lower(regexp_replace(btrim(t.value),'[[:space:]]+',' ','g'))=v_text_response
+          where lower(regexp_replace(btrim(t.value),'[[:space:]]+','','g'))=v_text_response
         ) into v_is_correct;
       else
-        v_is_correct:=v_text_response=lower(regexp_replace(btrim(coalesce(v_key.correct_answer->>'value','')),'[[:space:]]+',' ','g'));
+        v_is_correct:=v_text_response=lower(regexp_replace(btrim(coalesce(v_key.correct_answer->>'value','')),'[[:space:]]+','','g'));
       end if;
     else
       raise exception 'SUPPORT_PAPER_QUESTION_TYPE_UNSUPPORTED:%',v_question.question_code;
