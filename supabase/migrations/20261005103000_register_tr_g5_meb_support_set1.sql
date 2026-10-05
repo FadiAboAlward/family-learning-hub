@@ -76,7 +76,9 @@ declare
           "difficulty": 2,
           "activity": "Antik Mısır’dan Günümüze Kesirlerin Farklı Gösterimleri",
           "explanation_ar": "أربع بيتزات لستة أشخاص تعني 4/6، وبالتبسيط تصبح 2/3 لكل شخص.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050002",
@@ -101,7 +103,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "نقسم 9 على 8: الناتج 1 والباقي 1، لذلك يساوي 1 و1/8.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050003",
@@ -126,7 +130,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "18 = 13 + 5، لذلك الكسر يساوي 1 و5/13.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050004",
@@ -151,7 +157,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "21 = 18 + 3، و18/6 = 3؛ إذن الناتج 3 و3/6.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050005",
@@ -176,7 +184,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "15 = 9 + 6، لذلك يساوي 1 و6/9.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -204,7 +214,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "المقام 10، لذلك 25/10 = 2.5.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050007",
@@ -222,7 +234,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "87/10 يساوي 8.7.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050008",
@@ -240,7 +254,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "المقام 100 يعني منزلتين عشريتين: 0.85.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050009",
@@ -258,7 +274,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "نضيف الجزء الكسري إلى العدد الصحيح: 1 + 25/100 = 1.25.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050010",
@@ -276,7 +294,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "اثنان من مئة يساويان 2/100 = 0.02.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050011",
@@ -294,7 +314,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "نضيف الجزء الكسري إلى العدد الصحيح: 3 + 2/10 = 3.2.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050012",
@@ -310,7 +332,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": "Görseldeki tartı ekranı semantik olarak 44,50 biçiminde aktarılmıştır."
+          "source_note": "Görseldeki tartı ekranı semantik olarak 44,50 biçiminde aktarılmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050013",
@@ -328,7 +352,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "نجمع 100 + 40 + 2 + 0.50 = 142.50 ليرة تركية.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         }
       ]
     },
@@ -360,7 +386,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "الواحد الصحيح يساوي 10/10؛ وبإضافة 3/10 يصبح المجموع 13/10.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050015",
@@ -378,7 +406,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "واحد صحيح وثلاثة أعشار يساوي 1.3.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050016",
@@ -399,7 +429,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "العددان الصحيحان يساويان 200/100؛ وبإضافة 14/100 يصبح المجموع 214/100.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050017",
@@ -417,7 +449,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "اثنان صحيحان وأربعة عشر جزءًا من مئة يساوي 2.14.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050018",
@@ -439,7 +473,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لأن 25 = 8×3 + 1، فإن 25/8 يساوي 3 و1/8.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050019",
@@ -455,7 +491,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050020",
@@ -471,7 +509,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050021",
@@ -487,7 +527,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050022",
@@ -505,7 +547,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بتبسيط 5/20 نحصل على 1/4؛ و1/4 = 0.25.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -532,7 +576,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050024",
@@ -553,7 +599,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "خمسة أقسام منها ثلاثة ممتلئة، إذن الكسر 3/5.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050025",
@@ -571,7 +619,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة أخماس تساوي ستة أعشار؛ لذلك 3/5 = 6/10 = 0.6.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050026",
@@ -589,7 +639,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة أخماس تساوي ستين من مئة؛ لذلك 3/5 = 60/100 = %60.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050027",
@@ -610,7 +662,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %30 تعني 30/100، وبالتبسيط نحصل على 3/10.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050028",
@@ -628,7 +682,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %30 تساوي 0.30، ويمكن كتابتها 0.3.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050029",
@@ -649,7 +705,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %75 تعني 75/100، وبالتبسيط نحصل على 3/4.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050030",
@@ -667,7 +725,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %75 تساوي العدد العشري 0.75.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050031",
@@ -688,7 +748,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بتبسيط 5/10 نحصل على 1/2.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050032",
@@ -706,7 +768,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النصف 1/2 يساوي العدد العشري 0.5.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050033",
@@ -724,7 +788,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لأن الإناء ممتلئ إلى النصف، فالنسبة هي %50.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -756,7 +822,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة من أربعة أجزاء متساوية ممتلئة؛ إذن الكسر هو 3/4.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050035",
@@ -772,7 +840,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050036",
@@ -793,7 +863,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "أربعون خلية كاملة مع ثلاث خلايا إضافية تساوي 43/100.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050037",
@@ -811,7 +883,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة وأربعون من مئة تساوي 43/100 = 0.43.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050038",
@@ -829,7 +903,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة وأربعون من مئة تساوي النسبة %43.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050039",
@@ -845,7 +921,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050040",
@@ -868,7 +946,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "نحتاج للانتقال من 19 إلى 60 إلى 41 خلية. ‏1×9 + 4×8 = 41، أي خمس مرات لاستخدام الفرشاة.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050041",
@@ -889,7 +969,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "التمثيلات المتكافئة تعطي الأحرف M-O-D-E-L-L-E-M-E بالترتيب.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         }
       ]
     },
@@ -920,7 +1002,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "يتبسط الكسر 5/20 إلى 1/4.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050043",
@@ -941,7 +1025,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "المجموع 20، وفي الغرفة B العدد 3؛ لذلك الكسر هو 3/20.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050044",
@@ -962,7 +1048,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بتبسيط 12/20 نحصل على 3/5.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050045",
@@ -984,7 +1072,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بما أن 12 هو العدد الأكبر، فالإجابة هي الغرفة C.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050046",
@@ -1005,7 +1095,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "المقامات متساوية؛ لذلك 4/5 أكبر من 1/5.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050047",
@@ -1026,7 +1118,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "عندما تتساوى البسوط، يكون الكسر ذو المقام الأصغر أكبر؛ لذلك 3/4 > 3/7.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050048",
@@ -1048,7 +1142,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "الكسر 5/6 قريب من 1، و4/9 قريب من 1/2، و1/11 قريب من 0.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -1081,7 +1177,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %75 هي أكبر نسبة امتلاء.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050050",
@@ -1102,7 +1200,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 0.6 > 0.3؛ لذلك اللوح الثاني ينتج طاقة أكثر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050051",
@@ -1124,7 +1224,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %80 تساوي 0.8، والقيمتان الأخريان هما 0.45 و0.2.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050052",
@@ -1146,7 +1248,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بما أن المقامين متساويان، نقارن البسطين؛ فنجد أن 12 < 21.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050053",
@@ -1168,7 +1272,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "قياسا B هما 0.8 و0.45، وقياسا C هما 1.2 و0.4؛ كلاهما يلائم الحجرة، أما طول A فهو 0.9 متر ويتجاوز الحد.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050054",
@@ -1184,7 +1290,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         }
       ]
     },
@@ -1216,7 +1324,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 7/10 = 0.7 و2/5 = 0.4؛ لذلك L أكثر امتلاء.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050056",
@@ -1237,7 +1347,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 0.75 < 0.8، بينما 0.84 > 0.8.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050057",
@@ -1258,7 +1370,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "الفرق بين 0.49 و0.50 هو 0.01، والفرق بين 0.46 و0.50 هو 0.04.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -1291,7 +1405,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "بعد التحويل: T=0.8 وS=0.6 وR=0.45 وP=0.2؛ لذا الترتيب من الأكبر إلى الأصغر هو T ثم S ثم R ثم P.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050059",
@@ -1313,7 +1429,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "في C كمية البروتين 6.75 غ وهي الأعلى، وكمية الدهون 0.42 غ وهي الأقل.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050060",
@@ -1335,7 +1453,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "الحد هو 7.5 ساعات. إيدا 8.05، ومته 7.8، وجمره 8.5؛ جميعهم تجاوزوا الحد.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": true
         }
       ]
     },
@@ -1367,7 +1487,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 6/8 = 3/4 = %75، وهي أكبر من %48.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050062",
@@ -1383,7 +1505,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": null,
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         },
         {
           "question_code": "Q-202610050063",
@@ -1405,7 +1529,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "في المشروع 1 الورشة 0.36 والمستودع 0.20، وفي المشروع 3 الورشة 0.40 والمستودع 0.21. كلاهما يحقق الشرط، لكن مساحة الورشة في المشروع 3 أكبر.",
-          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır."
+          "source_note": "Kaynak görselde çözüm için gerekli nicelikler self-contained metne semantik olarak aktarılmış; matematiksel ilişkiler rendered PDF sayfasıyla doğrulanmıştır.",
+          "prompt_language": "tr",
+          "decomposable": true
         }
       ]
     },
@@ -1437,7 +1563,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 0.5 = %50؛ لذلك ليست 0.5 أكبر من %50.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050065",
@@ -1458,7 +1586,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة أخماس تساوي ستة أعشار؛ لذلك 3/5 = 6/10 = 0.6 والعبارة صحيحة.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050066",
@@ -1479,7 +1609,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 1/4 = 0.25، و0.25 < 0.4.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050067",
@@ -1500,7 +1632,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "ثلاثة أرباع تساوي 75/100، أي %75؛ لذلك العبارة صحيحة.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050068",
@@ -1521,7 +1655,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 0.7 = %70؛ لذلك 0.7 أكبر من %7.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050069",
@@ -1542,7 +1678,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 0.08 = %8، وليس %80.",
-          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur."
+          "source_note": "Kaynak PDF sayfa 23’teki ortak D/Y yönergesi ile resmi ifade, platformda tek ve self-contained bir madde olacak biçimde birleştirilmiştir; ifade metni korunmuştur.",
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050070",
@@ -1563,7 +1701,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 12/20 = 0.6، و%75 = 0.75؛ إذن B أكثر امتلاء.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050071",
@@ -1586,7 +1726,9 @@ declare
           "difficulty": 3,
           "activity": null,
           "explanation_ar": "لدينا %85 = 0.85 > 0.8 > 0.5؛ لذلك الخيار C هو الترتيب الصحيح.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050072",
@@ -1607,7 +1749,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 4/10 = %40، و%40 > %35.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050073",
@@ -1629,7 +1773,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بعد التحويل: A=0.4 وB=0.38 وC=0.6؛ إذن C هو الأكبر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050074",
@@ -1650,7 +1796,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا %89 = 0.89، و0.89 < 0.92؛ لذلك لم نصل إلى الهدف.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050075",
@@ -1672,7 +1820,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "بعد التحويل: A=0.70 وB=0.75 وC=0.85؛ إذن C هو الأكبر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     },
@@ -1704,7 +1854,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 19/5 = 3.8، وهو أصغر من 4.40.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050077",
@@ -1726,7 +1878,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 3 6/10 = 3.6، ولذلك 3.4 < 3.6.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050078",
@@ -1748,7 +1902,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 1/2 = 0.5، ولذلك 0.3 < 0.5.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050079",
@@ -1770,7 +1926,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 2/5 = 0.4 و3/4 = 0.75؛ لذلك 2/5 أصغر من 3/4.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050080",
@@ -1792,7 +1950,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 1 4/7 = 11/7؛ لذلك القيمتان متساويتان.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050081",
@@ -1814,7 +1974,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 6 3/5 = 6.6؛ لذلك 6.06 أصغر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050082",
@@ -1836,7 +1998,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا %55 = 0.55؛ لذلك 0.45 أصغر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050083",
@@ -1858,7 +2022,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 5 3/4 = 5.75؛ لذلك 5.45 أصغر.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050084",
@@ -1880,7 +2046,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 15/10 = 1.5؛ ولذلك 1.5 > 0.15.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050085",
@@ -1902,7 +2070,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "لدينا 3 1/2 = 3.5؛ ولذلك 3.5 > 3.45.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050086",
@@ -1924,7 +2094,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %25 تساوي 0.25 وتساوي أيضًا 1/4؛ لذلك القيمتان متساويتان.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         },
         {
           "question_code": "Q-202610050087",
@@ -1946,7 +2118,9 @@ declare
           "difficulty": 2,
           "activity": null,
           "explanation_ar": "النسبة %75 تساوي 0.75؛ لذلك القيمتان متساويتان.",
-          "source_note": null
+          "source_note": null,
+          "prompt_language": "tr",
+          "decomposable": false
         }
       ]
     }
@@ -2043,6 +2217,132 @@ declare
       ]
     },
     "difficulty_distribution_justification": "This package preserves official MEB workbook items and their source difficulty rather than forcing a generated 4/12/4 distribution."
+  },
+  "hint_decomposition": {
+    "context": [
+      {
+        "steps": [
+          "استخرج الكميات والشروط من نص المسألة.",
+          "وحّد التمثيلات العددية لتصبح قابلة للمقارنة.",
+          "طبّق معيار القرار وتحقق من جميع القيود."
+        ],
+        "expanded_steps": [
+          "حدّد المطلوب النهائي من السؤال.",
+          "دوّن كل كمية مع وحدتها أو تمثيلها.",
+          "حوّل الكسور والعشريات والنسب إلى شكل مشترك.",
+          "رتّب أو قارن القيم بعد التحويل.",
+          "طبّق كل شرط مذكور على البدائل.",
+          "راجع اختيارك داخل سياق المسألة."
+        ]
+      },
+      {
+        "steps": [
+          "حدّد معيار القرار بدقة قبل الحساب.",
+          "اختبر كل بديل بعد توحيد تمثيل القيم.",
+          "استبعد أي بديل لا يحقق جميع الشروط."
+        ],
+        "expanded_steps": [
+          "اقرأ عبارة المطلوب وحدد هل القرار للأكبر أو الأصغر أو الأقرب.",
+          "اعزل القيم المهمة عن تفاصيل القصة.",
+          "حوّل كل قيمة إلى تمثيل عددي مشترك.",
+          "افحص الشرط الأول لكل بديل.",
+          "افحص الشرط الثاني إن وجد.",
+          "اختر فقط البديل الذي ينجح في الشروط كلها."
+        ]
+      },
+      {
+        "steps": [
+          "اكتب التحويلات بجانب كل قيمة بوضوح.",
+          "نفّذ المقارنة أو الحساب الوسيط المطلوب.",
+          "اختبر النتيجة بفحص عكسي مستقل."
+        ],
+        "expanded_steps": [
+          "حوّل أول قيمة إلى الشكل المشترك.",
+          "حوّل القيمة التالية بالطريقة نفسها.",
+          "استمر حتى تصبح كل القيم قابلة للمقارنة مباشرة.",
+          "نفّذ الترتيب أو الفرق أو المجموع اللازم.",
+          "أعد إدخال النتيجة في شرط المسألة.",
+          "تأكد أن النتيجة لا تخالف أي قيد معطى."
+        ]
+      },
+      {
+        "steps": [
+          "ثبّت القيم النهائية بعد التحويل.",
+          "اربط القرار النهائي مباشرة بالشرط المطلوب.",
+          "راجع الوحدات واتجاه المقارنة قبل الإجابة."
+        ],
+        "expanded_steps": [
+          "اكتب القيم النهائية في سطر واحد.",
+          "رتبها إذا كان السؤال يتطلب ترتيبًا.",
+          "حدد البديل الذي يحقق معيار القرار.",
+          "تحقق من أي شرط إضافي في النص.",
+          "راجع الوحدة أو النسبة أو الكسر المستخدم.",
+          "اكتب الجواب المطلوب فقط بعد اكتمال التحقق."
+        ]
+      }
+    ],
+    "reflection": [
+      {
+        "steps": [
+          "حدّد الفكرة الرياضية المطلوب تفسيرها.",
+          "اختر نموذجًا أو طريقة مرتبطة بهذه الفكرة.",
+          "اذكر سببًا رياضيًا يبرر اختيارك."
+        ],
+        "expanded_steps": [
+          "اقرأ ما الذي يطلب السؤال تفسيره.",
+          "سمِّ العلاقة أو التمثيل الرياضي المقصود.",
+          "اختر النموذج أو الاستراتيجية المناسبة.",
+          "وضح ماذا يظهر هذا النموذج عن الكمية.",
+          "أضف سببًا رياضيًا وليس وصفًا شكليًا.",
+          "راجع أن التفسير يجيب السؤال مباشرة."
+        ]
+      },
+      {
+        "steps": [
+          "قارن بين طريقتين أو نموذجين ممكنين.",
+          "اربط الاختيار بهدف السؤال الرياضي.",
+          "ادعم السبب بمثال من المعطيات."
+        ],
+        "expanded_steps": [
+          "حدد الطريقة الأولى وما توضحه.",
+          "حدد الطريقة الثانية وما توضحه.",
+          "لاحظ أي طريقة تجعل العلاقة المطلوبة أوضح.",
+          "اربط ذلك بالمقارنة أو الجزء من الكل أو التحويل.",
+          "استخدم قيمة أو مثالًا من السؤال للتوضيح.",
+          "صغ سببًا واضحًا ومحددًا."
+        ]
+      },
+      {
+        "steps": [
+          "تحقق أن النموذج يحافظ على قيمة الكمية.",
+          "اشرح كيف تُقرأ القيمة منه خطوة خطوة.",
+          "اذكر متى قد يكون نموذج آخر أنسب."
+        ],
+        "expanded_steps": [
+          "حدد ما يمثل الكامل في النموذج.",
+          "حدد الأجزاء المتساوية أو القيم المعروضة.",
+          "استخرج العلاقة العددية من النموذج.",
+          "قارنها بالتمثيل المطلوب في السؤال.",
+          "بيّن نقطة القوة في هذا النموذج.",
+          "أضف حالة يمكن أن يكون فيها نموذج آخر أوضح."
+        ]
+      },
+      {
+        "steps": [
+          "اكتب اختيارك أو استنتاجك أولًا.",
+          "أتبعه بسبب رياضي واضح.",
+          "اختم بمثال أو تحقق يؤيد السبب."
+        ],
+        "expanded_steps": [
+          "حدد موقفك بعبارة قصيرة.",
+          "اذكر القاعدة أو العلاقة التي تعتمد عليها.",
+          "اربط القاعدة بمعطيات السؤال.",
+          "قدم مثالًا أو تحويلًا يؤيد تفسيرك.",
+          "تأكد أن المثال لا يناقض الاستنتاج.",
+          "راجع الإجابة لتكون تفسيرًا رياضيًا كاملًا."
+        ]
+      }
+    ]
   }
 }$pkg$::jsonb;
   v_session jsonb;
@@ -2272,6 +2572,7 @@ begin
             'source_activity',v_item->'activity',
             'source_note',v_item->'source_note',
             'grading_mode',v_grading,
+            'decomposable',(v_item->>'decomposable')::boolean,
             'feature_id','FLH-FEAT-2026-020',
             'source_fidelity',case when v_item->>'origin'='book_exact' then 'exact_text_semantics' else 'semantic_visual_transcription' end
           )),
@@ -2280,7 +2581,7 @@ begin
           case when v_grading='ungraded' then 1 else 4 end,
           case when v_grading='ungraded' then 1 else 3 end,
           v_grading<>'ungraded',
-          'core','tr','dual_term',v_item->>'question_code'
+          'core',coalesce(v_item->>'prompt_language','tr'),'dual_term',v_item->>'question_code'
         ) returning id into v_question;
 
         insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary,weight)
@@ -2319,7 +2620,16 @@ begin
             v_workspace,v_question,v_hint_level,
             (array['nudge','guide','strong_guide','near_solution'])[v_hint_level],
             v_hint,
-            jsonb_build_object('generated_support',true,'feature_id','FLH-FEAT-2026-020','source_attribution','Family Learning Hub'),
+            jsonb_strip_nulls(jsonb_build_object(
+              'generated_support',true,
+              'feature_id','FLH-FEAT-2026-020',
+              'source_attribution','Family Learning Hub',
+              'decomposable',(v_item->>'decomposable')::boolean,
+              'steps',case when coalesce((v_item->>'decomposable')::boolean,false)
+                then v_pkg->'hint_decomposition'->v_profile->(v_hint_level-1)->'steps' else null end,
+              'expanded_steps',case when coalesce((v_item->>'decomposable')::boolean,false)
+                then v_pkg->'hint_decomposition'->v_profile->(v_hint_level-1)->'expanded_steps' else null end
+            )),
             'ar','dual_term'
           );
         end loop;
