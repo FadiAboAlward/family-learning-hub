@@ -100,6 +100,90 @@ grant execute on function public.flh_learning_save_response_draft(uuid,uuid,uuid
 comment on function public.flh_learning_save_response_draft(uuid,uuid,uuid,uuid,jsonb) is
   'Atomically persists a numeric/short-answer Learning draft while the exact attempt question is active. Serializes with answer submission so late draft writes cannot overwrite grading metadata.';
 
+create or replace function public.flh_learning_clear_response_draft(
+  p_workspace_id uuid,
+  p_learner_id uuid,
+  p_attempt_id uuid,
+  p_question_id uuid
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $function$
+declare
+  v_attempt public.quiz_attempts%rowtype;
+  v_queue public.quiz_attempt_question_queue%rowtype;
+  v_question public.quiz_questions%rowtype;
+begin
+  if p_workspace_id is null
+     or p_learner_id is null
+     or p_attempt_id is null
+     or p_question_id is null then
+    return jsonb_build_object('error','INVALID_ANSWER');
+  end if;
+
+  if not exists (
+    select 1 from public.learners l
+    where l.id=p_learner_id
+      and l.workspace_id=p_workspace_id
+      and l.is_active
+  ) then
+    return jsonb_build_object('error','ATTEMPT_NOT_ACTIVE');
+  end if;
+
+  select a.* into v_attempt
+  from public.quiz_attempts a
+  where a.id=p_attempt_id
+    and a.workspace_id=p_workspace_id
+    and a.learner_id=p_learner_id
+  for update;
+
+  if not found
+     or v_attempt.status <> 'in_progress'
+     or v_attempt.delivery_mode <> 'learning' then
+    return jsonb_build_object('error','ATTEMPT_NOT_ACTIVE');
+  end if;
+
+  select qq.* into v_queue
+  from public.quiz_attempt_question_queue qq
+  where qq.workspace_id=p_workspace_id
+    and qq.quiz_attempt_id=p_attempt_id
+    and qq.question_id=p_question_id
+  order by qq.sequence_no
+  limit 1
+  for update;
+
+  if not found or v_queue.status <> 'active' then
+    return jsonb_build_object('error','QUESTION_NOT_ACTIVE');
+  end if;
+
+  select q.* into v_question
+  from public.quiz_questions q
+  where q.id=p_question_id
+    and q.workspace_id=p_workspace_id
+    and q.quiz_version_id=v_attempt.quiz_version_id;
+
+  if not found or v_question.question_type not in ('numeric','short_answer') then
+    return jsonb_build_object('error','UNSUPPORTED_QUESTION_TYPE');
+  end if;
+
+  update public.quiz_attempt_question_queue
+  set interaction_metadata=coalesce(interaction_metadata,'{}'::jsonb)
+        - 'draft_response' - 'draft_saved_at'
+  where id=v_queue.id;
+
+  return jsonb_build_object('ok',true,'cleared',true);
+end;
+$function$;
+
+revoke all on function public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid) from public;
+revoke all on function public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid) from anon, authenticated;
+grant execute on function public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid) to service_role;
+
+comment on function public.flh_learning_clear_response_draft(uuid,uuid,uuid,uuid) is
+  'Atomically clears a restored numeric/short-answer draft while the exact Learning question remains active.';
+
 create or replace function public.flh_learning_answer_response(
   p_workspace_id uuid,
   p_learner_id uuid,
