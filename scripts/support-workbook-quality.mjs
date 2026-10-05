@@ -38,7 +38,7 @@ function hintLeaks(hint,candidate){
 
 export function validateSupportWorkbookPackage(pkg){
   const errors=[],warnings=[];
-  const source=pkg?.source||{}, units=Array.isArray(pkg?.units)?pkg.units:[], sessions=Array.isArray(pkg?.sessions)?pkg.sessions:[], profiles=pkg?.hint_profiles||{};
+  const source=pkg?.source||{}, units=Array.isArray(pkg?.units)?pkg.units:[], sessions=Array.isArray(pkg?.sessions)?pkg.sessions:[], profiles=pkg?.hint_profiles||{}, decomposition=pkg?.hint_decomposition||{};
   const unitKeys=new Set(), sessionSlugs=new Set(), questionCodes=new Set();
   if(pkg?.package_type!=='support_workbook')push(errors,'SUPPORT_PACKAGE_TYPE_REQUIRED','package_type','Expected support_workbook.');
   if(!Array.isArray(pkg?.runtime_external_dependencies))push(errors,'RUNTIME_EXTERNAL_DEPENDENCIES_REQUIRED','runtime_external_dependencies','Declare runtime dependencies explicitly.');
@@ -96,8 +96,30 @@ export function validateSupportWorkbookPackage(pkg){
       else visibleTextChecks(errors,qp+'.prompt',prompt);
       if(!Number.isInteger(q?.pdf_page)||q.pdf_page<1||q.pdf_page>source.pdf_pages)push(errors,'SOURCE_PAGE_INVALID',qp+'.pdf_page','Invalid original PDF page.');
       else if(!pages.includes(q.pdf_page))push(errors,'SOURCE_PAGE_OUTSIDE_SESSION',qp+'.pdf_page','Question page must belong to its session.');
-      const hs=profiles[clean(q?.hint_profile)];
+      const profile=clean(q?.hint_profile);
+      const hs=profiles[profile];
       if(!Array.isArray(hs)||hs.length!==4)push(errors,'HINT_PROFILE_UNKNOWN',qp+'.hint_profile','Question needs a valid four-level hint profile.');
+      if(!['ar','tr','en'].includes(clean(q?.prompt_language)))push(errors,'PROMPT_LANGUAGE_REQUIRED',qp+'.prompt_language','Support Learning questions must declare prompt_language as ar, tr, or en.');
+      if(typeof q?.decomposable!=='boolean')push(errors,'DECOMPOSABLE_CLASSIFICATION_REQUIRED',qp+'.decomposable','Support Learning questions must explicitly classify decomposable true or false.');
+      if(q?.decomposable===true){
+        const levels=decomposition[profile];
+        if(!Array.isArray(levels)||levels.length!==4){
+          push(errors,'DECOMPOSITION_PROFILE_REQUIRED',qp+'.hint_profile','Decomposable support questions need four decomposition levels for the selected hint profile.');
+        }else{
+          levels.forEach((level,li)=>{
+            const dp='hint_decomposition.'+profile+'['+li+']';
+            const steps=Array.isArray(level?.steps)?level.steps:[];
+            const expanded=Array.isArray(level?.expanded_steps)?level.expanded_steps:[];
+            if(steps.length!==3||steps.some(step=>!clean(step)))push(errors,'HINT_THREE_STEP_SHAPE',dp+'.steps','Decomposable support hints require exactly 3 non-empty steps.');
+            if(expanded.length!==6||expanded.some(step=>!clean(step)))push(errors,'HINT_SIX_STEP_SHAPE',dp+'.expanded_steps','Decomposable support hints require exactly 6 non-empty expanded steps.');
+            [...steps,...expanded].forEach((step,di)=>visibleTextChecks(errors,dp+'.step['+di+']',step));
+            for(const candidate of answerCandidates(q)){
+              const combined=[...(hs||[]),...steps,...expanded].join(' ');
+              if(hintLeaks(combined,candidate))push(errors,'HINT_ANSWER_LEAK',dp,'Decomposition support exposes an accepted final answer.');
+            }
+          });
+        }
+      }
       if(!['graded','ungraded'].includes(grading))push(errors,'GRADING_MODE_INVALID',qp+'.grading_mode','grading_mode must be graded or ungraded.');
       if(grading==='ungraded'){
         if(Number(q?.points)!==0)push(errors,'UNGRADED_POINTS_NONZERO',qp+'.points','Ungraded reflection must be zero-point.');
