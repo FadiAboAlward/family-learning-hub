@@ -1,7 +1,5 @@
 -- FLH-FEAT-2026-020 v1.0
 -- Exact-version paper ingestion contract for one official support session.
-begin;
-
 do $contract$
 declare
   w uuid;
