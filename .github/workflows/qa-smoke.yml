@@ -126,6 +126,10 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify support-workbook paper ingestion
         run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-paper-ingestion.contract.sql
+      - name: Verify support paper/digital Learning mutual exclusion
+        run: npx --yes supabase@2.117.0 db query --local --file tests/support-paper-learning-mutual-exclusion.contract.sql
+      - name: Verify support paper/digital Learning start concurrency
+        run: node tests/support-paper-learning-mutual-exclusion.concurrency.mjs
       - name: Verify Exam answer save/submit concurrency
         run: node tests/exam-save-submit-race.concurrency.mjs
       - name: Lint reconstructed database
