@@ -14,6 +14,7 @@ for(const fragment of [
   `jsonb_build_object('xp', 75, 'reward_points', 15)`,
   `v_cached_result := v_attempt.metadata->'exam_submit_last_result'`,
   `and e.source_type = 'exam'`,
+  `and e.source_id = v_quiz_id::text`,
   `v_xp_delta := greatest(0, v_target_xp - v_prior_xp)`,
   `v_reward_points_delta := greatest(0, v_target_reward_points - v_prior_reward_points)`,
   `'reward_policy', 'exam-mastery-v1.2'`,
@@ -23,7 +24,7 @@ for(const fragment of [
   `for update;`,
   `revoke all on function public.flh_exam_submit(uuid,uuid,uuid) from anon, authenticated`,
   `grant execute on function public.flh_exam_submit(uuid,uuid,uuid) to service_role`,
-  `'exam',\n        v_quiz_slug`
+  `'exam',\n        v_quiz_id::text`
 ]){
   assert.ok(migration.includes(fragment),`Exam mastery reward migration missing invariant: ${fragment}`);
 }
