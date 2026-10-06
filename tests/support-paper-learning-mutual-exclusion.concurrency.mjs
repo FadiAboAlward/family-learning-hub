@@ -45,60 +45,67 @@ const activeBefore = Number(await psql(`select count(*) from public.quiz_attempt
 assert.equal(activeBefore,0,'concurrency fixture requires no active/submitted attempt');
 
 const sharedLock = `hashtextextended('${workspaceId}:${learnerId}:${versionId}:support-delivery',0)`;
-const blocker = spawnPsql(`begin; select pg_advisory_xact_lock(${sharedLock}); select pg_advisory_xact_lock(91602011); select pg_sleep(8); commit;`);
+const children=[];
+try {
+  const blocker = spawnPsql(`begin; select pg_advisory_xact_lock(${sharedLock}); select pg_advisory_xact_lock(91602011); select pg_sleep(8); commit;`);
+  children.push(blocker);
 
-const deadline=Date.now()+5000;
-let ready=false;
-while(!ready&&Date.now()<deadline){
-  ready=await psql("select count(*)::text from pg_locks where locktype='advisory' and objid=91602011 and granted")==='1';
-  if(!ready) await new Promise(r=>setTimeout(r,25));
-}
-assert.equal(ready,true,'shared support-delivery blocker must acquire the lock first');
+  const deadline=Date.now()+5000;
+  let ready=false;
+  while(!ready&&Date.now()<deadline){
+    ready=await psql("select count(*)::text from pg_locks where locktype='advisory' and classid=0 and objid=91602011 and objsubid=1 and granted")==='1';
+    if(!ready) await new Promise(r=>setTimeout(r,25));
+  }
+  assert.equal(ready,true,'shared support-delivery blocker must acquire the lock first');
 
-const learningSql=`set role service_role; select public.flh_learning_start('${workspaceId}'::uuid,'${learnerId}'::uuid,'${slug}')::text; reset role;`;
-const paperSql=`set role service_role; select public.flh_paper_exam_start('${workspaceId}'::uuid,'${learnerId}'::uuid,'${versionId}'::uuid,'${modelCode.replaceAll("'","''")}','qa_mutual_exclusion_concurrency')::text; reset role;`;
-const learning=spawnPsql(learningSql);
-const paper=spawnPsql(paperSql);
+  const learningSql=`set role service_role; select public.flh_learning_start('${workspaceId}'::uuid,'${learnerId}'::uuid,'${slug}')::text; reset role;`;
+  const paperSql=`set role service_role; select public.flh_paper_exam_start('${workspaceId}'::uuid,'${learnerId}'::uuid,'${versionId}'::uuid,'${modelCode.replaceAll("'","''")}','qa_mutual_exclusion_concurrency')::text; reset role;`;
+  const learning=spawnPsql(learningSql);
+  const paper=spawnPsql(paperSql);
+  children.push(learning,paper);
 
-let waiters=0;
-const waiterDeadline=Date.now()+5000;
-while(waiters<2&&Date.now()<waiterDeadline){
-  waiters=Number(await psql(`
-    select count(*)::text
-    from pg_stat_activity
-    where wait_event_type='Lock' and wait_event='advisory'
-      and query like '%${learnerId}%'
-      and (query like '%flh_learning_start%' or query like '%flh_paper_exam_start%')
+  let waiters=0;
+  const waiterDeadline=Date.now()+5000;
+  while(waiters<2&&Date.now()<waiterDeadline){
+    waiters=Number(await psql(`
+      select count(*)::text
+      from pg_stat_activity
+      where wait_event_type='Lock' and wait_event='advisory'
+        and query like '%${learnerId}%'
+        and (query like '%flh_learning_start%' or query like '%flh_paper_exam_start%')
+    `));
+    if(waiters<2) await new Promise(r=>setTimeout(r,25));
+  }
+  assert.equal(waiters,2,'paper and Learning starts must wait on the same learner/version advisory lock');
+
+  const [,learningOut,paperOut] = await Promise.all([blocker.done,learning.done,paper.done]);
+  const learningResult=JSON.parse(learningOut);
+  const paperResult=JSON.parse(paperOut);
+
+  const learningWon = !learningResult.error && typeof learningResult.attempt_id==='string';
+  const paperWon = paperResult.ok===true;
+  assert.notEqual(learningWon,paperWon,'exactly one delivery surface may create/resume an active attempt');
+  if(learningWon) assert.equal(paperResult.error,'SESSION_IN_PROGRESS');
+  if(paperWon) assert.equal(learningResult.error,'QUIZ_NOT_AVAILABLE');
+
+  const activeRows=JSON.parse(await psql(`
+    select coalesce(json_agg(json_build_object('id',id,'delivery_mode',delivery_mode,'status',status)),'[]'::json)::text
+    from public.quiz_attempts
+    where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}' and status='in_progress'
   `));
-  if(waiters<2) await new Promise(r=>setTimeout(r,25));
+  assert.equal(activeRows.length,1,'concurrent starts must leave exactly one active attempt');
+  assert.equal(activeRows[0].delivery_mode,learningWon?'learning':'exam');
+
+  console.log('Support paper/digital Learning shared-lock concurrency test passed.');
+} finally {
+  await Promise.allSettled(children.map(child=>child.done));
+  await psql(`
+    delete from public.quiz_attempts
+    where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}'
+      and status in ('in_progress','abandoned')
+      and (delivery_mode='learning' or metadata->>'paper_source'='qa_mutual_exclusion_concurrency');
+    delete from public.quiz_assignments
+    where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}'
+      and metadata->>'source'='support_workbook_paper';
+  `);
 }
-assert.equal(waiters,2,'paper and Learning starts must wait on the same learner/version advisory lock');
-
-const [,learningOut,paperOut] = await Promise.all([blocker.done,learning.done,paper.done]);
-const learningResult=JSON.parse(learningOut);
-const paperResult=JSON.parse(paperOut);
-
-const learningWon=learningResult.ok===true;
-const paperWon=paperResult.ok===true;
-assert.notEqual(learningWon,paperWon,'exactly one delivery surface may create/resume an active attempt');
-if(learningWon) assert.equal(paperResult.error,'SESSION_IN_PROGRESS');
-if(paperWon) assert.equal(learningResult.error,'QUIZ_NOT_AVAILABLE');
-
-const activeRows=JSON.parse(await psql(`
-  select coalesce(json_agg(json_build_object('id',id,'delivery_mode',delivery_mode,'status',status)),'[]'::json)::text
-  from public.quiz_attempts
-  where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}' and status='in_progress'
-`));
-assert.equal(activeRows.length,1,'concurrent starts must leave exactly one active attempt');
-assert.equal(activeRows[0].delivery_mode,learningWon?'learning':'exam');
-
-await psql(`
-  delete from public.quiz_attempts
-  where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}'
-    and status in ('in_progress','abandoned')
-    and (delivery_mode='learning' or metadata->>'paper_source'='qa_mutual_exclusion_concurrency');
-  delete from public.quiz_assignments
-  where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}'
-    and metadata->>'source'='support_workbook_paper';
-`);
-console.log('Support paper/digital Learning shared-lock concurrency test passed.');
