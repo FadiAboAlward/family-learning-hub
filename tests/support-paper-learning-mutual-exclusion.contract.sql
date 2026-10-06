@@ -80,7 +80,9 @@ begin
   set local role service_role;
   learning_result:=public.flh_learning_start(w,l,v_slug);
   reset role;
-  if coalesce((learning_result->>'ok')::boolean,false) is not true then
+  if learning_result ? 'error'
+     or nullif(learning_result->>'attempt_id','') is null
+     or learning_result->>'resumed' is distinct from 'false' then
     raise exception 'SUPPORT_DELIVERY_ABANDONED_PAPER_STILL_BLOCKED_LEARNING:%',learning_result;
   end if;
   learning_id:=(learning_result->>'attempt_id')::uuid;
