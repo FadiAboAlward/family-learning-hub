@@ -236,7 +236,7 @@ begin
     and learner_id=v_learner
     and event_type='quiz_completed'
     and source_type='exam'
-    and source_id='qa-exam-reward-v12';
+    and source_id=v_quiz::text;
 
   perform pg_temp.qa_exam_reward_assert(
     v_event_count=4 and v_event_xp=75 and v_event_points=15,
