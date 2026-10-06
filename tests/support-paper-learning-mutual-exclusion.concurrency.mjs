@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 const containerName = 'supabase_db_family-learning-hub';
 const workspaceId = '55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
-const slug = 'tr-g5-meb-support-s3-percent';
+const slug = 'tr-g5-meb-support-s3-models';
 const args = ['exec',containerName,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres','-t','-A','-c'];
 
 async function psql(sql) {
