@@ -126,6 +126,10 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify support-workbook paper ingestion
         run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-paper-ingestion.contract.sql
+      - name: Verify Exam mastery reward contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/exam-mastery-rewards.contract.sql
+      - name: Verify Exam mastery reward concurrency and idempotency
+        run: node tests/exam-mastery-rewards.concurrency.mjs
       - name: Verify Exam answer save/submit concurrency
         run: node tests/exam-save-submit-race.concurrency.mjs
       - name: Lint reconstructed database
