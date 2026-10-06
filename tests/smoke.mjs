@@ -112,7 +112,7 @@ await page.locator('#examSubmit').click();
 await page.locator('.hero h1').filter({hasText:'نتيجة الامتحان'}).waitFor({state:'visible',timeout:6000});
 if(calls.profile<=profileCallsBeforeExamSubmit)throw new Error('Exam completion did not refresh the learner profile after reward award');
 await page.waitForFunction(()=>typeof state!=='undefined'&&state.learnerProfile?.gamification?.xp===10,null,{timeout:1000});
-await page.getByText('مكافأة الامتحان',{exact:true}).waitFor({state:'visible',timeout:1000});
+await page.getByText('🎁 مكافأة الامتحان',{exact:true}).waitFor({state:'visible',timeout:1000});
 await page.getByText('+10 XP',{exact:true}).waitFor({state:'visible',timeout:1000});
 const wrongReview=page.locator('.exam-review.exam-review-wrong').first();
 await assertMath(wrongReview,'(-7) - 19','Exam review prompt');
