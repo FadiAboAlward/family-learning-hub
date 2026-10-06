@@ -30,12 +30,12 @@ async function assertMath(locator,expected,label){
   if(result.dir!=='ltr'||result.direction!=='ltr'||result.unicodeBidi!=='isolate')throw new Error(`${label}: ${expected} is not LTR/bidi-isolated: ${JSON.stringify(result)}`);
 }
 
-let examRewardApplied=false;
+let examRewardApplied=false,delayNextProfile=false;
 const profile={learner:{id:'aya-id',display_name:'آية',slug:'aya',grade_level:5,is_test:false,avatar_emoji:'🌷'},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}};
 const quiz={id:'q',slug:'qa-unit',title:'تدريب QA',description:'اختبار الواجهة'};
 const program={id:'p',title:'المنهاج التجريبي',program_type:'curriculum',grade_level:5,school_year:'2026-2027',is_primary:true,books:[{id:'b',title:'الرياضيات',grade_level:5,school_year:'2026-2027',subject:{name_ar:'الرياضيات'},units:[{id:'u',title:'الوحدة الأولى',quizzes:[quiz]}],extras:[]}]};
 
-await page.route('**/functions/v1/family-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='student_profile'){calls.profile++;const currentProfile={...profile,gamification:{...profile.gamification,xp:examRewardApplied?10:0}};return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(currentProfile)});}if(b.action==='learner_choices')return r.fulfill({status:200,contentType:'application/json',body:'{"learners":[]}'});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+await page.route('**/functions/v1/family-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='student_profile'){calls.profile++;const xpAtRequest=examRewardApplied?10:0,shouldDelay=delayNextProfile;delayNextProfile=false;if(shouldDelay)await new Promise(x=>setTimeout(x,1200));const currentProfile={...profile,gamification:{...profile.gamification,xp:xpAtRequest}};return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(currentProfile)});}if(b.action==='learner_choices')return r.fulfill({status:200,contentType:'application/json',body:'{"learners":[]}'});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
 await page.route('**/functions/v1/student-library-api',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({programs:[program],standalone_books:[]})}));
 await page.route('**/functions/v1/activity-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
 await page.route('**/functions/v1/question-reference-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"codes":{}}'}));
@@ -108,12 +108,18 @@ mark('exam-next',{learnWidth,examWidth});
 if(calls.examSave<1)throw new Error('Exam save was not started');
 await page.locator('.exam-v3-answer').first().click();
 const profileCallsBeforeExamSubmit=calls.profile;
+delayNextProfile=true;
+await page.evaluate(()=>{window.__qaStaleProfilePromise=api('student_profile',{},localStorage.getItem('learner_session')).catch(()=>null);return true;});
+await page.waitForTimeout(50);
 await page.locator('#examSubmit').click();
 await page.locator('.hero h1').filter({hasText:'نتيجة الامتحان'}).waitFor({state:'visible',timeout:6000});
 if(calls.profile<=profileCallsBeforeExamSubmit)throw new Error('Exam completion did not refresh the learner profile after reward award');
 await page.waitForFunction(()=>typeof state!=='undefined'&&state.learnerProfile?.gamification?.xp===10,null,{timeout:1000});
 await page.getByText('🎁 مكافأة الامتحان',{exact:true}).waitFor({state:'visible',timeout:1000});
 await page.getByText('+10 XP',{exact:true}).waitFor({state:'visible',timeout:1000});
+await page.waitForTimeout(1300);
+const postRaceProfile=await page.evaluate(()=>api('student_profile',{},localStorage.getItem('learner_session')));
+if(Number(postRaceProfile?.gamification?.xp)!==10)throw new Error('A stale in-flight profile request repopulated the cache after Exam reward refresh');
 const wrongReview=page.locator('.exam-review.exam-review-wrong').first();
 await assertMath(wrongReview,'(-7) - 19','Exam review prompt');
 await assertMath(wrongReview,'26','Exam review learner answer');
