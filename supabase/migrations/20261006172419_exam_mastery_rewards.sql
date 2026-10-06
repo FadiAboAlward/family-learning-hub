@@ -49,6 +49,7 @@ declare
   v_flagged_count integer := 0;
   v_duration integer := 1;
   v_review jsonb := '[]'::jsonb;
+  v_quiz_id uuid;
   v_quiz_slug text;
   v_quiz_title text;
   v_is_paper boolean := false;
@@ -111,8 +112,8 @@ begin
     return jsonb_build_object('error','ATTEMPT_NOT_ACTIVE');
   end if;
 
-  select q.slug, q.title
-    into v_quiz_slug, v_quiz_title
+  select q.id, q.slug, q.title
+    into v_quiz_id, v_quiz_slug, v_quiz_title
   from public.quiz_versions v
   join public.quizzes q
     on q.workspace_id = v.workspace_id
@@ -272,7 +273,7 @@ begin
       and e.learner_id = p_learner_id
       and e.event_type = 'quiz_completed'
       and e.source_type = 'exam'
-      and e.source_id = v_quiz_slug;
+      and e.source_id = v_quiz_id::text;
 
     v_xp_delta := greatest(0, v_target_xp - v_prior_xp);
     v_reward_points_delta := greatest(0, v_target_reward_points - v_prior_reward_points);
@@ -340,10 +341,12 @@ begin
         v_xp_delta,
         v_reward_points_delta,
         'exam',
-        v_quiz_slug,
+        v_quiz_id::text,
         'Server-graded Exam mastery reward',
         jsonb_build_object(
           'attempt_id', p_attempt_id,
+          'quiz_id', v_quiz_id,
+          'quiz_slug', v_quiz_slug,
           'percentage', v_percentage,
           'target_xp', v_target_xp,
           'target_reward_points', v_target_reward_points,
