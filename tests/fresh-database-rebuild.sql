@@ -96,6 +96,24 @@ begin
     end if;
   end loop;
 
+  if position(
+       'support-delivery'
+       in pg_get_functiondef('public.flh_learning_start(uuid,uuid,text)'::regprocedure)
+     )=0
+     or position(
+       'support-delivery'
+       in pg_get_functiondef('public.flh_support_paper_start(uuid,uuid,uuid,text,text)'::regprocedure)
+     )=0 then
+    raise exception 'FRESH_REBUILD_SUPPORT_DELIVERY_SHARED_LOCK_MISSING';
+  end if;
+
+  if position(
+       'status in (''in_progress'',''submitted'')'
+       in pg_get_functiondef('public.flh_learning_start(uuid,uuid,text)'::regprocedure)
+     )=0 then
+    raise exception 'FRESH_REBUILD_SUPPORT_PAPER_ACTIVE_GUARD_MISSING';
+  end if;
+
   if not exists (
     select 1
     from public.workspaces
