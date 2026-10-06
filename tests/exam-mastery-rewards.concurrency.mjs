@@ -52,7 +52,7 @@ async function cleanup(){
   await psql(`
     delete from public.gamification_events
     where workspace_id='${workspaceId}'::uuid and learner_id='${learnerId}'::uuid
-      and source_type='exam' and source_id='${slug}';
+      and source_type='exam' and source_id='${quizId}';
     delete from public.quiz_attempts
     where workspace_id='${workspaceId}'::uuid and id in ('${attemptA}'::uuid,'${attemptB}'::uuid);
     delete from public.quizzes where workspace_id='${workspaceId}'::uuid and id='${quizId}'::uuid;
@@ -171,7 +171,7 @@ try{
     )::text
     from public.gamification_events
     where workspace_id='${workspaceId}'::uuid and learner_id='${learnerId}'::uuid
-      and event_type='quiz_completed' and source_type='exam' and source_id='${slug}'
+      and event_type='quiz_completed' and source_type='exam' and source_id='${quizId}'
   `));
   assert.equal(Number(ledger.count),1);
   assert.equal(Number(ledger.xp),75);
