@@ -8,10 +8,8 @@ declare
   v_slug text := 'tr-g5-meb-support-s2-decimals';
   v_model text;
   paper_one jsonb;
-  paper_two jsonb;
   learning_result jsonb;
   paper_one_id uuid;
-  paper_two_id uuid;
   learning_id uuid;
   assignment_preexisting boolean;
 begin
@@ -89,27 +87,14 @@ begin
 
   delete from public.quiz_attempts where workspace_id=w and id=learning_id;
 
-  set local role service_role;
-  paper_two:=public.flh_paper_exam_start(w,l,v,v_model,'qa_mutual_exclusion_submitted');
-  reset role;
-  if coalesce((paper_two->>'ok')::boolean,false) is not true then
-    raise exception 'SUPPORT_DELIVERY_SECOND_PAPER_START_INVALID:%',paper_two;
-  end if;
-  paper_two_id:=(paper_two->>'attempt_id')::uuid;
-
-  update public.quiz_attempts
-  set status='submitted', submitted_at=now()
-  where workspace_id=w and id=paper_two_id;
-
-  set local role service_role;
-  learning_result:=public.flh_learning_start(w,l,v_slug);
-  reset role;
-  if learning_result->>'error' is distinct from 'QUIZ_NOT_AVAILABLE' then
-    raise exception 'SUPPORT_DELIVERY_SUBMITTED_PAPER_DID_NOT_BLOCK_LEARNING:%',learning_result;
-  end if;
+  -- Submitted-paper exclusion is already exercised by
+  -- tests/support-workbook-paper-ingestion.contract.sql using the canonical
+  -- start/save/submit path. This focused contract avoids fabricating a
+  -- submitted attempt because submission intentionally triggers mastery
+  -- recording and requires complete evaluated answers.
 
   delete from public.quiz_attempts
-  where workspace_id=w and id in (paper_one_id,paper_two_id);
+  where workspace_id=w and id=paper_one_id;
 
   if not assignment_preexisting then
     delete from public.quiz_assignments
