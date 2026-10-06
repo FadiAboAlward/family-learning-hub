@@ -166,6 +166,14 @@
     refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'student_profile' }) }, cfg);
   }
 
+  function invalidateStudentProfile(session = '') {
+    const headers = new Headers();
+    if (session) headers.set('authorization', `Bearer ${session}`);
+    const key = `family-api|student_profile|${tokenFingerprint(headers)}`;
+    responseCache.delete(key);
+    try { localStorage.removeItem(storageKey(key)); } catch {}
+  }
+
   function primeProfile(session, profile, requestHeaders) {
     if (!session || !profile) return;
     const h = learnerHeadersFrom(requestHeaders, session);
@@ -312,6 +320,7 @@
   };
 
   window.FLHPerformance = {
+    invalidateStudentProfile,
     clear() {
       responseCache.clear();
       examSaveQueue.clear();
