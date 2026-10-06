@@ -121,7 +121,7 @@ assert.deepEqual(lifecycleCleanupIds, [validationFailureRunId], 'owned run must 
 
 const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8').replace(/\r\n/g, '\n');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
-assert.match(workflow, /^concurrency:\n  group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n  cancel-in-progress: false$/m, 'workflow-level cancellation must preserve cleanup');
+assert.match(workflow, /^  static-quality:\n(?:.*\n)*?    concurrency:\n      group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: true$/m, 'stale static QA should cancel without interrupting shared Testing cleanup');
 assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: family-learning-hub-testing-learner\n      cancel-in-progress: false$/m, 'Testing browser job must be serialized without cancellation');
 
 const migration = fs.readFileSync('supabase/migrations/20260909055000_harden_testing_qa_concurrency.sql', 'utf8');
