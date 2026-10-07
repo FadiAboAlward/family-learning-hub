@@ -904,7 +904,19 @@ grant execute on function public.flh_learning_finish(uuid,uuid,uuid,integer) to 
 do $policy$
 declare
   v_workspace uuid;
-  v_count integer;
+  v_fajr_rule constant uuid := '93174762-2abd-4e69-be49-9ac6eeb7fb01';
+  v_dhuhr_rule constant uuid := '8cd3abe7-6f22-4aad-abad-764fe635eec0';
+  v_asr_rule constant uuid := '0a574bed-ff67-48c0-95d3-b4c6d42c2595';
+  v_maghrib_rule constant uuid := '80f5ab8a-3e3f-4514-98e2-db3587cf88fc';
+  v_isha_rule constant uuid := '23d16dab-42e7-4e7e-85ce-d250eff71dac';
+  v_room_rule constant uuid := 'f74ae65c-468c-40d7-92cc-37aedcfc875f';
+  v_household_rule constant uuid := '4f5e3b2f-5e03-4ff0-b099-02ece41f4eba';
+  v_sibling_rule constant uuid := '5ab92e73-d64f-4158-ad92-62861c5c217e';
+  v_boots_reward constant uuid := '109806d9-7411-49c8-97e3-85106a38970f';
+  v_driving_reward constant uuid := '4d348f05-a1e1-4ba6-afa8-9146d25817ce';
+  v_home_evening_reward constant uuid := 'c2b25b3c-26b8-43ee-9aaa-65a514d65bad';
+  v_outside_treat_reward constant uuid := '627d7df4-f9fb-4894-b335-994bbef24073';
+  v_amusement_reward constant uuid := '18f87875-4092-4ee3-a885-da5c6e348142';
 begin
   select id into strict v_workspace from public.workspaces where slug='family-learning-hub';
 
@@ -912,82 +924,121 @@ begin
     base_points=7, initiative_bonus_points=1, congregation_bonus_points=2, mosque_bonus_points=2, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٧ نقاط للفرض في وقته، +١ دون تذكير، +٢ جماعة، +٢ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٥ نقطة.',
     updated_at=now()
-  where workspace_id=v_workspace and title='صلاة الفجر في وقتها';
+  where workspace_id=v_workspace and id=v_fajr_rule;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
-  where workspace_id=v_workspace and title='صلاة الظهر في وقتها';
+  where workspace_id=v_workspace and id=v_dhuhr_rule;
 
   update public.behavior_rules set
     base_points=6, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=0, adhkar_bonus_points=1,
     description='٦ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +١ لأذكار ما بعد الصلاة. لا توجد مكافأة سنة مرتبطة بالعصر. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
-  where workspace_id=v_workspace and title='صلاة العصر في وقتها';
+  where workspace_id=v_workspace and id=v_asr_rule;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
-  where workspace_id=v_workspace and title='صلاة المغرب في وقتها';
+  where workspace_id=v_workspace and id=v_maghrib_rule;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
-  where workspace_id=v_workspace and title='صلاة العشاء في وقتها';
+  where workspace_id=v_workspace and id=v_isha_rule;
 
   update public.behavior_rules set
     base_points=5, initiative_bonus_points=3,
     description='خمس نقاط لترتيب الغرفة والأغراض الشخصية، وثلاث نقاط إضافية إذا تم من دون تذكير.',
     updated_at=now()
-  where workspace_id=v_workspace and title='ترتيب الغرفة والأغراض الشخصية';
+  where workspace_id=v_workspace and id=v_room_rule;
 
   update public.behavior_rules set
     base_points=5,
     description='خمس نقاط لمساعدة حقيقية في عمل منزلي مفيد لمدة لا تقل عن ٣٠ دقيقة من العمل الفعلي.',
     updated_at=now()
-  where workspace_id=v_workspace and title='مساعدة حقيقية في المنزل';
+  where workspace_id=v_workspace and id=v_household_rule;
 
   update public.behavior_rules set
     base_points=10, initiative_bonus_points=5,
     description='عشر نقاط للعب الإيجابي مع الإخوة لمدة ساعة كاملة، وخمس إضافية إذا بدأ الطفل من نفسه دون أن يطلب منه الأهل.',
     updated_at=now()
-  where workspace_id=v_workspace and title='اللعب مع الإخوة لمدة ساعة';
+  where workspace_id=v_workspace and id=v_sibling_rule;
 
   update public.gamification_rewards
   set required_reward_points=800, updated_at=now()
-  where workspace_id=v_workspace and title='بوط رياضة جديد';
+  where workspace_id=v_workspace and id=v_boots_reward;
 
   update public.gamification_rewards
   set required_reward_points=1500,
       description='البدء بتعلم مبادئ قيادة السيارة بشكل آمن وتحت إشراف بالغ وفي مكان مناسب.',
       updated_at=now()
-  where workspace_id=v_workspace and title='البدء بتعلم قيادة السيارة';
+  where workspace_id=v_workspace and id=v_driving_reward;
 
-  if not exists(select 1 from public.gamification_rewards where workspace_id=v_workspace and title='سهرة بالبيت') then
-    insert into public.gamification_rewards(id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope)
-    values(gen_random_uuid(),v_workspace,'سهرة بالبيت','سهرة عائلية أو شخصية ممتعة في البيت.','activity',200,true,true,'all');
+  if exists(
+    select 1 from public.gamification_rewards
+    where id=v_home_evening_reward and workspace_id<>v_workspace
+  ) or exists(
+    select 1 from public.gamification_rewards
+    where workspace_id=v_workspace and title='سهرة بالبيت' and id<>v_home_evening_reward
+  ) then
+    raise exception 'FLH_V13_HOME_EVENING_IDENTITY_CONFLICT';
+  end if;
+  if exists(select 1 from public.gamification_rewards where id=v_home_evening_reward and workspace_id=v_workspace) then
+    update public.gamification_rewards
+    set required_reward_points=200, required_level=null, updated_at=now()
+    where id=v_home_evening_reward and workspace_id=v_workspace;
   else
-    update public.gamification_rewards set required_reward_points=200,required_level=null,updated_at=now()
-    where workspace_id=v_workspace and title='سهرة بالبيت';
+    insert into public.gamification_rewards(
+      id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope
+    ) values(
+      v_home_evening_reward,v_workspace,'سهرة بالبيت','سهرة عائلية أو شخصية ممتعة في البيت.','activity',200,true,true,'all'
+    );
   end if;
 
-  if not exists(select 1 from public.gamification_rewards where workspace_id=v_workspace and title='حلوى خارج البيت') then
-    insert into public.gamification_rewards(id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope)
-    values(gen_random_uuid(),v_workspace,'حلوى خارج البيت','اختيار حلوى خارج البيت بعد جمع النقاط المطلوبة.','outing',300,true,true,'all');
+  if exists(
+    select 1 from public.gamification_rewards
+    where id=v_outside_treat_reward and workspace_id<>v_workspace
+  ) or exists(
+    select 1 from public.gamification_rewards
+    where workspace_id=v_workspace and title='حلوى خارج البيت' and id<>v_outside_treat_reward
+  ) then
+    raise exception 'FLH_V13_OUTSIDE_TREAT_IDENTITY_CONFLICT';
+  end if;
+  if exists(select 1 from public.gamification_rewards where id=v_outside_treat_reward and workspace_id=v_workspace) then
+    update public.gamification_rewards
+    set required_reward_points=300, required_level=null, updated_at=now()
+    where id=v_outside_treat_reward and workspace_id=v_workspace;
   else
-    update public.gamification_rewards set required_reward_points=300,required_level=null,updated_at=now()
-    where workspace_id=v_workspace and title='حلوى خارج البيت';
+    insert into public.gamification_rewards(
+      id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope
+    ) values(
+      v_outside_treat_reward,v_workspace,'حلوى خارج البيت','اختيار حلوى خارج البيت بعد جمع النقاط المطلوبة.','outing',300,true,true,'all'
+    );
   end if;
 
-  if not exists(select 1 from public.gamification_rewards where workspace_id=v_workspace and title='رحلة إلى مدينة ألعاب') then
-    insert into public.gamification_rewards(id,workspace_id,title,description,reward_type,required_level,required_reward_points,parent_approval_required,is_active,learner_scope)
-    values(gen_random_uuid(),v_workspace,'رحلة إلى مدينة ألعاب','رحلة إلى مدينة ألعاب بعد جمع النقاط المطلوبة والوصول إلى المستوى الخامس.','outing',5,1500,true,true,'all');
+  if exists(
+    select 1 from public.gamification_rewards
+    where id=v_amusement_reward and workspace_id<>v_workspace
+  ) or exists(
+    select 1 from public.gamification_rewards
+    where workspace_id=v_workspace and title='رحلة إلى مدينة ألعاب' and id<>v_amusement_reward
+  ) then
+    raise exception 'FLH_V13_AMUSEMENT_IDENTITY_CONFLICT';
+  end if;
+  if exists(select 1 from public.gamification_rewards where id=v_amusement_reward and workspace_id=v_workspace) then
+    update public.gamification_rewards
+    set required_reward_points=1500, required_level=5, updated_at=now()
+    where id=v_amusement_reward and workspace_id=v_workspace;
   else
-    update public.gamification_rewards set required_reward_points=1500,required_level=5,updated_at=now()
-    where workspace_id=v_workspace and title='رحلة إلى مدينة ألعاب';
+    insert into public.gamification_rewards(
+      id,workspace_id,title,description,reward_type,required_level,required_reward_points,parent_approval_required,is_active,learner_scope
+    ) values(
+      v_amusement_reward,v_workspace,'رحلة إلى مدينة ألعاب','رحلة إلى مدينة ألعاب بعد جمع النقاط المطلوبة والوصول إلى المستوى الخامس.','outing',5,1500,true,true,'all'
+    );
   end if;
 end
 $policy$;
