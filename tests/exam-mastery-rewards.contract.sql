@@ -68,6 +68,7 @@ declare
   v_attempt_same constant uuid := '96000000-0000-4000-8000-000000000013';
   v_attempt_92 constant uuid := '96000000-0000-4000-8000-000000000014';
   v_attempt_100 constant uuid := '96000000-0000-4000-8000-000000000015';
+  v_attempt_paper constant uuid := '96000000-0000-4000-8000-000000000016';
   v_learner uuid;
   v_subject bigint;
   v_result jsonb;
@@ -228,6 +229,31 @@ begin
   from public.learner_gamification_state
   where workspace_id=v_workspace and learner_id=v_learner;
   perform pg_temp.qa_exam_reward_assert(v_xp=175 and v_points=35,'cumulative learner state capped');
+
+  perform pg_temp.qa_make_exam_attempt(v_learner,v_attempt_paper,1,1,1);
+  update public.quiz_attempts
+  set metadata=metadata || jsonb_build_object('paper_model_code','QA-EXAM-REWARD-PAPER')
+  where id=v_attempt_paper and workspace_id=v_workspace and learner_id=v_learner;
+  v_result := public.flh_exam_submit(v_workspace,v_learner,v_attempt_paper);
+  perform pg_temp.qa_exam_reward_assert(
+    v_result->>'ok'='true' and v_result->'award'->>'eligible'='false'
+    and v_result->'award'->>'reason'='paper_exam_unchanged'
+    and (v_result->'award'->>'xp')::integer=0 and (v_result->'award'->>'reward_points')::integer=0,
+    'paper Exam returns a reward-neutral award'
+  );
+  select xp,reward_points into v_xp,v_points
+  from public.learner_gamification_state
+  where workspace_id=v_workspace and learner_id=v_learner;
+  perform pg_temp.qa_exam_reward_assert(v_xp=175 and v_points=35,'paper Exam leaves wallet unchanged');
+  perform pg_temp.qa_exam_reward_assert(
+    not exists(
+      select 1 from public.gamification_events
+      where workspace_id=v_workspace and learner_id=v_learner
+        and source_type='exam'
+        and metadata->>'attempt_id'=v_attempt_paper::text
+    ),
+    'paper Exam writes no Exam reward ledger event'
+  );
 
   select count(*),coalesce(sum(xp_delta),0),coalesce(sum(reward_points_delta),0)
   into v_event_count,v_event_xp,v_event_points
