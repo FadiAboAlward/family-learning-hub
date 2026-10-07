@@ -5,13 +5,19 @@ const migrationPath='supabase/migrations/20261007121049_reward_policy_calibratio
 const migration=fs.readFileSync(migrationPath,'utf8').replace(/\r\n/g,'\n');
 
 function sqlStatement(keyword, anchor, label) {
-  const at=migration.indexOf(anchor);
-  assert.notEqual(at,-1,`${label}: anchor must exist`);
-  const start=migration.lastIndexOf(keyword,at);
-  assert.notEqual(start,-1,`${label}: ${keyword} must precede anchor`);
-  const end=migration.indexOf(';',at);
-  assert.notEqual(end,-1,`${label}: statement must end with semicolon`);
-  return migration.slice(start,end+1).replace(/\s+/g,' ').trim();
+  let cursor=0;
+  while (true) {
+    const at=migration.indexOf(anchor,cursor);
+    assert.notEqual(at,-1,`${label}: anchor must exist in a ${keyword} statement`);
+    const boundary=migration.lastIndexOf(';',at)+1;
+    const start=migration.lastIndexOf(keyword,at);
+    if(start>=boundary){
+      const end=migration.indexOf(';',at);
+      assert.notEqual(end,-1,`${label}: statement must end with semicolon`);
+      return migration.slice(start,end+1).replace(/\s+/g,' ').trim();
+    }
+    cursor=at+anchor.length;
+  }
 }
 
 const prayerCases=[
