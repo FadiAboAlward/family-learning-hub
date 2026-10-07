@@ -6,6 +6,7 @@
   const pageStartedAt = Date.now();
   const responseCache = new Map();
   const inflight = new Map();
+  const cacheEpoch = new Map();
   const deferredDrafts = new Map();
   const examSaveQueue = new Map();
   let deferredActivity = null;
@@ -132,9 +133,10 @@
 
   function refreshCache(key, input, init, cfg) {
     if (inflight.has(key)) return inflight.get(key);
+    const epoch = cacheEpoch.get(key) || 0;
     const p = fetchSnapshot(input, init)
       .then(snapshot => {
-        storeSnapshot(key, snapshot, cfg);
+        if ((cacheEpoch.get(key) || 0) === epoch) storeSnapshot(key, snapshot, cfg);
         return snapshot;
       })
       .catch(() => null)
@@ -164,6 +166,33 @@
     const key = `family-api|student_profile|${tokenFingerprint(headers)}`;
     const cfg = configFor('family-api', 'student_profile');
     refreshCache(key, url, { method: 'POST', headers, body: JSON.stringify({ action: 'student_profile' }) }, cfg);
+  }
+
+  function invalidateStudentProfile(session = '') {
+    const headers = new Headers();
+    if (session) headers.set('authorization', `Bearer ${session}`);
+    const key = `family-api|student_profile|${tokenFingerprint(headers)}`;
+    cacheEpoch.set(key, (cacheEpoch.get(key) || 0) + 1);
+    responseCache.delete(key);
+    try { localStorage.removeItem(storageKey(key)); } catch {}
+    return key;
+  }
+
+  async function refreshStudentProfile(session = '') {
+    if (!session) return null;
+    const headers = learnerHeadersFrom(new Headers(), session);
+    const key = invalidateStudentProfile(session);
+    const epoch = cacheEpoch.get(key) || 0;
+    const url = `${SUPABASE_ORIGIN}/functions/v1/family-api`;
+    const cfg = configFor('family-api', 'student_profile');
+    const snapshot = await fetchSnapshot(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action: 'student_profile' })
+    });
+    if (!snapshot?.ok || (cacheEpoch.get(key) || 0) !== epoch) return null;
+    storeSnapshot(key, snapshot, cfg);
+    try { return JSON.parse(snapshot.text); } catch { return null; }
   }
 
   function primeProfile(session, profile, requestHeaders) {
@@ -312,6 +341,8 @@
   };
 
   window.FLHPerformance = {
+    invalidateStudentProfile,
+    refreshStudentProfile,
     clear() {
       responseCache.clear();
       examSaveQueue.clear();
