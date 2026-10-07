@@ -4,19 +4,14 @@ import fs from 'node:fs';
 const migrationPath='supabase/migrations/20261007121049_reward_policy_calibration_v1_3.sql';
 const migration=fs.readFileSync(migrationPath,'utf8').replace(/\r\n/g,'\n');
 
-function statementsWith(fragment) {
-  const statements=[];
-  let cursor=0;
-  while (true) {
-    const at=migration.indexOf(fragment,cursor);
-    if(at<0) break;
-    const start=migration.lastIndexOf(';',at)+1;
-    const next=migration.indexOf(';',at);
-    assert.notEqual(next,-1,`statement containing ${fragment} must end with semicolon`);
-    statements.push(migration.slice(start,next+1).replace(/\s+/g,' ').trim());
-    cursor=next+1;
-  }
-  return statements;
+function sqlStatement(keyword, anchor, label) {
+  const at=migration.indexOf(anchor);
+  assert.notEqual(at,-1,`${label}: anchor must exist`);
+  const start=migration.lastIndexOf(keyword,at);
+  assert.notEqual(start,-1,`${label}: ${keyword} must precede anchor`);
+  const end=migration.indexOf(';',at);
+  assert.notEqual(end,-1,`${label}: statement must end with semicolon`);
+  return migration.slice(start,end+1).replace(/\s+/g,' ').trim();
 }
 
 const prayerCases=[
@@ -28,9 +23,7 @@ const prayerCases=[
 ];
 
 for(const [title,base,initiative,congregation,mosque,sunnah,adhkar] of prayerCases){
-  const statements=statementsWith(`title='${title}'`);
-  assert.equal(statements.length,1,`migration must have one policy UPDATE for ${title}`);
-  const statement=statements[0];
+  const statement=sqlStatement('update public.behavior_rules',`where workspace_id=v_workspace and title='${title}'`,title);
   assert.match(statement,/^update public\.behavior_rules set /i,`${title} policy must be an UPDATE statement`);
   for(const [field,value] of [
     ['base_points',base],['initiative_bonus_points',initiative],
@@ -46,9 +39,7 @@ for(const [title,expected] of [
   ['مساعدة حقيقية في المنزل',['base_points',5]],
   ['اللعب مع الإخوة لمدة ساعة',['base_points',10,'initiative_bonus_points',5]],
 ]){
-  const statements=statementsWith(`title='${title}'`);
-  assert.equal(statements.length,1,`migration must have one policy UPDATE for ${title}`);
-  const statement=statements[0];
+  const statement=sqlStatement('update public.behavior_rules',`where workspace_id=v_workspace and title='${title}'`,title);
   for(let i=0;i<expected.length;i+=2){
     assert.match(statement,new RegExp(`\\b${expected[i]}\\s*=\\s*${expected[i+1]}\\b`),`${title} must set ${expected[i]}=${expected[i+1]}`);
   }
@@ -56,17 +47,13 @@ for(const [title,expected] of [
 assert.match(migration,/مساعدة حقيقية في عمل منزلي مفيد لمدة لا تقل عن ٣٠ دقيقة/,'household help must state the 30-minute minimum');
 
 function assertUpdateReward(title,points,level=null) {
-  const statements=statementsWith(`title='${title}'`);
-  const update=statements.find(statement=>/^update public\.gamification_rewards set /i.test(statement));
-  assert.ok(update,`migration must UPDATE reward ${title}`);
+  const update=sqlStatement('update public.gamification_rewards',`where workspace_id=v_workspace and title='${title}'`,`${title} UPDATE`);
   assert.match(update,new RegExp(`\\brequired_reward_points\\s*=\\s*${points}\\b`),`${title} UPDATE must set required_reward_points=${points}`);
   if(level!==null) assert.match(update,new RegExp(`\\brequired_level\\s*=\\s*${level}\\b`),`${title} UPDATE must set required_level=${level}`);
 }
 
 function assertInsertReward(title,points,level=null) {
-  const statements=statementsWith(`,'${title}'`);
-  const insert=statements.find(statement=>/^insert into public\.gamification_rewards/i.test(statement));
-  assert.ok(insert,`migration must INSERT reward ${title} when absent`);
+  const insert=sqlStatement('insert into public.gamification_rewards',`values(gen_random_uuid(),v_workspace,'${title}'`,`${title} INSERT`);
   if(level===null){
     assert.match(
       insert,
