@@ -106,10 +106,15 @@ export function createRewardsFixture() {
         base_points: action === 'behavior_record' ? rule.base_points : 0,
         initiative_bonus_points: action === 'behavior_record' && body.initiative ? rule.initiative_bonus_points : 0,
         adhkar_bonus_points: action === 'behavior_record' && body.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0,
-        reason: body.reason, occurred_at: occurredAt, requested_at: NOW, initiative: body.initiative, adhkar_completed: !!body.adhkar_completed,
+        congregation_bonus_points: action === 'behavior_record' && body.congregation_completed ? (rule.congregation_bonus_points || 0) : 0,
+        mosque_bonus_points: action === 'behavior_record' && body.mosque_completed ? (rule.mosque_bonus_points || 0) : 0,
+        sunnah_bonus_points: action === 'behavior_record' && body.sunnah_completed ? (rule.sunnah_bonus_points || 0) : 0,
+        reason: body.reason, occurred_at: occurredAt, requested_at: NOW, initiative: body.initiative,
+        adhkar_completed: !!body.adhkar_completed, congregation_completed: !!body.congregation_completed,
+        mosque_completed: !!body.mosque_completed, sunnah_completed: !!body.sunnah_completed,
         requester_type: action === 'behavior_record' ? 'parent' : 'learner', requester_id: 'qa-requester', reviewer_id: action === 'behavior_record' ? 'qa-parent' : null,
       };
-      row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points;
+      row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points + row.congregation_bonus_points + row.mosque_bonus_points + row.sunnah_bonus_points;
       catalog.submissions.unshift(row);
       if (action === 'behavior_record') pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: clone(row) });
       return { submission: clone(row), id: row.id };
@@ -127,7 +132,10 @@ export function createRewardsFixture() {
           row.base_points = rule.base_points;
           row.initiative_bonus_points = row.initiative ? rule.initiative_bonus_points : 0;
           row.adhkar_bonus_points = row.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0;
-          row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points;
+          row.congregation_bonus_points = row.congregation_completed ? (rule.congregation_bonus_points || 0) : 0;
+          row.mosque_bonus_points = row.mosque_completed ? (rule.mosque_bonus_points || 0) : 0;
+          row.sunnah_bonus_points = row.sunnah_completed ? (rule.sunnah_bonus_points || 0) : 0;
+          row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points + row.congregation_bonus_points + row.mosque_bonus_points + row.sunnah_bonus_points;
           pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: { ...clone(row), reviewer_id: 'qa-parent', approved_at: NOW } });
         }
       }
@@ -643,47 +651,79 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('#frLedgerSource').inputValue(), 'academic', 'the academic breakdown leaves the matching option selected');
     assert.deepEqual(await page.locator('[data-fr-ledger] [data-fr-event]').evaluateAll(rows => rows.map(row => row.dataset.frEvent).sort()), academicEventIds, 'academic drill-down includes the same legacy and modern academic history');
 
-    // FLH-FEAT-2026-017: adhkar is an optional server-configured bonus inside a prayer check-in.
+    // FLH-FEAT-2026-010 v1.3: prayer extras are server-configured linked bonuses in one occurrence.
     const prayerRuleId = '99999999-9999-4999-8999-999999999999';
+    const asrRuleId = '99999999-9999-4999-8999-999999999998';
     server.catalog.rules.push({
       id: prayerRuleId, category_id: categoryId, category_title: 'العبادات', title: 'صلاة الفجر في وقتها',
-      base_points: 2, initiative_bonus_points: 1, adhkar_bonus_points: 4,
+      base_points: 7, initiative_bonus_points: 1, congregation_bonus_points: 2, mosque_bonus_points: 2, sunnah_bonus_points: 2, adhkar_bonus_points: 1,
+      learner_scope: 'selected', learner_ids: [LEARNER_ID], cadence: 'day', max_awards: 1,
+      self_report_allowed: true, parent_approval_required: true, is_active: true,
+    }, {
+      id: asrRuleId, category_id: categoryId, category_title: 'العبادات', title: 'صلاة العصر في وقتها',
+      base_points: 6, initiative_bonus_points: 1, congregation_bonus_points: 1, mosque_bonus_points: 1, sunnah_bonus_points: 0, adhkar_bonus_points: 1,
       learner_scope: 'selected', learner_ids: [LEARNER_ID], cadence: 'day', max_awards: 1,
       self_report_allowed: true, parent_approval_required: true, is_active: true,
     });
-    // The fixture changed outside the page; reload the dashboard before selecting the new rule.
+    // The fixture changed outside the page; reload the dashboard before selecting the new rules.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await open(page, 'parent');
     await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);
     await page.locator('#frOccurrenceCategory').selectOption(categoryId);
     await page.locator('#frOccurrenceRule').selectOption(ruleId);
-    assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isHidden(), true, 'non-prayer behavior does not expose an adhkar option');
+    for (const key of ['congregation','mosque','sunnah','adhkar']) {
+      assert.equal(await page.locator(`[data-fr-${key}="frOccurrence"]`).isHidden(), true, `non-prayer behavior does not expose ${key}`);
+    }
+    await page.locator('#frOccurrenceRule').selectOption(asrRuleId);
+    assert.equal(await page.locator('[data-fr-sunnah="frOccurrence"]').isHidden(), true, 'Asr hides the zero-value sunnah option');
     await page.locator('#frOccurrenceRule').selectOption(prayerRuleId);
-    assert.equal(await page.locator('[data-fr-adhkar="frOccurrence"]').isVisible(), true, 'configured prayer exposes the linked adhkar option');
-    assert.match(await page.locator('[data-fr-adhkar-points="frOccurrence"]').innerText(), /4.*نقطة/, 'parent sees the configured adhkar bonus rather than a hard-coded value');
+    for (const [key,points] of [['congregation',2],['mosque',2],['sunnah',2],['adhkar',1]]) {
+      assert.equal(await page.locator(`[data-fr-${key}="frOccurrence"]`).isVisible(), true, `Fajr exposes configured ${key} option`);
+      assert.match(await page.locator(`[data-fr-${key}-points="frOccurrence"]`).innerText(), new RegExp(`${points}.*نقطة`), `parent sees configured ${key} points`);
+    }
     await page.locator('#frOccurrenceInitiative').check();
+    await page.locator('#frOccurrenceCongregation').check();
+    await page.locator('#frOccurrenceMosque').check();
+    await page.locator('#frOccurrenceSunnah').check();
     await page.locator('#frOccurrenceAdhkar').check();
-    await page.locator('#frOccurrenceReason').fill('صلاة الفجر مع الأذكار');
+    await page.locator('#frOccurrenceReason').fill('صلاة الفجر كاملة');
     await perform(page, 'behavior_record', () => submit(page, '#frOccurrenceForm'));
-    assert.equal(server.last('behavior_record').adhkar_completed, true, 'parent check-in submits the adhkar selection');
-    await balance(page, 31);
+    assert.deepEqual({
+      initiative:server.last('behavior_record').initiative,
+      congregation:server.last('behavior_record').congregation_completed,
+      mosque:server.last('behavior_record').mosque_completed,
+      sunnah:server.last('behavior_record').sunnah_completed,
+      adhkar:server.last('behavior_record').adhkar_completed,
+    }, { initiative:true, congregation:true, mosque:true, sunnah:true, adhkar:true }, 'parent check-in submits every selected prayer component');
+    await balance(page, 39);
     const prayerEvent = server.catalog.ledger.find(row => row.metadata?.rule_id === prayerRuleId);
     const prayerHistory = page.locator(`[data-fr-event="${prayerEvent.id}"]`);
-    assert.match(await prayerHistory.innerText(), /أساس.*2.*مبادرة.*1.*أذكار.*4/s, 'one prayer event explains base, initiative and configured adhkar points');
-    assert.equal(prayerEvent.reward_points_delta, 7, 'prayer with initiative and configured adhkar awards one seven-point movement');
+    assert.match(await prayerHistory.innerText(), /أساس.*7.*مبادرة.*1.*جماعة.*2.*المسجد.*2.*سنة.*2.*أذكار.*1/s, 'one Fajr event explains every configured component');
+    assert.equal(prayerEvent.reward_points_delta, 15, 'complete Fajr awards exactly fifteen points');
+    await assertLayout(page, `${device.name} parent prayer controls`);
 
     await open(page, 'student');
     await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
-    assert.equal(await page.locator('[data-fr-adhkar="frSelfReport"]').isVisible(), true, 'learner prayer self-report exposes the same adhkar option');
-    assert.match(await page.locator('[data-fr-adhkar-points="frSelfReport"]').innerText(), /4.*نقطة/, 'learner sees the same configured adhkar bonus');
+    for (const key of ['congregation','mosque','sunnah','adhkar']) {
+      assert.equal(await page.locator(`[data-fr-${key}="frSelfReport"]`).isVisible(), true, `learner sees configured ${key} option`);
+    }
+    await page.locator('#frSelfReportCongregation').check();
+    await page.locator('#frSelfReportMosque').check();
+    await page.locator('#frSelfReportSunnah').check();
     await page.locator('#frSelfReportAdhkar').check();
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '13:00');
-    await page.locator('#frSelfReportReason').fill('صلاة مع أذكار بانتظار الاعتماد');
+    await page.locator('#frSelfReportReason').fill('صلاة مع المكونات بانتظار الاعتماد');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
-    assert.equal(server.last('behavior_submit').adhkar_completed, true, 'learner self-report submits linked adhkar without a learner id');
-    assert.equal('learner_id' in server.last('behavior_submit'), false, 'linked adhkar preserves session-derived learner identity');
-    await balance(page, 31);
+    assert.deepEqual({
+      congregation:server.last('behavior_submit').congregation_completed,
+      mosque:server.last('behavior_submit').mosque_completed,
+      sunnah:server.last('behavior_submit').sunnah_completed,
+      adhkar:server.last('behavior_submit').adhkar_completed,
+    }, { congregation:true, mosque:true, sunnah:true, adhkar:true }, 'learner self-report submits linked prayer selections');
+    assert.equal('learner_id' in server.last('behavior_submit'), false, 'linked prayer bonuses preserve session-derived learner identity');
+    await balance(page, 39);
+    await assertLayout(page, `${device.name} learner prayer controls`);
 
     // FLH-FEAT-2026-010 v1.1: legacy duplicate-looking pending rows are grouped by learner,
     // learner-level bulk approval stops duplicate awards, and the lightweight report summarizes the visible set.

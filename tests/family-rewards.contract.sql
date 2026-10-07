@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-010 v1.1 with FLH-FEAT-2026-017 prayer/adhkar compatibility.
+-- FLH-FEAT-2026-010 v1.3 reward policy calibration with linked prayer bonuses.
 -- A dedicated caught success code rolls back every fixture; assertion errors propagate.
 -- Active authenticated learner activity targets the seeded dedicated test learner.
 do $contract$
@@ -72,6 +72,56 @@ begin
   perform pg_temp.family_assert(not has_function_privilege('authenticated','public.flh_family_reward_criteria_valid(jsonb)','EXECUTE'),'criteria helper remains service-role only');
   perform pg_temp.family_assert((select not prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid='public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)'::regprocedure),'RPC uses invoker and empty search_path');
 
+  -- Operational family rules predate repository seeding and may be absent on a
+  -- clean rebuild. If present, v1.3 must calibrate them exactly; the policy
+  -- migration unit test below pins the update statements even when absent.
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='صلاة الفجر في وقتها')
+    or exists(select 1 from public.behavior_rules r where r.workspace_id=w and r.title='صلاة الفجر في وقتها'
+      and row(r.base_points,r.initiative_bonus_points,r.congregation_bonus_points,r.mosque_bonus_points,r.sunnah_bonus_points,r.adhkar_bonus_points)=row(7,1,2,2,2,1))
+  ),'Fajr policy is exact when the operational rule exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='صلاة الظهر في وقتها')
+    or exists(select 1 from public.behavior_rules r where r.workspace_id=w and r.title='صلاة الظهر في وقتها'
+      and row(r.base_points,r.initiative_bonus_points,r.congregation_bonus_points,r.mosque_bonus_points,r.sunnah_bonus_points,r.adhkar_bonus_points)=row(4,1,1,1,2,1))
+  ),'Dhuhr policy is exact when the operational rule exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='صلاة العصر في وقتها')
+    or exists(select 1 from public.behavior_rules r where r.workspace_id=w and r.title='صلاة العصر في وقتها'
+      and row(r.base_points,r.initiative_bonus_points,r.congregation_bonus_points,r.mosque_bonus_points,r.sunnah_bonus_points,r.adhkar_bonus_points)=row(6,1,1,1,0,1))
+  ),'Asr policy is exact when the operational rule exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title in ('صلاة المغرب في وقتها','صلاة العشاء في وقتها'))
+    or not exists(
+      select 1 from public.behavior_rules r where r.workspace_id=w and r.title in ('صلاة المغرب في وقتها','صلاة العشاء في وقتها')
+        and row(r.base_points,r.initiative_bonus_points,r.congregation_bonus_points,r.mosque_bonus_points,r.sunnah_bonus_points,r.adhkar_bonus_points)<>row(4,1,1,1,2,1)
+    )
+  ),'Maghrib and Isha policy values are exact when operational rules exist');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='ترتيب الغرفة والأغراض الشخصية')
+    or exists(select 1 from public.behavior_rules where workspace_id=w and title='ترتيب الغرفة والأغراض الشخصية' and base_points=5 and initiative_bonus_points=3)
+  ),'room policy is 5+3 when the operational rule exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='مساعدة حقيقية في المنزل')
+    or exists(select 1 from public.behavior_rules where workspace_id=w and title='مساعدة حقيقية في المنزل' and base_points=5 and description like '%٣٠ دقيقة%')
+  ),'household help is 5 and states the 30-minute requirement when the operational rule exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.behavior_rules where workspace_id=w and title='اللعب مع الإخوة لمدة ساعة')
+    or exists(select 1 from public.behavior_rules where workspace_id=w and title='اللعب مع الإخوة لمدة ساعة' and base_points=10 and initiative_bonus_points=5)
+  ),'sibling play is 10+5 when the operational rule exists');
+
+  perform pg_temp.family_assert((select required_reward_points=200 from public.gamification_rewards where workspace_id=w and title='سهرة بالبيت'),'home evening costs 200');
+  perform pg_temp.family_assert((select required_reward_points=300 from public.gamification_rewards where workspace_id=w and title='حلوى خارج البيت'),'outside treat costs 300');
+  perform pg_temp.family_assert((select required_reward_points=1500 and required_level=5 from public.gamification_rewards where workspace_id=w and title='رحلة إلى مدينة ألعاب'),'amusement park costs 1500 and requires level 5');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.gamification_rewards where workspace_id=w and title='بوط رياضة جديد')
+    or exists(select 1 from public.gamification_rewards where workspace_id=w and title='بوط رياضة جديد' and required_reward_points=800)
+  ),'sports boots cost 800 when the operational reward exists');
+  perform pg_temp.family_assert((
+    not exists(select 1 from public.gamification_rewards where workspace_id=w and title='البدء بتعلم قيادة السيارة')
+    or exists(select 1 from public.gamification_rewards where workspace_id=w and title='البدء بتعلم قيادة السيارة' and required_reward_points=1500)
+  ),'supervised driving reward remains 1500 when the operational reward exists');
+
   set local role service_role;
   result := public.flh_family_rewards_command(w,teacher_id,null,'category_save','{"title":"Denied"}');
   perform pg_temp.family_assert(result->>'error'='PARENT_MANAGE_FORBIDDEN','teacher cannot manage family points');
@@ -89,21 +139,91 @@ begin
   perform pg_temp.family_assert(result->>'ok'='true','parent rule create'); rule_id := (result->'rule'->>'id')::uuid;
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('learner_ids',jsonb_build_array(other_l)));
   perform pg_temp.family_assert(result->>'error'='INVALID_SCOPE','scope cannot cross workspace');
+  -- v1.3 must preserve retries for pre-v1.3 request signatures that do not
+  -- contain the new linked prayer completion keys.
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,status,initiative,adhkar_completed,occurred_at,
+    requester_type,requester_id,reason,idempotency_key,requested_at,reviewer_id,
+    reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
+    total_points,request_payload
+  ) values (
+    w,l,rule_id,'approved',false,false,now()-interval '10 days',
+    'parent',owner_id,'QA legacy direct retry','qa-family-legacy-direct',now()-interval '10 days',owner_id,
+    now()-interval '10 days',now()-interval '10 days',5,0,0,5,
+    jsonb_build_object(
+      'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+      'initiative',false,'adhkar_completed',false,'reason','QA legacy direct retry','occurred_at',null
+    )
+  );
+  result := public.flh_family_rewards_command(
+    w,owner_id,l,'behavior_record',
+    jsonb_build_object('rule_id',rule_id,'reason','QA legacy direct retry','idempotency_key','qa-family-legacy-direct')
+  );
+  perform pg_temp.family_assert(result->>'already_recorded'='true','pre-v1.3 direct idempotency payload retries with new prayer flags defaulted false');
+
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,status,initiative,adhkar_completed,occurred_at,
+    requester_type,requester_id,reason,idempotency_key,requested_at,reviewer_id,
+    reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
+    total_points,request_payload
+  ) values (
+    w,l,rule_id,'approved',false,false,now()-interval '11 days',
+    'parent',owner_id,'QA legacy alias retry','qa-family-legacy-origin',now()-interval '11 days',owner_id,
+    now()-interval '11 days',now()-interval '11 days',5,0,0,5,
+    jsonb_build_object(
+      'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+      'initiative',false,'adhkar_completed',false,'reason','QA legacy alias retry','occurred_at',null,
+      'idempotency_aliases',jsonb_build_object(
+        'qa-family-legacy-alias',
+        jsonb_build_object(
+          'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+          'initiative',false,'adhkar_completed',false,'reason','QA legacy alias retry','occurred_at',null
+        )
+      )
+    )
+  );
+  result := public.flh_family_rewards_command(
+    w,owner_id,l,'behavior_record',
+    jsonb_build_object('rule_id',rule_id,'reason','QA legacy alias retry','idempotency_key','qa-family-legacy-alias')
+  );
+  perform pg_temp.family_assert(result->>'already_recorded'='true','pre-v1.3 alias idempotency payload retries with new prayer flags defaulted false');
+
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'adhkar_completed',true,'reason','QA invalid adhkar','idempotency_key','qa-family-adhkar-blocked'));
   perform pg_temp.family_assert(result->>'error'='INVALID_INPUT' and (select reward_points from public.learner_gamification_state where learner_id=l)=20,'adhkar cannot be claimed on a rule with no configured adhkar bonus');
-  update public.behavior_rules set adhkar_bonus_points=2 where id=rule_id and workspace_id=w;
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
-  perform pg_temp.family_assert(result->>'ok'='true' and result->'submission'->>'status'='approved' and result->'submission'->>'base_points'='5' and result->'submission'->>'initiative_bonus_points'='3' and result->'submission'->>'adhkar_bonus_points'='2' and result->'submission'->>'total_points'='10' and result->'submission'->'snapshot'->>'adhkar_completed'='true' and result->>'reward_points'='30','base, initiative and linked adhkar award separately in one event');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'congregation_completed',true,'reason','QA invalid congregation','idempotency_key','qa-family-congregation-blocked'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT','congregation cannot be claimed when configured at zero');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'mosque_completed',true,'reason','QA invalid mosque','idempotency_key','qa-family-mosque-blocked'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT','mosque cannot be claimed when configured at zero');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'sunnah_completed',true,'reason','QA invalid sunnah','idempotency_key','qa-family-sunnah-blocked'));
+  perform pg_temp.family_assert(result->>'error'='INVALID_INPUT','sunnah cannot be claimed when configured at zero');
+  update public.behavior_rules set base_points=1,initiative_bonus_points=1,adhkar_bonus_points=2,congregation_bonus_points=2,mosque_bonus_points=2,sunnah_bonus_points=2 where id=rule_id and workspace_id=w;
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  perform pg_temp.family_assert(
+    result->>'ok'='true'
+    and result->'submission'->>'status'='approved'
+    and result->'submission'->>'base_points'='1'
+    and result->'submission'->>'initiative_bonus_points'='1'
+    and result->'submission'->>'adhkar_bonus_points'='2'
+    and result->'submission'->>'congregation_bonus_points'='2'
+    and result->'submission'->>'mosque_bonus_points'='2'
+    and result->'submission'->>'sunnah_bonus_points'='2'
+    and result->'submission'->>'total_points'='10'
+    and result->'submission'->'snapshot' @> '{"adhkar_completed":true,"congregation_completed":true,"mosque_completed":true,"sunnah_completed":true,"total_points":10}'::jsonb
+    and result->>'reward_points'='30',
+    'base, initiative and all linked prayer bonuses award separately in one event'
+  );
   sid := (result->'submission'->>'id')::uuid;
-  second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text,'duplicate parent prayer record is idempotent');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',false,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',false,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','same prayer key cannot silently change the adhkar selection');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','Changed reason','idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',false,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','same prayer key cannot silently change the congregation selection');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','Changed reason','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent key cannot discard a changed reason');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','occurred_at',v_occurred_at,'idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','occurred_at',v_occurred_at,'idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent key cannot add an explicit occurrence time to an omitted-time request');
-  result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
+  result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent request key is bound to the original verified actor');
   perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=30 and (select reason from public.behavior_submissions where id=sid)='QA direct behavior','conflicting parent reuse changes no balance or audit reason');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',now()-interval '1 day','idempotency_key','qa-family-farm'));
