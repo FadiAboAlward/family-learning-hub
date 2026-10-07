@@ -147,9 +147,9 @@ begin
     reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
     total_points,request_payload
   ) values (
-    w,l,rule_id,'approved',false,false,now()-interval '3 hours',
-    'parent',owner_id,'QA legacy direct retry','qa-family-legacy-direct',now()-interval '3 hours',owner_id,
-    now()-interval '3 hours',now()-interval '3 hours',5,0,0,5,
+    w,l,rule_id,'approved',false,false,now()-interval '10 days',
+    'parent',owner_id,'QA legacy direct retry','qa-family-legacy-direct',now()-interval '10 days',owner_id,
+    now()-interval '10 days',now()-interval '10 days',5,0,0,5,
     jsonb_build_object(
       'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
       'initiative',false,'adhkar_completed',false,'reason','QA legacy direct retry','occurred_at',null
@@ -167,9 +167,9 @@ begin
     reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
     total_points,request_payload
   ) values (
-    w,l,rule_id,'approved',false,false,now()-interval '4 hours',
-    'parent',owner_id,'QA legacy alias retry','qa-family-legacy-origin',now()-interval '4 hours',owner_id,
-    now()-interval '4 hours',now()-interval '4 hours',5,0,0,5,
+    w,l,rule_id,'approved',false,false,now()-interval '11 days',
+    'parent',owner_id,'QA legacy alias retry','qa-family-legacy-origin',now()-interval '11 days',owner_id,
+    now()-interval '11 days',now()-interval '11 days',5,0,0,5,
     jsonb_build_object(
       'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
       'initiative',false,'adhkar_completed',false,'reason','QA legacy alias retry','occurred_at',null,
