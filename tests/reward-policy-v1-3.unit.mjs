@@ -4,6 +4,21 @@ import fs from 'node:fs';
 const migrationPath='supabase/migrations/20261007121049_reward_policy_calibration_v1_3.sql';
 const migration=fs.readFileSync(migrationPath,'utf8').replace(/\r\n/g,'\n');
 
+function statementsWith(fragment) {
+  const statements=[];
+  let cursor=0;
+  while (true) {
+    const at=migration.indexOf(fragment,cursor);
+    if(at<0) break;
+    const start=migration.lastIndexOf(';',at)+1;
+    const next=migration.indexOf(';',at);
+    assert.notEqual(next,-1,`statement containing ${fragment} must end with semicolon`);
+    statements.push(migration.slice(start,next+1).replace(/\s+/g,' ').trim());
+    cursor=next+1;
+  }
+  return statements;
+}
+
 const prayerCases=[
   ['صلاة الفجر في وقتها',7,1,2,2,2,1],
   ['صلاة الظهر في وقتها',4,1,1,1,2,1],
@@ -13,45 +28,68 @@ const prayerCases=[
 ];
 
 for(const [title,base,initiative,congregation,mosque,sunnah,adhkar] of prayerCases){
-  const titleIndex=migration.indexOf(`title='${title}'`);
-  assert.notEqual(titleIndex,-1,`migration must target ${title}`);
-  const window=migration.slice(Math.max(0,titleIndex-650),titleIndex+100);
+  const statements=statementsWith(`title='${title}'`);
+  assert.equal(statements.length,1,`migration must have one policy UPDATE for ${title}`);
+  const statement=statements[0];
+  assert.match(statement,/^update public\.behavior_rules set /i,`${title} policy must be an UPDATE statement`);
   for(const [field,value] of [
     ['base_points',base],['initiative_bonus_points',initiative],
     ['congregation_bonus_points',congregation],['mosque_bonus_points',mosque],
     ['sunnah_bonus_points',sunnah],['adhkar_bonus_points',adhkar],
   ]){
-    assert.match(window,new RegExp(`${field}\\s*=\\s*${value}\\b`),`${title} must set ${field}=${value}`);
+    assert.match(statement,new RegExp(`\\b${field}\\s*=\\s*${value}\\b`),`${title} must set ${field}=${value}`);
   }
 }
 
 for(const [title,expected] of [
-  ['ترتيب الغرفة والأغراض الشخصية','base_points=5, initiative_bonus_points=3'],
-  ['مساعدة حقيقية في المنزل','base_points=5'],
-  ['اللعب مع الإخوة لمدة ساعة','base_points=10, initiative_bonus_points=5'],
+  ['ترتيب الغرفة والأغراض الشخصية',['base_points',5,'initiative_bonus_points',3]],
+  ['مساعدة حقيقية في المنزل',['base_points',5]],
+  ['اللعب مع الإخوة لمدة ساعة',['base_points',10,'initiative_bonus_points',5]],
 ]){
-  const titleIndex=migration.indexOf(`title='${title}'`);
-  assert.notEqual(titleIndex,-1,`migration must target ${title}`);
-  const window=migration.slice(Math.max(0,titleIndex-450),titleIndex+100).replace(/\s+/g,' ');
-  assert.ok(window.includes(expected),`${title} must preserve the approved point policy`);
+  const statements=statementsWith(`title='${title}'`);
+  assert.equal(statements.length,1,`migration must have one policy UPDATE for ${title}`);
+  const statement=statements[0];
+  for(let i=0;i<expected.length;i+=2){
+    assert.match(statement,new RegExp(`\\b${expected[i]}\\s*=\\s*${expected[i+1]}\\b`),`${title} must set ${expected[i]}=${expected[i+1]}`);
+  }
 }
 assert.match(migration,/مساعدة حقيقية في عمل منزلي مفيد لمدة لا تقل عن ٣٠ دقيقة/,'household help must state the 30-minute minimum');
 
-for(const [title,points,level] of [
-  ['سهرة بالبيت',200,null],
-  ['حلوى خارج البيت',300,null],
-  ['بوط رياضة جديد',800,null],
-  ['رحلة إلى مدينة ألعاب',1500,5],
-  ['البدء بتعلم قيادة السيارة',1500,null],
-]){
-  const idx=migration.indexOf(`title='${title}'`);
-  const alt=migration.indexOf(`,'${title}'`);
-  assert.ok(idx>=0 || alt>=0,`migration must target reward ${title}`);
-  const at=Math.max(idx,alt);
-  const window=migration.slice(Math.max(0,at-700),at+700);
-  assert.match(window,new RegExp(`required_reward_points\\s*=\\s*${points}\\b|'${title.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&')}'[^;]{0,350}\\b${points}\\b`),`${title} must cost ${points}`);
-  if(level!==null) assert.match(window,/required_level\s*=\s*5\b|رحلة إلى مدينة ألعاب[^;]{0,350}'outing',5,1500/,'amusement park must require level 5');
+function assertUpdateReward(title,points,level=null) {
+  const statements=statementsWith(`title='${title}'`);
+  const update=statements.find(statement=>/^update public\.gamification_rewards set /i.test(statement));
+  assert.ok(update,`migration must UPDATE reward ${title}`);
+  assert.match(update,new RegExp(`\\brequired_reward_points\\s*=\\s*${points}\\b`),`${title} UPDATE must set required_reward_points=${points}`);
+  if(level!==null) assert.match(update,new RegExp(`\\brequired_level\\s*=\\s*${level}\\b`),`${title} UPDATE must set required_level=${level}`);
 }
+
+function assertInsertReward(title,points,level=null) {
+  const statements=statementsWith(`,'${title}'`);
+  const insert=statements.find(statement=>/^insert into public\.gamification_rewards/i.test(statement));
+  assert.ok(insert,`migration must INSERT reward ${title} when absent`);
+  if(level===null){
+    assert.match(
+      insert,
+      new RegExp(`insert into public\\.gamification_rewards\\(id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope\\) values\\(gen_random_uuid\\(\\),v_workspace,'${title}'[^;]*,'[^']+',${points},true,true,'all'\\)`),
+      `${title} INSERT must place ${points} in required_reward_points`
+    );
+  } else {
+    assert.match(
+      insert,
+      new RegExp(`insert into public\\.gamification_rewards\\(id,workspace_id,title,description,reward_type,required_level,required_reward_points,parent_approval_required,is_active,learner_scope\\) values\\(gen_random_uuid\\(\\),v_workspace,'${title}'[^;]*,'[^']+',${level},${points},true,true,'all'\\)`),
+      `${title} INSERT must place level ${level} and ${points} in their exact columns`
+    );
+  }
+}
+
+assertInsertReward('سهرة بالبيت',200);
+assertUpdateReward('سهرة بالبيت',200);
+assertInsertReward('حلوى خارج البيت',300);
+assertUpdateReward('حلوى خارج البيت',300);
+assertUpdateReward('بوط رياضة جديد',800);
+assertInsertReward('رحلة إلى مدينة ألعاب',1500,5);
+assertUpdateReward('رحلة إلى مدينة ألعاب',1500,5);
+assertUpdateReward('البدء بتعلم قيادة السيارة',1500);
 
 assert.match(migration,/if v_percentage >= 70 then\s+v_xp_award := v_xp_award \+ 20;\s+end if;\s+if v_percentage >= 80 then\s+v_reward_points_award := v_reward_points_award \+ 5;/s,'Learning XP remains at 70 while bonus Reward Points move to 80');
 assert.doesNotMatch(migration,/FLH_V13_[A-Z_]+_MISSING/,'clean rebuilds must not require operational family rows that were historically created outside migrations');
