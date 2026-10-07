@@ -68,7 +68,8 @@ declare
   v_attempt_same constant uuid := '96000000-0000-4000-8000-000000000013';
   v_attempt_92 constant uuid := '96000000-0000-4000-8000-000000000014';
   v_attempt_100 constant uuid := '96000000-0000-4000-8000-000000000015';
-  v_attempt_paper constant uuid := '96000000-0000-4000-8000-000000000016';
+  v_attempt_paper uuid;
+  v_paper_version uuid;
   v_learner uuid;
   v_subject bigint;
   v_result jsonb;
@@ -230,10 +231,31 @@ begin
   where workspace_id=v_workspace and learner_id=v_learner;
   perform pg_temp.qa_exam_reward_assert(v_xp=175 and v_points=35,'cumulative learner state capped');
 
-  perform pg_temp.qa_make_exam_attempt(v_learner,v_attempt_paper,1,1,1);
-  update public.quiz_attempts
-  set metadata=metadata || jsonb_build_object('paper_model_code','QA-EXAM-REWARD-PAPER')
-  where id=v_attempt_paper and workspace_id=v_workspace and learner_id=v_learner;
+  select id into strict v_paper_version from public.quiz_versions
+  where workspace_id=v_workspace and state='published'
+    and settings->'paper_exam'->>'paper_model_code'='MOH-MATH7-U1-INT-PAPER-20260909-G';
+  delete from public.quiz_attempts
+  where workspace_id=v_workspace and learner_id=v_learner
+    and metadata->>'paper_model_code'='MOH-MATH7-U1-INT-PAPER-20260909-G';
+  v_result := public.flh_paper_exam_start(
+    v_workspace,v_learner,v_paper_version,'MOH-MATH7-U1-INT-PAPER-20260909-G','qa_exam_reward_contract'
+  );
+  perform pg_temp.qa_exam_reward_assert(v_result->>'ok'='true','paper fixture starts through validated gate');
+  v_attempt_paper := (v_result->>'attempt_id')::uuid;
+  perform pg_temp.qa_exam_reward_assert(
+    public.flh_paper_exam_validate_queue(v_workspace,v_attempt_paper)->>'ok'='true',
+    'paper fixture queue and published option mappings validate'
+  );
+  for r in
+    select qq.question_id,(k.correct_answer->>'option_position')::integer as option_position
+    from public.quiz_attempt_question_queue qq
+    join public.quiz_question_answer_keys k on k.workspace_id=qq.workspace_id and k.question_id=qq.question_id
+    where qq.workspace_id=v_workspace and qq.quiz_attempt_id=v_attempt_paper
+    order by qq.sequence_no
+  loop
+    v_result := public.flh_exam_save_answer(v_workspace,v_learner,v_attempt_paper,r.question_id,r.option_position);
+    perform pg_temp.qa_exam_reward_assert(v_result->>'ok'='true','validated paper answer saves');
+  end loop;
   v_result := public.flh_exam_submit(v_workspace,v_learner,v_attempt_paper);
   perform pg_temp.qa_exam_reward_assert(
     v_result->>'ok'='true' and v_result->'award'->>'eligible'='false'
