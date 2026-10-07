@@ -17,6 +17,8 @@ declare
   v_exam_attempt constant uuid := '93000000-0000-4000-8000-000000000012';
   v_other_attempt constant uuid := '93000000-0000-4000-8000-000000000013';
   v_atomic_attempt constant uuid := '93000000-0000-4000-8000-000000000014';
+  v_79_attempt constant uuid := '93000000-0000-4000-8000-000000000015';
+  v_80_attempt constant uuid := '93000000-0000-4000-8000-000000000016';
   v_learner uuid;
   v_subject bigint;
   v_keep_going_badge uuid;
@@ -35,7 +37,7 @@ begin
     and coalesce((metadata->>'is_test')::boolean, false);
 
   delete from public.quiz_attempts
-  where id in (v_attempt, v_repeat_attempt, v_incomplete_attempt, v_exam_attempt, v_other_attempt, v_atomic_attempt);
+  where id in (v_attempt, v_repeat_attempt, v_incomplete_attempt, v_exam_attempt, v_other_attempt, v_atomic_attempt, v_79_attempt, v_80_attempt);
   delete from public.learners where id = v_other_learner;
   delete from public.quizzes where id = v_quiz;
   delete from public.subjects where code = 'QA-LEARNING-FINISH-RPC';
@@ -188,6 +190,61 @@ begin
     raise exception 'LEARNING_FINISH_RETRY_NOT_IDEMPOTENT:%', v_retry;
   end if;
 
+  -- Reward Points mastery boundary: Learning XP still receives the >=70 bonus,
+  -- while the extra 5 Reward Points begin only at >=80. Roll back these QA
+  -- attempts as one subtransaction so the main contract state stays unchanged.
+  begin
+    insert into public.quiz_attempts(id, workspace_id, learner_id, quiz_version_id, status, delivery_mode)
+    values
+      (v_79_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning'),
+      (v_80_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning');
+    insert into public.quiz_attempt_question_queue(workspace_id, quiz_attempt_id, sequence_no, question_id, difficulty_level, status, source_role)
+    select v_workspace, a.attempt_id, q.position, q.id, q.difficulty_level, 'completed', 'core'
+    from (values (v_79_attempt),(v_80_attempt)) a(attempt_id)
+    cross join public.quiz_questions q
+    where q.quiz_version_id=v_version;
+
+    insert into public.quiz_attempt_answers(
+      workspace_id, attempt_id, question_id, response, evaluation, is_correct,
+      points_awarded, attempts_used, hints_used, first_try_correct, mastery_result
+    )
+    select v_workspace, v_79_attempt, q.id, '{"option_position":1}'::jsonb, 'incorrect', false,
+      case q.id when v_q1 then 2::numeric when v_q2 then 2::numeric when v_q3 then 1.53::numeric else 0::numeric end,
+      2, 0, false, 'not_mastered'
+    from public.quiz_questions q where q.quiz_version_id=v_version;
+    insert into public.quiz_attempt_answers(
+      workspace_id, attempt_id, question_id, response, evaluation, is_correct,
+      points_awarded, attempts_used, hints_used, first_try_correct, mastery_result
+    )
+    select v_workspace, v_80_attempt, q.id, '{"option_position":1}'::jsonb, 'incorrect', false,
+      case q.id when v_q1 then 2::numeric when v_q2 then 2::numeric when v_q3 then 1.60::numeric else 0::numeric end,
+      2, 0, false, 'not_mastered'
+    from public.quiz_questions q where q.quiz_version_id=v_version;
+
+    set local role service_role;
+    v_error := public.flh_learning_finish(v_workspace, v_learner, v_79_attempt, 79);
+    reset role;
+    if (v_error->>'percentage')::numeric <> 79.00
+       or v_error->'award'->>'xp' <> '45'
+       or v_error->'award'->>'reward_points' <> '5' then
+      raise exception 'LEARNING_FINISH_79_BOUNDARY_INVALID:%', v_error;
+    end if;
+
+    set local role service_role;
+    v_error := public.flh_learning_finish(v_workspace, v_learner, v_80_attempt, 80);
+    reset role;
+    if (v_error->>'percentage')::numeric <> 80.00
+       or v_error->'award'->>'xp' <> '45'
+       or v_error->'award'->>'reward_points' <> '10' then
+      raise exception 'LEARNING_FINISH_80_BOUNDARY_INVALID:%', v_error;
+    end if;
+
+    raise exception using errcode='P0001', message='LEARNING_FINISH_BOUNDARY_QA_ROLLBACK';
+  exception when sqlstate 'P0001' then
+    reset role;
+    if sqlerrm <> 'LEARNING_FINISH_BOUNDARY_QA_ROLLBACK' then raise; end if;
+  end;
+
   -- Recreate the normal learner's prior-award identity despite the local Test
   -- trigger, then prove another completed attempt receives no duplicate award.
   update public.gamification_events
@@ -295,7 +352,7 @@ begin
   ) then raise exception 'LEARNING_FINISH_SECURITY_MODE_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt, v_repeat_attempt, v_incomplete_attempt, v_exam_attempt, v_other_attempt, v_atomic_attempt);
+  where id in (v_attempt, v_repeat_attempt, v_incomplete_attempt, v_exam_attempt, v_other_attempt, v_atomic_attempt, v_79_attempt, v_80_attempt);
   delete from public.learners where id = v_other_learner;
   delete from public.gamification_events
   where workspace_id = v_workspace and learner_id = v_learner and source_id like 'qa-learning-finish-rpc%';
