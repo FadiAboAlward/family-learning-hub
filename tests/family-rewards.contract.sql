@@ -139,6 +139,55 @@ begin
   perform pg_temp.family_assert(result->>'ok'='true','parent rule create'); rule_id := (result->'rule'->>'id')::uuid;
   result := public.flh_family_rewards_command(w,owner_id,null,'rule_save',payload||jsonb_build_object('learner_ids',jsonb_build_array(other_l)));
   perform pg_temp.family_assert(result->>'error'='INVALID_SCOPE','scope cannot cross workspace');
+  -- v1.3 must preserve retries for pre-v1.3 request signatures that do not
+  -- contain the new linked prayer completion keys.
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,status,initiative,adhkar_completed,occurred_at,
+    requester_type,requester_id,reason,idempotency_key,requested_at,reviewer_id,
+    reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
+    total_points,request_payload
+  ) values (
+    w,l,rule_id,'approved',false,false,now()-interval '3 hours',
+    'parent',owner_id,'QA legacy direct retry','qa-family-legacy-direct',now()-interval '3 hours',owner_id,
+    now()-interval '3 hours',now()-interval '3 hours',5,0,0,5,
+    jsonb_build_object(
+      'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+      'initiative',false,'adhkar_completed',false,'reason','QA legacy direct retry','occurred_at',null
+    )
+  );
+  result := public.flh_family_rewards_command(
+    w,owner_id,l,'behavior_record',
+    jsonb_build_object('rule_id',rule_id,'reason','QA legacy direct retry','idempotency_key','qa-family-legacy-direct')
+  );
+  perform pg_temp.family_assert(result->>'already_recorded'='true','pre-v1.3 direct idempotency payload retries with new prayer flags defaulted false');
+
+  insert into public.behavior_submissions(
+    workspace_id,learner_id,rule_id,status,initiative,adhkar_completed,occurred_at,
+    requester_type,requester_id,reason,idempotency_key,requested_at,reviewer_id,
+    reviewed_at,approved_at,base_points,initiative_bonus_points,adhkar_bonus_points,
+    total_points,request_payload
+  ) values (
+    w,l,rule_id,'approved',false,false,now()-interval '4 hours',
+    'parent',owner_id,'QA legacy alias retry','qa-family-legacy-origin',now()-interval '4 hours',owner_id,
+    now()-interval '4 hours',now()-interval '4 hours',5,0,0,5,
+    jsonb_build_object(
+      'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+      'initiative',false,'adhkar_completed',false,'reason','QA legacy alias retry','occurred_at',null,
+      'idempotency_aliases',jsonb_build_object(
+        'qa-family-legacy-alias',
+        jsonb_build_object(
+          'action','behavior_record','actor_id',owner_id,'learner_id',l,'rule_id',rule_id,
+          'initiative',false,'adhkar_completed',false,'reason','QA legacy alias retry','occurred_at',null
+        )
+      )
+    )
+  );
+  result := public.flh_family_rewards_command(
+    w,owner_id,l,'behavior_record',
+    jsonb_build_object('rule_id',rule_id,'reason','QA legacy alias retry','idempotency_key','qa-family-legacy-alias')
+  );
+  perform pg_temp.family_assert(result->>'already_recorded'='true','pre-v1.3 alias idempotency payload retries with new prayer flags defaulted false');
+
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'adhkar_completed',true,'reason','QA invalid adhkar','idempotency_key','qa-family-adhkar-blocked'));
   perform pg_temp.family_assert(result->>'error'='INVALID_INPUT' and (select reward_points from public.learner_gamification_state where learner_id=l)=20,'adhkar cannot be claimed on a rule with no configured adhkar bonus');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'congregation_completed',true,'reason','QA invalid congregation','idempotency_key','qa-family-congregation-blocked'));
