@@ -625,7 +625,7 @@ async function runBrowserSuite() {
     await screenshot(page, `family-rewards-${device.name}-parent`);
     await open(page, 'student');
     await balance(page, 24);
-    await page.locator('[data-fr-ledger-all]').click();
+    await perform(page, 'student_rewards_ledger', () => page.locator('[data-fr-ledger-all]').click(), { refresh: false });
     assert.equal('learner_id' in server.last('student_rewards_ledger'), false, 'learner ledger cannot select a sibling identity');
     assert.equal(await page.locator('[data-fr-behavior-approve], [data-fr-claim-approve], #frCategoryForm').count(), 0, 'learner history offers no management controls');
     await assertLayout(page, `${device.name} completed learner`);
