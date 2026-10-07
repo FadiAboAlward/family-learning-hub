@@ -132,8 +132,8 @@ await assertMath(wrongReview,'(-7) - 19 = -26','Exam review explanation');
 mark('math-review-verified',{learnWidth,examWidth});
 
 await page.evaluate(()=>{
-  const originalHome=renderStudentHome;window.__qaExamHomeCalls=0;
-  renderStudentHome=(...args)=>{window.__qaExamHomeCalls++;return originalHome(...args);};
+  window.__qaExamOriginalHome=renderStudentHome;window.__qaExamHomeCalls=0;
+  renderStudentHome=(...args)=>{window.__qaExamHomeCalls++;return window.__qaExamOriginalHome(...args);};
   const button=document.getElementById('examHome');
   button.click();
   if(!button.disabled)throw new Error('Exam Home button must disable immediately while refreshing the profile');
@@ -142,6 +142,32 @@ await page.evaluate(()=>{
 await page.waitForFunction(()=>window.__qaExamHomeCalls===1,null,{timeout:1000});
 if(await page.evaluate(()=>window.__qaExamHomeCalls)!==1)throw new Error('Repeated Exam Home taps triggered duplicate navigation');
 if(await page.evaluate(()=>Number(state.learnerProfile?.gamification?.xp))!==10)throw new Error('Exam Home did not retain the authoritative awarded profile');
+
+await page.evaluate(()=>window.FLH.startExamQuiz('qa-unit'));
+await page.locator('.exam-v3-answer').first().click();await page.locator('#examNext').click();
+await page.locator('.exam-v3-answer').first().click();
+await page.evaluate(()=>{
+  window.__qaExamOriginalApi=api;window.__qaExamOriginalRefresh=FLHPerformance.refreshStudentProfile;
+  window.__qaExamHomeCalls=0;window.__qaExamProfileFailures=0;
+  state.learnerProfile={...state.learnerProfile,gamification:{...state.learnerProfile.gamification,xp:0}};
+  FLHPerformance.refreshStudentProfile=async()=>null;
+  api=(action,...args)=>action==='student_profile'?(window.__qaExamProfileFailures++,Promise.reject(new Error('QA profile refresh unavailable'))):window.__qaExamOriginalApi(action,...args);
+});
+try{
+  await page.locator('#examSubmit').click();
+  await page.locator('.hero h1').filter({hasText:'نتيجة الامتحان'}).waitFor({state:'visible',timeout:6000});
+  await page.locator('#examHome').click();
+  const homeError=page.locator('#examHomeError');await homeError.waitFor({state:'visible',timeout:1000});
+  if(await homeError.getAttribute('role')!=='alert'||!(await homeError.innerText()).includes('تعذر تحديث رصيدك'))throw new Error('Exam profile refresh failure did not show a clear accessible error');
+  if(await page.locator('#examHome').isDisabled()||!(await page.locator('.hero h1').filter({hasText:'نتيجة الامتحان'}).isVisible()))throw new Error('Failed profile refresh did not leave a retryable Exam result');
+  if(await page.evaluate(()=>window.__qaExamHomeCalls!==0||window.__qaExamProfileFailures!==2))throw new Error('Failed initial/retry profile refresh navigated Home or did not exercise both failures');
+  await page.evaluate(()=>{api=window.__qaExamOriginalApi;FLHPerformance.refreshStudentProfile=window.__qaExamOriginalRefresh;});
+  await page.locator('#examHome').click();
+  await page.waitForFunction(()=>window.__qaExamHomeCalls===1,null,{timeout:1000});
+  if(await page.evaluate(()=>Number(state.learnerProfile?.gamification?.xp))!==10)throw new Error('Recovered Exam Home retry did not load the authoritative awarded profile');
+}finally{
+  await page.evaluate(()=>{api=window.__qaExamOriginalApi;FLHPerformance.refreshStudentProfile=window.__qaExamOriginalRefresh;renderStudentHome=window.__qaExamOriginalHome;});
+}
 
 if(errors.length)throw new Error(errors.join('; '));
 mark('passed',{learnWidth,examWidth});
