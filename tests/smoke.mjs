@@ -118,6 +118,7 @@ if(calls.profile<=profileCallsBeforeExamSubmit)throw new Error('Exam completion 
 await page.waitForFunction(()=>typeof state!=='undefined'&&state.learnerProfile?.gamification?.xp===10,null,{timeout:1000});
 await page.getByText('🎁 مكافأة الامتحان',{exact:true}).waitFor({state:'visible',timeout:1000});
 await page.getByText('+10 XP',{exact:true}).waitFor({state:'visible',timeout:1000});
+await assertMath(page.locator('.flh-explanation').filter({hasText:'🎁 مكافأة الامتحان'}),'+10','Exam reward');
 await page.evaluate(()=>window.__qaStaleProfilePromise);
 const profileCallsBeforeCacheRead=calls.profile;
 const postRaceProfile=await page.evaluate(()=>api('student_profile',{},localStorage.getItem('learner_session')));
