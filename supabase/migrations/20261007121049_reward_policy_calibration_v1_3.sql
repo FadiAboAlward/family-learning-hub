@@ -316,8 +316,26 @@ begin
       limit 1;
       if found then
         if v_submission.idempotency_key=v_key then
-          if (coalesce(v_submission.request_payload,'{}'::jsonb)-'idempotency_aliases') is distinct from v_request_payload then return jsonb_build_object('error','IDEMPOTENCY_CONFLICT'); end if;
-        elsif v_submission.request_payload->'idempotency_aliases'->v_key is distinct from v_request_payload then
+          if (
+            jsonb_build_object(
+              'adhkar_completed',false,
+              'congregation_completed',false,
+              'mosque_completed',false,
+              'sunnah_completed',false
+            )
+            || (coalesce(v_submission.request_payload,'{}'::jsonb)-'idempotency_aliases')
+          ) is distinct from v_request_payload then
+            return jsonb_build_object('error','IDEMPOTENCY_CONFLICT');
+          end if;
+        elsif (
+          jsonb_build_object(
+            'adhkar_completed',false,
+            'congregation_completed',false,
+            'mosque_completed',false,
+            'sunnah_completed',false
+          )
+          || coalesce(v_submission.request_payload->'idempotency_aliases'->v_key,'{}'::jsonb)
+        ) is distinct from v_request_payload then
           return jsonb_build_object('error','IDEMPOTENCY_CONFLICT');
         end if;
         return jsonb_build_object('ok',true,'submission',to_jsonb(v_submission),'already_recorded',true);
