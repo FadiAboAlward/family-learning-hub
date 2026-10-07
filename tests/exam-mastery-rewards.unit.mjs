@@ -34,6 +34,15 @@ assert.ok(
   'attempt/learner serialization must happen before reading prior Exam reward state'
 );
 
+const learnerQueryIndex=migration.indexOf('and l.is_active');
+const learnerLockIndex=migration.indexOf('for update;',learnerQueryIndex);
+const priorExamRewardIndex=migration.indexOf(`and e.source_type = 'exam'`);
+assert.ok(
+  learnerQueryIndex >= 0 && learnerLockIndex > learnerQueryIndex &&
+  priorExamRewardIndex >= 0 && learnerLockIndex < priorExamRewardIndex,
+  'active learner serialization must happen before reading prior Exam reward state'
+);
+
 assert.ok(
   migration.includes(`if v_xp_delta > 0 or v_reward_points_delta > 0 then`) &&
   migration.includes(`insert into public.gamification_events(`),

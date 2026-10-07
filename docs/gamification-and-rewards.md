@@ -80,7 +80,7 @@ Parent reporting should distinguish:
 
 ## Family behavior and real-world reward management
 
-Family behavior refinement remains `FEATURE_ID: FLH-FEAT-2026-010`, `SPEC_VERSION: 1.1`, `DRIVE_REVISION_ID: 2`, pinned in [Issue #123](https://github.com/FadiAboAlward/family-learning-hub/issues/123). Exam mastery rewards extend the same feature in `SPEC_VERSION: 1.2`, defined by the [v1.2 Drive Feature Spec](https://docs.google.com/document/d/1q3a_XYp23Cztoly7IuHfUJCLfcUJ1jfAfCY-7PQGOGo/edit) and pinned in [Issue #134](https://github.com/FadiAboAlward/family-learning-hub/issues/134). Unchanged v1.0/v1.1 contracts remain in force.
+Family behavior refinement remains `FEATURE_ID: FLH-FEAT-2026-010`, `SPEC_VERSION: 1.1`, `DRIVE_REVISION_ID: 2`, pinned in [Issue #123](https://github.com/FadiAboAlward/family-learning-hub/issues/123). Exam mastery rewards extend the same feature in `SPEC_VERSION: 1.2`, defined by the [v1.2 Drive Feature Spec](https://docs.google.com/document/d/1q3a_XYp23Cztoly7IuHfUJCLfcUJ1jfAfCY-7PQGOGo/edit), Drive revision `3`, and pinned in [Issue #134](https://github.com/FadiAboAlward/family-learning-hub/issues/134). Unchanged v1.0/v1.1 contracts remain in force.
 
 ### Point domains and history
 

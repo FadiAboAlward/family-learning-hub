@@ -131,6 +131,18 @@ await wrongReview.locator('.exam-review-explain').click();
 await assertMath(wrongReview,'(-7) - 19 = -26','Exam review explanation');
 mark('math-review-verified',{learnWidth,examWidth});
 
+await page.evaluate(()=>{
+  const originalHome=renderStudentHome;window.__qaExamHomeCalls=0;
+  renderStudentHome=(...args)=>{window.__qaExamHomeCalls++;return originalHome(...args);};
+  const button=document.getElementById('examHome');
+  button.click();
+  if(!button.disabled)throw new Error('Exam Home button must disable immediately while refreshing the profile');
+  button.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+});
+await page.waitForFunction(()=>window.__qaExamHomeCalls===1,null,{timeout:1000});
+if(await page.evaluate(()=>window.__qaExamHomeCalls)!==1)throw new Error('Repeated Exam Home taps triggered duplicate navigation');
+if(await page.evaluate(()=>Number(state.learnerProfile?.gamification?.xp))!==10)throw new Error('Exam Home did not retain the authoritative awarded profile');
+
 if(errors.length)throw new Error(errors.join('; '));
 mark('passed',{learnWidth,examWidth});
 console.log(`Smoke passed: Learning width=${Math.round(learnWidth)}px, Exam width=${Math.round(examWidth)}px, misconception-specific retry feedback, A-F labels, one-click flows, and RTL-safe math are active in Learning, Exam, and review.`);
