@@ -85,6 +85,16 @@ begin
   end if;
   learning_id:=(learning_result->>'attempt_id')::uuid;
 
+  if not exists (
+    select 1
+    from public.quiz_attempts
+    where workspace_id=w
+      and id=learning_id
+      and quiz_version_id=v
+  ) then
+    raise exception 'SUPPORT_DELIVERY_LEARNING_VERSION_MISMATCH:%',learning_result;
+  end if;
+
   delete from public.quiz_attempts where workspace_id=w and id=learning_id;
 
   -- Submitted-paper exclusion is already exercised by
