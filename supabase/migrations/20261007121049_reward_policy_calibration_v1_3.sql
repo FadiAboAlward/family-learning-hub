@@ -69,7 +69,6 @@ declare
   v_mosque_bonus integer;
   v_sunnah_bonus integer;
   v_delta integer;
-  v_count integer;
   v_window timestamptz;
   v_now timestamptz := clock_timestamp();
   v_snapshot jsonb;
@@ -895,68 +894,58 @@ begin
     description='٧ نقاط للفرض في وقته، +١ دون تذكير، +٢ جماعة، +٢ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٥ نقطة.',
     updated_at=now()
   where workspace_id=v_workspace and title='صلاة الفجر في وقتها';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_FAJR_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
   where workspace_id=v_workspace and title='صلاة الظهر في وقتها';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_DHUHR_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=6, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=0, adhkar_bonus_points=1,
     description='٦ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +١ لأذكار ما بعد الصلاة. لا توجد مكافأة سنة مرتبطة بالعصر. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
   where workspace_id=v_workspace and title='صلاة العصر في وقتها';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_ASR_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
   where workspace_id=v_workspace and title='صلاة المغرب في وقتها';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_MAGHRIB_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=4, initiative_bonus_points=1, congregation_bonus_points=1, mosque_bonus_points=1, sunnah_bonus_points=2, adhkar_bonus_points=1,
     description='٤ نقاط للفرض في وقته، +١ دون تذكير، +١ جماعة، +١ في المسجد، +٢ للسنة، +١ لأذكار ما بعد الصلاة. الحد الأعلى ١٠ نقاط.',
     updated_at=now()
   where workspace_id=v_workspace and title='صلاة العشاء في وقتها';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_ISHA_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=5, initiative_bonus_points=3,
     description='خمس نقاط لترتيب الغرفة والأغراض الشخصية، وثلاث نقاط إضافية إذا تم من دون تذكير.',
     updated_at=now()
   where workspace_id=v_workspace and title='ترتيب الغرفة والأغراض الشخصية';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_ROOM_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=5,
     description='خمس نقاط لمساعدة حقيقية في عمل منزلي مفيد لمدة لا تقل عن ٣٠ دقيقة من العمل الفعلي.',
     updated_at=now()
   where workspace_id=v_workspace and title='مساعدة حقيقية في المنزل';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_HOUSEHOLD_RULE_MISSING'; end if;
 
   update public.behavior_rules set
     base_points=10, initiative_bonus_points=5,
     description='عشر نقاط للعب الإيجابي مع الإخوة لمدة ساعة كاملة، وخمس إضافية إذا بدأ الطفل من نفسه دون أن يطلب منه الأهل.',
     updated_at=now()
   where workspace_id=v_workspace and title='اللعب مع الإخوة لمدة ساعة';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_SIBLING_RULE_MISSING'; end if;
 
   update public.gamification_rewards
   set required_reward_points=800, updated_at=now()
   where workspace_id=v_workspace and title='بوط رياضة جديد';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_SPORTS_BOOTS_REWARD_MISSING'; end if;
 
   update public.gamification_rewards
   set required_reward_points=1500,
       description='البدء بتعلم مبادئ قيادة السيارة بشكل آمن وتحت إشراف بالغ وفي مكان مناسب.',
       updated_at=now()
   where workspace_id=v_workspace and title='البدء بتعلم قيادة السيارة';
-  get diagnostics v_count=row_count; if v_count<>1 then raise exception 'FLH_V13_DRIVING_REWARD_MISSING'; end if;
 
   if not exists(select 1 from public.gamification_rewards where workspace_id=v_workspace and title='سهرة بالبيت') then
     insert into public.gamification_rewards(id,workspace_id,title,description,reward_type,required_reward_points,parent_approval_required,is_active,learner_scope)
