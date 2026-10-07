@@ -138,7 +138,7 @@
     const rows = occurrenceRules(view,prefix).filter(rule => rule.category_id === category.value);
     ruleSelect.innerHTML = selectOptions(rows, category.value ? (rows.length ? 'اختر السلوك' : 'لا توجد سلوكيات في هذه الفئة') : 'اختر الفئة أولًا');
     ruleSelect.disabled = !category.value || !rows.length;
-    syncAdhkar(view,prefix);
+    syncPrayerBonuses(view,prefix);
   }
   function syncOccurrenceWhen(view, prefix) {
     const dateMode=view.root.querySelector(`#${prefix}DateMode`), timeMode=view.root.querySelector(`#${prefix}TimeMode`);
