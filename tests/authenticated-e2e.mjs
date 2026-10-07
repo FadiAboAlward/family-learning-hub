@@ -118,7 +118,7 @@ async function main() {
         page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
 
         await page.addInitScript(value => localStorage.setItem('learner_session', value), prepared.session);
-        await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'networkidle', timeout: 30000 });
+        await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
         const qaProgram = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
         await qaProgram.waitFor({ state: 'visible', timeout: 10000 });
@@ -183,7 +183,7 @@ async function main() {
         direct.searchParams.set('attempt', attemptId);
         direct.searchParams.set('learner', 'test');
         direct.hash = 'student';
-        await page.goto(direct.toString(), { waitUntil: 'networkidle', timeout: 30000 });
+        await page.goto(direct.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.locator('.flh-attempt-summary').waitFor({ state: 'visible', timeout: 30000 });
         await page.locator('.flh-history-review').first().waitFor({ state: 'attached', timeout: 30000 });
         await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
