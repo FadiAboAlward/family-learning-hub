@@ -41,11 +41,11 @@ The counts describe Supabase/PostgREST/RPC calls made by the Edge Function. A pa
 
 ## Benchmark safety and lifecycle
 
-The real-backend harness can run only inside the repository's `QA Gate` workflow because it obtains a short-lived learner session through the existing GitHub OIDC-bound `qa-auth` function. `qa-auth` verifies the repository, actor, hosted-runner environment, workflow path, canonical `test` learner metadata, and fixed `qa-automation-core` quiz.
+The real-backend harness is separate from automatic `QA Gate` coverage. Under FLH026 v1.0 / Drive revision2, it remains NOT RUN until an explicitly independent Testing backend, synthetic fixtures and an authorized OIDC execution context are validated. It requires explicit isolation mode, backend origin, expected project identity and publishable key as documented in `docs/qa-policy.md`. Missing or Production configuration fails before HTTP/OIDC/lease activity. Read-only `qa-auth` attestation must match the configured target before preparation; owned lease, cryptographic OIDC, canonical `test` metadata and fixed `qa-automation-core` checks remain in force. Production and `family-quiz-lab` are forbidden targets.
 
 Every stateful sample acquires the single Testing lease. Prepare and cleanup delete only attempts belonging to the Testing learner and the canonical QA quiz version. The harness never accepts a learner slug or learner ID as input.
 
-The full baseline writes only the following Testing data through normal production APIs:
+The full baseline writes only the following synthetic Testing data through normal APIs in that independent backend:
 
 - one Learning attempt, queue, draft, answer attempts, final answers, submitted result, Testing mastery evidence, and the existing idempotent completion award path;
 - one Exam attempt, saved answers, and submitted result.
@@ -62,7 +62,7 @@ Learning answer is intentionally not repeated for A/B because a correct/final an
 
 ## Running the report
 
-Dispatch `QA Gate` on the target branch/SHA with `run_real_backend_performance=true`. The manual job uses ten samples per A/B variant, enables the browser correlation, never applies thresholds, and uploads:
+There is no automatic or optional hosted benchmark job in `qa-isolated.yml`; the former `run_real_backend_performance` dispatch is retired. A future explicitly authorized, configured isolated execution uses ten samples per A/B variant, can enable browser correlation, never applies thresholds, and preserves:
 
 - `real-backend-performance-report.json`
 - `real-backend-performance-summary.md`

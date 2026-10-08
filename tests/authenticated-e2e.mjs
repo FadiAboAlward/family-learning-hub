@@ -1,8 +1,8 @@
 import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { fetchQaBackend, fetchQaOidc, installQaBrowserIsolation, qaBrowserLaunchOptions, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
 
-const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
-const QA_AUTH_URL = 'https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/qa-auth';
+const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
@@ -12,13 +12,11 @@ const QA_BUSY_RETRY_MS = 10000;
 
 /** Request a GitHub Actions OIDC token scoped to the Family Learning Hub QA audience. */
 async function githubOidcToken() {
+  const config = readQaTestingConfig();
   const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
   const bearer = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
   if (!url || !bearer) throw new Error('GitHub OIDC environment is unavailable');
-  const sep = url.includes('?') ? '&' : '?';
-  const response = await fetch(`${url}${sep}audience=family-learning-hub-qa`, {
-    headers: { Authorization: `Bearer ${bearer}` },
-  });
+  const response = await fetchQaOidc(config, url, bearer);
   if (!response.ok) throw new Error(`GitHub OIDC request failed: ${response.status}`);
   const payload = await response.json();
   if (!payload.value) throw new Error('GitHub OIDC token missing');
@@ -27,9 +25,10 @@ async function githubOidcToken() {
 
 /** Call qa-auth with an explicit owned lifecycle action and optional run identifier. */
 async function requestQaAuth(action, runId = null) {
-  const response = await fetch(QA_AUTH_URL, {
+  const config = readQaTestingConfig();
+  const response = await fetchQaBackend(config, 'qa-auth', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', apikey: config.publishableKey },
     body: JSON.stringify({
       oidc_token: await githubOidcToken(),
       action,
@@ -96,6 +95,8 @@ export async function runOwnedQaLifecycle({ prepare, validate, run, cleanup }) {
 
 /** Run the authenticated Testing learner browser flow against the real backend. */
 async function main() {
+  const config = readQaTestingConfig();
+  await verifyQaTestingBackend(config);
   const { chromium } = await import('playwright');
 
   await runOwnedQaLifecycle({
@@ -111,8 +112,9 @@ async function main() {
     run: async prepared => {
       let browser;
       try {
-        browser = await chromium.launch({ headless: true });
-        const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+        browser = await chromium.launch(qaBrowserLaunchOptions());
+        const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+        const network = await installQaBrowserIsolation(page.context(), config);
         const errors = [];
         page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
         page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
@@ -162,21 +164,22 @@ async function main() {
         await submit.click();
         await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
 
-        const attemptId = await page.evaluate(async slug => {
+        const attemptId = await page.evaluate(async ({ slug, backendUrl, publishableKey }) => {
           const token = localStorage.getItem('learner_session') || sessionStorage.getItem('learner_session') || '';
-          const response = await fetch('https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/attempt-history-api', {
+          const response = await fetch(`${backendUrl}/functions/v1/attempt-history-api`, {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              apikey: 'sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W',
+              apikey: publishableKey,
               authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ action: 'list_attempts', page_size: 10, mode: 'exam' }),
+            redirect: 'error',
           });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.error || 'ATTEMPT_HISTORY_FAILED');
           return payload.items?.find(item => item.context?.quiz?.slug === slug)?.id || null;
-        }, QA_QUIZ_SLUG);
+        }, { slug: QA_QUIZ_SLUG, backendUrl: config.backendUrl, publishableKey: config.publishableKey });
         if (!attemptId) throw new Error('QA exam attempt was not discoverable in attempt history');
 
         const direct = new URL(APP_URL);
@@ -191,6 +194,7 @@ async function main() {
         await mkdir('playwright-screenshots', { recursive: true });
         await page.screenshot({ path: 'playwright-screenshots/attempt-deep-link-mobile.png', fullPage: true });
 
+        network.assertNoUnexpectedRequests();
         if (errors.length) throw new Error(errors.join('; '));
         console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode, direct attempt deep link.');
       } finally {

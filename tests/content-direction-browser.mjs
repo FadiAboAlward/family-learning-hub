@@ -1,8 +1,9 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
 const APP_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,APP_URL);
 const unexpectedApiRequests=[];
 
 async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',resumeHint=false,historyAllCorrect=false}={}){
