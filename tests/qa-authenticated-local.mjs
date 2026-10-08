@@ -1,0 +1,246 @@
+// FLH026 v1.1 / Drive revision2. Fresh GitHub Runner only; never a hosted project.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
+import { readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure } from './qa-runner-local.mjs';
+
+const evidenceDirectory = path.resolve('qa-authenticated-evidence');
+const cli = path.resolve('node_modules/.bin/supabase');
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/** Capture output in memory only: CLI status/start can include runtime credentials. */
+export function command(file, args, { input, env = process.env, timeout = 180000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(file, args, { env, stdio: ['pipe', 'pipe', 'pipe'], shell: false });
+    let output = '', errors = '';
+    child.stdout.on('data', bytes => { output += bytes; });
+    child.stderr.on('data', bytes => { errors += bytes; });
+    const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('QA_LOCAL_COMMAND_TIMEOUT')); }, timeout);
+    child.on('error', () => { clearTimeout(timer); reject(new Error('QA_LOCAL_COMMAND_UNAVAILABLE')); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (code === 0) resolve(output);
+      else {
+        const marker = errors.match(/\bQA_[A-Z0-9_]+\b/)?.[0];
+        reject(new Error(marker || 'QA_LOCAL_COMMAND_FAILED'));
+      }
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(input);
+  });
+}
+
+async function inspect(config, service) {
+  const rows = JSON.parse(await command('docker', ['inspect', `supabase_${service}_${config.projectId}`]));
+  assertOwnedContainer(config, rows[0], service);
+  return rows[0];
+}
+
+/** Provisioned containers have their own hosts files; Runner /etc/hosts alone is insufficient. */
+async function denyContainerProduction(config) {
+  const ids = (await command('docker', ['ps', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.ID}}'])).trim().split(/\s+/).filter(Boolean);
+  if (!ids.length) throw new Error('QA_LOCAL_CONTAINERS_MISSING');
+  for (const id of ids) {
+    const [data] = JSON.parse(await command('docker', ['inspect', id]));
+    if (data.Config?.Labels?.['com.supabase.cli.project'] !== config.projectId || !data.Name?.endsWith(`_${config.projectId}`)) throw new Error('QA_LOCAL_CONTAINER_NOT_OWNED');
+    const deny = `127.0.0.1 ${PRODUCTION_HOSTS.join(' ')}\n::1 ${PRODUCTION_HOSTS.join(' ')}\n`;
+    await command('docker', ['exec', '-u', '0', '-i', id, 'sh', '-c', 'cat >> /etc/hosts'], { input: deny });
+    const hosts = await command('docker', ['exec', id, 'cat', '/etc/hosts']);
+    assertContainerProductionDenied(hosts);
+  }
+}
+
+async function sql(config, source) {
+  await inspect(config, 'db');
+  return command('docker', ['exec', '-i', `supabase_db_${config.projectId}`, 'psql', '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres'], { input: source });
+}
+
+async function ownedSourceCopy(config) {
+  // Copy only tracked runtime/migration sources; no linked ref, .temp, .env or local key.
+  const files = (await command('git', ['ls-files', 'supabase'])).trim().split('\n');
+  for (const relative of files) {
+    if (!(relative === 'supabase/config.toml' || relative === 'supabase/roles.sql' || /^supabase\/(migrations|functions)\//.test(relative))) continue;
+    if (/\/(?:\.env|\.temp|\.branches)(?:\.|\/|$)/.test(relative)) throw new Error('QA_LOCAL_TRACKED_SECRET_FORBIDDEN');
+    const source = path.resolve(relative), target = path.join(config.directory, relative);
+    if (!(await fs.lstat(source)).isFile()) throw new Error('QA_LOCAL_SOURCE_NOT_FILE');
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.copyFile(source, target);
+  }
+  const target = path.join(config.directory, 'supabase/config.toml');
+  await fs.writeFile(target, localFunctionConfig(await fs.readFile(target, 'utf8'), config.projectId));
+}
+
+function mask(value) { console.log(`::add-mask::${value}`); }
+function ownedProcess(file, args, env) {
+  const child = spawn(file, args, { env, stdio: ['ignore', 'pipe', 'pipe'], shell: false });
+  // Discard private service output, including possible keys, requests and cookies.
+  child.stdout.on('data', () => {}); child.stderr.on('data', () => {});
+  child.on('error', () => {});
+  return child;
+}
+
+async function saveEvidence(config, stages, auth, teardown) {
+  await fs.mkdir(evidenceDirectory, { recursive: true });
+  if ((await fs.lstat(evidenceDirectory)).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID');
+  for (const name of ['lifecycle.json', 'manifest.json', 'attempt-deep-link-mobile.png']) {
+    try { if ((await fs.lstat(path.join(evidenceDirectory, name))).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  await fs.writeFile(path.join(evidenceDirectory, 'lifecycle.json'), JSON.stringify({
+    schema: 1, feature: 'FLH-FEAT-2026-026', spec_version: '1.1', drive_revision: '2',
+    status: auth === 'PASS' && stages.every(item => item.status === 'PASS') && teardown === 'PASS' ? 'PASS' : stages.some(item => item.status === 'FAIL') || teardown === 'FAIL' ? 'FAIL' : 'NOT_RUN',
+    head_sha: config.headSha, run_id: config.runId, run_attempt: config.runAttempt,
+    backend_origin: config.backendUrl, app_origin: new URL(config.appUrl).origin,
+    isolation_mode: 'runner-local', fixture_kind: 'synthetic_technical_qa',
+    authentication: auth, teardown, stages,
+    product_acceptance: 'NOT_ASSERTED_BY_TECHNICAL_SMOKE', hosted_authentication: 'NOT_RUN',
+  }, null, 2));
+  const screenshots = [];
+  try {
+    const name = 'attempt-deep-link-mobile.png', bytes = await fs.readFile(path.join(evidenceDirectory, name));
+    screenshots.push({ file: name, sha256: createHash('sha256').update(bytes).digest('hex') });
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  await fs.writeFile(path.join(evidenceDirectory, 'manifest.json'), JSON.stringify({
+    head_sha: config.headSha, run_id: config.runId, run_attempt: config.runAttempt,
+    captured_at: new Date().toISOString(), fixture_kind: 'synthetic_technical_qa', screenshots,
+  }, null, 2));
+}
+
+async function stopProcess(pid, expected) {
+  if (!Number.isInteger(pid) || pid < 2) return;
+  let cmdline;
+  try { cmdline = await fs.readFile(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  if (!expected.every(value => cmdline.split('\0').includes(value))) throw new Error('QA_LOCAL_PROCESS_NOT_OWNED');
+  process.kill(pid, 'SIGTERM');
+}
+
+/** Retryable final workflow step: destroys only the recorded run/attempt's CLI project. */
+export async function teardownLocal(config, exec = command) {
+  if (path.dirname(path.resolve(config.directory)) !== path.resolve(process.env.RUNNER_TEMP || '')) throw new Error('QA_LOCAL_TEMP_INVALID');
+  let owner;
+  try { owner = JSON.parse(await fs.readFile(path.join(config.directory, 'owner.json'), 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return 'NOT_PROVISIONED'; throw new Error('QA_LOCAL_OWNERSHIP_INVALID'); }
+  if (owner.project_id !== config.projectId || owner.head_sha !== config.headSha || owner.run_id !== config.runId || owner.run_attempt !== config.runAttempt) throw new Error('QA_LOCAL_OWNERSHIP_INVALID');
+  if (owner.app_pid) await stopProcess(owner.app_pid, ['http.server', path.resolve('.')]);
+  if (owner.functions_pid) await stopProcess(owner.functions_pid, ['functions', 'serve', config.directory]);
+  const names = (await exec('docker', ['ps', '-a', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.Names}}'])).trim().split(/\s+/).filter(Boolean);
+  for (const name of names) if (!name.startsWith('supabase_') || !name.endsWith(`_${config.projectId}`)) throw new Error('QA_LOCAL_CONTAINER_NOT_OWNED');
+  await exec(cli, ['stop', '--project-id', config.projectId, '--no-backup', '--workdir', config.directory]);
+  const remaining = (await exec('docker', ['ps', '-a', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.ID}}'])).trim();
+  if (remaining) throw new Error('QA_LOCAL_TEARDOWN_INCOMPLETE');
+  const volumes = (await exec('docker', ['volume', 'ls', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.Name}}'])).trim();
+  if (volumes) throw new Error('QA_LOCAL_VOLUMES_REMAIN');
+  if (path.dirname(path.resolve(config.directory)) !== path.resolve(process.env.RUNNER_TEMP)) throw new Error('QA_LOCAL_TEMP_INVALID');
+  await fs.rm(config.directory, { recursive: true });
+  return 'PASS';
+}
+
+async function main() {
+  const config = requireRunnerLocal();
+  if (process.argv[2] === 'teardown') {
+    const result = await teardownLocal(config);
+    let existing;
+    try { existing = JSON.parse(await fs.readFile(path.join(evidenceDirectory, 'lifecycle.json'), 'utf8')); } catch {}
+    if (existing && existing.head_sha === config.headSha && existing.run_id === config.runId) {
+      existing.final_teardown = result === 'NOT_PROVISIONED' && existing.teardown === 'PASS' ? 'PASS_ALREADY_VERIFIED' : result;
+      await fs.writeFile(path.join(evidenceDirectory, 'lifecycle.json'), JSON.stringify(existing, null, 2));
+    } else await saveEvidence(config, [], 'NOT_RUN', result);
+    console.log(`Owned local teardown: ${result}`); return;
+  }
+  const stages = [];
+  let stage = 'preflight', authentication = 'NOT_RUN', teardown = 'NOT_PROVISIONED', failure;
+  let runtime, parentId;
+  const owner = { project_id: config.projectId, head_sha: config.headSha, run_id: config.runId, run_attempt: config.runAttempt };
+  const mark = name => { stages.push({ stage: name, status: 'PASS' }); console.log(`Local authenticated QA: ${name} PASS`); };
+  try {
+    let core;
+    try { core = JSON.parse(await fs.readFile(path.join(evidenceDirectory, 'core-prerequisite.json'), 'utf8')); } catch { throw new Error('QA_LOCAL_CORE_EVIDENCE_REQUIRED'); }
+    requireSuccessfulCoreEvidence(config, core);
+    if ((await command('git', ['rev-parse', 'HEAD'])).trim() !== config.headSha) throw new Error('QA_LOCAL_HEAD_MISMATCH');
+    if ((await command(cli, ['--version'])).trim() !== '2.117.0') throw new Error('QA_LOCAL_CLI_VERSION_MISMATCH');
+    await fs.mkdir(config.directory); // Existing directories are never reset/reused silently.
+    await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
+    await ownedSourceCopy(config); mark(stage);
+    stage = 'full_local_stack';
+    await command(cli, ['start', '--workdir', config.directory], { timeout: 360000 });
+    await inspect(config, 'db'); await inspect(config, 'kong');
+    await denyContainerProduction(config);
+    await command(cli, ['db', 'reset', '--local', '--no-seed', '--workdir', config.directory], { timeout: 180000 });
+    await denyContainerProduction(config);
+    runtime = readLocalRuntime(config, JSON.parse(await command(cli, ['status', '-o', 'json', '--workdir', config.directory])));
+    mask(runtime.publishableKey); mask(runtime.serviceRoleKey);
+    mark(stage);
+    stage = 'fresh_database_and_synthetic_preflight';
+    await sql(config, await fs.readFile('tests/fresh-database-rebuild.sql', 'utf8'));
+    await sql(config, "do $$ begin if exists(select 1 from auth.users) or exists(select 1 from public.quiz_attempts) or exists(select 1 from private.qa_run_leases) then raise exception 'QA_LOCAL_FRESH_STATE_INVALID'; end if; end; $$;");
+    mark(stage);
+    stage = 'local_edge_attestation';
+    const envFile = path.join(config.directory, 'edge.env');
+    await fs.writeFile(envFile, `FLH_QA_ISOLATION_MODE=runner-local\nFLH_QA_PROJECT_REF=local\nFLH_QA_BACKEND_URL=${config.backendUrl}\n`, { mode: 0o600 });
+    const serve = ownedProcess(cli, ['functions', 'serve', '--env-file', envFile, '--workdir', config.directory], process.env);
+    owner.functions_pid = serve.pid;
+    await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
+    const started = Date.now(); let ready = false;
+    await pause(1500); // Let serve replace its initial Edge runtime before applying container denies.
+    while (Date.now() - started < 90000) {
+      if (serve.exitCode !== null) throw new Error('QA_LOCAL_EDGE_START_FAILED');
+      try {
+        await inspect(config, 'edge_runtime'); await denyContainerProduction(config);
+        const edgeBefore = (await inspect(config, 'edge_runtime')).Id;
+        await verifyQaTestingBackend({ ...runtime, appUrl: config.appUrl });
+        if ((await inspect(config, 'edge_runtime')).Id !== edgeBefore) throw new Error('QA_LOCAL_EDGE_CHANGED');
+        ready = true; break;
+      } catch { await pause(1500); }
+    }
+    if (!ready) throw new Error('QA_LOCAL_EDGE_ATTESTATION_FAILED');
+    mark(stage);
+    stage = 'synthetic_accounts_and_content';
+    const password = randomBytes(32).toString('base64url'); mask(password);
+    const email = `flh-qa-parent-${config.runId}-${config.runAttempt}@example.test`;
+    const created = await fetchRunnerLocalAuth(runtime, '/auth/v1/admin/users', { method: 'POST', headers: { apikey: runtime.serviceRoleKey, authorization: `Bearer ${runtime.serviceRoleKey}`, 'content-type': 'application/json' }, body: JSON.stringify({ email, password, email_confirm: true, app_metadata: { technical_qa: true }, user_metadata: { relation: 'parent' } }) });
+    if (!created.ok) throw new Error('QA_LOCAL_PARENT_CREATE_FAILED');
+    parentId = (await created.json()).id;
+    if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(parentId || '')) throw new Error('QA_LOCAL_PARENT_ID_INVALID');
+    await sql(config, (await fs.readFile('tests/qa-authenticated-local.fixtures.sql', 'utf8')).replaceAll('__QA_PARENT_ID__', parentId));
+    mark(stage);
+    stage = 'local_application';
+    const app = ownedProcess('python3', ['-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', path.resolve('.')], process.env);
+    owner.app_pid = app.pid;
+    await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
+    const appStart = Date.now(); ready = false;
+    while (Date.now() - appStart < 15000) {
+      if (app.exitCode !== null) throw new Error('QA_LOCAL_APP_START_FAILED');
+      try { if ((await fetch(config.appUrl, { redirect: 'error' })).ok) { ready = true; break; } } catch {}
+      await pause(250);
+    }
+    if (!ready) throw new Error('QA_LOCAL_APP_START_FAILED'); mark(stage);
+    stage = 'unmocked_authenticated_browser'; authentication = 'FAIL';
+    const childEnv = { ...process.env, FLH_QA_PUBLISHABLE_KEY: runtime.publishableKey, FLH_QA_PARENT_EMAIL: email, FLH_QA_PARENT_PASSWORD: password };
+    readQaTestingConfig(childEnv); // Publishable/anon only; service key never reaches the browser child.
+    await command(process.execPath, ['tests/authenticated-e2e.mjs'], { env: childEnv, timeout: 240000 });
+    authentication = 'PASS'; mark(stage);
+    stage = 'owned_lease_cleanup';
+    await sql(config, "do $$ begin if exists(select 1 from private.qa_run_leases) or exists(select 1 from public.quiz_attempts a join public.quiz_versions v on v.id=a.quiz_version_id join public.quizzes q on q.id=v.quiz_id where q.slug='qa-automation-core') then raise exception 'QA_LOCAL_LEASE_OR_ATTEMPTS_REMAIN'; end if; end; $$;");
+    mark(stage);
+  } catch (error) {
+    failure = error; stages.push({ stage, status: 'FAIL', code: safeQaFailure(error) });
+    console.error(`Local authenticated QA failed at ${stage}: ${safeQaFailure(error)}`);
+  } finally {
+    try {
+      if (runtime && parentId) {
+        const removed = await fetchRunnerLocalAuth(runtime, `/auth/v1/admin/users/${parentId}`, { method: 'DELETE', headers: { apikey: runtime.serviceRoleKey, authorization: `Bearer ${runtime.serviceRoleKey}` } });
+        if (!removed.ok) throw new Error('QA_LOCAL_PARENT_DELETE_FAILED');
+      }
+    } catch (error) { stages.push({ stage: 'synthetic_parent_cleanup', status: 'FAIL', code: safeQaFailure(error) }); failure ||= error; }
+    try { teardown = await teardownLocal(config); }
+    catch (error) { teardown = 'FAIL'; stages.push({ stage: 'teardown', status: 'FAIL', code: safeQaFailure(error) }); failure ||= error; }
+    await saveEvidence(config, stages, authentication, teardown);
+  }
+  if (failure) process.exitCode = 1;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
