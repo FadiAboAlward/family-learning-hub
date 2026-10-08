@@ -5,7 +5,7 @@ const APP_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const browser=await chromium.launch({headless:true});
 const unexpectedApiRequests=[];
 
-async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',resumeHint=false}={}){
+async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',resumeHint=false,historyAllCorrect=false}={}){
   let learningHintRequests=0;
   await page.route('**/functions/v1/**',r=>{
     unexpectedApiRequests.push(new URL(r.request().url()).pathname);
@@ -32,8 +32,8 @@ async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',r
           id:'11111111-1111-4111-8111-111111111111',
           delivery_mode:'exam',
           submitted_at:'2026-09-30T12:00:00Z',
-          percentage:50,
-          wrong_count:1,
+          percentage:historyAllCorrect?100:50,
+          wrong_count:historyAllCorrect?0:1,
           duration_seconds:90,
           context:{quiz:{title:'Geçmiş deneme'}}
         },
@@ -43,14 +43,14 @@ async function installRoutes(page,{hintSecond='exhausted',answerMode='missing',r
           question_code:'QA-DIR-HISTORY-TR',
           prompt:"B şehri UTC-4&amp;#39;tür. B&amp;#39;den fark nedir?",
           prompt_language:'tr',
-          selected_option:{position:2,label:'B',content:'6 saat'},
+          selected_option:historyAllCorrect?{position:1,label:'A',content:'4 saat'}:{position:2,label:'B',content:'6 saat'},
           correct_option:{position:1,label:'A',content:'4 saat'},
-          is_correct:false,
-          points_awarded:0,
+          is_correct:historyAllCorrect,
+          points_awarded:historyAllCorrect?1:0,
           max_points:1,
           attempts_used:1,
           hints_used:0,
-          first_try_correct:false,
+          first_try_correct:historyAllCorrect,
           explanation:'Saat dilimlerini sayı doğrusunda karşılaştır.',
           assets:[]
         }]
@@ -410,6 +410,23 @@ async function probeMisconceptionFeedback(){
   }
 }
 
+async function probeAllCorrectHistory(width,height){
+  const page=await browser.newPage({viewport:{width,height}});
+  try{
+    await page.addInitScript(()=>localStorage.setItem('learner_session','qa.direction'));
+    await installRoutes(page,{historyAllCorrect:true});
+    await page.goto(APP_URL+'#student',{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>window.FLH?.openAttemptHistoryAttempt&&document.querySelector('.hero h1')?.textContent.trim().startsWith('أهلًا'));
+    assert.equal(await page.evaluate(()=>window.FLH.openAttemptHistoryAttempt('11111111-1111-4111-8111-111111111111')),true);
+    await page.locator('.flh-history-review-heading').waitFor();
+    assert.equal(await page.locator('.flh-history-review-heading').textContent(),'مراجعة إجاباتك','All-correct history must not tell the learner they made mistakes');
+    assert.equal(await page.locator('.flh-history-review.wrong').count(),0);
+    assert.equal(await page.locator('[data-filter="wrong"]').isDisabled(),true);
+    assert.equal(await page.locator('.flh-history-review.correct').getAttribute('open'),null,'Correct items remain deemphasized');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  }finally{await page.close();}
+}
+
 async function probeInteractive(width,height){
   const page=await browser.newPage({viewport:{width,height}});
   try{
@@ -454,6 +471,8 @@ try{
   await probeHintRequestState('error');
   await probeResumeHint();
   await probeMisconceptionFeedback();
+  await probeAllCorrectHistory(390,844);
+  await probeAllCorrectHistory(1280,800);
   await probeInteractive(1280,800);
   await probeInteractive(390,844);
   assert.deepEqual(unexpectedApiRequests,[],'Every API request must be handled by synthetic Testing fixtures');
