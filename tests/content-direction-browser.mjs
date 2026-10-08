@@ -289,14 +289,14 @@ async function probe(width,height){
     assert.equal(await reviews.count(),2);
 
     const trReviewPrompt=await computedDirection(reviews.nth(0).locator('.question'));
-    const trReviewSelected=await computedDirection(reviews.nth(0).locator('.muted b').first());
+    const trReviewSelected=await computedDirection(reviews.nth(0).locator('.flh-review-response b'));
     assert.equal(trReviewPrompt.dir,'ltr');
     assert.equal(trReviewPrompt.lang,'tr');
     assert.equal(trReviewSelected.dir,'ltr');
     assert.equal(trReviewSelected.lang,'tr');
 
     const arReviewPrompt=await computedDirection(reviews.nth(1).locator('.question'));
-    const arReviewSelected=await computedDirection(reviews.nth(1).locator('.muted b').first());
+    const arReviewSelected=await computedDirection(reviews.nth(1).locator('.flh-review-response b'));
     assert.equal(arReviewPrompt.dir,'rtl');
     assert.equal(arReviewPrompt.lang,'ar');
     assert.equal(arReviewSelected.dir,'rtl');
@@ -322,6 +322,11 @@ async function probe(width,height){
     assert.equal(historyPrompt.lang,'tr');
     assert.equal(historySelected.dir,'ltr');
     assert.equal(historySelected.lang,'tr');
+    assert.equal(await page.locator('.flh-history-review-heading').textContent(),'راجع أخطاءك');
+    assert.equal(await page.locator('.flh-history-review-list').evaluate(el=>
+      Boolean(el.compareDocumentPosition(document.querySelector('.flh-attempt-summary')) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ),true,'The submitted mistake review is visible before aggregate scores');
+    assert.equal(await page.locator('.flh-history-review.wrong .flh-review-answer').count(),2,'Actual and correct answers remain visible in submitted history');
     assert.match(historyPrompt.text,/UTC-4'tür/);
     assert.match(historyPrompt.text,/B'den/);
 

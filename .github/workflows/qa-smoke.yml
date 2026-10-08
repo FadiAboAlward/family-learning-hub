@@ -191,6 +191,14 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/content-direction-browser.mjs
+      - name: Verify authoritative learner journey actions
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-journey-browser.mjs
+      - name: Verify learner timers and submitted mistake review
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-timers-review-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/
