@@ -200,11 +200,17 @@
     const parsed=new Date(row.occurred_at);
     return Number.isFinite(parsed.getTime()) ? `${row.learner_id}|${row.rule_id}|${parsed.toISOString()}` : '';
   }
-  function duplicateSubmissionIds(rows) {
-    const seen=new Map(), duplicates=new Set(), approved=new Set(rows.filter(row=>row.status==='approved').map(exactOccurrenceKey).filter(Boolean));
+  function duplicateSubmissionIds(rows,eventFor=()=>null) {
+    const keyFor=row=>{
+      if(row.rule_id!==PARENT_RETURN_RULE)return exactOccurrenceKey(row);
+      const eventId=eventFor(row)?.id||row.return_event_id;
+      return eventId&&row.learner_id?`${row.learner_id}|${row.rule_id}|${eventId}`:'';
+    };
+    const seen=new Map(), duplicates=new Set(), approved=new Set(rows.filter(row=>row.status==='approved').map(keyFor).filter(Boolean));
     for(const row of rows.filter(row=>row.status==='pending')){
-      const key=exactOccurrenceKey(row); if(!key)continue;
-      if(row.possible_duplicate||approved.has(key))duplicates.add(row.id);
+      const key=keyFor(row),event=eventFor(row);
+      if(row.possible_duplicate||event?.awarded_learner_ids?.includes(row.learner_id)||key&&approved.has(key))duplicates.add(row.id);
+      if(!key)continue;
       if(seen.has(key)){duplicates.add(seen.get(key));duplicates.add(row.id);} else seen.set(key,row.id);
     }
     return duplicates;
@@ -287,14 +293,21 @@
   }
   function syncReturnForecasts(view){
     if(!current(view))return;
+    view.duplicateSubmissionIds=duplicateSubmissionIds(view.data.submissions||[],row=>selectedReturnEvent(view,row));
     for(const row of view.data.submissions||[]){
-      const card=[...view.root.querySelectorAll('[data-fr-submission]')].find(card=>card.dataset.frSubmission===row.id);
-      if(row.status!=='pending'||!card)continue;
+      if(row.status!=='pending')continue;
       const preview=pendingProjection(view.data.rules||[],row,selectedReturnEvent(view,row));
-      const estimate=card.querySelector('.fr-estimate');
-      if(estimate)estimate.innerHTML=preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`;
-      const source=card.querySelector('.fr-preview-source');
-      if(source&&row.rule_id===PARENT_RETURN_RULE)source.textContent=preview.duplicate?'تم منح نقاط لهذه المناسبة؛ لا يتوقع منح نقاط جديدة.':preview.conditional?'نقطتان مشروطتان باختيار مناسبة حقيقية والتحقق من الحد اليومي':'تقدير مشروط بالتحقق من الحد اليومي؛ لم يضف إلى الرصيد';
+      for(const card of [...view.root.querySelectorAll('[data-fr-submission]')].filter(card=>card.dataset.frSubmission===row.id)){
+        const duplicate=view.duplicateSubmissionIds.has(row.id),stack=card.querySelector('.fr-status-stack');
+        let badge=stack?.querySelector('.fr-duplicate');
+        if(duplicate&&stack&&!badge){badge=document.createElement('span');badge.className='fr-status fr-duplicate';badge.textContent='مكرر محتمل';stack.append(badge);}
+        else if(!duplicate)badge?.remove();
+        const explanation=card.querySelector('.fr-duplicate-explanation');if(explanation)explanation.hidden=!duplicate;
+        const estimate=card.querySelector('.fr-estimate');
+        if(estimate)estimate.innerHTML=preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`;
+        const source=card.querySelector('.fr-preview-source');
+        if(source&&row.rule_id===PARENT_RETURN_RULE)source.textContent=preview.duplicate?'تم منح نقاط لهذه المناسبة؛ لا يتوقع منح نقاط جديدة.':preview.conditional?'نقطتان مشروطتان باختيار مناسبة حقيقية والتحقق من الحد اليومي':'تقدير مشروط بالتحقق من الحد اليومي؛ لم يضف إلى الرصيد';
+      }
     }
     for(const group of view.root.querySelectorAll('[data-fr-approval-learner]')){
       const ids=new Set([...group.querySelectorAll('[data-fr-submission]')].map(card=>card.dataset.frSubmission));
@@ -393,7 +406,7 @@
       const preview=pendingProjection(view.data.rules||[],row,selectedReturnEvent(view,row)),error=view.approvalErrors?.get(row.id);
       const source=preview.conditional?'نقطتان مشروطتان باختيار مناسبة حقيقية والتحقق من الحد اليومي':preview.source==='captured'?'تقدير مسجّل مع الطلب':preview.source==='current'?'تقدير بحسب القاعدة الحالية؛ هذا الطلب القديم بلا تقدير مسجّل':'التقدير غير متاح';
       const conditions=[row.initiative&&preview.parts?.initiative_bonus_points>0?'تم دون تذكير':'',row.congregation_completed?'صلاة جماعة':'',row.mosque_completed?'في المسجد':'',row.sunnah_completed?'سنة الصلاة':'',row.adhkar_completed?'أذكار ما بعد الصلاة':''].filter(Boolean);
-      return `<article data-fr-submission="${safe(row.id)}" class="fr-item fr-pending-card"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id)?'<span class="fr-status fr-duplicate">مكرر محتمل</span>':''}</span></div><div class="muted fr-occurrence-meta">${view.role==='parent'?`${safe(name(view,row.learner_id))} · `:''}${row.rule_id===PARENT_RETURN_RULE?'وقت البلاغ: ':''}${isolated(date(row.occurred_at||row.requested_at))}</div><div class="fr-estimate">${preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`}</div><div class="muted fr-preview-source">${safe(source)}</div>${preview.duplicate?'<div class="muted">تم منح نقاط لهذه الواقعة سابقًا؛ لا يتوقع منح نقاط جديدة لهذا الطلب.</div>':''}${conditions.length?`<div class="fr-captured-status">${conditions.map(safe).join(' · ')}</div>`:''}${error?`<div class="error fr-item-error" role="alert">${safe(errorMessages[error]||'تعذر اعتماد هذا الطلب. حدّث العرض أو أعد المحاولة.')}</div>`:''}${view.role==='parent'&&showReturnChoice&&row.rule_id===PARENT_RETURN_RULE?returnEventControl(view,row.id,row.occurred_at):''}${view.role==='parent'?`<div class="actions fr-card-actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>`:''}<details class="fr-submission-details"><summary>التفاصيل</summary>${projectionDetails(preview)}<div class="muted">${safe(categoryName(view,row))}</div>${row.reason?`<p>${safe(row.reason)}</p>`:''}${row.requested_at?`<div class="muted">وقت إرسال الطلب: ${isolated(date(row.requested_at))}</div>`:''}${view.duplicateSubmissionIds?.has(row.id)?'<div class="muted">قد يمثل هذا الطلب واقعة مسجّلة سابقًا؛ يتحقق الخادم قبل منح النقاط.</div>':''}</details></article>`;
+      return `<article data-fr-submission="${safe(row.id)}" class="fr-item fr-pending-card"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id)?'<span class="fr-status fr-duplicate">مكرر محتمل</span>':''}</span></div><div class="muted fr-occurrence-meta">${view.role==='parent'?`${safe(name(view,row.learner_id))} · `:''}${row.rule_id===PARENT_RETURN_RULE?'وقت البلاغ: ':''}${isolated(date(row.occurred_at||row.requested_at))}</div><div class="fr-estimate">${preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`}</div><div class="muted fr-preview-source">${safe(source)}</div>${preview.duplicate?'<div class="muted">تم منح نقاط لهذه الواقعة سابقًا؛ لا يتوقع منح نقاط جديدة لهذا الطلب.</div>':''}${conditions.length?`<div class="fr-captured-status">${conditions.map(safe).join(' · ')}</div>`:''}${error?`<div class="error fr-item-error" role="alert">${safe(errorMessages[error]||'تعذر اعتماد هذا الطلب. حدّث العرض أو أعد المحاولة.')}</div>`:''}${view.role==='parent'&&showReturnChoice&&row.rule_id===PARENT_RETURN_RULE?returnEventControl(view,row.id,row.occurred_at):''}${view.role==='parent'?`<div class="actions fr-card-actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>`:''}<details class="fr-submission-details"><summary>التفاصيل</summary>${projectionDetails(preview)}<div class="muted">${safe(categoryName(view,row))}</div>${row.reason?`<p>${safe(row.reason)}</p>`:''}${row.requested_at?`<div class="muted">وقت إرسال الطلب: ${isolated(date(row.requested_at))}</div>`:''}<div class="muted fr-duplicate-explanation" ${view.duplicateSubmissionIds?.has(row.id)?'':'hidden'}>قد يمثل هذا الطلب واقعة مسجّلة سابقًا؛ يتحقق الخادم قبل منح النقاط.</div></details></article>`;
     }
     return `<article data-fr-submission="${safe(row.id)}" class="fr-item"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id) ? '<span class="fr-status fr-duplicate">مكرر محتمل</span>' : ''}</span></div><div class="muted">${view.role === 'parent' ? `${safe(name(view, row.learner_id))} · ` : ''}${safe(categoryName(view, {...row,category_id:row.category_id || rule?.category_id}))} · ${isolated(date(row.occurred_at || row.created_at || row.requested_at))}</div>${row.status === 'pending' && rule ? `<div class="muted">النقاط المتوقعة بحسب القاعدة الحالية عند الاعتماد:</div>${pointParts({base_points:rule.base_points,initiative_bonus_points:row.initiative?rule.initiative_bonus_points:0,adhkar_bonus_points:row.adhkar_completed?rule.adhkar_bonus_points:0,congregation_bonus_points:row.congregation_completed?rule.congregation_bonus_points:0,mosque_bonus_points:row.mosque_completed?rule.mosque_bonus_points:0,sunnah_bonus_points:row.sunnah_completed?rule.sunnah_bonus_points:0})}` : pointParts(row)}${row.initiative ? '<div class="muted">تم دون تذكير</div>' : ''}${row.congregation_completed ? '<div class="muted">تمت الصلاة جماعة</div>' : ''}${row.mosque_completed ? '<div class="muted">تمت الصلاة في المسجد</div>' : ''}${row.sunnah_completed ? '<div class="muted">تمت سنة الصلاة</div>' : ''}${row.adhkar_completed ? '<div class="muted">تمت أذكار ما بعد الصلاة</div>' : ''}${row.reason ? `<p>${safe(row.reason)}</p>` : ''}${row.review_reason ? `<p>ملاحظة الأهل: ${safe(row.review_reason)}</p>` : ''}${row.status === 'pending' ? '<div class="muted">لا تُضاف نقاط قبل موافقة الأهل.</div>' : ''}${view.role === 'parent' && row.status === 'pending' ? `<div class="actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>` : ''}</article>`;
   }
@@ -559,7 +572,7 @@
     view.ledgerCursor=null;
     view.fullLedger=false;
     const allSubmissions=view.data.submissions||[];
-    view.duplicateSubmissionIds=duplicateSubmissionIds(allSubmissions);
+    view.duplicateSubmissionIds=duplicateSubmissionIds(allSubmissions,row=>selectedReturnEvent(view,row));
     const submissions=allSubmissions.filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner), claims=(view.data.claims||[]).filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner);
     const pendingBehaviors=allSubmissions.filter(row=>row.status==='pending');
     const parent=view.role==='parent';

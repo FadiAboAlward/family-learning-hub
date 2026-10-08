@@ -30,8 +30,9 @@ assert.equal(rewardsErrorStatus('RETURN_EVENT_REQUIRED'),400);assert.equal(rewar
 
 const source=fs.readFileSync(new URL('../family-rewards-v1.js',import.meta.url),'utf8'),context={Date};
 const occurrence=source.slice(source.indexOf('  function exactOccurrenceKey('),source.indexOf('  function duplicateSubmissionIds('));
+const duplicateWarnings=source.slice(source.indexOf('  function duplicateSubmissionIds('),source.indexOf('  function name('));
 const projection=source.slice(source.indexOf('  const PREVIEW_COMPONENTS='),source.indexOf('  function selectedReturnEvent('));
-vm.runInNewContext(occurrence+projection,context);
+vm.runInNewContext(occurrence+projection+duplicateWarnings,context);
 const greeting='a315e8af-9d9b-473b-95ac-c5425ad7de5b',rule={id:greeting,base_points:2},claim=(id,clock)=>({id,rule_id:greeting,learner_id:learner,status:'pending',occurred_at:clock,snapshot:{}});
 const first=claim('claim-1','2020-01-01T07:00:00Z'),second=claim('claim-2','2020-01-02T08:00:00Z'),occasion={id:event,awarded_learner_ids:[]};
 assert.equal(context.pendingProjection([rule],first).conditional,true,'unverified greeting remains conditional and uncredited');
@@ -40,4 +41,14 @@ assert.equal(context.pendingSummary([rule],[first,second],row=>({id:row.id,award
 assert.equal(context.pendingSummary([rule],[first,second],()=>occasion).count,2,'deduplication preserves visible pending count');
 assert.equal(context.pendingProjection([rule],first,{...occasion,awarded_learner_ids:[learner]}).forecast,0,'known awarded occasion forecasts zero new points');
 assert.equal(context.pendingProjection([rule],first,{...occasion,awarded_learner_ids:['another-learner']}).forecast,2,'another learner independently qualifies for the same occasion');
-console.log('Parent return event API authority and canonical pending forecasts passed; real database contracts remain separate.');
+const approved={...first,id:'approved-return',status:'approved',return_event_id:event};
+const distinct={...first,id:'distinct-return',return_event_id:'another-event',possible_duplicate:false};
+assert.equal(context.duplicateSubmissionIds([approved,distinct]).size,0,'equal child clocks for distinct bound occasions never imply a duplicate');
+assert.equal(context.duplicateSubmissionIds([approved,{...second,return_event_id:event}]).has(second.id),true,'the same bound occasion is detected despite different child clocks');
+assert.equal(context.duplicateSubmissionIds([approved,first,{...first,id:'unbound-return'}]).size,0,'unbound greeting clocks do not establish physical identity');
+assert.equal(context.duplicateSubmissionIds([{...first,possible_duplicate:true}]).has(first.id),true,'a server-known duplicate remains visible without a local event binding');
+assert.equal(context.duplicateSubmissionIds([first,second],()=>occasion).size,2,'two pending claims selected to one shared occasion are both flagged');
+assert.equal(context.duplicateSubmissionIds([first,second],row=>row.id===first.id?occasion:{...occasion,id:'another-event'}).size,0,'distinct parent selections clear the warning immediately');
+assert.equal(context.duplicateSubmissionIds([first],()=>({...occasion,awarded_learner_ids:[learner]})).has(first.id),true,'an already-awarded selected occasion remains a known duplicate');
+assert.equal(context.duplicateSubmissionIds([{...approved,rule_id:'ordinary'},{...first,rule_id:'ordinary'}]).has(first.id),true,'unrelated behavior rules retain exact-clock duplicate warnings');
+console.log('Parent return event API authority, canonical forecasts and identity-based duplicate warnings passed; real database contracts remain separate.');

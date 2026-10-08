@@ -975,6 +975,32 @@ async function runBrowserSuite() {
     await page.waitForFunction(eventId=>document.querySelector('[data-fr-direct-return] [data-fr-return-select]')?.value===eventId,secondEvent.id);
     await perform(page,'behavior_record',()=>submit(page,'#frOccurrenceForm'));
     assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected+2);
+    // Equal claim clocks cannot warn for distinct canonical occasions. Selecting
+    // an already-awarded occasion must warn despite a different child clock.
+    const warningBalance=server.state.reward_points;
+    const thirdResult=await server.handle({action:'return_event_create',occurred_at:new Date(Date.now()-60000).toISOString(),idempotency_key:'r1-warning-event-'+device.name});
+    const thirdEvent=thirdResult.body.return_event;
+    const sameClockResult=await server.handle({action:'behavior_submit',rule_id:greetingId,occurred_at:greetingSubmission.occurred_at,idempotency_key:'r1-warning-claim-'+device.name});
+    const sameClockId=sameClockResult.body.submission.id;
+    const warningDashboard=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await warningDashboard;
+    const sameClockCard=page.locator(`[data-fr-approvals] [data-fr-submission="${sameClockId}"]`),sameClockControl=sameClockCard.locator('[data-fr-return-context]');
+    await sameClockCard.waitFor({state:'visible'});
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'unbound equal greeting clocks do not imply a duplicate');
+    await sameClockControl.locator('[data-fr-return-day]').fill(localDay(thirdEvent.occurred_at));
+    await sameClockControl.locator('[data-fr-return-day]').dispatchEvent('change');
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${thirdEvent.id}"]`).waitFor({state:'attached'});
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(thirdEvent.id);
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'same-clock different selected occasion remains clear');
+    assert.match(await sameClockCard.locator('.fr-estimate').innerText(),/^2/,'distinct unawarded occasion retains its conditional estimate');
+    await duplicateControl.locator('[data-fr-return-select]').selectOption(eventId);
+    await duplicateCard.locator('.fr-duplicate').waitFor({state:'visible'});
+    assert.match(await duplicateCard.locator('.fr-estimate').innerText(),/^0/,'same selected awarded occasion remains zero despite different clocks');
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(eventId);
+    await sameClockCard.locator('.fr-duplicate').waitFor({state:'visible'});
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(thirdEvent.id);
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'changing to a distinct occasion removes the stale warning immediately');
+    assert.equal(server.state.reward_points,warningBalance,'warning and selection changes award zero');
     await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-results.png`,fullPage:true});
     }
 
