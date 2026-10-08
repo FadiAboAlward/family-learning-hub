@@ -90,11 +90,16 @@ for (const badEnv of [
   await assert.rejects(waitForQaCorePrerequisite({ env: badEnv, fetchImpl: async () => { fetches += 1; throw new Error(token); } }), /QA_CORE_/);
   assert.equal(fetches, 0);
 }
-for (const options of [{ timeoutMs: 720001 }, { pollIntervalMs: 101 }, { requestTimeoutMs: 0 }]) {
+for (const options of [{ timeoutMs: 1800001 }, { pollIntervalMs: 101 }, { requestTimeoutMs: 0 }]) {
   const test = scenario();
   await assert.rejects(test.execute(options), /QA_CORE_WAIT_CONFIG_INVALID/);
   assert.equal(test.requests.length, 0);
 }
+
+const slowCore = scenario({ runs: calls => [run(calls === 1 ? { status: 'in_progress', conclusion: null } : {})] });
+const slowEvidence = await slowCore.execute({ timeoutMs: 30 * 60 * 1000, pollIntervalMs: 14 * 60 * 1000 });
+assert.equal(slowEvidence.status, 'PASS');
+assert.equal(slowEvidence.elapsedMs, 14 * 60 * 1000, 'a slow complete core gate can authorize only after its exact-head jobs pass');
 
 const allowed = `https://api.github.com${prefix}/workflows/qa-isolated.yml/runs?head_sha=${headSha}&event=pull_request&per_page=100&page=1`;
 assert.equal(requireQaCoreApiRoute(allowed), allowed);

@@ -117,6 +117,12 @@ assert.match(workflow,/FLH_QA_ISOLATION_MODE: mock-local/);
 for(const name of ['static-quality','browser-smoke']){
   const job=workflow.split(`  ${name}:\n`)[1]?.split(/\n  [a-z][a-z-]+:\n/)[0];assert.ok(job);
   assert.doesNotMatch(job,/^    if:/m);
+  if(name==='browser-smoke'){
+    const group=job.match(/^      group: (.+)$/m)?.[1]||'';
+    assert.ok(group.includes('${{ github.event.pull_request.number || github.ref }}'),'isolated browser scheduling never shares a learner lock across unrelated PRs');
+    assert.match(job,/cancel-in-progress: true/,'only superseded browser checks in the same PR/ref may be cancelled');
+    assert.match(job,/needs: static-quality/,'independent scheduling preserves Static quality before browser activity');
+  }
   const deny=job.indexOf('name: Deny Production backend traffic'),verify=job.indexOf('run: node tests/qa-ci-network.mjs');
   assert.ok(deny>=0&&verify>deny,'DNS deny is installed and verified before test execution');
   assert.ok(verify<job.indexOf(name==='static-quality'?'name: JavaScript and TypeScript syntax checks':'name: Install browser QA tools'));
