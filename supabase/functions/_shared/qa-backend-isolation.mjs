@@ -31,7 +31,7 @@ export function requireQaPublishableKey(value, config) {
   if (/^sb_publishable_[A-Za-z0-9_-]+$/.test(value)) return value;
   let claims;
   try { claims = JSON.parse(atob(value.split('.')[1].replaceAll('-', '+').replaceAll('_', '/'))); } catch { throw new Error('QA_PUBLISHABLE_KEY_INVALID'); }
-  if (claims.role !== 'anon' || claims.ref === PRODUCTION_PROJECT_REF || (config.mode === 'isolated-testing' && claims.ref !== config.projectRef)) throw new Error('QA_PUBLISHABLE_KEY_INVALID');
+  if (!claims || typeof claims !== 'object' || Array.isArray(claims) || claims.role !== 'anon' || claims.ref === PRODUCTION_PROJECT_REF || (config.mode === 'isolated-testing' && claims.ref !== config.projectRef)) throw new Error('QA_PUBLISHABLE_KEY_INVALID');
   return value;
 }
 
