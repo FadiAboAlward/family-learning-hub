@@ -118,7 +118,16 @@
   }
   function occurrenceRules(view, prefix) {
     const learnerId = prefix === 'frOccurrence' ? (view.root?.querySelector('#frOccurrenceLearner')?.value || view.selectedLearner || '') : (learners(view)[0]?.id || '');
-    return (view.data.rules || []).filter(rule => rule.is_active !== false && (prefix === 'frOccurrence' || rule.self_report_allowed) && ruleEligibleForLearner(rule, learnerId));
+    return (view.data.rules || []).filter(rule => rule.is_active !== false && view.data.categories?.find(category=>category.id===rule.category_id)?.is_active !== false && (prefix === 'frOccurrence' || rule.self_report_allowed) && ruleEligibleForLearner(rule, learnerId));
+  }
+  function recentBehaviorOrder(rules, submissions, learnerId) {
+    const usage=new Map();
+    for(const row of submissions||[]){
+      if(row.learner_id!==learnerId||!['approved','pending'].includes(row.status))continue;
+      const at=Date.parse(row.occurred_at||row.requested_at||'');if(!Number.isFinite(at))continue;
+      const previous=usage.get(row.rule_id)||{count:0,at:0};usage.set(row.rule_id,{count:previous.count+1,at:Math.max(previous.at,at)});
+    }
+    return rules.map((rule,index)=>({rule,index,usage:usage.get(rule.id)||{count:0,at:0}})).sort((a,b)=>b.usage.count-a.usage.count||b.usage.at-a.usage.at||a.index-b.index).map(item=>item.rule);
   }
   function occurrenceCategories(view, prefix) {
     const ids = new Set(occurrenceRules(view,prefix).map(rule => rule.category_id));
@@ -126,7 +135,7 @@
   }
   function syncOccurrenceCategories(view,prefix) {
     const category=view.root.querySelector(`#${prefix}Category`);
-    if(!category)return;
+    if(!category){syncBehaviorPicker(view,prefix);return;}
     const previous=category.value, rows=occurrenceCategories(view,prefix);
     category.innerHTML=`<option value="">اختر الفئة</option>${rows.map(row=>`<option value="${safe(row.id)}">${safe(row.title)}</option>`).join('')}`;
     if(rows.some(row=>row.id===previous))category.value=previous;
@@ -134,7 +143,14 @@
   }
   function syncBehaviorPicker(view, prefix) {
     const category = view.root.querySelector(`#${prefix}Category`), ruleSelect = view.root.querySelector(`#${prefix}Rule`);
-    if (!category || !ruleSelect) return;
+    if(!ruleSelect)return;
+    if(prefix==='frSelfReport'){
+      const previous=ruleSelect.value,rows=recentBehaviorOrder(occurrenceRules(view,prefix),view.data.submissions,learners(view)[0]?.id);
+      ruleSelect.innerHTML=selectOptions(rows,rows.length?'اختر السلوك':'لا توجد سلوكيات متاحة');
+      if(rows.some(row=>row.id===previous))ruleSelect.value=previous;
+      ruleSelect.disabled=!rows.length;syncPrayerBonuses(view,prefix);return;
+    }
+    if (!category) return;
     const rows = occurrenceRules(view,prefix).filter(rule => rule.category_id === category.value);
     ruleSelect.innerHTML = selectOptions(rows, category.value ? (rows.length ? 'اختر السلوك' : 'لا توجد سلوكيات في هذه الفئة') : 'اختر الفئة أولًا');
     ruleSelect.disabled = !category.value || !rows.length;
@@ -143,8 +159,9 @@
   function syncOccurrenceWhen(view, prefix) {
     const dateMode=view.root.querySelector(`#${prefix}DateMode`), timeMode=view.root.querySelector(`#${prefix}TimeMode`);
     const dateWrap=view.root.querySelector(`[data-fr-custom-date="${prefix}"]`), timeWrap=view.root.querySelector(`[data-fr-custom-time="${prefix}"]`);
-    if(!dateMode||!timeMode)return;
+    if(!dateMode)return;
     if(dateWrap)dateWrap.hidden=dateMode.value!=='custom';
+    if(!timeMode)return;
     const nowOption=timeMode.querySelector('option[value="now"]');
     if(nowOption)nowOption.disabled=dateMode.value!=='today';
     if(dateMode.value!=='today'&&timeMode.value==='now')timeMode.value='morning';
@@ -152,6 +169,17 @@
   }
   function occurrenceAt(form,prefix) {
     const now=new Date(), dateMode=value(form,`${prefix}DateMode`), timeMode=value(form,`${prefix}TimeMode`);
+    if(prefix==='frSelfReport'){
+      const signature=JSON.stringify([value(form,`${prefix}Rule`),dateMode,dateMode==='custom'?value(form,`${prefix}Date`):'']);
+      if(form.dataset.occurrenceSignature!==signature){delete form.dataset.idempotencyKey;delete form.dataset.occurredAt;form.dataset.occurrenceSignature=signature;}
+      if(dateMode==='today')return null; // The server binds its timestamp to the idempotency key.
+      if(form.dataset.occurredAt)return form.dataset.occurredAt;
+      const day=dateMode==='yesterday'?shiftYmd(zonedYmd(now),-1):value(form,`${prefix}Date`);
+      if(!day)throw new Error('INVALID_OCCURRED_AT');
+      const automatic=new Date(zonedLocalIso(day,zonedHm(now))).getTime()+now.getUTCSeconds()*1000+now.getUTCMilliseconds();
+      form.dataset.occurredAt=new Date(automatic).toISOString();
+      return form.dataset.occurredAt;
+    }
     let day;
     if(dateMode==='today')day=zonedYmd(now);
     else if(dateMode==='yesterday')day=shiftYmd(zonedYmd(now),-1);
@@ -195,6 +223,36 @@
     const sunnah = linkedBonus(row,'sunnah');
     return base != null || bonus != null || adhkar || congregation || mosque || sunnah ? `<div class="fr-points-parts">أساس السلوك ${isolated(number(base))} + مكافأة المبادرة ${isolated(number(bonus))}${congregation ? ` + صلاة الجماعة ${isolated(congregation)}` : ''}${mosque ? ` + الصلاة في المسجد ${isolated(mosque)}` : ''}${sunnah ? ` + سنة الصلاة ${isolated(sunnah)}` : ''}${adhkar ? ` + أذكار ما بعد الصلاة ${isolated(adhkar)}` : ''}</div>` : '';
   }
+  const PREVIEW_COMPONENTS=[['base_points','أساس السلوك'],['initiative_bonus_points','المبادرة'],['congregation_bonus_points','صلاة الجماعة'],['mosque_bonus_points','الصلاة في المسجد'],['sunnah_bonus_points','سنة الصلاة'],['adhkar_bonus_points','أذكار ما بعد الصلاة']];
+  function pendingProjection(rules,row){
+    const snapshot=row.snapshot;
+    const projection=value=>({...value,forecast:row.possible_duplicate?0:value.total,duplicate:row.possible_duplicate===true});
+    if(snapshot&&Object.keys(snapshot).length){
+      const valid=snapshot.policy_version==='flh-010-v1.5'&&snapshot.status==='pending'&&snapshot.rule_id===row.rule_id&&PREVIEW_COMPONENTS.every(([key])=>typeof snapshot[key]==='number'&&Number.isInteger(snapshot[key])&&snapshot[key]>=0&&snapshot[key]<=100000)&&typeof snapshot.total_points==='number'&&snapshot.total_points===PREVIEW_COMPONENTS.reduce((sum,[key])=>sum+snapshot[key],0);
+      return projection(valid?{total:snapshot.total_points,parts:snapshot,source:'captured'}:{total:null,parts:null,source:'unavailable'});
+    }
+    const rule=rules.find(rule=>rule.id===row.rule_id);if(!rule)return projection({total:null,parts:null,source:'unavailable'});
+    const parts={base_points:rule.base_points};
+    for(const [key,flag] of [['initiative_bonus_points','initiative'],['congregation_bonus_points','congregation_completed'],['mosque_bonus_points','mosque_completed'],['sunnah_bonus_points','sunnah_completed'],['adhkar_bonus_points','adhkar_completed']])parts[key]=row[flag]?(rule[key]??0):0;
+    if(!PREVIEW_COMPONENTS.every(([key])=>typeof parts[key]==='number'&&Number.isInteger(parts[key])&&parts[key]>=0&&parts[key]<=100000))return projection({total:null,parts:null,source:'unavailable'});
+    return projection({total:PREVIEW_COMPONENTS.reduce((sum,[key])=>sum+parts[key],0),parts,source:'current'});
+  }
+  function pendingSummary(rules,rows){
+    rows=rows.filter(row=>row.status==='pending');
+    const unique=new Map();
+    for(const row of rows){
+      const key=exactOccurrenceKey(row)||row.id,preview=pendingProjection(rules,row);
+      if(!unique.has(key))unique.set(key,preview.forecast);
+      else if(unique.get(key)!==preview.forecast)unique.set(key,null);
+    }
+    const totals=[...unique.values()];
+    return{count:rows.length,uniqueCount:unique.size,total:totals.some(total=>total===null)?null:totals.reduce((sum,total)=>sum+total,0)};
+  }
+  function projectionDetails(preview){
+    if(!preview.parts)return'<div class="muted">لا يتوفر تقدير موثوق لهذا الطلب.</div>';
+    return `<div class="fr-preview-parts">${PREVIEW_COMPONENTS.filter(([key])=>key==='base_points'||preview.parts[key]>0).map(([key,label])=>`<div>${safe(label)}: ${isolated(preview.parts[key])}</div>`).join('')}<div><b>المجموع المتوقع: ${isolated(preview.total)} نقطة</b></div></div>`;
+  }
+  const estimateText=total=>total===null?'التقدير غير متاح':`${total} نقطة متوقعة`;
   function statusBadge(status) { return `<span class="fr-status ${safe(status || 'recorded')}">${safe(statusText(status))}</span>`; }
   function ledgerCard(view, row) {
     const metadata = row.metadata || {}, delta = number(row.reward_points_delta ?? row.total_points ?? metadata.total_points);
@@ -202,6 +260,12 @@
   }
   function submissionCard(view, row) {
     const rule = view.data.rules?.find(rule => rule.id === row.rule_id), title = row.rule_title || rule?.title || row.reason || 'سلوك عائلي';
+    if(row.status==='pending'){
+      const preview=pendingProjection(view.data.rules||[],row),error=view.approvalErrors?.get(row.id);
+      const source=preview.source==='captured'?'تقدير مسجّل مع الطلب':preview.source==='current'?'تقدير بحسب القاعدة الحالية؛ هذا الطلب القديم بلا تقدير مسجّل':'التقدير غير متاح';
+      const conditions=[row.initiative&&preview.parts?.initiative_bonus_points>0?'تم دون تذكير':'',row.congregation_completed?'صلاة جماعة':'',row.mosque_completed?'في المسجد':'',row.sunnah_completed?'سنة الصلاة':'',row.adhkar_completed?'أذكار ما بعد الصلاة':''].filter(Boolean);
+      return `<article data-fr-submission="${safe(row.id)}" class="fr-item fr-pending-card"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id)?'<span class="fr-status fr-duplicate">مكرر محتمل</span>':''}</span></div><div class="muted fr-occurrence-meta">${view.role==='parent'?`${safe(name(view,row.learner_id))} · `:''}${isolated(date(row.occurred_at||row.requested_at))}</div><div class="fr-estimate">${preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`}</div><div class="muted fr-preview-source">${safe(source)}</div>${preview.duplicate?'<div class="muted">تم منح نقاط لهذه الواقعة سابقًا؛ لا يتوقع منح نقاط جديدة لهذا الطلب.</div>':''}${conditions.length?`<div class="fr-captured-status">${conditions.map(safe).join(' · ')}</div>`:''}${error?`<div class="error fr-item-error" role="alert">${safe(errorMessages[error]||'تعذر اعتماد هذا الطلب. حدّث العرض أو أعد المحاولة.')}</div>`:''}${view.role==='parent'?`<div class="actions fr-card-actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>`:''}<details class="fr-submission-details"><summary>التفاصيل</summary>${projectionDetails(preview)}<div class="muted">${safe(categoryName(view,row))}</div>${row.reason?`<p>${safe(row.reason)}</p>`:''}${row.requested_at?`<div class="muted">وقت إرسال الطلب: ${isolated(date(row.requested_at))}</div>`:''}${view.duplicateSubmissionIds?.has(row.id)?'<div class="muted">قد يمثل هذا الطلب واقعة مسجّلة سابقًا؛ يتحقق الخادم قبل منح النقاط.</div>':''}</details></article>`;
+    }
     return `<article data-fr-submission="${safe(row.id)}" class="fr-item"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id) ? '<span class="fr-status fr-duplicate">مكرر محتمل</span>' : ''}</span></div><div class="muted">${view.role === 'parent' ? `${safe(name(view, row.learner_id))} · ` : ''}${safe(categoryName(view, {...row,category_id:row.category_id || rule?.category_id}))} · ${isolated(date(row.occurred_at || row.created_at || row.requested_at))}</div>${row.status === 'pending' && rule ? `<div class="muted">النقاط المتوقعة بحسب القاعدة الحالية عند الاعتماد:</div>${pointParts({base_points:rule.base_points,initiative_bonus_points:row.initiative?rule.initiative_bonus_points:0,adhkar_bonus_points:row.adhkar_completed?rule.adhkar_bonus_points:0,congregation_bonus_points:row.congregation_completed?rule.congregation_bonus_points:0,mosque_bonus_points:row.mosque_completed?rule.mosque_bonus_points:0,sunnah_bonus_points:row.sunnah_completed?rule.sunnah_bonus_points:0})}` : pointParts(row)}${row.initiative ? '<div class="muted">تم دون تذكير</div>' : ''}${row.congregation_completed ? '<div class="muted">تمت الصلاة جماعة</div>' : ''}${row.mosque_completed ? '<div class="muted">تمت الصلاة في المسجد</div>' : ''}${row.sunnah_completed ? '<div class="muted">تمت سنة الصلاة</div>' : ''}${row.adhkar_completed ? '<div class="muted">تمت أذكار ما بعد الصلاة</div>' : ''}${row.reason ? `<p>${safe(row.reason)}</p>` : ''}${row.review_reason ? `<p>ملاحظة الأهل: ${safe(row.review_reason)}</p>` : ''}${row.status === 'pending' ? '<div class="muted">لا تُضاف نقاط قبل موافقة الأهل.</div>' : ''}${view.role === 'parent' && row.status === 'pending' ? `<div class="actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>` : ''}</article>`;
   }
   function claimCard(view, row) {
@@ -224,8 +288,9 @@
   }
   function occurrenceForm(view, learner) {
     const role=view.role, prefix=role==='parent'?'frOccurrence':'frSelfReport', rows=occurrenceRules(view,prefix), categories=occurrenceCategories(view,prefix);
+    if(role!=='parent')return `<form id="frSelfReportForm" class="fr-form"><h3>سجّل سلوكًا قمت به</h3><p class="muted">سيصل الطلب إلى الأهل. تُضاف النقاط بعد موافقتهم.</p>${field('frSelfReportRule','السلوك',`<select id="frSelfReportRule" required>${selectOptions(rows,'اختر السلوك')}</select>`)}${[['initiative','Initiative','تم دون تذكير'],['congregation','Congregation','صليت جماعة'],['mosque','Mosque','صليت في المسجد'],['sunnah','Sunnah','صليت سنة الصلاة'],['adhkar','Adhkar','قرأت أذكار ما بعد الصلاة']].map(([key,suffix,label])=>`<div data-fr-${key}="frSelfReport" hidden>${checkbox(`frSelfReport${suffix}`,label)}<span class="muted" data-fr-${key}-points="frSelfReport"></span></div>`).join('')}${field('frSelfReportDateMode','تاريخ السلوك','<select id="frSelfReportDateMode"><option value="today" selected>اليوم</option><option value="yesterday">أمس</option><option value="custom">تاريخ آخر</option></select>')}<div data-fr-custom-date="frSelfReport" hidden>${field('frSelfReportDate','التاريخ',input('frSelfReportDate','date','dir="ltr"'))}</div><details class="fr-note"><summary>أضف ملاحظة</summary>${field('frSelfReportReason','ملاحظة (اختياري)','<textarea id="frSelfReportReason" maxlength="1000" rows="2"></textarea>')}</details>${formFooter('تم')}</form>`;
     const categoryOptions=`<option value="">اختر الفئة</option>${categories.map(category=>`<option value="${safe(category.id)}">${safe(category.title)}</option>`).join('')}`;
-    return `<form id="${prefix}Form" class="fr-form"><h3>${role==='parent'?'تسجيل سلوك معتمد مباشرة':'سجّل سلوكًا قمت به'}</h3>${role==='parent'?field('frOccurrenceLearner','الطالب',`<select id="frOccurrenceLearner" required>${selectOptions(learners(view),'اختر الطالب',learner)}</select>`):'<p class="muted">سيصل الطلب إلى الأهل. تُضاف النقاط بعد موافقتهم.</p>'}${field(`${prefix}Category`,'الفئة',`<select id="${prefix}Category" required>${categoryOptions}</select>`)}${field(`${prefix}Rule`,'السلوك',`<select id="${prefix}Rule" required disabled><option value="">اختر الفئة أولًا</option></select>`)}${checkbox(`${prefix}Initiative`,'قمت به دون تذكير (مبادرة)')}<div data-fr-congregation="${prefix}" hidden>${checkbox(`${prefix}Congregation`,'صليت الفرض جماعة')}<span class="muted" data-fr-congregation-points="${prefix}"></span></div><div data-fr-mosque="${prefix}" hidden>${checkbox(`${prefix}Mosque`,'صليت في المسجد')}<span class="muted" data-fr-mosque-points="${prefix}"></span></div><div data-fr-sunnah="${prefix}" hidden>${checkbox(`${prefix}Sunnah`,'صليت السنة المرتبطة بالصلاة')}<span class="muted" data-fr-sunnah-points="${prefix}"></span></div><div data-fr-adhkar="${prefix}" hidden>${checkbox(`${prefix}Adhkar`,'قرأت أذكار ما بعد الصلاة')}<span class="muted" data-fr-adhkar-points="${prefix}"></span></div><div class="fr-form-grid">${field(`${prefix}DateMode`,'تاريخ السلوك',`<select id="${prefix}DateMode"><option value="today" selected>اليوم</option><option value="yesterday">أمس</option><option value="custom">اختيار تاريخ</option></select>`)}<div data-fr-custom-date="${prefix}" hidden>${field(`${prefix}Date`,'التاريخ',input(`${prefix}Date`,'date','dir="ltr"'))}</div>${field(`${prefix}TimeMode`,'الوقت',`<select id="${prefix}TimeMode"><option value="now" selected>الآن</option><option value="morning">صباحًا</option><option value="afternoon">ظهرًا</option><option value="evening">مساءً</option><option value="custom">وقت محدد</option></select>`)}<div data-fr-custom-time="${prefix}" hidden>${field(`${prefix}Time`,'الوقت المحدد',input(`${prefix}Time`,'time','dir="ltr"'))}</div></div>${field(`${prefix}Reason`,'ملاحظة أو سبب (اختياري)',`<textarea id="${prefix}Reason" maxlength="1000" rows="2"></textarea>`)}${formFooter(role==='parent'?'تسجيل واعتماد السلوك':'إرسال إلى الأهل')}</form>`;
+    return `<form id="${prefix}Form" class="fr-form"><h3>${role==='parent'?'تسجيل سلوك معتمد مباشرة':'سجّل سلوكًا قمت به'}</h3>${role==='parent'?field('frOccurrenceLearner','الطالب',`<select id="frOccurrenceLearner" required>${selectOptions(learners(view),'اختر الطالب',learner)}</select>`):'<p class="muted">سيصل الطلب إلى الأهل. تُضاف النقاط بعد موافقتهم.</p>'}${field(`${prefix}Category`,'الفئة',`<select id="${prefix}Category" required>${categoryOptions}</select>`)}${field(`${prefix}Rule`,'السلوك',`<select id="${prefix}Rule" required disabled><option value="">اختر الفئة أولًا</option></select>`)}<div data-fr-initiative="${prefix}" hidden>${checkbox(`${prefix}Initiative`,'قمت به دون تذكير (مبادرة)')}<span class="muted" data-fr-initiative-points="${prefix}"></span></div><div data-fr-congregation="${prefix}" hidden>${checkbox(`${prefix}Congregation`,'صليت الفرض جماعة')}<span class="muted" data-fr-congregation-points="${prefix}"></span></div><div data-fr-mosque="${prefix}" hidden>${checkbox(`${prefix}Mosque`,'صليت في المسجد')}<span class="muted" data-fr-mosque-points="${prefix}"></span></div><div data-fr-sunnah="${prefix}" hidden>${checkbox(`${prefix}Sunnah`,'صليت السنة المرتبطة بالصلاة')}<span class="muted" data-fr-sunnah-points="${prefix}"></span></div><div data-fr-adhkar="${prefix}" hidden>${checkbox(`${prefix}Adhkar`,'قرأت أذكار ما بعد الصلاة')}<span class="muted" data-fr-adhkar-points="${prefix}"></span></div><div class="fr-form-grid">${field(`${prefix}DateMode`,'تاريخ السلوك',`<select id="${prefix}DateMode"><option value="today" selected>اليوم</option><option value="yesterday">أمس</option><option value="custom">اختيار تاريخ</option></select>`)}<div data-fr-custom-date="${prefix}" hidden>${field(`${prefix}Date`,'التاريخ',input(`${prefix}Date`,'date','dir="ltr"'))}</div>${field(`${prefix}TimeMode`,'الوقت',`<select id="${prefix}TimeMode"><option value="now" selected>الآن</option><option value="morning">صباحًا</option><option value="afternoon">ظهرًا</option><option value="evening">مساءً</option><option value="custom">وقت محدد</option></select>`)}<div data-fr-custom-time="${prefix}" hidden>${field(`${prefix}Time`,'الوقت المحدد',input(`${prefix}Time`,'time','dir="ltr"'))}</div></div>${field(`${prefix}Reason`,'ملاحظة أو سبب (اختياري)',`<textarea id="${prefix}Reason" maxlength="1000" rows="2"></textarea>`)}${formFooter(role==='parent'?'تسجيل واعتماد السلوك':'إرسال إلى الأهل')}</form>`;
   }
   function rewardForm(view) {
     return `<details class="fr-section"><summary>إدارة الجوائز</summary><div class="fr-card-grid">${(view.data.rewards || []).map(reward => rewardCard(view,reward)).join('') || '<div class="empty">لم تُضف جوائز بعد.</div>'}</div><form id="frRewardForm" class="fr-form"><h3>إنشاء / تعديل جائزة</h3><div class="fr-form-grid">${field('frRewardTitle','اسم الجائزة',input('frRewardTitle','text','required maxlength="120"'))}${field('frRewardType','نوع الجائزة',`<select id="frRewardType">${[['activity','نشاط'],['outing','نزهة'],['experience','تجربة'],['privilege','امتياز'],['gift','هدية'],['custom','مخصصة']].map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select>`)}</div>${field('frRewardDescription','وصف الجائزة (اختياري)',`<textarea id="frRewardDescription" maxlength="1000" rows="2"></textarea>`)}<div class="fr-form-grid">${field('frRewardPoints','النقاط المطلوبة (اختياري)',input('frRewardPoints','number','min="0" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardLevel','المستوى المطلوب (اختياري)',input('frRewardLevel','number','min="1" step="1" inputmode="numeric" dir="ltr"'))}</div>${scopeFields(view,'frReward')}<div class="fr-form-grid">${field('frRewardFrom','متاحة من (اختياري)',input('frRewardFrom','datetime-local','dir="ltr"'))}${field('frRewardUntil','متاحة حتى (اختياري)',input('frRewardUntil','datetime-local','dir="ltr"'))}${field('frRewardLimit','حد الاستبدال لكل طالب (اختياري)',input('frRewardLimit','number','min="1" step="1" inputmode="numeric" dir="ltr"'))}</div><fieldset class="fr-criteria"><legend>شروط التقدّم الإضافية (اختيارية)</legend><div class="fr-form-grid">${field('frRewardStreak','سلسلة التعلّم الحالية بالأيام',input('frRewardStreak','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardLongestStreak','أطول سلسلة تعلّم بالأيام',input('frRewardLongestStreak','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${field('frRewardXp','الحد الأدنى من XP الأكاديمي',input('frRewardXp','number','min="0" max="2147483647" step="1" inputmode="numeric" dir="ltr"'))}${`<fieldset id="frRewardBadges" class="fr-criteria"><legend>الأوسمة المطلوبة (اختيارية)</legend>${(view.data.badges || []).map(badge => `<label class="fr-check"><input type="checkbox" name="required_badge_codes" value="${safe(badge.code)}">${safe(badge.title)}${badge.is_active === false ? ' (غير نشط)' : ''}</label>`).join('') || '<div class="muted">لا توجد أوسمة متاحة للاختيار حاليًا.</div>'}</fieldset>`}</div></fieldset>${checkbox('frRewardActive','الجائزة نشطة',true)}<div class="muted">اعتماد الجائزة يخصم النقاط مرة واحدة. تسليمها لاحقًا لا يخصم مجددًا.</div>${formFooter('حفظ الجائزة')}</form></details>`;
@@ -251,7 +316,8 @@
     const ids=[...new Set(rows.map(row=>row.learner_id))];
     return ids.map(learnerId=>{
       const learnerRows=rows.filter(row=>row.learner_id===learnerId);
-      return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head"><h3>${safe(name(view,learnerId))}</h3><button class="btn btn-soft" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
+      const summary=pendingSummary(view.data.rules||[],learnerRows);
+      return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head fr-pending-summary"><h3>${safe(name(view,learnerId))}</h3><div><span>بانتظار المراجعة</span><b data-fr-pending-count>${isolated(summary.count)}</b></div><div><span>تقدير غير مضاف للرصيد</span><b data-fr-pending-total>${summary.total===null?'غير متاح':`${isolated(summary.total)} نقطة`}</b></div></div>${summary.uniqueCount<summary.count?'<div class="muted">يُحتسب تقدير كل واقعة مرة واحدة؛ توجد طلبات قد تكون مكررة.</div>':''}<div class="fr-group-actions"><button class="btn btn-primary" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row)).join('')}</div></section>`;
     }).join('');
   }
   function reportDimensionRows(primary, historical) {
@@ -312,37 +378,45 @@
     const error=view.reportError?`<div class="error" role="alert">${safe(view.reportError)}</div>`:'';
     return `<section class="panel fr-section" data-fr-report><h2>تقرير بسيط عن السلوك</h2><div class="fr-form-grid">${view.role==='parent'?field('frReportLearner','الطالب',`<select id="frReportLearner">${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.reportLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`):''}${field('frReportCategory','الفئة',`<select id="frReportCategory"><option value="">كل الفئات</option>${reportCategories(view).map(category=>`<option value="${safe(category.id)}" ${category.id===view.reportCategory?'selected':''}>${safe(category.title)}</option>`).join('')}</select>`)}${field('frReportRule','السلوك',`<select id="frReportRule"><option value="">كل السلوكيات</option>${reportRuleRows.map(rule=>`<option value="${safe(rule.id)}" ${rule.id===view.reportRule?'selected':''}>${safe(rule.title)}</option>`).join('')}</select>`)}${field('frReportPeriod','الفترة',`<select id="frReportPeriod"><option value="last7" ${view.reportPeriod!=='last30'?'selected':''}>آخر ٧ سجلات</option><option value="last30" ${view.reportPeriod==='last30'?'selected':''}>آخر ٣٠ يومًا</option></select>`)}</div>${error}<div class="fr-report-summary"><span><b>${isolated(approved)}</b> معتمد</span><span><b>${isolated(pending)}</b> بانتظار الموافقة</span><span><b>${isolated(points)}</b> نقطة</span></div><div class="fr-list">${cards}</div></section>`;
   }
+  function approvalControls(view,learnerId){
+    const ids=new Set((view.data.submissions||[]).filter(row=>row.learner_id===learnerId).map(row=>row.id));
+    return [...view.root.querySelectorAll('[data-fr-behavior-approve],[data-fr-behavior-reject],[data-fr-approve-all]')].filter(control=>control.dataset.frApproveAll===learnerId||ids.has(control.dataset.frBehaviorApprove||control.dataset.frBehaviorReject));
+  }
+  function approvalOutcome(result,row){
+    const approved=result?.submission;
+    if(!approved||approved.id!==row.id||approved.learner_id!==row.learner_id||approved.status!=='approved')return{state:'failed',points:0};
+    if(result.already_reviewed)return{state:'skipped',points:0};
+    return typeof approved.total_points==='number'&&Number.isInteger(approved.total_points)&&approved.total_points>=0?{state:'approved',points:approved.total_points}:{state:'failed',points:0};
+  }
   async function approveAllForLearner(view, button, learnerId) {
-    if(!current(view)||button.dataset.frBusy==='1')return;
-    const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===learnerId);
+    if(!current(view)||view.refreshRequired||view.approvalBusyLearners.has(learnerId))return;
+    const group=[...view.root.querySelectorAll('[data-fr-approval-learner]')].find(element=>element.dataset.frApprovalLearner===learnerId);
+    const visibleIds=new Set([...(group?.querySelectorAll('[data-fr-submission]')||[])].map(element=>element.dataset.frSubmission));
+    const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===learnerId&&visibleIds.has(row.id));
     if(!rows.length)return;
-    button.dataset.frBusy='1';button.disabled=true;button.setAttribute('aria-busy','true');
+    const estimate=pendingSummary(view.data.rules||[],rows);
+    if(!window.confirm(`اعتماد طلبات ${name(view,learnerId)}؟\nعدد الطلبات: ${rows.length}\n${estimateText(estimate.total)} (تقدير غير مضاف للرصيد؛ يتحقق الخادم من حدود التكرار).`))return;
+    view.approvalBusyLearners.add(learnerId);approvalControls(view,learnerId).forEach(control=>control.disabled=true);
+    button.dataset.frBusy='1';button.setAttribute('aria-busy','true');
     const reason=view.root.querySelector('#frReviewReason')?.value.trim()||'';
-    let approved=0;const failures=[];
+    let approved=0,skipped=0,granted=0;const failures=[];
     try{
       for(const row of rows){
-        try{await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason});approved++;}
-        catch(error){failures.push({id:row.id,error:String(error?.message||'SERVER_ERROR')});}
+        if(!current(view))return;
+        try{
+          const result=await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason}),outcome=approvalOutcome(result,row);
+          if(outcome.state==='failed')throw new Error('SERVER_ERROR');
+          view.approvalErrors.delete(row.id);
+          if(outcome.state==='approved'){approved++;granted+=outcome.points;}else skipped++;
+        }catch(error){const code=String(error?.message||'SERVER_ERROR');failures.push({id:row.id,error:code});view.approvalErrors.set(row.id,code);}
       }
       if(!current(view))return;
-      const statusText=failures.length
-        ? `تم اعتماد ${approved} من ${rows.length}. تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`
-        : `تم اعتماد كل طلبات ${name(view,learnerId)} الحالية.`;
-      view.savedMessage=statusText;
-      view.approvalMessage=failures.length?{type:'error',text:statusText}:null;
-      if(failures.length){
-        const liveHost=view.root.querySelector('[data-fr-approvals] .fr-message');
-        if(liveHost)liveHost.innerHTML=`<div class="error" role="alert">${safe(statusText)}</div>`;
-      }
-      try{
-        await refresh(view,statusText);
-      }catch(error){
-        if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));
-      }
+      const statusText=`تم اعتماد ${approved} من ${rows.length}. أُضيفت ${granted} نقطة بالفعل.${skipped?` ${skipped} طلب/طلبات تمت مراجعتها سابقًا دون نقاط جديدة.`:''}${failures.length?` تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`:''}`;
+      view.approvalMessage=failures.length?{type:'error',text:statusText}:null;view.savedMessage=statusText;
+      try{await refresh(view,statusText);}catch{if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));}
     }finally{
-      if(current(view)&&document.contains(button)){
-        button.dataset.frBusy='0';button.removeAttribute('aria-busy');button.disabled=!!view.refreshRequired;
-      }
+      view.approvalBusyLearners.delete(learnerId);
+      if(current(view)){approvalControls(view,learnerId).forEach(control=>control.disabled=!!view.refreshRequired);button.dataset.frBusy='0';button.removeAttribute('aria-busy');}
     }
   }
   function paint(view, success = '') {
@@ -357,7 +431,7 @@
     const submissions=allSubmissions.filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner), claims=(view.data.claims||[]).filter(row=>!view.selectedLearner||row.learner_id===view.selectedLearner);
     const pendingBehaviors=allSubmissions.filter(row=>row.status==='pending');
     const parent=view.role==='parent';
-    view.root.innerHTML=`${success?`<div class="success" role="status">${safe(success)}</div>`:''}${summary(view)}${parent?`<section class="panel fr-section" data-fr-approvals><h2>الطلبات والموافقات</h2>${view.approvalMessage?.type==='error'?'<div class="error" role="alert">'+safe(view.approvalMessage.text)+'</div>':''}${field('frReviewReason','سبب القرار أو ملاحظة المراجعة (اختياري)',`<textarea id="frReviewReason" maxlength="1000" rows="2"></textarea>`)}<h3>السلوكيات بانتظار المراجعة</h3>${pendingApprovalGroups(view,pendingBehaviors)}<h3>طلبات الجوائز</h3><div class="fr-card-grid">${claims.filter(row=>row.status==='pending'||row.status==='approved').map(row=>claimCard(view,row)).join('')||'<div class="empty">لا توجد طلبات جوائز تحتاج إجراءً.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view,view.selectedLearner)}</section>${categoryForm(view)}${ruleForm(view)}${rewardForm(view)}${adjustmentForm(view,view.selectedLearner)}`:`<section class="panel fr-section"><h2>جوائزك والتقدّم نحوها</h2><div class="fr-card-grid">${(view.data.rewards||[]).map(reward=>rewardCard(view,reward)).join('')||'<div class="empty">لم يضف الأهل جوائز متاحة لك بعد.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view)}</section>`}${!parent?`<section class="panel fr-section"><h2>سلوكياتك بانتظار موافقة الأهل</h2><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('')||'<div class="empty">لا توجد سلوكيات بانتظار الموافقة.</div>'}</div></section>`:''}${reportSection(view)}${ledgerSection(view)}<details class="fr-section"><summary>${parent?'سجل السلوكيات والجوائز':'سلوكياتك وطلبات جوائزك'}</summary><h3>السلوكيات</h3><div class="fr-card-grid" data-fr-submissions>${submissions.map(row=>submissionCard(view,row)).join('')||'<div class="empty">لم تُسجّل سلوكيات بعد.</div>'}</div><h3>طلبات الجوائز وسجل التسليم</h3><div class="fr-card-grid">${claims.map(row=>claimCard(view,row)).join('')||'<div class="empty">لم تُطلب جوائز بعد.</div>'}</div>${message('')}</details>`;
+    view.root.innerHTML=`${success?`<div class="success" role="status">${safe(success)}</div>`:''}${summary(view)}${parent?`<section class="panel fr-section" data-fr-approvals><h2>الطلبات والموافقات</h2>${view.approvalMessage?.type==='error'?'<div class="error" role="alert">'+safe(view.approvalMessage.text)+'</div>':''}${field('frReviewReason','سبب القرار أو ملاحظة المراجعة (اختياري)',`<textarea id="frReviewReason" maxlength="1000" rows="2"></textarea>`)}<h3>السلوكيات بانتظار المراجعة</h3><p class="fr-approval-context">النقاط المعروضة تقدير لم يُضف إلى الرصيد. يضيف الخادم النقاط بعد الاعتماد والتحقق من حدود التكرار والتكرار المحتمل.</p>${pendingApprovalGroups(view,pendingBehaviors)}<h3>طلبات الجوائز</h3><div class="fr-card-grid">${claims.filter(row=>row.status==='pending'||row.status==='approved').map(row=>claimCard(view,row)).join('')||'<div class="empty">لا توجد طلبات جوائز تحتاج إجراءً.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view,view.selectedLearner)}</section>${categoryForm(view)}${ruleForm(view)}${rewardForm(view)}${adjustmentForm(view,view.selectedLearner)}`:`<section class="panel fr-section"><h2>جوائزك والتقدّم نحوها</h2><div class="fr-card-grid">${(view.data.rewards||[]).map(reward=>rewardCard(view,reward)).join('')||'<div class="empty">لم يضف الأهل جوائز متاحة لك بعد.</div>'}</div>${message('')}</section><section class="panel">${occurrenceForm(view)}</section>`}${!parent?`<section class="panel fr-section"><h2>سلوكياتك بانتظار موافقة الأهل</h2><p class="muted">هذه تقديرات؛ لا تُضاف نقاط قبل موافقة الأهل.</p><div class="fr-card-grid">${submissions.filter(row=>row.status==='pending').map(row=>submissionCard(view,row)).join('')||'<div class="empty">لا توجد سلوكيات بانتظار الموافقة.</div>'}</div></section>`:''}${reportSection(view)}${ledgerSection(view)}<details class="fr-section"><summary>${parent?'سجل السلوكيات والجوائز':'سلوكياتك وطلبات جوائزك'}</summary><h3>السلوكيات</h3><div class="fr-card-grid" data-fr-submissions>${submissions.map(row=>submissionCard(view,row)).join('')||'<div class="empty">لم تُسجّل سلوكيات بعد.</div>'}</div><h3>طلبات الجوائز وسجل التسليم</h3><div class="fr-card-grid">${claims.map(row=>claimCard(view,row)).join('')||'<div class="empty">لم تُطلب جوائز بعد.</div>'}</div>${message('')}</details>`;
     bind(view);
     if(view.refreshRequired)savedRefreshNotice(view);
   }
@@ -374,9 +448,12 @@
   }
   async function mutation(view, element, action, payload, success, keyHolder = element) {
     if (!current(view) || view.refreshRequired || element.dataset.frBusy === '1') return;
+    const approvalLearner=action==='behavior_review'?(view.data.submissions||[]).find(row=>row.id===payload.submission_id)?.learner_id:null;
+    if(approvalLearner&&view.approvalBusyLearners.has(approvalLearner))return;
+    if(approvalLearner)view.approvalBusyLearners.add(approvalLearner);
     const host = element.closest('form')?.querySelector('.fr-message') || element.closest('.fr-section')?.querySelector('.fr-message') || view.root.querySelector('.fr-message');
     element.dataset.frBusy = '1';
-    const controls = element.tagName === 'FORM' ? [...element.querySelectorAll('button')] : [element];
+    const controls = approvalLearner?approvalControls(view,approvalLearner):element.tagName === 'FORM' ? [...element.querySelectorAll('button')] : [element];
     controls.forEach(control=>control.disabled=true);
     element.setAttribute('aria-busy','true');
     if (host) host.innerHTML='<span>جارٍ حفظ العملية…</span>';
@@ -388,16 +465,23 @@
       const result=await call(view,action,payload);
       if (!current(view)) return;
       if(action==='behavior_submit'&&result?.duplicate_pending)success='هذا السلوك مسجّل مسبقًا وبانتظار موافقة الأهل.';
-      if(action==='behavior_review')view.approvalMessage=null;
+      if(action==='behavior_review'){
+        view.approvalMessage=null;view.approvalErrors.delete(payload.submission_id);
+        if(result?.already_reviewed)success='تمت مراجعة الطلب سابقًا؛ لم تُضف نقاط جديدة.';
+        else if(payload.decision==='approved')success=`تم الاعتماد. أُضيفت ${number(result?.submission?.total_points)} نقطة بالفعل.`;
+      }
       // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
+      delete keyHolder.dataset.occurredAt;delete keyHolder.dataset.occurrenceSignature;
       if(action==='reward_request')requestKeys.delete(`${view.token}:${payload.reward_id}`);
       view.savedMessage=success;
       try{await refresh(view,success);}
       catch(error){savedRefreshNotice(view,host);}
     } catch(error) {
+      if(approvalLearner)view.approvalErrors.set(payload.submission_id,String(error?.message||'SERVER_ERROR'));
       if (current(view) && host) reportError(host,error);
     } finally {
+      if(approvalLearner)view.approvalBusyLearners.delete(approvalLearner);
       element.dataset.frBusy = '0';
       element.removeAttribute('aria-busy');
       controls.forEach(control=>control.disabled=!!view.refreshRequired);
@@ -432,7 +516,7 @@
   function syncPrayerBonuses(view,prefix) {
     const select=view.root.querySelector(`#${prefix}Rule`);if(!select)return;
     const rule=(view.data.rules||[]).find(row=>row.id===select.value);
-    for(const [key,suffix] of [['congregation','Congregation'],['mosque','Mosque'],['sunnah','Sunnah'],['adhkar','Adhkar']]){
+    for(const [key,suffix] of [['initiative','Initiative'],['congregation','Congregation'],['mosque','Mosque'],['sunnah','Sunnah'],['adhkar','Adhkar']]){
       const wrap=view.root.querySelector(`[data-fr-${key}="${prefix}"]`),box=view.root.querySelector(`#${prefix}${suffix}`),points=view.root.querySelector(`[data-fr-${key}-points="${prefix}"]`);
       if(!wrap||!box)continue;
       const bonus=linkedBonus(rule,key),enabled=bonus>0;
@@ -472,7 +556,7 @@
     }
     root.querySelector('#frOccurrenceLearner')?.addEventListener('change',()=>{const category=root.querySelector('#frOccurrenceCategory');if(category)category.value='';syncOccurrenceCategories(view,'frOccurrence');});
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
-    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);syncPrayerBonuses(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
+    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;delete form.dataset.occurredAt;delete form.dataset.occurrenceSignature;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);syncPrayerBonuses(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
     ['category','rule','reward'].forEach(kind=>{
       root.querySelectorAll(`[data-fr-edit-${kind}]`).forEach(button=>button.onclick=()=>edit(view,kind,button.getAttribute(`data-fr-edit-${kind}`)));
       root.querySelectorAll(`[data-fr-toggle-${kind}]`).forEach(button=>button.onclick=()=>{const rows=view.data[kind==='category'?'categories':`${kind}s`]||[],row=rows.find(row=>row.id===button.getAttribute(`data-fr-toggle-${kind}`));if(!row)return;mutation(view,button,`${kind}_save`,{...row,is_active:row.is_active===false},row.is_active===false?'تم التفعيل.':'تم التعطيل.');});
@@ -502,7 +586,7 @@
     if(!role){screen=null;requestKeys.clear();return;}
     const token=tokenFor(role);
     if(!token){location.hash=role==='parent'?'parents':'student';return;}
-    const view={role,token,generation,data:{},selectedLearner:'',approvalMessage:null,reportLearner:'',reportCategory:'',reportRule:'',reportPeriod:'last7',reportData:{rows:[],summary:{}},reportError:'',reportSerial:0,reportBusy:false,ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
+    const view={role,token,generation,data:{},selectedLearner:'',approvalMessage:null,approvalErrors:new Map(),approvalBusyLearners:new Set(),reportLearner:'',reportCategory:'',reportRule:'',reportPeriod:'last7',reportData:{rows:[],summary:{}},reportError:'',reportSerial:0,reportBusy:false,ledger:[],ledgerSerial:0,ledgerBusy:false};screen=view;
     shell(role==='parent'?'🎁 الجوائز والعادات':'🎁 جوائزي وعاداتي',role==='parent'?'نقاط واضحة، سلوكيات تشجّعها العائلة، وجوائز باعتماد الأهل.':'تقدّمك الشخصي ومصدر نقاطك، خطوة بخطوة.',`<div class="actions fr-page-actions"><a class="btn btn-soft" href="#${role==='parent'?'parents':'student'}">رجوع ${role==='parent'?'للوحة الأهل':'إلى صفحتي'}</a><button class="btn btn-soft" data-fr-refresh>تحديث</button></div><div data-family-rewards data-role="${role}"><div class="loading-card" role="status">جارٍ تحميل النقاط والجوائز…</div></div>`);
     view.root=document.querySelector('[data-family-rewards]');
     document.querySelector('[data-fr-refresh]').onclick=async()=>{try{await refresh(view);}catch(error){if(current(view)){if(view.refreshRequired)savedRefreshNotice(view);else reportError(view.root,error);}}};

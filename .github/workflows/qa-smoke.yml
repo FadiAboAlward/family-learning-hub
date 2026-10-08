@@ -113,6 +113,8 @@ jobs:
         run: node tests/learning-finish-rpc.concurrency.mjs
       - name: Verify family rewards authorization and ledger contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards.contract.sql
+      - name: Verify consolidated family snapshots and parent-return cap
+        run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards-consolidated.contract.sql
       - name: Verify family rewards concurrent awards and spending
         run: node tests/family-rewards.concurrency.mjs
       - name: Verify optional Learning video authorization and self-report contract
