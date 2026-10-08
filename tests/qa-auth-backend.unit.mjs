@@ -127,7 +127,9 @@ assert.deepEqual(lifecycleCleanupIds, [validationFailureRunId], 'owned run must 
 const workflow = fs.readFileSync('.github/workflows/qa-isolated.yml', 'utf8').replace(/\r\n/g, '\n');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
 assert.match(workflow, /^  static-quality:\n(?:.*\n)*?    concurrency:\n      group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: true$/m, 'stale static QA should cancel without interrupting shared Testing cleanup');
-assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: family-learning-hub-testing-learner\n      cancel-in-progress: false$/m, 'Testing browser job must be serialized without cancellation');
+assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: isolated-browser-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: true$/m, 'independent mock browser checks cancel superseded own-PR/ref work without cancelling unrelated heads');
+const authenticatedWorkflow = fs.readFileSync('.github/workflows/qa-authenticated-local.yml', 'utf8').replace(/\r\n/g, '\n');
+assert.match(authenticatedWorkflow, /concurrency:\n      group: authenticated-local-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: false/, 'owned authenticated lifecycle retains cleanup without cancellation');
 
 const migration = fs.readFileSync('supabase/migrations/20260909055000_harden_testing_qa_concurrency.sql', 'utf8');
 assert.match(migration, /on conflict \(workspace_id, slug\) do update/);
