@@ -49,6 +49,7 @@ reviews:
           Evaluate whether this PR preserves Family Learning Hub merge-safety infrastructure and selects appropriate deterministic coverage for the risk changed.
           Pass when PRs targeting main cannot bypass QA by path filters, Static quality remains before Browser smoke, required exact-SHA checks are preserved, meaningful assertions are not weakened merely to pass CI, and affected product/security/database behavior has the lowest reliable unit/contract/browser regression coverage or a credible N/A reason.
           Preserve seven-day temporary Playwright screenshot artifacts for meaningful UI changes. Warn on any bypass, stale-SHA reuse, removed/softened safety assertion without equal replacement, or mismatch between the PR's declared testing strategy and the actual changed risk.
+          Enforce FLH026 isolation: qa-isolated.yml runs disposable Runner-local database checks and synthetic browser APIs only; Production QA traffic is forbidden even for the test account. Flag missing early Production DNS denies, hosted backend defaults, unsafe browser egress, automatic authenticated external calls, or claims that NOT RUN/BLOCKED hosted checks passed. Screenshot manifests must bind the checked-out PR head rather than the pull_request merge SHA.
 
   path_filters:
     - "!**/node_modules/**"

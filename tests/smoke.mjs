@@ -1,8 +1,9 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 const errors=[];
 const calls={draft:0,answer:0,examSave:0,profile:0};

@@ -6,7 +6,7 @@ For any non-trivial change that can affect learner behavior, content delivery, a
 
 1. Create a dedicated branch and Pull Request. Do not make the change directly on `main` unless it is a true emergency recovery action.
 2. Select the test layer(s) that match the risk changed by the PR and add/update deterministic coverage where appropriate.
-3. Run the deterministic GitHub Actions `QA Gate` on the PR.
+3. Run the deterministic GitHub Actions `Isolated QA Gate` on the PR.
 4. Require both deterministic jobs to pass:
    - `Static quality`
    - `Browser smoke`
@@ -75,7 +75,7 @@ If a stable TestSprite plan is intentionally retained, version it with the code 
 
 ## Required deterministic QA
 
-Every pull request targeting `main` must run the GitHub Actions workflow `QA Gate`.
+Every pull request targeting `main` must run the GitHub Actions workflow `Isolated QA Gate` at `.github/workflows/qa-isolated.yml`.
 
 The merge-blocking checks should be:
 
@@ -84,9 +84,23 @@ The merge-blocking checks should be:
 
 `Static quality` checks JavaScript syntax, runtime references, Arabic/RTL shell requirements, known copy regressions, legacy runtime guards, school-year formatting, merge markers, repository-defined static safety invariants, the math-rendering architecture guard, the existing Exam API unit suite, and any convention-based `tests/*.unit.mjs` tests.
 
-`Browser smoke` runs the mobile Playwright flow and rendered Arabic copy QA. It protects the student hierarchy, learning/exam behavior, learner content isolation, direct standalone-book assignment, parent progressive disclosure, activity filters, mobile interactions, question references, real browser math-direction behavior, authenticated Testing-learner coverage, and temporary visual evidence capture for meaningful UI changes.
+`Browser smoke` runs real application runtimes with synthetic API/provider fixtures and rendered Arabic copy QA. It protects the student hierarchy, learning/exam behavior, learner content isolation, direct standalone-book assignment, parent progressive disclosure, activity filters, mobile interactions, question references, real browser math-direction behavior, and temporary visual evidence capture for meaningful UI changes. These mocks prove UI behavior; authenticated backend coverage is a separate explicitly isolated gate and is currently NOT RUN until its environment is validated.
 
 Both deterministic checks must be tied to the same exact PR-head commit SHA used for the CodeRabbit review. A passing result from an older head is stale and cannot be reused after any push changes the PR-head SHA.
+
+### Fully isolated Testing
+
+The adjunct contract is [FLH-FEAT-2026-026 v1.0](https://docs.google.com/document/d/1aGD3LUOU5zCG5FNduZcr-xQeg76vV4_xZDE4fabbK0o/edit), Drive revision `2`, pinned separately alongside each feature. Production backend traffic is forbidden for QA, including the `test` account. The separate `family-quiz-lab` application is not a testing fixture and must not be reset or repurposed.
+
+Automatic CI retains all current fresh-database, RLS, authorization, migration, contract and overlapping-concurrency checks in disposable Runner-local Supabase. Both jobs install and verify known Production host denies before tests. Mock browser entrypoints require `FLH_QA_ISOLATION_MODE=mock-local` and a loopback `APP_URL`; their QA-only served-source overlay removes connection hints and configures a synthetic API origin. Every context blocks service workers and unmocked external traffic. No application/backend configuration is rewritten in the repository or deployed by this overlay.
+
+Authenticated and benchmark scripts have no backend default. They require `FLH_QA_ISOLATION_MODE=runner-local` or `isolated-testing`, `FLH_QA_BACKEND_URL`, `FLH_QA_PROJECT_REF` (`local` for Runner/Docker-local), and `FLH_QA_PUBLISHABLE_KEY`. Hosted mode accepts only the independent project's canonical HTTPS Supabase origin matching its expected reference. No service-role browser key, credentialed URL, Production identity, URL mismatch or redirect is accepted. The frontend is separately bound to this same configured backend; a safe localhost app URL alone does not establish API isolation.
+
+Before OIDC/lease preparation, the client requires `qa-auth`'s read-only `isolation_status` to match mode, project reference and public backend origin. Server startup validates `SUPABASE_URL`, explicit isolation mode/reference and `FLH_QA_BACKEND_URL` before constructing a database client; Docker's internal Kong origin and public loopback origin may differ but both must pass the local-mode guard. Attestation touches no learner, lease or database. Existing owned lease/cleanup, cryptographic OIDC and dedicated Testing metadata checks remain mandatory for actual authenticated activity. No hosted authenticated job runs automatically; absent independent configuration/validated synthetic fixtures is NOT RUN/BLOCKED, never a skipped PASS.
+
+`FLH_QA_HEAD_SHA` records the actual checked-out PR head for screenshot manifests; `GITHUB_SHA` alone can identify the pull-request merge commit. GitHub run identifiers remain the actual run's identifiers.
+
+Legacy QA, scheduled/live performance and publication workflows remain remotely disabled under the owner's containment instruction. Record workflow IDs/prior states and verify disabled state plus absence of affected active runs before opening each PR. There is no automatic restore, main push, Pages publication, deployment or remote migration. Restoring workflow state requires a fresh safety audit and explicit release instruction. Preserve worktrees/history and keep all credentials/session material out of evidence.
 
 ## Testing strategy and test-layer selection
 
@@ -130,7 +144,7 @@ Use Playwright/browser tests for important user-visible flows and rendered-state
 - RTL/math rendering and directionality;
 - flows that require the browser, DOM, or actual interaction sequence to expose the defect.
 
-Automated authenticated learner activity must use the dedicated `test` learner rather than Aya or Mohammad so real progress, mastery, rewards, and parent reporting remain clean.
+Automated authenticated learner activity must use the dedicated `test` learner in an explicitly independent Testing backend rather than Production, Aya or Mohammad. A test-account flag alone does not isolate its database.
 
 ### Regression rule for bugs
 
