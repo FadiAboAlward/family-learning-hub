@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
@@ -578,7 +579,7 @@ async function examIndependence(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await launchMockQaBrowser(chromium,APP_URL);
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     await explicitReports(browser, device);

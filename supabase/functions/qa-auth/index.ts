@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.10.0";
+import { requireIsolatedQaBackend } from "../_shared/qa-backend-isolation.mjs";
 import {
   ACTOR_ID,
   AUDIENCE,
@@ -15,11 +16,27 @@ import {
   validateGithubClaims,
 } from "./logic.mjs";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
-  auth: { persistSession: false, autoRefreshToken: false },
+// Fail before constructing a client or touching a lease, even if later deployed to Production.
+const isolatedBackend = requireIsolatedQaBackend({
+  mode: Deno.env.get("FLH_QA_ISOLATION_MODE"),
+  backendUrl: Deno.env.get("SUPABASE_URL"),
+  projectRef: Deno.env.get("FLH_QA_PROJECT_REF"),
 });
+// Docker's internal Kong origin and the caller's loopback origin are explicitly
+// configured separately; each must establish the same isolated project/mode.
+const publicBackend = requireIsolatedQaBackend({
+  mode: isolatedBackend.mode,
+  backendUrl: Deno.env.get("FLH_QA_BACKEND_URL"),
+  projectRef: isolatedBackend.projectRef,
+});
+const SUPABASE_URL = isolatedBackend.backendUrl;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+let admin: ReturnType<typeof createClient> | null = null;
+function adminClient() {
+  return admin ||= createClient(SUPABASE_URL, SERVICE_ROLE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 const JWKS = createRemoteJWKSet(new URL("https://token.actions.githubusercontent.com/.well-known/jwks"));
 
 /** Return a non-cacheable JSON response. */
@@ -97,7 +114,7 @@ async function authenticateGithubRunner(oidc: string) {
 
 /** Load the one canonical isolated Testing learner and reject unsafe metadata drift. */
 async function getTestingLearner() {
-  const { data: learner, error } = await admin
+  const { data: learner, error } = await adminClient()
     .from("learners")
     .select("id,display_name,slug,metadata,is_active")
     .eq("workspace_id", WORKSPACE_ID)
@@ -120,7 +137,7 @@ async function getTestingLearner() {
 
 /** Resolve the latest published version of the fixed QA-only quiz. */
 async function latestQaQuizVersionId() {
-  const { data: quiz, error: quizError } = await admin
+  const { data: quiz, error: quizError } = await adminClient()
     .from("quizzes")
     .select("id")
     .eq("workspace_id", WORKSPACE_ID)
@@ -129,7 +146,7 @@ async function latestQaQuizVersionId() {
     .maybeSingle();
   if (quizError || !quiz) throw new Error("QA_QUIZ_NOT_FOUND");
 
-  const { data: version, error: versionError } = await admin
+  const { data: version, error: versionError } = await adminClient()
     .from("quiz_versions")
     .select("id")
     .eq("workspace_id", WORKSPACE_ID)
@@ -145,7 +162,7 @@ async function latestQaQuizVersionId() {
 /** Delete only Testing attempts for the canonical QA quiz version. */
 async function clearTestingAttempts(learnerId: string) {
   const versionId = await latestQaQuizVersionId();
-  const { count, error } = await admin
+  const { count, error } = await adminClient()
     .from("quiz_attempts")
     .delete({ count: "exact" })
     .eq("workspace_id", WORKSPACE_ID)
@@ -157,7 +174,7 @@ async function clearTestingAttempts(learnerId: string) {
 
 /** Acquire or renew the single database-backed Testing lease. */
 async function acquireTestingLease(runId: string, ttlSeconds: number) {
-  const { data, error } = await admin.rpc("flh_qa_acquire_testing_lease", {
+  const { data, error } = await adminClient().rpc("flh_qa_acquire_testing_lease", {
     p_workspace_id: WORKSPACE_ID,
     p_run_id: runId,
     p_ttl_seconds: ttlSeconds,
@@ -168,7 +185,7 @@ async function acquireTestingLease(runId: string, ttlSeconds: number) {
 
 /** Release the Testing lease only when the caller owns its run id. */
 async function releaseTestingLease(runId: string) {
-  const { data, error } = await admin.rpc("flh_qa_release_testing_lease", {
+  const { data, error } = await adminClient().rpc("flh_qa_release_testing_lease", {
     p_workspace_id: WORKSPACE_ID,
     p_run_id: runId,
   });
@@ -181,6 +198,11 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    // Public, read-only attestation contains no learner, session, credential or database data.
+    if (body.action === "isolation_status") return response({
+      ok: true,
+      isolation: { mode: publicBackend.mode, project_ref: publicBackend.projectRef, backend_origin: publicBackend.backendUrl },
+    });
     await authenticateGithubRunner(String(body.oidc_token || ""));
     const learner = await getTestingLearner();
     const result = await executeQaAction(
