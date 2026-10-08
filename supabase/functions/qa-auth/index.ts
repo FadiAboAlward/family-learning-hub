@@ -109,7 +109,7 @@ async function authenticateGithubRunner(oidc: string) {
   } catch {
     throw new Error("INVALID_GITHUB_OIDC");
   }
-  validateGithubClaims(payload);
+  validateGithubClaims(payload, isolatedBackend.mode);
 }
 
 /** Load the one canonical isolated Testing learner and reject unsafe metadata drift. */

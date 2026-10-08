@@ -9,6 +9,7 @@ import {
   REPOSITORY_ID,
   SESSION_SECONDS,
   WORKFLOW_PREFIX,
+  WORKFLOW_PREFIXES,
   executeQaAction,
   validateGithubClaims,
 } from '../supabase/functions/qa-auth/logic.mjs';
@@ -23,6 +24,10 @@ const validClaims = {
 };
 
 assert.equal(validateGithubClaims(validClaims), true);
+assert.equal(WORKFLOW_PREFIXES.length, 2);
+assert.equal(validateGithubClaims({ ...validClaims, workflow_ref: `${WORKFLOW_PREFIXES[1]}refs/pull/147/merge` }, 'runner-local'), true);
+assert.throws(() => validateGithubClaims({ ...validClaims, workflow_ref: `${WORKFLOW_PREFIXES[1]}refs/pull/147/merge` }, 'isolated-testing'), /WORKFLOW_NOT_ALLOWED/);
+assert.throws(() => validateGithubClaims({ ...validClaims, workflow_ref: `${REPOSITORY}/.github/workflows/qa-authenticated-local.yml.evil@refs/heads/main` }), /WORKFLOW_NOT_ALLOWED/);
 for (const [field, value, expected] of [
   ['repository', 'other/repo', 'REPOSITORY_NOT_ALLOWED'],
   ['repository_id', '1', 'REPOSITORY_NOT_ALLOWED'],

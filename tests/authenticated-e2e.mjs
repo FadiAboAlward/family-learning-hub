@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { fetchQaBackend, fetchQaOidc, installQaBrowserIsolation, qaBrowserLaunchOptions, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { fetchRunnerLocalAuth } from './qa-runner-local.mjs';
 
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const QA_QUIZ_SLUG = 'qa-automation-core';
@@ -58,6 +59,48 @@ async function cleanupQaRun(runId) {
   const { response, payload } = await requestQaAuth('cleanup', runId);
   if (!response.ok) throw new Error(`QA auth cleanup failed: ${response.status} ${payload.error || ''}`.trim());
   return payload;
+}
+
+/** Verify actual persisted resume without logging question content or the learner session. */
+export async function assertQaResume(config, session, endpoint, action, fetchImpl = fetch) {
+  const request = async () => {
+    const response = await fetchQaBackend(config, endpoint, {
+      method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey, authorization: `Bearer ${session}` },
+      body: JSON.stringify({ action, quiz_slug: QA_QUIZ_SLUG }),
+    }, fetchImpl);
+    if (!response.ok) throw new Error('QA_LOCAL_RESUME_API_FAILED');
+    const payload = await response.json();
+    const hiddenKey = value => value && typeof value === 'object' && Object.entries(value).some(([key, child]) => ['correct_answer', 'explanation', 'grading_config'].includes(key) || hiddenKey(child));
+    if (hiddenKey(payload)) throw new Error('QA_LOCAL_ANSWER_KEY_LEAK');
+    if (!payload.attempt_id || payload.resumed !== true) throw new Error('QA_LOCAL_RESUME_INVALID');
+    return payload.attempt_id;
+  };
+  if (await request() !== await request()) throw new Error('QA_LOCAL_RESUME_ID_CHANGED');
+}
+
+/** Synthetic parent's real Auth password grant and existing membership-bound API. */
+export async function assertQaParent(config, email, password, fetchImpl = fetch) {
+  if (!email || !password) throw new Error('QA_LOCAL_PARENT_CONFIG_REQUIRED');
+  const login = await fetchRunnerLocalAuth(config, '/auth/v1/token?grant_type=password', {
+    method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey }, body: JSON.stringify({ email, password }),
+  }, fetchImpl);
+  if (!login.ok) throw new Error('QA_LOCAL_PARENT_LOGIN_FAILED');
+  const token = (await login.json()).access_token;
+  if (!token) throw new Error('QA_LOCAL_PARENT_LOGIN_FAILED');
+  let primary;
+  try {
+    const result = await fetchQaBackend(config, 'family-api', {
+      method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey, authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'parent_dashboard' }),
+    }, fetchImpl);
+    if (!result.ok) throw new Error('QA_LOCAL_PARENT_DASHBOARD_FAILED');
+    const data = await result.json();
+    if (data.parent?.role !== 'owner' || !Array.isArray(data.learners) || data.learners.length || data.attempts?.length || data.states?.length) throw new Error('QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED');
+  } catch (error) { primary = error; }
+  try {
+    const logout = await fetchRunnerLocalAuth(config, '/auth/v1/logout', { method: 'POST', headers: { apikey: config.publishableKey, authorization: `Bearer ${token}` } }, fetchImpl);
+    if (!logout.ok) throw new Error('QA_LOCAL_PARENT_LOGOUT_FAILED');
+  } catch (error) { primary ||= error; }
+  if (primary) throw primary;
 }
 
 /**
@@ -132,6 +175,8 @@ async function main() {
         const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
         await learningButton.waitFor({ state: 'visible', timeout: 10000 });
         await learningButton.click();
+        await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+        await assertQaResume(config, prepared.session, 'learning-api', 'start_quiz');
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
           await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
           await page.locator('.flh-learn-answer').first().click();
@@ -151,6 +196,8 @@ async function main() {
         await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 });
 
         await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
+        await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+        await assertQaResume(config, prepared.session, 'exam-v2-api', 'start_exam');
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
           await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
           await page.locator('.exam-v3-answer').first().click();
@@ -191,8 +238,11 @@ async function main() {
         await page.locator('.flh-history-review').first().waitFor({ state: 'attached', timeout: 30000 });
         await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
         if (new URL(page.url()).searchParams.has('learner')) throw new Error('Attempt deep link did not clean learner query parameter');
-        await mkdir('playwright-screenshots', { recursive: true });
-        await page.screenshot({ path: 'playwright-screenshots/attempt-deep-link-mobile.png', fullPage: true });
+        const evidencePath = config.mode === 'runner-local' ? 'qa-authenticated-evidence' : 'playwright-screenshots';
+        await mkdir(evidencePath, { recursive: true });
+        await page.screenshot({ path: `${evidencePath}/attempt-deep-link-mobile.png`, fullPage: true });
+
+        if (config.mode === 'runner-local') await assertQaParent(config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD);
 
         network.assertNoUnexpectedRequests();
         if (errors.length) throw new Error(errors.join('; '));
