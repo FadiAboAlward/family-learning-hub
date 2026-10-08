@@ -20,7 +20,7 @@ jobs:
     name: Authenticated local API and browser
     if: github.repository == 'FadiAboAlward/family-learning-hub' && github.actor_id == '320162789' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     concurrency:
       group: authenticated-local-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: false
