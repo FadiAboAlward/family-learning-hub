@@ -122,6 +122,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-videos.contract.sql
       - name: Verify ordered optional Learning video sequence contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-sequence.contract.sql
+      - name: Verify authored video outcomes and immutable snapshots
+        run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-outcomes.contract.sql
       - name: Verify optional Learning video sequence concurrency
         run: node tests/optional-learning-video-sequence.concurrency.mjs
       - name: Verify paper unanswered Exam contract
@@ -238,8 +240,13 @@ jobs:
         run: node tests/parent-prefetch-performance.mjs
       - name: Append performance summary
         run: |
-          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
-          cat parent-prefetch-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+          for summary_file in performance-summary.md parent-prefetch-performance-summary.md; do
+            if test -f "$summary_file"; then
+              cat "$summary_file" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf '%s\n' "Summary not produced: $summary_file" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

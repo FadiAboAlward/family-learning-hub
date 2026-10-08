@@ -15,6 +15,10 @@ const ref='abcdefghijklmnopqrst';
 const valid={FLH_QA_ISOLATION_MODE:'isolated-testing',FLH_QA_BACKEND_URL:`https://${ref}.supabase.co`,FLH_QA_PROJECT_REF:ref,FLH_QA_PUBLISHABLE_KEY:'sb_publishable_synthetic_qa'};
 const config=readQaTestingConfig(valid);
 assert.equal(config.backendUrl,valid.FLH_QA_BACKEND_URL);
+for (const claims of [null, [], 1, 'anon', false]) {
+  const key = `e30.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.synthetic`;
+  assert.throws(() => readQaTestingConfig({...valid, FLH_QA_PUBLISHABLE_KEY:key}), {message:'QA_PUBLISHABLE_KEY_INVALID'}, 'non-object JWT claims fail with a stable isolation error before transport');
+}
 assert.equal(readQaTestingConfig({...valid,FLH_QA_ISOLATION_MODE:'runner-local',FLH_QA_BACKEND_URL:'http://127.0.0.1:54321',FLH_QA_PROJECT_REF:'local'}).projectRef,'local');
 let requests=0;
 const tripwire=async()=>{requests++;throw new Error('NETWORK_MUST_NOT_RUN');};
