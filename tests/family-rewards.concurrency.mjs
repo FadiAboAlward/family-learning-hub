@@ -51,6 +51,8 @@ assert.equal(await psql(`select (exists(select 1 from public.learners where id='
   or exists(select 1 from public.behavior_categories where id='${categoryId}')
   or exists(select 1 from public.behavior_rules where id in ('${ruleId}','${secondRuleId}'))
   or exists(select 1 from public.gamification_rewards where id in ('${rewardA}','${rewardB}','${expiringReward}')))::text`),'false','fixture IDs must be unused in the disposable database');
+const originalReturnEvents=await psql(`select coalesce(jsonb_object_agg(id::text,md5(to_jsonb(e)::text)),'{}'::jsonb)::text from public.family_return_events e where workspace_id='${workspaceId}'`);
+const ownedReturnEvents=new Set();
 let setupComplete=false;
 try {
 await psql(`
@@ -78,11 +80,11 @@ await psql(`
 setupComplete=true;
 
 /** Force both real database transactions to overlap behind the shared learner lock. */
-async function race(firstSql,secondSql,marker) {
+async function race(firstSql,secondSql,marker,lockSql=`select id from public.learners where id='${learnerId}' for update`) {
   const pending=[];
   const track=sql=>{const promise=start(sql); promise.catch(()=>{}); pending.push(promise); return promise;};
   try {
-  const blocker = track(`begin; select id from public.learners where id='${learnerId}' for update; select pg_advisory_xact_lock(${marker}); select pg_sleep(8); commit;`);
+  const blocker = track(`begin; ${lockSql}; select pg_advisory_xact_lock(${marker}); select pg_sleep(8); commit;`);
   const lockDeadline=Date.now()+4000;
   let ready=false;
   while(!ready&&Date.now()<lockDeadline){
@@ -154,15 +156,33 @@ const expiredResults=await race(
   command('reward_review',{claim_id:expiringRequest.claim.id,decision:'approved'}),97000104);
 assert.ok(expiredResults.every(result=>result.error==='REWARD_UNAVAILABLE'),'a reward expired during lock wait must never approve');
 assert.equal(Number(await psql(`select count(*) from public.gamification_events where source_type='reward_claim' and source_id='${expiringRequest.claim.id}'`)),0);
-// FLH025: fixed greeting grants use occurrence-local-day buckets across both parents.
-const greetingRecord = (occurredAt,key,actor=actorId) => command('behavior_record',{rule_id:greetingRuleId,occurred_at:occurredAt,idempotency_key:key},actor,learnerId);
+// FLH025 v1.1 / FLH010 v1.7: canonical server events, not claimed timestamps.
+// Known fixture labels deliberately choose/reuse events; no product timestamp inference.
+const fixtureEvents=new Map(),submissionEvents=new Map();
+for(const [index,time] of [
+ '2020-01-10T10:00:00+03:00','2020-01-10T12:00:00+03:00','2020-01-10T18:00:00+03:00',
+ '2020-01-11T10:00:00+03:00','2020-01-12T10:00:00+03:00',
+ '2020-01-20T08:00:00+03:00','2020-01-21T08:00:00+03:00',
+ '2020-01-20T23:59:59+03:00','2020-01-21T00:00:00+03:00',
+ '2020-01-20T12:00:00+03:00','2020-01-21T12:00:00+03:00',
+ '2020-01-25T10:00:00+03:00'
+].entries()){
+ const result=JSON.parse(await psql(command('return_event_create',{occurred_at:time,idempotency_key:'qa-return-race-event-'+index},index%2?secondActorId:actorId)));
+ assert.ok(result.ok,'fixture canonical occasion must be server-created');
+ fixtureEvents.set(new Date(time).toISOString(),result.return_event.id);ownedReturnEvents.add(result.return_event.id);
+}
+const greetingRecord = (occurredAt,key,actor=actorId,event=fixtureEvents.get(new Date(occurredAt).toISOString())) => command('behavior_record',{rule_id:greetingRuleId,occurred_at:occurredAt,idempotency_key:key,return_event_id:event},actor,learnerId);
 const greetingSubmit = (occurredAt,key) => command('behavior_submit',{rule_id:greetingRuleId,occurred_at:occurredAt,idempotency_key:key},null,learnerId);
-const approve = (id,actor=actorId) => command('behavior_review',{submission_id:id,decision:'approved'},actor);
-const readCommand = async sql => JSON.parse(await psql(sql));
+const approve = (id,actor=actorId,event=submissionEvents.get(id)) => command('behavior_review',{submission_id:id,decision:'approved',return_event_id:event},actor);
+const readCommand = async sql => {
+ const result=JSON.parse(await psql(sql));
+ if(result.submission?.rule_id===greetingRuleId&&result.submission.status==='pending')submissionEvents.set(result.submission.id,fixtureEvents.get(new Date(result.submission.occurred_at).toISOString()));
+ return result;
+};
 const greetingDay = day => psql(`select jsonb_build_object('approved',count(*) filter(where status='approved'),
   'points',coalesce(sum(total_points) filter(where status='approved'),0),
   'pending_points',coalesce(sum(total_points) filter(where status='pending'),0))::text
-  from public.behavior_submissions where learner_id='${learnerId}' and rule_id='${greetingRuleId}' and (occurred_at at time zone 'Europe/Istanbul')::date='${day}'::date`).then(JSON.parse);
+  from public.behavior_submissions s left join public.family_return_events e on e.id=s.return_event_id and e.workspace_id=s.workspace_id where s.learner_id='${learnerId}' and s.rule_id='${greetingRuleId}' and (coalesce(e.occurred_at,s.occurred_at) at time zone 'Europe/Istanbul')::date='${day}'::date`).then(JSON.parse);
 
 const firstSlot=await readCommand(greetingRecord('2020-01-10T10:00:00+03:00','qa025-race-slot-first'));
 assert.equal(firstSlot.submission.total_points,2);
@@ -182,15 +202,37 @@ assert.ok(pendingGreeting.every(result=>result.ok&&result.submission.total_point
 assert.equal(pendingGreeting[0].submission.id,pendingGreeting[1].submission.id,'equivalent timezone forms reuse one pending event');
 assert.equal(pendingGreeting.filter(result=>result.duplicate_pending===true).length,1);
 assert.deepEqual(pendingGreeting[0].submission.snapshot,pendingGreeting[1].submission.snapshot,'occurrence alias retains the first server snapshot');
+for(const result of pendingGreeting)submissionEvents.set(result.submission.id,fixtureEvents.get('2020-01-11T07:00:00.000Z'));
 const concurrentReview=await race(approve(pendingGreeting[0].submission.id),approve(pendingGreeting[1].submission.id,secondActorId),97000108);
 assert.ok(concurrentReview.every(result=>result.ok));
 assert.equal(concurrentReview.filter(result=>result.already_reviewed===true).length,1,'concurrent duplicate reviews return the original grant');
 assert.equal(Number(await psql(`select count(*) from public.gamification_events where source_type='family_behavior' and source_id='${pendingGreeting[0].submission.id}'`)),1);
+// One selected occasion is still one grant when the actual claim clocks and paths differ.
+const physicalEvent=fixtureEvents.get('2020-01-25T07:00:00.000Z');
+const physicalClaim=await readCommand(greetingSubmit('2019-06-10T10:00:00+03:00','qa-return-race-physical-claim'));
+assert.ok(physicalClaim.ok);
+const physicalRace=await race(
+ approve(physicalClaim.submission.id,actorId,physicalEvent),
+ greetingRecord('2019-06-11T11:00:00+03:00','qa-return-race-physical-direct',secondActorId,physicalEvent),97000112);
+assert.equal(physicalRace.filter(result=>result.ok).length,1,'individual review versus direct parent record grants one selected occasion once');
+assert.equal(physicalRace.filter(result=>result.error==='DUPLICATE_OCCURRENCE').length,1,'changed claim clocks/keys/parent cannot bypass canonical event identity');
+assert.equal(Number(await psql(`select count(*) from public.gamification_events where learner_id='${learnerId}' and source_type='family_behavior' and metadata->>'return_event_id'='${physicalEvent}'`)),1);
+assert.deepEqual(await greetingDay('2020-01-25'),{approved:1,points:2,pending_points:0},'event day, not claimed day, owns the grant');
+// Force normalized same-key creation requests to overlap behind the exact key lock.
+const creationKey='qa-return-overlap-create',creationTime='2020-02-01T10:00:00+03:00';
+const creationRace=await race(
+ command('return_event_create',{occurred_at:creationTime,idempotency_key:creationKey}),
+ command('return_event_create',{occurred_at:'2020-02-01T07:00:00Z',idempotency_key:creationKey}),97000113,
+ `select pg_advisory_xact_lock(hashtextextended('${workspaceId}:family-return:${creationKey}',0))`);
+assert.ok(creationRace.every(result=>result.ok));
+assert.equal(creationRace[0].return_event.id,creationRace[1].return_event.id,'overlapping normalized creation retries converge on one server UUID');
+assert.equal(creationRace.filter(result=>result.already_created===true).length,1);
+ownedReturnEvents.add(creationRace[0].return_event.id);
 
 const exactGreeting=await race(
   greetingRecord('2020-01-12T10:00:00+03:00','qa025-race-exact-a'),
   greetingRecord('2020-01-12T07:00:00Z','qa025-race-exact-b',secondActorId),97000109);
-assert.equal(exactGreeting.filter(result=>result.ok).length,1,'one exact instant can produce only one direct grant across parents');
+assert.equal(exactGreeting.filter(result=>result.ok).length,1,'one selected canonical occasion can produce only one direct grant across parents');
 assert.equal(exactGreeting.filter(result=>result.error==='DUPLICATE_OCCURRENCE').length,1);
 assert.deepEqual(await greetingDay('2020-01-12'),{approved:1,points:2,pending_points:0});
 
@@ -209,7 +251,7 @@ const cappedBoundary=await race(
   greetingRecord('2020-01-20T12:00:00+03:00','qa025-race-boundary-third-a'),
   greetingRecord('2020-01-21T12:00:00+03:00','qa025-race-boundary-third-b',secondActorId),97000111);
 assert.ok(cappedBoundary.every(result=>result.error==='CADENCE_LIMIT'));
-assert.deepEqual(JSON.parse(await psql(`select jsonb_build_object('xp',xp,'points',reward_points)::text from public.learner_gamification_state where learner_id='${learnerId}'`)),{xp:100,points:16},'all overlapping greeting grants change Reward Points only');
+assert.deepEqual(JSON.parse(await psql(`select jsonb_build_object('xp',xp,'points',reward_points)::text from public.learner_gamification_state where learner_id='${learnerId}'`)),{xp:100,points:18},'all overlapping greeting grants change Reward Points only');
 } finally {
   if(setupComplete){
     // Delete only this run's known synthetic learner. The established FK cascade permits
@@ -217,6 +259,7 @@ assert.deepEqual(JSON.parse(await psql(`select jsonb_build_object('xp',xp,'point
     await psql(`begin;
       delete from public.learners where id='${learnerId}' and workspace_id='${workspaceId}'
         and slug='qa-family-concurrency' and metadata->>'qa_fixture'='family-rewards-concurrency' and coalesce((metadata->>'is_test')::boolean,false);
+      delete from public.family_return_events where workspace_id='${workspaceId}' and id in (${[...ownedReturnEvents].map(id=>"'"+id+"'").join(',')||'null'}) and created_by in ('${actorId}','${secondActorId}');
       delete from public.gamification_rewards where id in ('${rewardA}','${rewardB}','${expiringReward}') and workspace_id='${workspaceId}';
       delete from public.behavior_rules where id in ('${ruleId}','${secondRuleId}') and workspace_id='${workspaceId}';
       delete from public.behavior_categories where id='${categoryId}' and workspace_id='${workspaceId}';
@@ -232,8 +275,9 @@ assert.deepEqual(JSON.parse(await psql(`select jsonb_build_object('xp',xp,'point
     const expectedRule={...originalRule}; delete expectedRule.updated_at;
     assert.deepEqual(restoredRule,expectedRule,'canonical rule preferences restored');
     assert.equal(await ruleScopes(),originalScopes,'canonical original learner scopes restored');
+    assert.equal(await psql(`select coalesce(jsonb_object_agg(id::text,md5(to_jsonb(e)::text)),'{}'::jsonb)::text from public.family_return_events e where workspace_id='${workspaceId}'`),originalReturnEvents,'only this run canonical occasions cleaned; original register unchanged');
     assert.equal(await seededHistory(),originalSeededHistory,'seeded Testing wallet and all history remain unchanged');
     assert.equal(await psql(`select (exists(select 1 from public.learners where id='${learnerId}') or exists(select 1 from public.gamification_events where learner_id='${learnerId}') or exists(select 1 from public.behavior_submissions where learner_id='${learnerId}') or exists(select 1 from public.reward_claims where learner_id='${learnerId}'))::text`),'false','synthetic financial fixtures fully cleaned');
   }
 }
-console.log('Family rewards concurrent duplicate grants, exact pending reuse, shared final slots, local midnight buckets, claim spending/expiry and XP preservation passed; synthetic fixtures cleaned.');
+console.log('Family rewards overlapping canonical occasion creation/review/direct uniqueness, pending reuse, shared final slots, local midnight buckets, claim spending/expiry and XP preservation passed; synthetic fixtures cleaned.');

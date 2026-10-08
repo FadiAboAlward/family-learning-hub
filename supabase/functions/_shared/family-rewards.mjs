@@ -4,7 +4,7 @@ const parentActions = new Map([
   ['parent_rewards_ledger', 'parent_ledger'],
   ['parent_behavior_report', 'parent_report'],
   ...['category_save', 'rule_save', 'reward_save', 'behavior_record', 'behavior_review',
-    'reward_review', 'reward_redeem', 'points_adjust'].map(action => [action, action]),
+    'reward_review', 'reward_redeem', 'points_adjust', 'return_event_create'].map(action => [action, action]),
 ]);
 const learnerActions = new Map([
   ['student_rewards_dashboard', 'student_catalog'],
@@ -14,7 +14,7 @@ const learnerActions = new Map([
   ['reward_request', 'reward_request'],
 ]);
 const fields = {
-  parent_catalog: ['test_only'],
+  parent_catalog: ['test_only', 'return_event_day', 'return_event_before_at', 'return_event_before_id', 'return_event_page_size'],
   student_catalog: [],
   parent_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],
   student_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],
@@ -27,9 +27,10 @@ const fields = {
   reward_save: ['id', 'title', 'description', 'reward_type', 'required_level', 'required_reward_points',
     'criteria', 'learner_scope', 'learner_ids', 'is_active', 'available_from', 'available_until',
     'max_redemptions_per_learner'],
-  behavior_record: ['rule_id', 'initiative', 'adhkar_completed', 'congregation_completed', 'mosque_completed', 'sunnah_completed', 'occurred_at', 'reason', 'idempotency_key'],
+  behavior_record: ['rule_id', 'initiative', 'adhkar_completed', 'congregation_completed', 'mosque_completed', 'sunnah_completed', 'occurred_at', 'reason', 'idempotency_key', 'return_event_id'],
   behavior_submit: ['rule_id', 'initiative', 'adhkar_completed', 'congregation_completed', 'mosque_completed', 'sunnah_completed', 'occurred_at', 'reason', 'idempotency_key'],
-  behavior_review: ['submission_id', 'decision', 'reason'],
+  behavior_review: ['submission_id', 'decision', 'reason', 'return_event_id'],
+  return_event_create: ['occurred_at', 'idempotency_key'],
   reward_request: ['reward_id', 'note', 'idempotency_key'],
   reward_review: ['claim_id', 'decision', 'reason'],
   reward_redeem: ['claim_id'],
@@ -104,6 +105,7 @@ const publicErrors = new Set([
   'INVALID_OCCURRED_AT', 'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'REWARD_SCOPE_FORBIDDEN',
   'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING',
   'ADJUSTMENT_REASON_REQUIRED', 'REVERSAL_EVENT_NOT_FOUND', 'INVALID_ADJUSTMENT', 'DUPLICATE_OCCURRENCE',
+  'RETURN_EVENT_REQUIRED', 'RETURN_EVENT_NOT_FOUND', 'INVALID_RETURN_EVENT', 'RETURN_EVENT_IMMUTABLE',
 ]);
 
 /** Never return raw SQL/PostgREST messages, details or submitted free text to the browser. */
@@ -120,7 +122,7 @@ export function rewardsErrorStatus(code) {
   if (code.endsWith('_NOT_FOUND')) return 404;
   if (['IDEMPOTENCY_CONFLICT', 'CADENCE_LIMIT', 'RULE_INACTIVE', 'CATEGORY_INACTIVE', 'REWARD_UNAVAILABLE',
     'REWARD_INELIGIBLE', 'INSUFFICIENT_POINTS', 'REDEMPTION_LIMIT', 'INVALID_TRANSITION', 'ALREADY_REVERSED',
-    'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING', 'DUPLICATE_OCCURRENCE'].includes(code)) return 409;
+    'CLAIM_NOT_APPROVED', 'REWARD_INACTIVE', 'LEVEL_REQUIRED', 'XP_REQUIRED', 'STREAK_REQUIRED', 'BADGE_REQUIRED', 'CLAIM_ALREADY_PENDING', 'DUPLICATE_OCCURRENCE', 'RETURN_EVENT_IMMUTABLE'].includes(code)) return 409;
   if (publicErrors.has(code)) return 400;
   return 500;
 }

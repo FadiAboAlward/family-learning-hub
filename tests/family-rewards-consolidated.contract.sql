@@ -2,7 +2,7 @@
 -- Disposable rebuilt database only. All writes target Testing or synthetic fixtures.
 -- The caught success exception rolls back every fixture and canonical-rule preference.
 -- Exact instants cover technical duplicate identity only; same physical-return identity
--- is BLOCKED_CONTRACT (FLH025 AC10 / FLH010 v1.6 AC04).
+-- is supplemented by family-return-events.contract.sql for the selected v1.7 identity contract.
 do $contract$
 declare
   w uuid;
@@ -40,9 +40,25 @@ declare
 begin
   execute $definition$create or replace function pg_temp.consolidated_assert(ok boolean,message text) returns void
     language plpgsql as $body$begin if ok is distinct from true then raise exception 'Consolidated rewards contract: %',message; end if; end$body$$definition$;
+
+  -- Historical cap fixtures intentionally reuse one registered test occasion per known
+  -- fixture instant. Production never infers physical identity from timestamps.
+  execute $definition$create or replace function pg_temp.consolidated_return(wid uuid,actor uuid,instant timestamptz) returns uuid
+    language plpgsql as $body$
+    declare eid uuid; response jsonb; request_key text := 'qa025-fixture-event-'||md5(extract(epoch from instant)::text);
+    begin
+      select id into eid from public.family_return_events where workspace_id=wid and idempotency_key=request_key;
+      if eid is null then
+        response := public.flh_family_rewards_command(wid,actor,null,'return_event_create',jsonb_build_object('occurred_at',instant,'idempotency_key',request_key));
+        if response->>'ok' is distinct from 'true' then raise exception 'Fixture return create failed: %',response->>'error'; end if;
+        eid := (response->'return_event'->>'id')::uuid;
+      end if;
+      return eid;
+    end $body$$definition$;
+
   select id into strict w from public.workspaces where slug='family-learning-hub';
   select id into strict l from public.learners where workspace_id=w and slug='test' and is_active and coalesce((metadata->>'is_test')::boolean,false);
-  select to_jsonb(r),category_id into strict original_rule,greeting_category from public.behavior_rules r where id=greeting and workspace_id=w;
+  select to_jsonb(r),r.category_id into strict original_rule,greeting_category from public.behavior_rules r where id=greeting and workspace_id=w;
   select to_jsonb(s) into original_state from public.learner_gamification_state s where learner_id=l and workspace_id=w;
   select coalesce(jsonb_object_agg(s.id::text,md5(to_jsonb(s)::text)),'{}') into original_history from public.behavior_submissions s where learner_id=l and workspace_id=w;
   select coalesce(jsonb_object_agg(e.id::text,md5(to_jsonb(e)::text)),'{}') into original_ledger from public.gamification_events e where learner_id=l and workspace_id=w;
@@ -141,25 +157,25 @@ begin
 
     -- Both parents share two slots. Boundary pair has the SAME UTC date and DIFFERENT local dates.
     occasion := (local_day+time '10:00') at time zone 'Europe/Istanbul';
-    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-first'));
+    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,occasion),'rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-first'));
     perform pg_temp.consolidated_assert(result->>'ok'='true' and (result->'submission'->>'total_points')::integer=2, 'first parent record awards exactly two');
-    second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-first'));
+    second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,occasion),'rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-first'));
     perform pg_temp.consolidated_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=result->'submission'->>'id', 'same request retry retains event identity');
-    second := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-exact-alias'));
-    perform pg_temp.consolidated_assert(second->>'error'='DUPLICATE_OCCURRENCE', 'same technical instant across parents and keys cannot award twice');
-    result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',(local_day+time '23:59:59') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-second'));
+    second := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,admin_id,occasion),'rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-greeting-exact-alias'));
+    perform pg_temp.consolidated_assert(second->>'error'='DUPLICATE_OCCURRENCE', 'same selected canonical fixture occasion across parents and keys cannot award twice');
+    result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,admin_id,(local_day+time '23:59:59') at time zone 'Europe/Istanbul'),'rule_id',greeting,'occurred_at',(local_day+time '23:59:59') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-second'));
     perform pg_temp.consolidated_assert(result->>'ok'='true' and (result->'submission'->>'total_points')::integer=2, 'other parent consumes second shared slot');
-    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',(local_day+time '22:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-third'));
+    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,(local_day+time '22:00') at time zone 'Europe/Istanbul'),'rule_id',greeting,'occurred_at',(local_day+time '22:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-third'));
     perform pg_temp.consolidated_assert(result->>'error'='CADENCE_LIMIT' and not exists(select 1 from public.behavior_submissions where learner_id=l and idempotency_key='qa025-greeting-third'), 'third local-day record fails with no pending residue');
     perform pg_temp.consolidated_assert(((local_day+time '23:59:59') at time zone 'Europe/Istanbul' at time zone 'UTC')::date
       =(((local_day+1)+time '00:00:00') at time zone 'Europe/Istanbul' at time zone 'UTC')::date, 'rollover fixture crosses local midnight within one UTC day');
-    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',((local_day+1)+time '00:00:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-newday-one'));
-    second := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',((local_day+1)+time '00:00:30') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-newday-two'));
+    result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,((local_day+1)+time '00:00:00') at time zone 'Europe/Istanbul'),'rule_id',greeting,'occurred_at',((local_day+1)+time '00:00:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-newday-one'));
+    second := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,admin_id,((local_day+1)+time '00:00:30') at time zone 'Europe/Istanbul'),'rule_id',greeting,'occurred_at',((local_day+1)+time '00:00:30') at time zone 'Europe/Istanbul','idempotency_key','qa025-greeting-newday-two'));
     perform pg_temp.consolidated_assert(result->>'ok'='true' and second->>'ok'='true', 'late approval uses separate occurrence-day bucket after local midnight');
     perform pg_temp.consolidated_assert((select count(*)=4 and sum(total_points)=8 from public.behavior_submissions where learner_id=l and rule_id=greeting and status='approved' and (occurred_at at time zone 'Europe/Istanbul')::date in (local_day,local_day+1)), 'two local dates each award four points maximum');
     insert into public.learners(id,workspace_id,display_name,slug,metadata) values(second_test_learner,w,'QA independent Testing bucket','qa025-independent-bucket','{"is_test":true,"exclude_from_parent_metrics":true}');
     insert into public.behavior_rule_learners(workspace_id,rule_id,learner_id) values(w,greeting,second_test_learner);
-    result := public.flh_family_rewards_command(w,owner_id,second_test_learner,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-independent-learner'));
+    result := public.flh_family_rewards_command(w,owner_id,second_test_learner,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,occasion),'rule_id',greeting,'occurred_at',occasion,'idempotency_key','qa025-independent-learner'));
     perform pg_temp.consolidated_assert(result->>'ok'='true' and (result->'submission'->>'total_points')::integer=2
       and (select reward_points=2 and xp=0 from public.learner_gamification_state where learner_id=second_test_learner), 'another Testing learner has an independent cap on the same local day');
 
@@ -198,12 +214,12 @@ begin
       perform pg_temp.consolidated_assert(result->>'error'='INVALID_INPUT', 'canonical rule rejects every bonus modifier even with tampered config');
     end loop;
     for before_count in 1..3 loop
-      result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',greeting,'occurred_at',(((local_day+3)+time '10:00') at time zone 'Europe/Istanbul')+before_count*interval '1 hour','idempotency_key','qa025-tamper-'||before_count));
+      result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,(((local_day+3)+time '10:00') at time zone 'Europe/Istanbul')+before_count*interval '1 hour'),'rule_id',greeting,'occurred_at',(((local_day+3)+time '10:00') at time zone 'Europe/Istanbul')+before_count*interval '1 hour','idempotency_key','qa025-tamper-'||before_count));
       perform pg_temp.consolidated_assert(case when before_count<3 then result->>'ok'='true' and (result->'submission'->>'total_points')::integer=2 else result->>'error'='CADENCE_LIMIT' end, 'fixed two-point shared two-occurrence cap survives raw policy config changes');
     end loop;
     insert into public.behavior_submissions(workspace_id,learner_id,rule_id,initiative,occurred_at,requester_type,idempotency_key)
       values(w,l,greeting,true,((local_day+4)+time '10:00') at time zone 'Europe/Istanbul','learner','qa025-legacy-invalid-modifier') returning id into sid;
-    result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
+    result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('return_event_id',pg_temp.consolidated_return(w,owner_id,((local_day+4)+time '10:00') at time zone 'Europe/Istanbul'),'submission_id',sid,'decision','approved'));
     perform pg_temp.consolidated_assert(result->>'error'='INVALID_INPUT' and (select status='pending' and total_points=0 from public.behavior_submissions where id=sid)
       and not exists(select 1 from public.gamification_events where source_type='family_behavior' and source_id=sid::text), 'legacy canonical bonus flags fail closed at approval');
     result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',ordinary_rule,'idempotency_key','qa025-malformed-capture'));

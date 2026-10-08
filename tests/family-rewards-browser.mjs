@@ -7,6 +7,8 @@ const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const OUTPUT_DIR = 'playwright-screenshots';
 const LEARNER_ID = '11111111-1111-4111-8111-111111111111';
 const NOW = '2026-10-01T09:00:00Z';
+const GREETING_ID='a315e8af-9d9b-473b-95ac-c5425ad7de5b';
+const localDay=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
 const learner = { id: LEARNER_ID, slug: 'test', display_name: 'طالب الاختبار', grade_level: 7, is_test: true, avatar_emoji: '🧪' };
 const clone = value => structuredClone(value);
 const json = (route, value, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
@@ -15,7 +17,7 @@ const academicSource = source => !source || ['academic', 'quiz', 'quiz_attempt',
 /** Isolated server fixtures exercise the real UI without touching any family data. */
 export function createRewardsFixture() {
   const state = { learner_id: LEARNER_ID, xp: 100, reward_points: 20, current_level: 1, current_streak: 2, longest_streak: 3 };
-  const catalog = { learners: [learner], states: [state], categories: [], rules: [], rewards: [], submissions: [], claims: [], ledger: [], breakdown: [], badges: [{ code: 'qa-consistency', title: 'استمرارية التعلّم', is_active: true }, { code: 'qa-effort', title: 'جهد مثمر', is_active: true }] };
+  const catalog = { learners: [learner], states: [state], categories: [], rules: [], rewards: [], return_events: [], submissions: [], claims: [], ledger: [], breakdown: [], badges: [{ code: 'qa-consistency', title: 'استمرارية التعلّم', is_active: true }, { code: 'qa-effort', title: 'جهد مثمر', is_active: true }] };
   const calls = [];
   const results = new Map();
   let counter = 0;
@@ -43,10 +45,14 @@ export function createRewardsFixture() {
     return event;
   };
   catalog.ledger.push({ id: id(), learner_id: LEARNER_ID, event_type: 'quiz_completed', reward_points_delta: 20, xp_delta: 100, source_type: 'quiz', source_id: 'qa-academic-attempt', reason: 'إكمال تدريب الاختبار', metadata: { status: 'approved' }, created_at: NOW });
-  const snapshot = role => {
+  const snapshot = (role,query={}) => {
     const value = clone(catalog);
-    value.submissions.forEach(row=>row.possible_duplicate=catalog.submissions.some(other=>other.id!==row.id&&other.status==='approved'&&other.learner_id===row.learner_id&&other.rule_id===row.rule_id&&other.occurred_at===row.occurred_at));
+    value.submissions.forEach(row=>row.possible_duplicate=catalog.submissions.some(other=>other.id!==row.id&&other.status==='approved'&&other.learner_id===row.learner_id&&other.rule_id===row.rule_id&&(row.rule_id===GREETING_ID?row.return_event_id&&other.return_event_id===row.return_event_id:other.occurred_at===row.occurred_at)));
     value.ok = true;
+    const eventDay=query.return_event_day||localDay(Date.now());
+    value.return_event_day=role==='parent'?eventDay:null;
+    value.return_events=role==='parent'?catalog.return_events.filter(event=>localDay(event.occurred_at)===eventDay).map(event=>({...clone(event),awarded_learner_ids:catalog.submissions.filter(row=>row.status==='approved'&&row.return_event_id===event.id).map(row=>row.learner_id)})):[];
+    value.return_event_next_cursor=null;
     const breakdown = new Map();
     for (const row of catalog.ledger) {
       const key = `${row.metadata?.category_id || ''}:${row.source_type}`;
@@ -83,8 +89,22 @@ export function createRewardsFixture() {
     }
     return value;
   };
+  const greetingError=(body,learnerId=LEARNER_ID)=>{
+    if(body.rule_id!==GREETING_ID)return null;
+    const event=find(catalog.return_events,body.return_event_id);
+    if(!body.return_event_id)return{error:'RETURN_EVENT_REQUIRED',status:400};
+    if(!event)return{error:'RETURN_EVENT_NOT_FOUND',status:404};
+    if(catalog.submissions.some(row=>row.status==='approved'&&row.learner_id===learnerId&&row.return_event_id===event.id))return{error:'DUPLICATE_OCCURRENCE',status:409};
+    if(catalog.submissions.filter(row=>row.status==='approved'&&row.learner_id===learnerId&&row.rule_id===GREETING_ID&&localDay(row.snapshot?.verified_occurred_at||row.occurred_at)===localDay(event.occurred_at)).length>=2)return{error:'CADENCE_LIMIT',status:409};
+    return null;
+  };
   const mutate = body => {
     const action = body.action;
+    if(action==='return_event_create'){
+      if(!Number.isFinite(new Date(body.occurred_at).getTime())||new Date(body.occurred_at).getTime()>Date.now())return{error:'INVALID_OCCURRED_AT',status:400};
+      const event={id:id(),occurred_at:new Date(body.occurred_at).toISOString(),created_at:NOW};
+      catalog.return_events.push(event);return{return_event:clone(event)};
+    }
     if (action === 'category_save') {
       const row = find(catalog.categories, body.id) || { id: id() };
       Object.assign(row, body, { id: row.id });
@@ -101,6 +121,7 @@ export function createRewardsFixture() {
     if (action === 'behavior_record' || action === 'behavior_submit') {
       const rule = find(catalog.rules, body.rule_id);
       assert.ok(rule, 'behavior request references a configured rule');
+      if(action==='behavior_record'){const failure=greetingError(body,body.learner_id||LEARNER_ID);if(failure)return failure;}
       const occurredAt = body.occurred_at || NOW;
       if (action === 'behavior_submit') {
         const existing = catalog.submissions.find(row => row.status === 'pending' && row.learner_id === LEARNER_ID && row.rule_id === rule.id && row.occurred_at === occurredAt);
@@ -122,6 +143,7 @@ export function createRewardsFixture() {
         requester_type: action === 'behavior_record' ? 'parent' : 'learner', requester_id: 'qa-requester', reviewer_id: action === 'behavior_record' ? 'qa-parent' : null,
         snapshot:action==='behavior_submit'?previewFor(rule,body):{},
       };
+      if(action==='behavior_record'&&rule.id===GREETING_ID){row.return_event_id=body.return_event_id;row.snapshot={return_event_id:body.return_event_id,verified_occurred_at:find(catalog.return_events,body.return_event_id).occurred_at};}
       row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points + row.congregation_bonus_points + row.mosque_bonus_points + row.sunnah_bonus_points;
       catalog.submissions.unshift(row);
       if (action === 'behavior_record') pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: clone(row) });
@@ -132,13 +154,15 @@ export function createRewardsFixture() {
       assert.ok(row, 'review references a pending submission');
       if(row.status===body.decision)return{submission:clone(row),already_reviewed:true};
       if (row.status === 'pending') {
-        if (body.decision === 'approved' && catalog.submissions.some(other => other.id !== row.id && other.status === 'approved' && other.learner_id === row.learner_id && other.rule_id === row.rule_id && other.occurred_at === row.occurred_at)) {
+        if(body.decision==='approved'){const failure=greetingError({...row,return_event_id:body.return_event_id},row.learner_id);if(failure)return failure;}
+        if (row.rule_id!==GREETING_ID && body.decision === 'approved' && catalog.submissions.some(other => other.id !== row.id && other.status === 'approved' && other.learner_id === row.learner_id && other.rule_id === row.rule_id && other.occurred_at === row.occurred_at)) {
           return { error: 'DUPLICATE_OCCURRENCE', status: 409 };
         }
         row.status = body.decision;
         if (row.status === 'approved') {
           const rule = find(catalog.rules, row.rule_id),preview=row.snapshot?.policy_version==='flh-010-v1.5'?row.snapshot:previewFor(rule,row);
           for(const key of ['base_points','initiative_bonus_points','adhkar_bonus_points','congregation_bonus_points','mosque_bonus_points','sunnah_bonus_points','total_points'])row[key]=preview[key];
+          if(row.rule_id===GREETING_ID){row.return_event_id=body.return_event_id;row.snapshot={...row.snapshot,status:'approved',return_event_id:body.return_event_id,verified_occurred_at:find(catalog.return_events,body.return_event_id).occurred_at};}
           pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: { ...clone(row), reviewer_id: 'qa-parent', approved_at: NOW } });
         }
       }
@@ -191,7 +215,7 @@ export function createRewardsFixture() {
       if (action === 'parent_dashboard') return respond({ parent: { id: 'qa-parent', relation: 'father', role: 'owner' }, learners: [learner], states: [state], attempts: [], reward_claims: catalog.claims });
       if (action === 'learner_choices') return respond({ learners: [learner] });
       if (action === 'student_login') return respond({ session: 'mock-rewards-testing-learner', profile: { learner, gamification: { ...state, badges: [], rewards: catalog.rewards } } });
-      if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner'));
+      if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner',body));
       if (action === 'parent_rewards_ledger' || action === 'student_rewards_ledger') {
         const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || (body.source_type === 'academic' ? academicSource(row.source_type) : row.source_type === body.source_type)));
         return respond({ ledger: clone(ledger), next_cursor: null });
@@ -221,7 +245,7 @@ export function createRewardsFixture() {
       }
       const key = `${action}:${body.idempotency_key || ''}`;
       const result = results.has(key) && body.idempotency_key ? results.get(key) : mutate(body);
-      if (body.idempotency_key) results.set(key, clone(result));
+      if (body.idempotency_key && !result.error) results.set(key, clone(result));
       if (action === failAfter) { failAfter = ''; return respond({ error: 'INTERNAL_ERROR' }, 500); }
       return respond({ ok: !result.error, ...result }, result.error ? result.status || 400 : 200);
     },
@@ -877,15 +901,90 @@ async function runBrowserSuite() {
     assert.equal(await page.locator('[data-fr-approvals] .fr-submission-details[open]').count(),1,'Details disclosures expand independently');
     await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);await page.locator('#frOccurrenceCategory').selectOption(greetingCategory);await page.locator('#frOccurrenceRule').selectOption(greetingId);
     assert.equal(await page.locator('[data-fr-initiative="frOccurrence"]').isHidden(),true,'parent direct greeting cannot request an unsupported initiative');
+
+    // R1: a missing occasion fails pending; cancel creation performs no request.
+    {
+    const missingResponse=responseFor(page,'behavior_review');
+    await greetingCard.locator('[data-fr-behavior-approve]').click();await missingResponse;
+    await greetingCard.locator('.fr-item-error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,greetingBalance);
+    const control=greetingCard.locator('[data-fr-return-context]');
+    await control.locator('[data-fr-return-create-details] summary').click();
+    const beforeCancel=server.calls.filter(call=>call.action==='return_event_create').length;
+    await control.locator('[data-fr-return-cancel]').click();
+    assert.equal(server.calls.filter(call=>call.action==='return_event_create').length,beforeCancel);
+    // Lost response retry retains the actual server-issued event, without granting money.
+    await control.locator('[data-fr-return-create-details] summary').click();
+    server.failAfter('return_event_create');
+    const failedCreate=responseFor(page,'return_event_create');
+    await control.locator('[data-fr-return-create]').click();await failedCreate;
+    await control.locator('.fr-return-message .error').waitFor({state:'visible'});
+    assert.equal(server.catalog.return_events.length,1);
+    const retryCreate=responseFor(page,'return_event_create');
+    await control.locator('[data-fr-return-create]').click();await retryCreate;
+    const eventId=server.catalog.return_events[0].id;
+    await page.waitForFunction(({sid,eventId})=>document.querySelector(`[data-fr-submission="${sid}"] [data-fr-return-select]`)?.value===eventId,{sid:greetingSubmission.id,eventId});
+    assert.equal(server.catalog.return_events.length,1);
+    assert.equal(server.state.reward_points,greetingBalance,'creation/retry itself awards zero');
+    assert.equal(await greetingCard.locator('.fr-item-error').count(),0,'a valid chosen occasion clears the resolved missing-binding alert');
+    const createCalls=server.calls.filter(call=>call.action==='return_event_create');
+    assert.equal(createCalls.at(-1).idempotency_key,createCalls.at(-2).idempotency_key);
+    assert.equal(createCalls.at(-1).occurred_at,createCalls.at(-2).occurred_at);
+    await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-choice.png`,fullPage:true});
     await perform(page,'behavior_review',()=>greetingCard.locator('[data-fr-behavior-approve]').click());
     assert.equal(server.state.reward_points,greetingBalance+2);
-    assert.equal(server.state.xp,100,'new family behavior remains Reward-Points-only');
+    assert.equal(greetingSubmission.return_event_id,eventId);
+    assert.equal(greetingSubmission.snapshot.verified_occurred_at,server.catalog.return_events[0].occurred_at);
+    // Different child clocks choose the same canonical occasion: known forecast zero,
+    // bulk reports the duplicate failure while an ordinary visible item can succeed.
+    const duplicateResult=await server.handle({action:'behavior_submit',rule_id:greetingId,occurred_at:'2020-01-03T08:00:00Z',idempotency_key:'r1-duplicate-'+device.name});
+    const duplicateId=duplicateResult.body.submission.id;
+    await server.handle({action:'behavior_submit',rule_id:ruleId,occurred_at:'2020-01-04T08:00:00Z',idempotency_key:'r1-ordinary-'+device.name});
+    server.catalog.submissions=server.catalog.submissions.filter(row=>row.status!=='pending'||row.id===duplicateId||row.occurred_at==='2020-01-04T08:00:00Z');
+    await open(page,'parent');
+    const r1FreshDashboard=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await r1FreshDashboard;
+    const duplicateCard=page.locator(`[data-fr-approvals] [data-fr-submission="${duplicateId}"]`),duplicateControl=duplicateCard.locator('[data-fr-return-context]');
+    await duplicateCard.waitFor({state:'visible'});
+    await duplicateControl.locator('[data-fr-return-day]').fill(localDay(server.catalog.return_events[0].occurred_at));
+    await duplicateControl.locator('[data-fr-return-day]').dispatchEvent('change');
+    await duplicateControl.locator(`[data-fr-return-select] option[value="${eventId}"]`).waitFor({state:'attached'});
+    await duplicateControl.locator('[data-fr-return-select]').selectOption(eventId);
+    assert.match(await duplicateCard.locator('.fr-estimate').innerText(),/^0/);
+    const beforeBulk=server.state.reward_points,group=page.locator(`[data-fr-approval-learner="${LEARNER_ID}"]`);
+    page.once('dialog',dialog=>dialog.dismiss());
+    await group.locator('[data-fr-approve-all]').click();
+    assert.equal(server.state.reward_points,beforeBulk,'bulk cancel grants nothing');
+    const ordinaryPending=server.catalog.submissions.find(row=>row.status==='pending'&&row.rule_id===ruleId);
+    const ordinaryExpected=ordinaryPending.snapshot.total_points;
+    page.once('dialog',dialog=>dialog.accept());
+    await group.locator('[data-fr-approve-all]').click();
+    await duplicateCard.locator('.fr-item-error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected,'partial bulk sums only fresh actual ordinary award');
+    assert.equal(server.catalog.submissions.find(row=>row.id===duplicateId).status,'pending');
+    // Direct entry also chooses a canonical event. An unbound record cannot bypass it.
+    await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);await page.locator('#frOccurrenceCategory').selectOption(greetingCategory);await page.locator('#frOccurrenceRule').selectOption(greetingId);
+    const direct=page.locator('[data-fr-direct-return] [data-fr-return-context]');
+    assert.equal(await direct.isVisible(),true);
+    const directMissing=responseFor(page,'behavior_record');await submit(page,'#frOccurrenceForm');await directMissing;
+    await page.locator('#frOccurrenceForm .fr-message .error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected);
+    await direct.locator('[data-fr-return-create-details] summary').click();
+    const directCreate=responseFor(page,'return_event_create');await direct.locator('[data-fr-return-create]').click();await directCreate;
+    const secondEvent=server.catalog.return_events.at(-1);
+    await page.waitForFunction(eventId=>document.querySelector('[data-fr-direct-return] [data-fr-return-select]')?.value===eventId,secondEvent.id);
+    await perform(page,'behavior_record',()=>submit(page,'#frOccurrenceForm'));
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected+2);
+    await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-results.png`,fullPage:true});
+    }
+
+    assert.equal(server.state.xp,100,'new canonical family behavior remains Reward-Points-only');
     await assertLayout(page,`${device.name} greeting and compact inbox`);
 
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-025', spec_version: '1.0', governing_versions: ['010-v1.4','010-v1.5','010-v1.6'], compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report','learner-entry','captured-preview','approval-inbox'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-025', spec_version: '1.1', governing_versions: ['010-v1.4','010-v1.5','010-v1.7'], compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report','learner-entry','captured-preview','approval-inbox','return-choice','return-results'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();

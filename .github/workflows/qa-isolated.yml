@@ -118,6 +118,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards.contract.sql
       - name: Verify consolidated family snapshots and parent-return cap
         run: npx --yes supabase@2.117.0 db query --local --file tests/family-rewards-consolidated.contract.sql
+      - name: Verify parent canonical return event identity
+        run: npx --yes supabase@2.117.0 db query --local --file tests/family-return-events.contract.sql
       - name: Verify family rewards concurrent awards and spending
         run: node tests/family-rewards.concurrency.mjs
       - name: Verify optional Learning video authorization and self-report contract
@@ -232,8 +234,13 @@ jobs:
         run: node tests/parent-prefetch-performance.mjs
       - name: Append performance summary
         run: |
-          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
-          cat parent-prefetch-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+          for summary_file in performance-summary.md parent-prefetch-performance-summary.md; do
+            if [ -f "$summary_file" ]; then
+              cat "$summary_file" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf 'Summary not produced: %s\n' "$summary_file" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
