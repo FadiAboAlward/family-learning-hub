@@ -106,7 +106,7 @@ try {
   assert.equal(path.dirname(path.resolve(teardownRoot)), path.resolve(os.tmpdir())); fs.rmSync(teardownRoot, { recursive: true });
 }
 
-const workflow = fs.readFileSync('.github/workflows/qa-authenticated-local.yml', 'utf8');
+const workflow = fs.readFileSync('.github/workflows/qa-authenticated-local.yml', 'utf8').replaceAll('\r\n', '\n');
 assert.match(fs.readFileSync('supabase/functions/qa-auth/index.ts', 'utf8'), /validateGithubClaims\(payload, isolatedBackend\.mode\)/, 'server supplies guard-validated isolation mode to the narrow workflow allowlist');
 assert.doesNotMatch(workflow, /pull_request_target|workflow_run|continue-on-error|pages:\s*write|secrets\.|--linked|--db-url|db push|functions deploy|--no-verify-jwt/);
 assert.equal((workflow.match(/id-token: write/g) || []).length, 1);
