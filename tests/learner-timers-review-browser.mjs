@@ -1,9 +1,10 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 
 const baseUrl=process.env.APP_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,baseUrl);
 const files=[];
 fs.mkdirSync('playwright-screenshots',{recursive:true});
 try{
@@ -89,5 +90,5 @@ try{
     console.log(`Learner timers/review browser QA passed at ${viewport.width}×${viewport.height}: question continuity, Exam resume, safe correction boundary and prominent grounded mistakes.`);
     await page.close();
   }
-  fs.writeFileSync('playwright-screenshots/batch2-timers-review-manifest.json',JSON.stringify({head_sha:process.env.GITHUB_SHA||null,source:'mocked Testing learner runtime',retention_days:7,files},null,2));
+  fs.writeFileSync('playwright-screenshots/batch2-timers-review-manifest.json',JSON.stringify({head_sha:process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,source:'isolated synthetic Testing learner runtime',retention_days:7,files},null,2));
 }finally{await browser.close();}

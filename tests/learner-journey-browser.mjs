@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
@@ -97,7 +98,7 @@ function fixture() {
 const openUnit = async page => { await page.locator('[data-open-program="0"]').click(); await page.locator('[data-book="0"]').click(); await page.locator('[data-unit="0"]').click(); };
 const card = (page, slug) => page.locator('.flh-activity-card').filter({ has: page.locator(`[data-learn="${slug}"], [data-exam="${slug}"]`) }).first();
 const overflow = async page => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'no horizontal overflow');
-const browser = await chromium.launch({ headless: true });
+const browser = await launchMockQaBrowser(chromium, APP_URL);
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1280, height: 900 } }]) {
     const data = fixture(), context = await browser.newContext({ viewport: device.viewport }), page = await context.newPage();
@@ -163,4 +164,5 @@ try {
     console.log(`PASS learner journey ${device.name}: four states, unfinished ordering, bookless assignment, Learning-only completion, live launcher/resume, refreshed progress, read-only results, error retry and stale-session isolation`);
     await context.close();
   }
+  fs.writeFileSync('playwright-screenshots/batch2-journey-manifest.json', JSON.stringify({ feature_id: 'FLH-FEAT-2026-024', spec_version: '1.1', head_sha: process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, source: 'isolated synthetic learner journey runtime', retention_days: 7, files: ['learner-journey-mobile.png', 'learner-journey-desktop.png'] }, null, 2));
 } finally { await browser.close(); }
