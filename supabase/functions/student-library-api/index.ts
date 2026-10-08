@@ -17,8 +17,8 @@ function buildBook(book:any,units:any[],quizzes:any[]){const unitRows=units.filt
 
 async function catalog(learnerId:string,trace:any){
   const now=Date.now();
-  const[{data:enrs},{data:direct},assignmentResult]=await trace.measure("library.access",{dbOperations:3,execution:"parallel"},()=>Promise.all([admin.from("learner_program_enrollments").select("id,is_primary,started_at,program:learning_programs(id,slug,code,title,description,program_type,grade_level,school_year,primary_language,status)").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),admin.from("learner_content_assignments").select("id,resource_type,resource_id,status").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),admin.from("quiz_assignments").select("id,workspace_id,learner_id,quiz_version_id,status,available_at,due_at,created_at",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).in("status",["assigned","in_progress","completed"]).limit(JOURNEY_ROW_LIMIT)]));
-  const assignmentRows=completeJourneyRows(assignmentResult),eligibleAssignments=eligibleJourneyAssignments(assignmentRows,{workspaceId:WORKSPACE_ID,learnerId,now}),completedAssignments=assignmentRows.filter(a=>a.status==="completed"),assignedVersionIds=[...new Set([...eligibleAssignments,...completedAssignments].map(a=>a.quiz_version_id))];
+  const[{data:enrs},{data:direct},assignmentResult]=await trace.measure("library.access",{dbOperations:2,execution:"parallel"},()=>Promise.all([admin.from("learner_program_enrollments").select("id,is_primary,started_at,program:learning_programs(id,slug,code,title,description,program_type,grade_level,school_year,primary_language,status)").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),admin.from("learner_content_assignments").select("id,resource_type,resource_id,status").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),readJourneyProgress(admin,WORKSPACE_ID,learnerId,null,trace)]));
+  const assignmentRows=assignmentResult.assignments,eligibleAssignments=eligibleJourneyAssignments(assignmentRows,{workspaceId:WORKSPACE_ID,learnerId,now}),completedAssignments=assignmentRows.filter(a=>a.status==="completed"),assignedVersionIds=[...new Set([...eligibleAssignments,...completedAssignments].map(a=>a.quiz_version_id))];
   let assignedVersions:any[]=[];
   if(assignedVersionIds.length){const result=await trace.measure("library.assigned_versions",{dbOperations:1},()=>admin.from("quiz_versions").select("id,quiz_id",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("state","published").in("id",assignedVersionIds).limit(JOURNEY_ROW_LIMIT));assignedVersions=completeJourneyRows(result);}
   const assignedQuizIds=[...new Set(assignedVersions.map(v=>v.quiz_id))];
@@ -41,11 +41,11 @@ async function catalog(learnerId:string,trace:any){
   const visible:any[]=[];
   for(const book of [...programResult.flatMap((p:any)=>p.books),...standalone]){visible.push(...book.extras);for(const unit of book.units)visible.push(...unit.quizzes);}
   const shownIds=new Set(visible.map(q=>q.id)),candidateIds=new Set([...shownIds,...lookupQuizzes.map(q=>q.id)]),visibleVersions=versions.filter(v=>candidateIds.has(v.quiz_id));
-  const{attempts,assignments}=await readJourneyProgress(admin,WORKSPACE_ID,learnerId,visibleVersions.map(v=>v.id),trace,eligibleAssignments);
+  const{attempts,assignments,paperVersionIds}=await readJourneyProgress(admin,WORKSPACE_ID,learnerId,visibleVersions.map(v=>v.id),trace);
   const assignedVersionMap=new Map(assignedVersions.map(v=>[v.id,v.quiz_id])),eligibleQuizIds=new Set(eligibleAssignments.map(a=>assignedVersionMap.get(a.quiz_version_id))),completedVersionIds=new Set(completedAssignments.map(a=>a.quiz_version_id));
   const completedQuizIds=new Set(attempts.filter(a=>a.workspace_id===WORKSPACE_ID&&a.learner_id===learnerId&&a.status==="submitted"&&completedVersionIds.has(a.quiz_version_id)).map(a=>assignedVersionMap.get(a.quiz_version_id)));
   const standaloneAssessments=lookupQuizzes.filter(q=>published.has(q.id)&&!shownIds.has(q.id)&&(programQuizIds.has(q.id)||eligibleQuizIds.has(q.id)||completedQuizIds.has(q.id))).map(cleanQuiz);visible.push(...standaloneAssessments);
-  for(const q of visible)q.journey=deriveLearnerJourney({quiz:q,versions:visibleVersions,attempts,assignments,workspaceId:WORKSPACE_ID,learnerId,programAccess:programQuizIds.has(q.id),now});
+  for(const q of visible)q.journey=deriveLearnerJourney({quiz:q,versions:visibleVersions,attempts,assignments,paperVersionIds,workspaceId:WORKSPACE_ID,learnerId,programAccess:programQuizIds.has(q.id),now});
   return{programs:programResult,standalone_books:standalone,standalone_assessments:standaloneAssessments};
 }
 

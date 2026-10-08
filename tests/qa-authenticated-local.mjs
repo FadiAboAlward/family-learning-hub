@@ -6,7 +6,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
 import { readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure } from './qa-runner-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
 const cli = path.resolve('node_modules/.bin/supabase');
@@ -19,14 +19,18 @@ export function command(file, args, { input, env = process.env, timeout = 180000
     let output = '', errors = '';
     child.stdout.on('data', bytes => { output += bytes; });
     child.stderr.on('data', bytes => { errors += bytes; });
-    const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('QA_LOCAL_COMMAND_TIMEOUT')); }, timeout);
-    child.on('error', () => { clearTimeout(timer); reject(new Error('QA_LOCAL_COMMAND_UNAVAILABLE')); });
+    const fail = (code, exitCode, reason) => {
+      const error = new Error(code);
+      error.diagnostic = qaProcessDiagnostic(file, args, errors, exitCode, reason);
+      reject(error);
+    };
+    const timer = setTimeout(() => { child.kill('SIGTERM'); fail('QA_LOCAL_COMMAND_TIMEOUT', null, 'TIMEOUT'); }, timeout);
+    child.on('error', () => { clearTimeout(timer); fail('QA_LOCAL_COMMAND_UNAVAILABLE', null, 'UNAVAILABLE'); });
     child.on('close', code => {
       clearTimeout(timer);
       if (code === 0) resolve(output);
       else {
-        const marker = errors.match(/\bQA_[A-Z0-9_]+\b/)?.[0];
-        reject(new Error(marker || 'QA_LOCAL_COMMAND_FAILED'));
+        fail('QA_LOCAL_COMMAND_FAILED', code, 'FAILED');
       }
     });
     child.stdin.on('error', () => {});
@@ -77,10 +81,16 @@ async function ownedSourceCopy(config) {
 function mask(value) { console.log(`::add-mask::${value}`); }
 function ownedProcess(file, args, env) {
   const child = spawn(file, args, { env, stdio: ['ignore', 'pipe', 'pipe'], shell: false });
-  // Discard private service output, including possible keys, requests and cookies.
-  child.stdout.on('data', () => {}); child.stderr.on('data', () => {});
-  child.on('error', () => {});
+  // Keep stderr private in bounded memory; expose only the fixed classifier result.
+  let stderr = '';
+  child.stdout.on('data', () => {}); child.stderr.on('data', bytes => { stderr = (stderr + bytes).slice(-65536); });
+  child.on('error', () => { child.qaSpawnFailed = true; });
+  child.qaDiagnostic = () => qaProcessDiagnostic(file, args, stderr, child.exitCode, child.qaSpawnFailed ? 'UNAVAILABLE' : 'FAILED');
   return child;
+}
+
+function ownedProcessFailure(code, child) {
+  const error = new Error(code); error.diagnostic = child.qaDiagnostic(); return error;
 }
 
 async function saveEvidence(config, stages, auth, teardown) {
@@ -142,20 +152,39 @@ export async function teardownLocal(config, exec = command) {
 async function main() {
   const config = requireRunnerLocal();
   if (process.argv[2] === 'teardown') {
-    const result = await teardownLocal(config);
+    let result, failure;
+    try { result = await teardownLocal(config); }
+    catch (error) { result = 'FAIL'; failure = error; process.exitCode = 1; }
     let existing;
     try { existing = JSON.parse(await fs.readFile(path.join(evidenceDirectory, 'lifecycle.json'), 'utf8')); } catch {}
     if (existing && existing.head_sha === config.headSha && existing.run_id === config.runId) {
       existing.final_teardown = result === 'NOT_PROVISIONED' && existing.teardown === 'PASS' ? 'PASS_ALREADY_VERIFIED' : result;
+      if (failure) {
+        existing.status = 'FAIL';
+        const diagnostic = safeQaProcessDiagnostic(failure);
+        existing.final_teardown_failure = { code: safeQaFailure(failure), ...(diagnostic ? { process: diagnostic } : {}) };
+      }
       await fs.writeFile(path.join(evidenceDirectory, 'lifecycle.json'), JSON.stringify(existing, null, 2));
     } else await saveEvidence(config, [], 'NOT_RUN', result);
-    console.log(`Owned local teardown: ${result}`); return;
+    console.log(`Owned local teardown: ${result}`);
+    if (failure) {
+      console.error(`Owned local teardown failed: ${safeQaFailure(failure)}`);
+      const diagnostic = safeQaProcessDiagnostic(failure);
+      if (diagnostic) console.error(`Local authenticated QA process: ${JSON.stringify(diagnostic)}`);
+    }
+    return;
   }
   const stages = [];
   let stage = 'preflight', authentication = 'NOT_RUN', teardown = 'NOT_PROVISIONED', failure;
   let runtime, parentId;
   const owner = { project_id: config.projectId, head_sha: config.headSha, run_id: config.runId, run_attempt: config.runAttempt };
   const mark = name => { stages.push({ stage: name, status: 'PASS' }); console.log(`Local authenticated QA: ${name} PASS`); };
+  const substep = async (name, operation) => {
+    const entry = { stage: name, status: 'IN_PROGRESS' }; stages.push(entry);
+    console.log(`Local authenticated QA: ${name} START`);
+    try { const result = await operation(); entry.status = 'PASS'; console.log(`Local authenticated QA: ${name} PASS`); return result; }
+    catch (error) { entry.status = 'FAIL'; entry.code = safeQaFailure(error); const diagnostic = safeQaProcessDiagnostic(error); if (diagnostic) entry.process = diagnostic; throw error; }
+  };
   try {
     let core;
     try { core = JSON.parse(await fs.readFile(path.join(evidenceDirectory, 'core-prerequisite.json'), 'utf8')); } catch { throw new Error('QA_LOCAL_CORE_EVIDENCE_REQUIRED'); }
@@ -166,12 +195,12 @@ async function main() {
     await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
     await ownedSourceCopy(config); mark(stage);
     stage = 'full_local_stack';
-    await command(cli, ['start', '--workdir', config.directory], { timeout: 360000 });
-    await inspect(config, 'db'); await inspect(config, 'kong');
-    await denyContainerProduction(config);
-    await command(cli, ['db', 'reset', '--local', '--no-seed', '--workdir', config.directory], { timeout: 180000 });
-    await denyContainerProduction(config);
-    runtime = readLocalRuntime(config, JSON.parse(await command(cli, ['status', '-o', 'json', '--workdir', config.directory])));
+    await substep('supabase_start', () => command(cli, ['start', '--workdir', config.directory], { timeout: 360000 }));
+    await substep('owned_container_inspection', async () => { await inspect(config, 'db'); await inspect(config, 'kong'); });
+    await substep('container_deny_before_reset', () => denyContainerProduction(config));
+    await substep('supabase_db_reset', () => command(cli, ['db', 'reset', '--local', '--no-seed', '--workdir', config.directory], { timeout: 180000 }));
+    await substep('container_deny_after_reset', () => denyContainerProduction(config));
+    runtime = await substep('supabase_status', async () => readLocalRuntime(config, JSON.parse(await command(cli, ['status', '-o', 'json', '--workdir', config.directory]))));
     mask(runtime.publishableKey); mask(runtime.serviceRoleKey);
     mark(stage);
     stage = 'fresh_database_and_synthetic_preflight';
@@ -187,7 +216,7 @@ async function main() {
     const started = Date.now(); let ready = false;
     await pause(1500); // Let serve replace its initial Edge runtime before applying container denies.
     while (Date.now() - started < 90000) {
-      if (serve.exitCode !== null) throw new Error('QA_LOCAL_EDGE_START_FAILED');
+      if (serve.qaSpawnFailed || serve.exitCode !== null) throw ownedProcessFailure('QA_LOCAL_EDGE_START_FAILED', serve);
       try {
         await inspect(config, 'edge_runtime'); await denyContainerProduction(config);
         const edgeBefore = (await inspect(config, 'edge_runtime')).Id;
@@ -213,7 +242,7 @@ async function main() {
     await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
     const appStart = Date.now(); ready = false;
     while (Date.now() - appStart < 15000) {
-      if (app.exitCode !== null) throw new Error('QA_LOCAL_APP_START_FAILED');
+      if (app.qaSpawnFailed || app.exitCode !== null) throw ownedProcessFailure('QA_LOCAL_APP_START_FAILED', app);
       try { if ((await fetch(config.appUrl, { redirect: 'error' })).ok) { ready = true; break; } } catch {}
       await pause(250);
     }
@@ -227,8 +256,10 @@ async function main() {
     await sql(config, "do $$ begin if exists(select 1 from private.qa_run_leases) or exists(select 1 from public.quiz_attempts a join public.quiz_versions v on v.id=a.quiz_version_id join public.quizzes q on q.id=v.quiz_id where q.slug='qa-automation-core') then raise exception 'QA_LOCAL_LEASE_OR_ATTEMPTS_REMAIN'; end if; end; $$;");
     mark(stage);
   } catch (error) {
-    failure = error; stages.push({ stage, status: 'FAIL', code: safeQaFailure(error) });
+    const diagnostic = safeQaProcessDiagnostic(error);
+    failure = error; stages.push({ stage, status: 'FAIL', code: safeQaFailure(error), ...(diagnostic ? { process: diagnostic } : {}) });
     console.error(`Local authenticated QA failed at ${stage}: ${safeQaFailure(error)}`);
+    if (diagnostic) console.error(`Local authenticated QA process: ${JSON.stringify(diagnostic)}`);
   } finally {
     try {
       if (runtime && parentId) {
@@ -237,7 +268,7 @@ async function main() {
       }
     } catch (error) { stages.push({ stage: 'synthetic_parent_cleanup', status: 'FAIL', code: safeQaFailure(error) }); failure ||= error; }
     try { teardown = await teardownLocal(config); }
-    catch (error) { teardown = 'FAIL'; stages.push({ stage: 'teardown', status: 'FAIL', code: safeQaFailure(error) }); failure ||= error; }
+    catch (error) { const diagnostic = safeQaProcessDiagnostic(error); teardown = 'FAIL'; stages.push({ stage: 'teardown', status: 'FAIL', code: safeQaFailure(error), ...(diagnostic ? { process: diagnostic } : {}) }); failure ||= error; }
     await saveEvidence(config, stages, authentication, teardown);
   }
   if (failure) process.exitCode = 1;

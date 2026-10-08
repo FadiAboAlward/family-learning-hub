@@ -1,4 +1,4 @@
-// FLH-FEAT-2026-024 v1.0: read-only, self-scoped next actions.
+// FLH-FEAT-2026-024 v1.1 / Drive revision 2: read-only, self-scoped next actions.
 // This summary never starts an attempt or changes the start RPC's authorization.
 export const JOURNEY_ROW_LIMIT = 1000;
 const timestamp = value => value == null ? null : Date.parse(value);
@@ -14,21 +14,26 @@ export function completeJourneyRows(result) {
   return result.data;
 }
 
-export async function readJourneyProgress(admin, workspaceId, learnerId, versionIds, trace, knownAssignments = null) {
-  if (!versionIds.length) return { attempts: [], assignments: [] };
-  const measure = (name, query) => trace.measure(name, { dbOperations: 1 }, () => query);
-  const [attempts, assignments] = await Promise.all([
-    measure('library.journey_attempts', admin.from('quiz_attempts')
-      .select('id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,started_at,submitted_at,paper_model_code:metadata->>paper_model_code', { count: 'exact' })
-      .eq('workspace_id', workspaceId).eq('learner_id', learnerId).in('quiz_version_id', versionIds)
-      .in('status', ['in_progress', 'submitted']).in('delivery_mode', ['learning', 'exam'])
-      .limit(JOURNEY_ROW_LIMIT)),
-    knownAssignments == null ? measure('library.journey_assignments', admin.from('quiz_assignments')
-      .select('id,workspace_id,learner_id,quiz_version_id,status,available_at,due_at,created_at', { count: 'exact' })
-      .eq('workspace_id', workspaceId).eq('learner_id', learnerId).in('quiz_version_id', versionIds)
-      .in('status', ['assigned', 'in_progress']).limit(JOURNEY_ROW_LIMIT)) : Promise.resolve({ data: knownAssignments, count: knownAssignments.length }),
-  ]);
-  return { attempts: completeJourneyRows(attempts), assignments: completeJourneyRows(assignments) };
+export async function readJourneyProgress(admin, workspaceId, learnerId, versionIds, trace) {
+  if (versionIds && !versionIds.length) return { attempts: [], assignments: [], paperVersionIds: [] };
+  if (versionIds && versionIds.length > JOURNEY_ROW_LIMIT) throw new Error('JOURNEY_UNAVAILABLE');
+  const result = await trace.measure('library.journey_progress', { dbOperations: 1 }, () => admin.rpc('flh_learner_journey_progress', {
+    p_workspace_id: workspaceId, p_learner_id: learnerId, p_version_ids: versionIds,
+  }));
+  const data = result?.data, allowed = versionIds && new Set(versionIds);
+  if (result?.error || data?.error || data?.complete !== true || !Number.isInteger(data.version_count)
+      || data.version_count < 0 || data.version_count > JOURNEY_ROW_LIMIT
+      || (allowed && data.version_count !== allowed.size)
+      || !Array.isArray(data.attempts) || data.attempts.length > data.version_count * 4
+      || !Array.isArray(data.assignments) || data.assignments.length > data.version_count * 2
+      || !Array.isArray(data.paper_version_ids) || data.paper_version_ids.length > data.version_count
+      || data.attempts.some(row => !sameScope(row, workspaceId, learnerId) || (allowed && !allowed.has(row.quiz_version_id)))
+      || data.assignments.some(row => !sameScope(row, workspaceId, learnerId) || (allowed && !allowed.has(row.quiz_version_id)))
+      || data.paper_version_ids.some(id => typeof id !== 'string' || (allowed && !allowed.has(id)))
+      || (versionIds == null && (data.attempts.length || data.paper_version_ids.length))) {
+    throw new Error('JOURNEY_UNAVAILABLE');
+  }
+  return { attempts: data.attempts, assignments: data.assignments, paperVersionIds: data.paper_version_ids };
 }
 
 export function eligibleJourneyAssignments(rows, { workspaceId, learnerId, now = Date.now(), versionIds = null }) {
@@ -38,7 +43,7 @@ export function eligibleJourneyAssignments(rows, { workspaceId, learnerId, now =
     && (a.due_at == null || (Number.isFinite(timestamp(a.due_at)) && timestamp(a.due_at) >= now)));
 }
 
-export function deriveLearnerJourney({ quiz, versions = [], attempts = [], assignments = [],
+export function deriveLearnerJourney({ quiz, versions = [], attempts = [], assignments = [], paperVersionIds = [],
   workspaceId, learnerId, programAccess = false, now = Date.now() }) {
   const published = versions.filter(v => v.workspace_id === workspaceId && v.quiz_id === quiz.id && v.state === 'published');
   const byVersion = new Map(published.map(v => [v.id, v]));
@@ -56,7 +61,7 @@ export function deriveLearnerJourney({ quiz, versions = [], attempts = [], assig
     const version = byVersion.get(active?.quiz_version_id || assigned?.quiz_version_id) || latest;
     const access = Boolean(version && (programAccess || eligible.some(a => a.quiz_version_id === version.id)));
     const supportPaper = modeName === 'learning' && [true, 'true'].includes(version?.support_source)
-      && scoped.some(a => a.quiz_version_id === version.id && a.delivery_mode === 'exam' && String(a.paper_model_code || '').trim());
+      && (paperVersionIds.includes(version.id) || scoped.some(a => a.quiz_version_id === version.id && a.delivery_mode === 'exam' && String(a.paper_model_code || '').trim()));
     const available = access && quiz.delivery_config?.[modeName]?.enabled !== false && !supportPaper;
     const result = newest(submitted.filter(a => a.delivery_mode === modeName && a.quiz_version_id === version?.id), 'submitted_at');
     return { available, version, active, result };

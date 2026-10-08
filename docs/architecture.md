@@ -76,6 +76,10 @@ Learning Mode is server-authoritative:
 5. remediation questions may be added from prepared pools,
 6. final answers, mastery evidence, attempt history, and scores are persisted server-side.
 
+## Learner library next actions
+
+The FLH-024 v1.1 learner library derives its read-only next action from the verified learner's published versions and compact `flh_learner_journey_progress` evidence. The service-only STABLE invoker RPC returns the newest own attempt per version/mode/status, at most one eligible assignment and one completed assignment backed by an actual own submitted attempt per version, and safe version-level paper evidence. Historical retakes and repeated completed assignments do not consume the transport budget. Existing active immutable versions, assignment availability, paper support exclusion and start-RPC authorization remain authoritative. A distinct-version overflow, missing requested version or incomplete/error carrier fails closed rather than guessing a new activity; no answer keys, score, wallet or historical writes are introduced. Forward migration `20261008210421_learner_journey_compact_progress.sql` reuses existing scoped indexes and requires separate migration authorization.
+
 ## Exam V2
 
 Exam V2 uses the same program access boundary:

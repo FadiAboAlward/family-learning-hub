@@ -5,8 +5,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
-import { teardownLocal } from './qa-authenticated-local.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure } from './qa-runner-local.mjs';
+import { command, teardownLocal } from './qa-authenticated-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
@@ -57,6 +57,34 @@ assert.doesNotMatch(overlay, /no-verify-jwt/);
 assert.throws(() => localFunctionConfig(overlay, config.projectId), /CONFIG_UNEXPECTED/);
 assert.equal(safeQaFailure(new Error('authorization: secret-token https://private.test/?session=private')), 'QA_LOCAL_STAGE_FAILED');
 assert.equal(safeQaFailure(new Error('QA_LOCAL_PARENT_CREATE_FAILED')), 'QA_LOCAL_PARENT_CREATE_FAILED');
+const syntheticPrivate = 'SYNTHETIC_PRIVATE_PASSWORD sb_secret_synthetic_private_token';
+for (const [file, args, stderr, expectedCommand, category] of [
+  ['/private/node_modules/.bin/supabase', ['start', '--workdir', '/private/run'], 'unhealthy container', 'supabase_start', 'HEALTH_CHECK_FAILED'],
+  ['supabase', ['db', 'reset', '--local'], 'SQLSTATE 42601 syntax error', 'supabase_db_reset', 'DATABASE_OR_MIGRATION_FAILED'],
+  ['supabase', ['status', '-o', 'json'], 'connection refused', 'supabase_status', 'LOCAL_TRANSPORT_FAILED'],
+  ['docker', ['inspect', 'private-container'], 'permission denied', 'docker_inspect', 'PERMISSION_DENIED'],
+  ['docker', ['exec', 'private-container', 'sh', '-c', 'cat >> /etc/hosts'], 'exec: "sh": executable file not found in $PATH', 'docker_exec_hosts', 'EXECUTABLE_OR_FILE_MISSING'],
+  ['supabase', ['start'], 'manifest unknown', 'supabase_start', 'IMAGE_PULL_FAILED'],
+  ['supabase', ['start'], 'failed to parse configuration', 'supabase_start', 'CONFIG_INVALID'],
+  ['supabase', ['start'], 'unrecognized message', 'supabase_start', 'UNKNOWN_FAILURE'],
+]) {
+  const diagnostic = qaProcessDiagnostic(file, args, stderr + '\n' + syntheticPrivate, 23);
+  assert.deepEqual(diagnostic, { command: expectedCommand, exit_code: 23, exit_kind: 'PROCESS_EXIT', category });
+  assert.doesNotMatch(JSON.stringify(diagnostic), /private|PASSWORD|sb_secret_|unhealthy container|configuration/);
+}
+const timeoutDiagnostic = qaProcessDiagnostic('supabase', ['start'], syntheticPrivate, null, 'TIMEOUT');
+assert.deepEqual(timeoutDiagnostic, { command: 'supabase_start', exit_code: -1, exit_kind: 'NO_PROCESS_EXIT', category: 'PROCESS_TIMEOUT' });
+assert.equal(safeQaProcessDiagnostic({ diagnostic: { command: syntheticPrivate, category: 'UNKNOWN_FAILURE', exit_code: 23, exit_kind: 'PROCESS_EXIT' } }), null);
+assert.deepEqual(safeQaProcessDiagnostic({ diagnostic: { ...timeoutDiagnostic, stderr: syntheticPrivate, stdout: syntheticPrivate } }), timeoutDiagnostic, 'raw subprocess fields never enter the artifact allowlist');
+let processFailure;
+try {
+  await command(process.execPath, ['-e', `process.stdout.write(${JSON.stringify(syntheticPrivate)});process.stderr.write(${JSON.stringify('invalid config\n' + syntheticPrivate)});process.exit(23);`]);
+} catch (error) { processFailure = error; }
+assert.equal(processFailure.message, 'QA_LOCAL_COMMAND_FAILED');
+assert.deepEqual(safeQaProcessDiagnostic(processFailure), { command: 'unknown_command', exit_code: 23, exit_kind: 'PROCESS_EXIT', category: 'CONFIG_INVALID' });
+assert.doesNotMatch(JSON.stringify(processFailure), /PRIVATE_PASSWORD|sb_secret_|stderr|stdout/);
+const harnessSource = fs.readFileSync('tests/qa-authenticated-local.mjs', 'utf8');
+for (const phase of ['supabase_start', 'owned_container_inspection', 'container_deny_before_reset', 'supabase_db_reset', 'container_deny_after_reset', 'supabase_status']) assert.ok(harnessSource.includes(`substep('${phase}'`), 'fixed before/after phase markers must distinguish first full-stack failure: ' + phase);
 
 const response = body => new Response(JSON.stringify(body));
 let resumeCalls = 0;

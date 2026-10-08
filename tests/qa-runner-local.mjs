@@ -77,3 +77,50 @@ export function localFunctionConfig(source, projectId) {
 export function safeQaFailure(error) {
   return /^QA_[A-Z0-9_]+$/.test(error?.message || '') ? error.message : 'QA_LOCAL_STAGE_FAILED';
 }
+
+const commands = new Set(['supabase_start', 'supabase_db_reset', 'supabase_status', 'supabase_stop', 'supabase_version', 'supabase_functions_serve',
+  'docker_inspect', 'docker_list_containers', 'docker_list_volumes', 'docker_exec_hosts', 'docker_exec_psql', 'docker_exec',
+  'git_head', 'git_tracked_sources', 'node_authenticated_browser', 'python_local_server', 'unknown_command']);
+const categories = new Set(['CONFIG_INVALID', 'DOCKER_UNAVAILABLE', 'DISK_FULL', 'IMAGE_PULL_FAILED', 'HEALTH_CHECK_FAILED', 'PORT_IN_USE',
+  'PERMISSION_DENIED', 'DATABASE_OR_MIGRATION_FAILED', 'LOCAL_TRANSPORT_FAILED', 'EXECUTABLE_OR_FILE_MISSING', 'PROCESS_TIMEOUT', 'UNKNOWN_FAILURE']);
+
+/** Fixed identities/categories only; never return the command line or captured stderr. */
+export function qaProcessDiagnostic(file, args, stderr, exitCode, reason = 'FAILED') {
+  const name = String(file).replaceAll('\\', '/').split('/').at(-1).toLowerCase().replace(/\.(exe|cmd)$/, '');
+  let command = 'unknown_command';
+  if (name === 'supabase') {
+    if (args[0] === 'start') command = 'supabase_start';
+    else if (args[0] === 'db' && args[1] === 'reset') command = 'supabase_db_reset';
+    else if (['status', 'stop'].includes(args[0])) command = `supabase_${args[0]}`;
+    else if (args[0] === '--version') command = 'supabase_version';
+    else if (args[0] === 'functions' && args[1] === 'serve') command = 'supabase_functions_serve';
+  } else if (name === 'docker') {
+    if (args[0] === 'inspect') command = 'docker_inspect';
+    else if (args[0] === 'ps') command = 'docker_list_containers';
+    else if (args[0] === 'volume' && args[1] === 'ls') command = 'docker_list_volumes';
+    else if (args[0] === 'exec') command = args.includes('psql') ? 'docker_exec_psql' : args.some(arg => arg === '/etc/hosts' || arg === 'cat >> /etc/hosts') ? 'docker_exec_hosts' : 'docker_exec';
+  } else if (name === 'git') command = args[0] === 'rev-parse' ? 'git_head' : args[0] === 'ls-files' ? 'git_tracked_sources' : command;
+  else if (name === 'node' && args[0] === 'tests/authenticated-e2e.mjs') command = 'node_authenticated_browser';
+  else if (name === 'python3' && args[0] === '-m' && args[1] === 'http.server') command = 'python_local_server';
+  let category = reason === 'TIMEOUT' ? 'PROCESS_TIMEOUT' : reason === 'UNAVAILABLE' ? 'EXECUTABLE_OR_FILE_MISSING' : 'UNKNOWN_FAILURE';
+  if (reason === 'FAILED') for (const [pattern, label] of [
+    [/failed to parse|error parsing|invalid config|unknown.*config|unsupported.*config|toml.*error/i, 'CONFIG_INVALID'],
+    [/cannot connect to.*docker|docker daemon.*not running|docker\.sock/i, 'DOCKER_UNAVAILABLE'],
+    [/no space left on device|disk quota exceeded/i, 'DISK_FULL'],
+    [/pull access denied|manifest unknown|failed to pull|failed to resolve.*image|toomanyrequests/i, 'IMAGE_PULL_FAILED'],
+    [/health.?check|unhealthy|container.*not healthy/i, 'HEALTH_CHECK_FAILED'],
+    [/address already in use|port is already allocated|bind.*already in use/i, 'PORT_IN_USE'],
+    [/permission denied/i, 'PERMISSION_DENIED'],
+    [/sqlstate|syntax error|relation.*does not exist|column.*does not exist|migration.*failed|QA_LOCAL_(?:DATABASE|FIXTURE|PRIVILEGE|TEST_LEARNER|PARENT)_/i, 'DATABASE_OR_MIGRATION_FAILED'],
+    [/connection refused|ECONNREFUSED|context deadline exceeded|network.*unreachable|i\/o timeout|timed out|ETIMEDOUT|unexpected EOF/i, 'LOCAL_TRANSPORT_FAILED'],
+    [/command not found|executable.*not found|no such file or directory|ENOENT/i, 'EXECUTABLE_OR_FILE_MISSING'],
+  ]) if (pattern.test(String(stderr))) { category = label; break; }
+  // -1 explicitly means no process exit status (spawn failure/timeout), not a fabricated exit code.
+  return Object.freeze({ command, exit_code: Number.isInteger(exitCode) ? exitCode : -1, exit_kind: Number.isInteger(exitCode) ? 'PROCESS_EXIT' : 'NO_PROCESS_EXIT', category });
+}
+
+export function safeQaProcessDiagnostic(error) {
+  const value = error?.diagnostic;
+  if (!commands.has(value?.command) || !categories.has(value?.category) || !Number.isInteger(value?.exit_code) || !['PROCESS_EXIT', 'NO_PROCESS_EXIT'].includes(value?.exit_kind)) return null;
+  return { command: value.command, exit_code: value.exit_code, exit_kind: value.exit_kind, category: value.category };
+}

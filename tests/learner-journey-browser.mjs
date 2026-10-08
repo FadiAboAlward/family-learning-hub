@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { deriveLearnerJourney } from '../supabase/functions/_shared/learner-journey.mjs';
 
-// FLH-024 v1.0 / Drive 3. Actual active UI; only synthetic Testing APIs.
+// FLH-024 v1.1 / Drive revision 2. Actual active UI; only synthetic Testing APIs.
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const W = 'qa-workspace', A = 'qa-testing-a.signed', B = 'qa-testing-b.signed';
 const UUID = n => `a1000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
