@@ -92,7 +92,14 @@
         const match = operators.exec(text.slice(pos, pos + 6));
         if (!match || precedence(match[0]) < minimum) { pos = saved; break; }
         const op = match[0]; pos += op.length;
-        const right = expression(precedence(op) + 1, depth + 1);
+        let right;
+        try { right = expression(precedence(op) + 1, depth + 1); }
+        catch (error) {
+          if (error.message === 'MATH_LIMIT') throw error;
+          // A trailing blank or incomplete operand is text after the valid
+          // prefix. Restore its operator rather than discarding that prefix.
+          pos = saved; break;
+        }
         const source = text.slice(begin, pos);
         left = op === '/' ? {kind:'fraction', numerator:left, denominator:right, source} : {kind:'binary', left, right, between:text.slice(saved, pos - right.source.length), source};
       }

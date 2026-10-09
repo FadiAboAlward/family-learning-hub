@@ -31,6 +31,16 @@ async function assertMath(locator,expected,label){
   if(result.dir!=='ltr'||result.direction!=='ltr'||result.unicodeBidi!=='isolate')throw new Error(`${label}: ${expected} is not LTR/bidi-isolated: ${JSON.stringify(result)}`);
 }
 
+/** Preserve both a complete arithmetic prefix and its unanswered equality. */
+async function assertUnfinishedMath(locator,expected,label){
+  await assertMath(locator,expected,label);
+  const preserved=await locator.evaluate((root,expected)=>{
+    const math=[...root.querySelectorAll('.flh-math-ltr')].find(node=>node.textContent===expected);
+    return Boolean(math&&root.textContent.includes(`${expected} = ____`)&&math.nextSibling?.textContent.startsWith(' = ____'));
+  },expected);
+  if(!preserved)throw new Error(`${label}: the trailing equality/answer blank was lost or consumed by math rendering`);
+}
+
 /** Prove the complete compound expression shares one directional unit on an actual mode surface. */
 async function assertStructuredMath(scope, expected, label, {fractions=0,powers=0,roots=0}={}) {
   const result=await scope.evaluate((root,{expected,fractions,powers,roots})=>{
@@ -52,8 +62,8 @@ await page.route('**/functions/v1/family-api',async r=>{let b={};try{b=JSON.pars
 await page.route('**/functions/v1/student-library-api',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({programs:[program],standalone_books:[]})}));
 await page.route('**/functions/v1/activity-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'}));
 await page.route('**/functions/v1/question-reference-api',r=>r.fulfill({status:200,contentType:'application/json',body:'{"codes":{}}'}));
-await page.route('**/functions/v1/learning-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='start_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'la',resumed:false,quiz:{slug:'qa-unit',title:'تدريب QA'},queue:[{question_id:'lq1',source_role:'core',status:'active',draft_option_position:null,hint_level_requested:0,question:{id:'lq1',question_code:'QA-LTR-1',prompt:'احسب: 19 - (-7)؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',options:[{position:1,content:'-26'},{position:2,content:'26'}],assets:[]}}]})});if(b.action==='save_draft'){calls.draft++;await new Promise(x=>setTimeout(x,800));try{return await r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'})}catch{return;}}if(b.action==='answer'){calls.answer++;if(calls.answer===1)return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:false,finalized:false,hint:{hint_level:1,pedagogical_role:'nudge',content:'تذكّر: طرح عدد سالب يعني إضافة قيمته الموجبة.',language:'ar',terminology_display_mode:'inherit'},hint_level:1,hints_used:1,explanation:null,correct_option_position:null})});return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:true,finalized:true,explanation:'القاعدة: طرح السالب = جمع الموجب. 19 - (-7) = 26'})});}if(b.action==='finish_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,first_try_correct:1,hints_used:0,award:{already_awarded:true},review:[{is_correct:true,question_code:'QA-LTR-1',prompt:'احسب: 19 - (-7)؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',explanation:'19 - (-7) = 26'}]})});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
-await page.route('**/functions/v1/exam-v2-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='warmup')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});if(b.action==='start_exam')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'ea',resumed:false,quiz:{slug:'qa-unit',title:'امتحان QA'},questions:[{question_id:'eq1',saved_response:null,is_flagged:false,question:{id:'eq1',question_code:'QA-LTR-E1',prompt:'احسب: (-7) - 19؛ ثم احسب: (-3)^2 + sqrt(16) = 13',options:[{position:1,content:'-26'},{position:2,content:'26'}],assets:[]}},{question_id:'eq2',saved_response:null,is_flagged:false,question:{id:'eq2',question_code:'QA-LTR-E2',prompt:'احسب: 19 - (-7)؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',options:[{position:1,content:'26'},{position:2,content:'-26'}],assets:[]}}]})});if(b.action==='save_answer'){calls.examSave++;await new Promise(x=>setTimeout(x,1200));try{return await r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'})}catch{return;}}if(b.action==='set_flag')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});if(b.action==='submit_exam'){examRewardApplied=true;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:50,score_points:1,max_points:2,award:{eligible:true,already_awarded:false,no_increment:false,xp:10,reward_points:0,target_xp:10,target_reward_points:0},review:[{question_id:'eq1',question_code:'QA-LTR-E1',is_correct:false,prompt:'احسب: (-7) - 19؛ ثم احسب: (-3)^2 + sqrt(16) = 13',response:{option_position:2},correct_answer:{option_position:1},explanation:'(-7) - 19 = -26',hints:[]},{question_id:'eq2',question_code:'QA-LTR-E2',is_correct:true,prompt:'احسب: 19 - (-7)؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',response:{option_position:1},correct_answer:{option_position:1},explanation:'19 - (-7) = 26',hints:[]}]})});}return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+await page.route('**/functions/v1/learning-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='start_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'la',resumed:false,quiz:{slug:'qa-unit',title:'تدريب QA'},queue:[{question_id:'lq1',source_role:'core',status:'active',draft_option_position:null,hint_level_requested:0,question:{id:'lq1',question_code:'QA-LTR-1',prompt:'احسب: 19 - (-7) = ____؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',options:[{position:1,content:'-26'},{position:2,content:'26'}],assets:[]}}]})});if(b.action==='save_draft'){calls.draft++;await new Promise(x=>setTimeout(x,800));try{return await r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'})}catch{return;}}if(b.action==='answer'){calls.answer++;if(calls.answer===1)return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:false,finalized:false,hint:{hint_level:1,pedagogical_role:'nudge',content:'تذكّر: طرح عدد سالب يعني إضافة قيمته الموجبة.',language:'ar',terminology_display_mode:'inherit'},hint_level:1,hints_used:1,explanation:null,correct_option_position:null})});return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({is_correct:true,finalized:true,explanation:'القاعدة: طرح السالب = جمع الموجب. 19 - (-7) = 26'})});}if(b.action==='finish_quiz')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:100,first_try_correct:1,hints_used:0,award:{already_awarded:true},review:[{is_correct:true,question_code:'QA-LTR-1',prompt:'احسب: 19 - (-7) = ____؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',explanation:'19 - (-7) = 26'}]})});return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+await page.route('**/functions/v1/exam-v2-api',async r=>{let b={};try{b=JSON.parse(r.request().postData()||'{}')}catch{};if(b.action==='warmup')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});if(b.action==='start_exam')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({attempt_id:'ea',resumed:false,quiz:{slug:'qa-unit',title:'امتحان QA'},questions:[{question_id:'eq1',saved_response:null,is_flagged:false,question:{id:'eq1',question_code:'QA-LTR-E1',prompt:'احسب: (-7) - 19 = ____؛ ثم احسب: (-3)^2 + sqrt(16) = 13',options:[{position:1,content:'-26'},{position:2,content:'26'}],assets:[]}},{question_id:'eq2',saved_response:null,is_flagged:false,question:{id:'eq2',question_code:'QA-LTR-E2',prompt:'احسب: 19 - (-7) = ____؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',options:[{position:1,content:'26'},{position:2,content:'-26'}],assets:[]}}]})});if(b.action==='save_answer'){calls.examSave++;await new Promise(x=>setTimeout(x,1200));try{return await r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'})}catch{return;}}if(b.action==='set_flag')return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});if(b.action==='submit_exam'){examRewardApplied=true;return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({percentage:50,score_points:1,max_points:2,award:{eligible:true,already_awarded:false,no_increment:false,xp:10,reward_points:0,target_xp:10,target_reward_points:0},review:[{question_id:'eq1',question_code:'QA-LTR-E1',is_correct:false,prompt:'احسب: (-7) - 19 = ____؛ ثم احسب: (-3)^2 + sqrt(16) = 13',response:{option_position:2},correct_answer:{option_position:1},explanation:'(-7) - 19 = -26',hints:[]},{question_id:'eq2',question_code:'QA-LTR-E2',is_correct:true,prompt:'احسب: 19 - (-7) = ____؛ ثم قارن: (1/2 + 3/4) × 2 = 2.5',response:{option_position:1},correct_answer:{option_position:1},explanation:'19 - (-7) = 26',hints:[]}]})});}return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
 
 await page.addInitScript(()=>localStorage.setItem('learner_session','qa-session'));
 mark('before-navigation');
@@ -67,7 +77,7 @@ mark('unit-open');
 await page.locator('[data-learn="qa-unit"]').click();
 await page.locator('.flh-learn-answer').first().waitFor({state:'visible',timeout:5000});
 mark('learning-open');
-await assertMath(page.locator('.question'),'19 - (-7)','Learning question');
+await assertUnfinishedMath(page.locator('.question'),'19 - (-7)','Learning unanswered question');
 await assertStructuredMath(page.locator('.question'),'(1/2 + 3/4) × 2 = 2.5','Learning nested fractions',{fractions:2});
 await assertMath(page.locator('.flh-learn-answer').first(),'-26','Learning negative option');
 mark('math-learning-verified');
@@ -97,7 +107,7 @@ mark('learning-confirmed',{learnWidth});
 if(calls.answer!==2)throw new Error('Learning retry flow did not submit exactly twice');
 await page.locator('#flhLearnNext').click();
 await page.locator('#learnHome').waitFor({state:'visible',timeout:5000});
-await assertMath(page.locator('.exam-review').first(),'19 - (-7)','Learning completed review prompt');
+await assertUnfinishedMath(page.locator('.exam-review').first(),'19 - (-7)','Learning completed unanswered review prompt');
 await assertMath(page.locator('.exam-review').first(),'19 - (-7) = 26','Learning completed review explanation');
 mark('math-learning-review-verified');
 await assertStructuredMath(page.locator('.exam-review').first(),'(1/2 + 3/4) × 2 = 2.5','Learning completed nested fractions',{fractions:2});
@@ -105,7 +115,7 @@ await assertStructuredMath(page.locator('.exam-review').first(),'(1/2 + 3/4) × 
 await page.evaluate(()=>window.FLH.startExamQuiz('qa-unit'));
 await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
 mark('exam-open',{learnWidth});
-await assertMath(page.locator('.question'),'(-7) - 19','Exam question');
+await assertUnfinishedMath(page.locator('.question'),'(-7) - 19','Exam unanswered question');
 await assertStructuredMath(page.locator('.question'),'(-3)^2 + sqrt(16) = 13','Exam power and root',{powers:1,roots:1});
 await assertMath(page.locator('.exam-v3-answer').first(),'-26','Exam negative option');
 mark('math-exam-verified');
@@ -119,7 +129,7 @@ await page.locator('.exam-v3-answer.selected').waitFor({state:'visible',timeout:
 mark('exam-selected',{learnWidth,examWidth});
 await page.locator('#examNext').click();
 await page.locator('.exam-status .topline b').filter({hasText:'السؤال 2 من 2'}).waitFor({state:'visible',timeout:500});
-await assertMath(page.locator('.question'),'19 - (-7)','Exam second question');
+await assertUnfinishedMath(page.locator('.question'),'19 - (-7)','Exam second unanswered question');
 mark('exam-next',{learnWidth,examWidth});
 if(calls.examSave<1)throw new Error('Exam save was not started');
 await page.locator('.exam-v3-answer').first().click();
@@ -140,7 +150,7 @@ const postRaceProfile=await page.evaluate(()=>api('student_profile',{},localStor
 if(calls.profile!==profileCallsBeforeCacheRead)throw new Error('Post-race profile check unexpectedly made a network request');
 if(Number(postRaceProfile?.gamification?.xp)!==10)throw new Error('A stale in-flight profile request repopulated the cache after Exam reward refresh');
 const wrongReview=page.locator('.exam-review.exam-review-wrong').first();
-await assertMath(wrongReview,'(-7) - 19','Exam review prompt');
+await assertUnfinishedMath(wrongReview,'(-7) - 19','Exam unanswered review prompt');
 await assertMath(wrongReview,'26','Exam review learner answer');
 await assertMath(wrongReview,'-26','Exam review correct answer');
 await wrongReview.locator('.exam-review-explain').click();

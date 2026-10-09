@@ -34,6 +34,40 @@ for(const [source,classes] of corpus){
   assert.equal(isolateMathHtml(html),html,'Rendering must remain idempotent');
 }
 
+// An unanswered exercise is not a malformed left-hand expression. Keep its
+// complete valid prefix isolated while the unparsed operator/blank stays text.
+for(const [prefix,classes] of [
+  ['19 - (-7)',[]],
+  ['(1/2 + 3/4) × 2',['frac']],
+  ['(-3)^2 + sqrt(16)',['flh-math-power','flh-math-root']]
+]){
+  for(const suffix of [' = ____',' = ',' = (']){
+    const source=`احسب: ${prefix}${suffix}`;
+    const parts=splitMathText(source);
+    assert.equal(parts.filter(part=>part.math).length,1,'An incomplete RHS must retain one complete valid prefix');
+    assert.equal(parts.find(part=>part.math).text,prefix,source);
+    assert.equal(parts.map(part=>part.text).join(''),source,'Backtracking must preserve every authored character');
+    const html=isolateMathHtml(source);
+    assert.equal((html.match(/<bdi /g)||[]).length,1,source);
+    assert.ok(html.endsWith(suffix),'The unparsed operator and blank must remain readable text');
+    for(const name of classes)assert.ok(html.includes(`class="${name}"`),`${source} lost its valid prefix structure`);
+    assert.equal(isolateMathHtml(html),html,'Incomplete RHS rendering must remain idempotent');
+  }
+}
+
+for(const operator of ['=','+','−','×','÷','/','<=','&gt;=']){
+  for(const rhs of ['____','(','\\frac{1}{}','sqrt()']){
+    const source=`19 - (-7) ${operator} ${rhs}`;
+    assert.equal(splitMathText(source).find(part=>part.math)?.text,'19 - (-7)',`Ordinary failed RHS must restore the operator position: ${source}`);
+  }
+}
+
+// Resource-limit failures are fatal for that parse, never ordinary incomplete
+// operands that permit partial rendering of the prefix.
+for(const source of ['2 + '+'9'.repeat(48000),'2 + '+' '.repeat(3000)+'1','2 + '+Array(300).fill('1').join(' + '),'2 + '+'('.repeat(80)+'1'+')'.repeat(80)]){
+  assert.ok(!splitMathText(source).some(part=>part.math&&part.text==='2'),'MATH_LIMIT must not be downgraded into a rendered valid prefix');
+}
+
 for(const source of ['مرحبا بكم','Select the correct answer.','Doğru yanıtı seçin.','öğrenci2','Q-20260907401',"B şehri UTC-4&#39;tür.",'A &amp; B','&#39; &#x27; &sup2;'])assert.equal(isolateMathHtml(source),source);
 for(const source of ['\\frac{1}{}','sqrt()','\\unknown{2}','(2 + 3','2^^3']){
   const html=isolateMathHtml(source);
