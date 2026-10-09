@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { runOwnedQaLifecycle } from './authenticated-e2e.mjs';
+import { assertAuthenticatedBrowserSafety, runAuthenticatedStage, runOwnedQaLifecycle } from './authenticated-e2e.mjs';
 import {
   ACTOR_ID,
   LEASE_TTL_SECONDS,
@@ -22,6 +22,34 @@ const validClaims = {
   event_name: 'pull_request',
   runner_environment: 'github-hosted',
 };
+
+const diagnosticLines=[],privateValue='synthetic-private-token-url-body';
+const emit=line=>diagnosticLines.push(line);
+assert.equal(await runAuthenticatedStage('OIDC_REQUEST',async()=>privateValue,emit),privateValue);
+assert.equal(diagnosticLines.length,2);
+assert.ok(diagnosticLines.every(line=>!line.includes(privateValue)),'operation values never enter diagnostic markers');
+const originalFailure=Object.assign(new Error(privateValue),{name:'TimeoutError'});
+await assert.rejects(()=>runAuthenticatedStage('PROGRAM_READY',async()=>{throw originalFailure;},emit),error=>error===originalFailure,'stage instrumentation rethrows the actual original exception');
+assert.ok(diagnosticLines.at(-1).includes('"code":"BROWSER_TIMEOUT"'));
+assert.ok(!diagnosticLines.at(-1).includes(privateValue));
+let invalidOperationCalls=0;
+await assert.rejects(()=>runAuthenticatedStage(privateValue,async()=>{invalidOperationCalls++;},emit),/QA_AUTH_DIAGNOSTIC_STAGE_INVALID/);
+assert.equal(invalidOperationCalls,0);
+let guardCalls=0;
+const safetyLines=[];
+assert.throws(()=>assertAuthenticatedBrowserSafety({unexpected:[privateValue],assertNoUnexpectedRequests(){guardCalls++;throw new Error(privateValue);}},[privateValue],line=>safetyLines.push(line)),/QA_BROWSER_NETWORK_REJECTED/);
+assert.equal(guardCalls,1);
+assert.deepEqual(JSON.parse(safetyLines[0].slice('QA_AUTH_NETWORK '.length)),{status:'FAIL',unexpected_requests:1,browser_errors:1});
+assert.ok(!safetyLines[0].includes(privateValue),'only network/browser-error counts escape even when the flow failed');
+assert.throws(()=>assertAuthenticatedBrowserSafety({unexpected:[],assertNoUnexpectedRequests(){}},[privateValue],()=>{}),/QA_BROWSER_ERRORS/);
+let cleanupAfterDiagnostic=false;
+await assert.rejects(()=>runOwnedQaLifecycle({
+  prepare:async()=>({run_id:'owned-synthetic',session:privateValue}),
+  validate:async()=>{},
+  run:()=>runAuthenticatedStage('PROGRAM_READY',async()=>{throw originalFailure;},emit),
+  cleanup:async()=>{cleanupAfterDiagnostic=true;throw new Error('secondary cleanup failure');},
+}),error=>error===originalFailure);
+assert.equal(cleanupAfterDiagnostic,true,'original failure still triggers owned cleanup and keeps priority');
 
 assert.equal(validateGithubClaims(validClaims), true);
 assert.equal(WORKFLOW_PREFIXES.length, 2);

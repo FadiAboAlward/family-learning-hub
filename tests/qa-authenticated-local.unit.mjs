@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
@@ -154,6 +154,34 @@ for (const [message, expected] of [
   assert.equal(safeQaProcessDiagnostic({diagnostic:{...diagnostic,authenticated_failure:syntheticPrivate}}).authenticated_failure, undefined);
 }
 let processFailure;
+const primaryMarkers=[
+  'QA_AUTH_STAGE '+JSON.stringify({stage:'AUTH_PREPARE',status:'START',raw:syntheticPrivate}),
+  'QA_AUTH_FAILURE '+JSON.stringify({stage:'AUTH_PREPARE',code:'AUTH_PREPARE_FAILED',http_status:401,response_error:'QA_AUTH_FAILED',raw:syntheticPrivate}),
+  'QA_AUTH_NETWORK '+JSON.stringify({status:'FAIL',unexpected_requests:2,browser_errors:1,origins:[syntheticPrivate]}),
+  'QA_AUTH_FAILURE '+JSON.stringify({stage:'AUTH_CLEANUP',code:'AUTH_CLEANUP_FAILED',http_status:500,raw:syntheticPrivate}),
+  'QA_AUTH_TERMINAL '+JSON.stringify({code:'AUTH_PREPARE_FAILED',http_status:401,response_error:'QA_AUTH_FAILED',stack:syntheticPrivate}),
+].join('\n');
+const markerDiagnostic=qaProcessDiagnostic(process.execPath,['tests/authenticated-e2e.mjs'],primaryMarkers,1);
+assert.equal(markerDiagnostic.authenticated_stage,'AUTH_PREPARE','cleanup markers cannot replace the primary failure stage');
+assert.equal(markerDiagnostic.authenticated_failure,'AUTH_PREPARE_FAILED');
+assert.equal(markerDiagnostic.authenticated_http_status,401);
+assert.equal(markerDiagnostic.authenticated_response_error,'QA_AUTH_FAILED');
+assert.deepEqual(markerDiagnostic.authenticated_network,{status:'FAIL',unexpected_requests:2,browser_errors:1});
+assert.deepEqual(safeQaProcessDiagnostic({diagnostic:markerDiagnostic}),markerDiagnostic);
+assert.doesNotMatch(JSON.stringify(markerDiagnostic),/private|PASSWORD|sb_secret_|origins|raw|stack/);
+const poisonedMarkers=[
+  'QA_AUTH_FAILURE '+JSON.stringify({stage:syntheticPrivate,code:syntheticPrivate,http_status:syntheticPrivate}),
+  'QA_AUTH_STAGE '+JSON.stringify({stage:'PROGRAM_READY',status:syntheticPrivate}),
+  'QA_AUTH_NETWORK '+JSON.stringify({status:'FAIL',unexpected_requests:syntheticPrivate,browser_errors:1}),
+  'QA_AUTH_FAILURE malformed '+syntheticPrivate,
+].join('\n');
+const poisoned=qaProcessDiagnostic(process.execPath,['tests/authenticated-e2e.mjs'],poisonedMarkers,1);
+assert.equal(poisoned.authenticated_failure,'UNCLASSIFIED');
+assert.equal(poisoned.authenticated_stage,undefined);
+assert.equal(poisoned.authenticated_network,undefined);
+assert.doesNotMatch(JSON.stringify(poisoned),/private|PASSWORD|sb_secret_/);
+assert.deepEqual(safeAuthenticatedFailure(Object.assign(new Error(syntheticPrivate),{name:'TimeoutError',qaHttpStatus:503,qaResponseError:syntheticPrivate})),{code:'BROWSER_TIMEOUT',http_status:503});
+assert.deepEqual(safeAuthenticatedFailure({message:syntheticPrivate,qaHttpStatus:1000,qaResponseError:syntheticPrivate}),{code:'UNCLASSIFIED'});
 try {
   await command(process.execPath, ['-e', `process.stdout.write(${JSON.stringify(syntheticPrivate)});process.stderr.write(${JSON.stringify('invalid config\n' + syntheticPrivate)});process.exit(23);`]);
 } catch (error) { processFailure = error; }
