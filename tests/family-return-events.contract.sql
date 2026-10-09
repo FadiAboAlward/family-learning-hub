@@ -31,7 +31,10 @@ begin
   begin
     perform pg_temp.return_assert(not has_table_privilege('authenticated','public.family_return_events','INSERT')
       and not has_table_privilege('authenticated','public.family_return_events','UPDATE')
+      and not has_table_privilege('authenticated','public.family_return_events','SELECT')
       and not has_table_privilege('anon','public.family_return_events','SELECT')
+      and has_table_privilege('service_role','public.family_return_events','SELECT')
+      and(select relrowsecurity from pg_class where oid='public.family_return_events'::regclass)
       and not has_function_privilege('authenticated','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE')
       and has_function_privilege('service_role','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE'),'service-only mutation grants');
     insert into auth.users(id,email) values(owner_id,'qa-return-owner@example.invalid'),(admin_id,'qa-return-admin@example.invalid'),(teacher_id,'qa-return-teacher@example.invalid'),(outsider_id,'qa-return-outsider@example.invalid');
@@ -60,7 +63,9 @@ begin
     perform pg_temp.return_assert(result->>'error'='INVALID_OCCURRED_AT','malformed instant rejected');
     result:=public.flh_family_rewards_command(w,owner_id,null,'return_event_create',jsonb_build_object('occurred_at','2020-01-10T07:00:00Z','idempotency_key','short'));
     perform pg_temp.return_assert(result->>'error'='IDEMPOTENCY_KEY_REQUIRED','existing key bounds preserved');
+    execute 'set local role service_role';
     result:=public.flh_family_rewards_command(w,owner_id,null,'return_event_create',jsonb_build_object('occurred_at','2020-01-10T10:00:00+03:00','idempotency_key','qa-return-one','id',unknown_event,'created_by',outsider_id,'total_points',999));
+    execute 'reset role';
     e1:=(result->'return_event'->>'id')::uuid;
     perform pg_temp.return_assert(result->>'ok'='true' and e1<>unknown_event and not(result->'return_event'?'created_by')
       and(select created_by=owner_id from public.family_return_events where id=e1)
@@ -72,7 +77,9 @@ begin
     perform pg_temp.return_assert(second->>'error'='IDEMPOTENCY_CONFLICT','creator change conflicts safely');
     second:=public.flh_family_rewards_command(w,owner_id,null,'return_event_create',jsonb_build_object('occurred_at','2020-01-10T07:00:01Z','idempotency_key','qa-return-one'));
     perform pg_temp.return_assert(second->>'error'='IDEMPOTENCY_CONFLICT','time change conflicts safely');
+    execute 'set local role service_role';
     e2:=pg_temp.return_create(w,admin_id,'2020-01-10T07:00:01Z','qa-return-two');
+    execute 'reset role';
     e3:=pg_temp.return_create(w,owner_id,'2020-01-10T07:00:02Z','qa-return-three');
     foreign_event:=pg_temp.return_create(other_w,owner_id,'2020-01-10T07:00:00Z','qa-return-foreign');
     result:=public.flh_family_rewards_command(w,null,l1,'behavior_submit',jsonb_build_object('rule_id',greeting,'occurred_at',old_claim_time,'idempotency_key','qa-return-claim'));
@@ -113,18 +120,35 @@ begin
       and(select reward_points=24 and xp=100 from public.learner_gamification_state where learner_id=l1),'verified day caps both parents; changed claim day cannot move bucket');
     result:=public.flh_family_rewards_command(w,owner_id,l2,'behavior_record',jsonb_build_object('rule_id',greeting,'return_event_id',e1,'idempotency_key','qa-return-sibling'));
     perform pg_temp.return_assert(result->>'ok'='true' and(select reward_points=2 and xp=200 from public.learner_gamification_state where learner_id=l2),'another Testing learner can earn same shared family occasion');
+    execute 'set local role service_role';
     result:=public.flh_family_rewards_command(w,owner_id,null,'parent_catalog',jsonb_build_object('test_only',true,'return_event_day','2020-01-10','return_event_page_size',1));
     second:=public.flh_family_rewards_command(w,owner_id,null,'parent_catalog',jsonb_build_object('test_only',true,'return_event_day','2020-01-10','return_event_page_size',1,'return_event_before_at',result->'return_event_next_cursor'->>'occurred_at','return_event_before_id',result->'return_event_next_cursor'->>'id'));
     perform pg_temp.return_assert(jsonb_array_length(result->'return_events')=1 and jsonb_array_length(second->'return_events')=1
-      and second->'return_events'->0->>'id'<>result->'return_events'->0->>'id' and not(result->'return_events'->0?'created_by'),'bounded safe day/cursor list');
+      and second->'return_events'->0->>'id'<>result->'return_events'->0->>'id'
+      and not(result->'return_events'->0 ?| array['created_by','request_payload','idempotency_key']),'service-only bounded safe day/cursor list');
+    result:=public.flh_family_rewards_command(w,admin_id,null,'parent_catalog',jsonb_build_object('test_only',true,'return_event_day','2020-01-10'));
+    perform pg_temp.return_assert(jsonb_array_length(result->'return_events')=3
+      and not exists(select 1 from jsonb_array_elements(result->'return_events') e where e ?| array['created_by','request_payload','idempotency_key'] or e->>'id'=foreign_event::text),'admin safe catalog remains same-workspace and excludes private provenance');
+    foreach identity in array array[teacher_id,outsider_id] loop
+      result:=public.flh_family_rewards_command(w,identity,null,'parent_catalog',jsonb_build_object('return_event_day','2020-01-10'));
+      perform pg_temp.return_assert(result->>'error'='PARENT_MANAGE_FORBIDDEN','service carrier retains teacher/foreign-parent catalog denial');
+    end loop;
     result:=public.flh_family_rewards_command(w,null,l1,'student_catalog',jsonb_build_object('return_event_day','2020-01-10'));
     perform pg_temp.return_assert(result->'return_events'='[]'::jsonb,'learner catalog exposes no parent occasion list');
-    perform set_config('request.jwt.claim.sub',teacher_id::text,true);execute 'set local role authenticated';
-    perform pg_temp.return_assert((select count(*)=0 from public.family_return_events where workspace_id=w),'teacher denied by actual RLS');execute 'reset role';
-    perform set_config('request.jwt.claim.sub',owner_id::text,true);execute 'set local role authenticated';
-    perform pg_temp.return_assert((select count(*)=3 from public.family_return_events where workspace_id=w),'owner scoped actual RLS');execute 'reset role';
-    perform set_config('request.jwt.claim.sub',outsider_id::text,true);execute 'set local role authenticated';
-    perform pg_temp.return_assert((select count(*)=0 from public.family_return_events),'outsider denied by actual RLS');execute 'reset role';
+    execute 'reset role';
+    -- RLS cannot turn a missing table grant into zero visible rows. Direct
+    -- owner/admin/teacher/foreign-parent/learner reads must fail with 42501.
+    foreach identity in array array[owner_id,admin_id,teacher_id,outsider_id,l1] loop
+      perform set_config('request.jwt.claim.sub',identity::text,true);execute 'set local role authenticated';
+      failed:=false;
+      begin perform id from public.family_return_events;exception when insufficient_privilege then failed:=(sqlstate='42501');end;
+      execute 'reset role';
+      perform pg_temp.return_assert(failed,'direct authenticated register SELECT is permission denied for every identity');
+    end loop;
+    execute 'set local role anon';failed:=false;
+    begin perform id from public.family_return_events;exception when insufficient_privilege then failed:=(sqlstate='42501');end;
+    execute 'reset role';
+    perform pg_temp.return_assert(failed,'direct anonymous register SELECT is permission denied');
     failed:=false;begin update public.family_return_events set occurred_at=occurred_at+interval '1 day' where id=e1;exception when check_violation then failed:=true;end;
     perform pg_temp.return_assert(failed,'used verified event time immutable');
     failed:=false;begin update public.behavior_submissions set return_event_id=e3 where id=sid;exception when check_violation then failed:=true;end;

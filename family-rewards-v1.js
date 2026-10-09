@@ -285,9 +285,9 @@
       <details data-fr-return-create-details><summary>تسجيل مناسبة عودة حقيقية جديدة</summary>
         <p class="muted">تحقّق من القائمة أولًا. سجل المناسبة مشترك بين الطلاب، ولا يمنح نقاطًا بمجرد إنشائه.</p>
         <div class="fr-form-grid">${field(prefix+'DateMode','تاريخ العودة',`<select id="${prefix}DateMode"><option value="today">اليوم</option><option value="yesterday">أمس</option><option value="custom">اختيار تاريخ</option></select>`)}
-        ${field(prefix+'Date','التاريخ المحدد',`<input id="${prefix}Date" type="date" dir="ltr">`)}
+        <div data-fr-custom-date="${prefix}" hidden>${field(prefix+'Date','التاريخ المحدد',`<input id="${prefix}Date" type="date" dir="ltr">`)}</div>
         ${field(prefix+'TimeMode','وقت العودة',`<select id="${prefix}TimeMode"><option value="now">الآن</option><option value="morning">صباحًا</option><option value="afternoon">ظهرًا</option><option value="evening">مساءً</option><option value="custom">وقت محدد</option></select>`)}
-        ${field(prefix+'Time','الوقت المحدد',`<input id="${prefix}Time" type="time" dir="ltr">`)}</div>
+        <div data-fr-custom-time="${prefix}" hidden>${field(prefix+'Time','الوقت المحدد',`<input id="${prefix}Time" type="time" dir="ltr">`)}</div></div>
         <div class="actions"><button class="btn btn-primary" type="button" data-fr-return-create>تسجيل واختيار المناسبة</button><button class="btn btn-soft" type="button" data-fr-return-cancel>إلغاء</button></div>
       </details><div class="fr-return-message" role="status" aria-live="polite"></div></fieldset>`;
   }
@@ -377,14 +377,15 @@
   function bindReturnControls(view){
     if(view.role!=='parent')return;
     for(const host of view.root.querySelectorAll('[data-fr-return-context]')){
-      const select=host.querySelector('[data-fr-return-select]'),day=host.querySelector('[data-fr-return-day]'),key=host.dataset.frReturnContext;
+      const select=host.querySelector('[data-fr-return-select]'),day=host.querySelector('[data-fr-return-day]'),key=host.dataset.frReturnContext,prefix=host.dataset.frReturnPrefix;
       select.onchange=()=>{if(select.value){view.returnSelections.set(key,select.value);clearReturnChoiceError(view,key,host);}else view.returnSelections.delete(key);syncReturnForecasts(view);};
       day.onchange=()=>{view.returnSelections.delete(key);loadReturnEvents(view,host);syncReturnForecasts(view);};
       host.querySelector('[data-fr-return-load]').onclick=()=>loadReturnEvents(view,host);
       host.querySelector('[data-fr-return-more]').onclick=()=>loadReturnEvents(view,host,true);
       host.querySelector('[data-fr-return-create]').onclick=()=>createReturnEvent(view,host);
       host.querySelector('[data-fr-return-cancel]').onclick=()=>{host.querySelector('[data-fr-return-create-details]').open=false;host.querySelector('.fr-return-message').textContent='';};
-      for(const control of host.querySelectorAll('[data-fr-return-create-details] input,[data-fr-return-create-details] select'))control.addEventListener('change',()=>{delete host.dataset.idempotencyKey;delete host.dataset.createOccurredAt;});
+      for(const control of host.querySelectorAll('[data-fr-return-create-details] input,[data-fr-return-create-details] select'))control.addEventListener('change',()=>{delete host.dataset.idempotencyKey;delete host.dataset.createOccurredAt;syncOccurrenceWhen(view,prefix);});
+      syncOccurrenceWhen(view,prefix);
       syncReturnControl(view,host);
       if(!view.returnPages.get(day.value)?.loaded)loadReturnEvents(view,host);
     }
@@ -717,7 +718,7 @@
     }
     root.querySelector('#frOccurrenceLearner')?.addEventListener('change',()=>{const category=root.querySelector('#frOccurrenceCategory');if(category)category.value='';syncOccurrenceCategories(view,'frOccurrence');});
     root.querySelector('#frAdjustmentReversal')?.addEventListener('input',event=>{const delta=root.querySelector('#frAdjustmentDelta'),reversal=event.target.value.trim();delta.required=!reversal;delta.disabled=!!reversal;});
-    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();if(form.id==='frOccurrenceForm'){view.returnSelections.delete('direct');syncDirectReturn(view);const control=form.querySelector('[data-fr-return-context]');if(control)syncReturnControl(view,control);}form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;delete form.dataset.occurredAt;delete form.dataset.occurrenceSignature;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);syncPrayerBonuses(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
+    root.querySelectorAll('[data-fr-form-reset]').forEach(button=>button.onclick=()=>{const form=button.closest('form');form.reset();if(form.id==='frOccurrenceForm'){view.returnSelections.delete('direct');syncDirectReturn(view);const control=form.querySelector('[data-fr-return-context]');if(control){syncReturnControl(view,control);syncOccurrenceWhen(view,control.dataset.frReturnPrefix);}}form.querySelectorAll('[data-fr-preserved-scope]').forEach(element=>element.remove());delete form.dataset.recordId;delete form.dataset.idempotencyKey;delete form.dataset.occurredAt;delete form.dataset.occurrenceSignature;form.querySelectorAll('[data-fr-scope]').forEach(fieldset=>fieldset.hidden=true);syncCadence(form);for(const prefix of ['frOccurrence','frSelfReport'])if(form.id===`${prefix}Form`){syncOccurrenceCategories(view,prefix);syncOccurrenceWhen(view,prefix);syncPrayerBonuses(view,prefix);}const delta=form.querySelector('#frAdjustmentDelta');if(delta){delta.disabled=false;delta.required=true;}form.querySelector('.fr-message').textContent='';});
     ['category','rule','reward'].forEach(kind=>{
       root.querySelectorAll(`[data-fr-edit-${kind}]`).forEach(button=>button.onclick=()=>edit(view,kind,button.getAttribute(`data-fr-edit-${kind}`)));
       root.querySelectorAll(`[data-fr-toggle-${kind}]`).forEach(button=>button.onclick=()=>{const rows=view.data[kind==='category'?'categories':`${kind}s`]||[],row=rows.find(row=>row.id===button.getAttribute(`data-fr-toggle-${kind}`));if(!row)return;mutation(view,button,`${kind}_save`,{...row,is_active:row.is_active===false},row.is_active===false?'تم التفعيل.':'تم التعطيل.');});

@@ -15,11 +15,10 @@ create table if not exists public.family_return_events (
 create index if not exists family_return_events_day_page_idx on public.family_return_events(workspace_id,occurred_at desc,id desc);
 alter table public.family_return_events enable row level security;
 revoke all on public.family_return_events from public,anon,authenticated;
-grant select on public.family_return_events to authenticated;
 grant all on public.family_return_events to service_role;
+-- The approved browser carrier is the bounded, safe family-api catalog, not
+-- direct table reads of creator IDs, request keys or normalized provenance.
 drop policy if exists family_return_events_parent_read on public.family_return_events;
-create policy family_return_events_parent_read on public.family_return_events for select to authenticated
-  using (private.workspace_role(workspace_id,(select auth.uid())) in ('owner','admin'));
 
 alter table public.behavior_submissions add column if not exists return_event_id uuid;
 do $constraints$
