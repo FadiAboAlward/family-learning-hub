@@ -288,7 +288,10 @@ assert.match(workflow, /APP_URL: http:\/\/localhost:4173\//);
 assert.ok(workflow.indexOf('Deny Production backend traffic') < workflow.indexOf('Require successful core gates'));
 assert.ok(workflow.indexOf('run: node tests/qa-core-prerequisite.mjs') < workflow.indexOf('run: node tests/qa-authenticated-local.mjs'));
 assert.match(workflow, /name: Verify owned local teardown\n        if: always\(\)/);
-assert.match(workflow, /qa-authenticated-evidence\/attempt-deep-link-mobile\.png\n          retention-days: 7/);
+for (const screenshot of ['attempt-deep-link-mobile', 'attempt-deep-link-desktop', 'parent-dashboard-mobile', 'parent-rewards-mobile', 'parent-rewards-desktop']) {
+  assert.ok(workflow.includes(`qa-authenticated-evidence/${screenshot}.png`), 'Only enumerated synthetic screenshots are uploaded');
+}
+assert.match(workflow, /qa-authenticated-evidence\/parent-rewards-desktop\.png\n          retention-days: 7/);
 assert.doesNotMatch(workflow, /path: qa-authenticated-evidence\//, 'artifacts enumerate safe files; the whole runtime/evidence directory is never uploaded');
 const fixture = fs.readFileSync('tests/qa-authenticated-local.fixtures.sql', 'utf8');
 assert.doesNotMatch(fixture, /grant\s|disable.*(?:trigger|row level)|replication_role|insert into public\.quiz_attempts|\b(?:aya|mohammad)\b/i);
