@@ -206,7 +206,7 @@
     const isolatePlain = plain => splitMathText(plain).map(part => part.math ? mathHtml(part) : safeText(part.text)).join('');
     // Only renderer-owned markup is retained. Other tags remain readable text;
     // HTML attributes are never parsed as mathematical content.
-    const owned = /<bdi class=["']flh-math-ltr["'] dir=["']ltr["'](?: role="math")?(?: aria-label="[^"]*")?>[\s\S]*?<\/bdi>|<span class="frac"><span class="n">[0-9٠-٩]+<\/span><span class="d">[0-9٠-٩]+<\/span><\/span>|<\/?[A-Za-z][^>]*>/g;
+    const owned = /<bdi class=["']flh-math-ltr["'] dir=["']ltr["'](?: role="math")?(?: aria-label="[^"<>]*")?>[\s\S]*?<\/bdi>|<span class="frac"><span class="n">[0-9٠-٩]+<\/span><span class="d">[0-9٠-٩]+<\/span><\/span>|<\/?[A-Za-z][^>]*>/g;
     let last=0,result='',match;
     while((match=owned.exec(text))){
       result+=isolatePlain(text.slice(last,match.index));

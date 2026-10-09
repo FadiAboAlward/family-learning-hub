@@ -406,6 +406,7 @@ function validateAssessmentDesign(ctx, questions, blueByCode, errors, warnings) 
 
   const checkPositions = (rows, surface, label) => {
     const positions = rows.map(q => q.options.filter(o => o?.is_correct === true));
+    // Per-question validation reports malformed answers; balance is meaningful only once all correct positions are valid.
     if (positions.some(opts => opts.length !== 1 || !Number.isInteger(opts[0].position) || opts[0].position < 1 || opts[0].position > 4)) return;
     const answers = positions.map(opts => opts[0].position);
     const counts = [1, 2, 3, 4].map(position => answers.filter(answer => answer === position).length);
