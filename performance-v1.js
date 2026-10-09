@@ -140,7 +140,7 @@
         return snapshot;
       })
       .catch(() => null)
-      .finally(() => inflight.delete(key));
+      .finally(() => { if (inflight.get(key) === p) inflight.delete(key); });
     inflight.set(key, p);
     return p;
   }
@@ -174,6 +174,19 @@
     const key = `family-api|student_profile|${tokenFingerprint(headers)}`;
     cacheEpoch.set(key, (cacheEpoch.get(key) || 0) + 1);
     responseCache.delete(key);
+    try { localStorage.removeItem(storageKey(key)); } catch {}
+    return key;
+  }
+
+  function invalidateStudentCatalog(session = '') {
+    const headers = new Headers();
+    if (session) headers.set('authorization', `Bearer ${session}`);
+    const key = `student-library-api|catalog|${tokenFingerprint(headers)}`;
+    cacheEpoch.set(key, (cacheEpoch.get(key) || 0) + 1);
+    responseCache.delete(key);
+    // A fresh status read must not reuse an earlier prefetch promise. Epoch and
+    // promise ownership also prevent that old request from restoring stale data.
+    inflight.delete(key);
     try { localStorage.removeItem(storageKey(key)); } catch {}
     return key;
   }
@@ -342,6 +355,7 @@
 
   window.FLHPerformance = {
     invalidateStudentProfile,
+    invalidateStudentCatalog,
     refreshStudentProfile,
     clear() {
       responseCache.clear();

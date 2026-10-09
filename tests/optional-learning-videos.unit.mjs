@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {validateVideoCandidate,validateVideoReport,validateYouTubeStatus,saveOptionalVideoReport,attachOptionalVideo,maintainOptionalVideos} from '../supabase/functions/_shared/optional-learning-videos.mjs';
+import {validateVideoCandidate,validateLearningOutcomes,validateVideoReport,validateYouTubeStatus,saveOptionalVideoReport,attachOptionalVideo,maintainOptionalVideos} from '../supabase/functions/_shared/optional-learning-videos.mjs';
 
 const id = 'a1000000-0000-4000-8000-000000000001';
 const candidate={learner_id:id,quiz_version_id:id,program_id:id,curriculum_id:id,grade_level:7,subject_id:1,concept_id:id,position:1,video_ref:'qaVideo0001',title:'Vetted explanation',language:'tr',rationale:'Matches the exact target concept.'};
 assert.deepEqual(validateVideoCandidate(candidate),candidate);
 const omittedPosition={...candidate}; delete omittedPosition.position;
 assert.deepEqual(validateVideoCandidate(omittedPosition),omittedPosition,'omitted position remains omitted so the RPC can apply the single-video compatibility rule');
+const outcomes=['تجمع 3 + 4 على خط الأعداد','تشرح معنى طرح عدد سالب'];
+assert.deepEqual(validateVideoCandidate({...candidate,learning_outcomes:outcomes}).learning_outcomes,outcomes,'Vetted first-party outcomes cross the exact-context authoring boundary');
+assert.deepEqual(validateLearningOutcomes(['  قارن: 1/2 < 3/4  ']),['قارن: 1/2 < 3/4'],'Plain math is preserved and surrounding whitespace normalized');
+assert.deepEqual(validateLearningOutcomes(['🧪'.repeat(160)]),['🧪'.repeat(160)],'The text bound counts Unicode characters, not UTF-16 units');
+assert.equal(Object.hasOwn(validateVideoCandidate(candidate),'learning_outcomes'),false,'Legacy omitted metadata remains omitted rather than fabricated');
+for(const invalidOutcomes of [undefined,null,{},'guess',[],['a','b','c','d'],[1],[''],['  '],['repeat',' repeat '],['a'.repeat(161)],['<img src=x>'],['&amp;'],['<!--hidden-->'],['<!DOCTYPE html>']]) assert.throws(()=>validateVideoCandidate({...candidate,learning_outcomes:invalidOutcomes}),/INVALID_VIDEO_INPUT/,'Malformed supplied metadata must fail closed at authoring');
+for(const forbidden of [{readiness_questions:[]},{correct_answer:{option_position:1}},{grading_config:{}},{raw_provider_payload:{}}]) assert.throws(()=>validateVideoCandidate({...candidate,...forbidden}),/INVALID_VIDEO_INPUT/,'The new carrier cannot expose or create a readiness/answer-key contract');
 for(const change of [{grade_level:0},{grade_level:13},{subject_id:NaN},{position:null},{position:0},{position:21},{position:1.5},{video_ref:'https://youtube.com/test'},{language:'xx'},{title:''},{concept_id:'bad'},{watched_seconds:3}]) assert.throws(()=>validateVideoCandidate({...candidate,...change}),/INVALID_VIDEO_INPUT/);
 const report={action:'save_video_report',attempt_id:id,video_id:id,self_report:'watched_part',expected_revision:0,request_id:id};
 assert.equal(validateVideoReport(report).self_report,'watched_part');
@@ -42,6 +49,12 @@ await attachOptionalVideo(admin,'verified-workspace','verified-parent',{video:ca
 assert.equal(calls[0].params.p_parent_id,'verified-parent');
 assert.equal(calls[0].params.p_candidate.made_for_kids,true);
 assert.equal(calls[0].params.p_candidate.position,1,'attachment carries explicit ordered position');
+calls=[];
+await attachOptionalVideo(admin,'verified-workspace','verified-parent',{video:{...candidate,learning_outcomes:outcomes}},trace,{apiKey:'synthetic-test-key',now,fetchImpl:async()=>response()});
+assert.deepEqual(calls[0].params.p_candidate.learning_outcomes,outcomes,'Attachment forwards only validated educational outcomes to its service RPC');
+let invalidProviderCalls=0;
+await assert.rejects(attachOptionalVideo(admin,'w','p',{video:{...candidate,learning_outcomes:['<script>unsafe</script>']}},trace,{apiKey:'synthetic-test-key',fetchImpl:async()=>{invalidProviderCalls++;return response();}}),/INVALID_VIDEO_INPUT/);
+assert.equal(invalidProviderCalls,0,'Invalid authoring metadata is rejected before even a provider request');
 calls=[];
 await attachOptionalVideo(admin,'verified-workspace','verified-parent',{video:omittedPosition},trace,{apiKey:'synthetic-test-key',now,fetchImpl:async()=>response()});
 assert.equal(Object.prototype.hasOwnProperty.call(calls[0].params.p_candidate,'position'),false,'attachment preserves an omitted position for the RPC compatibility guard');
@@ -86,4 +99,4 @@ assert.match(omissionGuardMigration,/v_position:=1/,'single-video omission remai
 const featureSources=[migration,sequenceMigration,fs.readFileSync('supabase/functions/_shared/optional-learning-videos.mjs','utf8')].join('\n');
 assert.doesNotMatch(featureSources,/getCurrentTime|getDuration|onStateChange|played_seconds|watch_percentage|watch_seconds/);
 assert.doesNotMatch(migration,/insert into public\.(gamification_events|learner_gamification_state)/i);
-console.log('Optional video candidate/provider-status/self-report tests passed; no player evidence or reward coupling.');
+console.log('Optional video candidate/outcomes/provider-status/self-report tests passed; no readiness, formal keys, player evidence or reward coupling.');
