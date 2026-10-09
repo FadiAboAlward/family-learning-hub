@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { stripTypeScriptTypes } from 'node:module';
 import * as qaLogic from '../supabase/functions/qa-auth/logic.mjs';
 import { requireIsolatedQaBackend } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
-import { fetchQaBackend, fetchQaOidc, isolatedQaSource, launchMockQaBrowser, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { fetchQaBackend, fetchQaOidc, isolatedQaSource, launchMockQaBrowser, readQaTestingConfig, requireQaOidcUrl, verifyQaTestingBackend } from './qa-isolation.mjs';
 import { verifyQaProductionDnsDenied } from './qa-ci-network.mjs';
 
 const ref='abcdefghijklmnopqrst';
@@ -43,6 +43,23 @@ const production={mode:'isolated-testing',backendUrl:'https://gkpoylfozvuwuwqeod
 await assert.rejects(()=>fetchQaBackend(production,'qa-auth',{},tripwire),/QA_PRODUCTION_FORBIDDEN/);
 await assert.rejects(()=>fetchQaOidc(production,'https://pipelines.actions.githubusercontent.com/token','synthetic',tripwire),/QA_PRODUCTION_FORBIDDEN/);
 await assert.rejects(()=>fetchQaOidc(config,'https://gkpoylfozvuwuwqeoduc.supabase.co','synthetic',tripwire),/QA_OIDC_URL_INVALID/);
+const regionalOidc='https://pipelinesghubeus13.actions.githubusercontent.com/synthetic-token-path?existing=1&audience=old';
+assert.throws(()=>requireQaOidcUrl({toString(){requests++;return regionalOidc;}}),{message:'QA_OIDC_URL_INVALID'},'non-string inputs cannot coerce or perform side effects');
+for(const requestUrl of [
+  undefined, 'not-a-url', 'https://actions.githubusercontent.com/token', 'https://nested.regional.actions.githubusercontent.com/token',
+  'https://-regional.actions.githubusercontent.com/token', 'https://regional-.actions.githubusercontent.com/token',
+  `https://${'a'.repeat(64)}.actions.githubusercontent.com/token`, 'https://regional_name.actions.githubusercontent.com/token',
+  'https://regional.actions.githubusercontent.com.evil.invalid/token', 'https://regional.evil-actions.githubusercontent.com/token',
+  'https://raw.githubusercontent.com/token', 'https://gkpoylfozvuwuwqeoduc.supabase.co/token',
+  'http://regional.actions.githubusercontent.com/token', 'https://regional.actions.githubusercontent.com:444/token',
+  'https://user:synthetic-private@regional.actions.githubusercontent.com/token', 'https://@regional.actions.githubusercontent.com/token',
+  'https://regional.actions.githubusercontent.com/token#fragment', 'https://regional.actions.githubusercontent.com/token#',
+  ' https://regional.actions.githubusercontent.com/token', 'https:/regional.actions.githubusercontent.com/token',
+]){
+  assert.throws(()=>requireQaOidcUrl(requestUrl),{message:'QA_OIDC_URL_INVALID'},'only a valid single GitHub Actions DNS label and HTTPS default port are allowed');
+  if(requestUrl!==undefined)await assert.rejects(()=>fetchQaOidc(config,requestUrl,'synthetic',tripwire),/QA_OIDC_URL_INVALID/);
+}
+await assert.rejects(()=>fetchQaOidc({...config,projectRef:'wrong'},regionalOidc,'synthetic',tripwire),/QA_ISOLATION_IDENTITY_MISMATCH/);
 assert.equal(requests,0,'Production/mismatched requests cannot reach backend or OIDC transport');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'flh-qa-isolation-'));
 assert.equal(path.dirname(path.resolve(temp)),path.resolve(os.tmpdir()));
@@ -67,6 +84,16 @@ assert.equal(lastRequest.options.redirect,'error','callers cannot enable automat
 await fetchQaOidc(config,'https://pipelines.actions.githubusercontent.com/token?existing=1','synthetic',fakeFetch);
 assert.equal(lastRequest.options.redirect,'error');
 assert.equal(new URL(lastRequest.url).searchParams.get('audience'),'family-learning-hub-qa');
+for(const requestUrl of [regionalOidc,'https://a.actions.githubusercontent.com/token?existing=1','https://regional-one.actions.githubusercontent.com:443/token?existing=1',`https://${'a'.repeat(63)}.actions.githubusercontent.com/token?existing=1`]){
+  await fetchQaOidc(config,requestUrl,'synthetic',fakeFetch);
+  const sent=new URL(lastRequest.url);
+  assert.equal(sent.origin,requireQaOidcUrl(requestUrl).origin);
+  assert.equal(sent.searchParams.get('existing'),'1','existing provider query parameters survive validation');
+  assert.equal(sent.searchParams.get('audience'),'family-learning-hub-qa');
+  assert.equal(sent.searchParams.getAll('audience').length,1,'configured QA audience replaces the prior audience');
+  assert.equal(lastRequest.options.redirect,'error','regional requests cannot follow redirects');
+  assert.equal(lastRequest.options.headers.Authorization,'Bearer synthetic');
+}
 
 let launches=0;
 await assert.rejects(()=>launchMockQaBrowser({launch:async()=>{launches++;}},'https://fadiaboalward.github.io/family-learning-hub/'),/QA_/);

@@ -33,12 +33,20 @@ export async function verifyQaTestingBackend(config, fetchImpl = globalThis.fetc
   assertQaIsolationAttestation(config, payload);
 }
 
+/** GitHub documents regional OIDC request hosts under this exact owned namespace. */
+export function requireQaOidcUrl(requestUrl) {
+  if (typeof requestUrl !== 'string' || !/^https:\/\//i.test(requestUrl) || /[\s\\#]/.test(requestUrl) || /^https:\/\/[^/?#]*@/i.test(requestUrl)) throw new Error('QA_OIDC_URL_INVALID');
+  let url;
+  try { url = new URL(requestUrl); } catch { throw new Error('QA_OIDC_URL_INVALID'); }
+  const hostname = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.actions\.githubusercontent\.com$/;
+  if (url.protocol !== 'https:' || url.port || url.username || url.password || url.hash || !hostname.test(url.hostname)) throw new Error('QA_OIDC_URL_INVALID');
+  return url;
+}
+
 export async function fetchQaOidc(config, requestUrl, bearer, fetchImpl = globalThis.fetch) {
   requireIsolatedQaBackend(config);
   if (!requestUrl || !bearer) throw new Error('GitHub OIDC environment is unavailable');
-  let url;
-  try { url = new URL(requestUrl); } catch { throw new Error('QA_OIDC_URL_INVALID'); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.hash || !['pipelines.actions.githubusercontent.com', 'oidc.actions.githubusercontent.com'].includes(url.hostname)) throw new Error('QA_OIDC_URL_INVALID');
+  const url = requireQaOidcUrl(requestUrl);
   url.searchParams.set('audience', 'family-learning-hub-qa');
   return fetchImpl(url.href, { headers: { Authorization: `Bearer ${bearer}` }, redirect: 'error' });
 }

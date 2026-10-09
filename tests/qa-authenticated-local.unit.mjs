@@ -5,13 +5,22 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
-import { command, denyContainerProduction, teardownLocal } from './qa-authenticated-local.mjs';
+import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
   GITHUB_RUN_ID: '123456', GITHUB_RUN_ATTEMPT: '2', FLH_QA_HEAD_SHA: 'a'.repeat(40), RUNNER_TEMP: os.tmpdir() };
 const config = requireRunnerLocal(env);
+const oidcEvidence=qaOidcOriginEvidence({ACTIONS_ID_TOKEN_REQUEST_URL:'https://regional-qa.actions.githubusercontent.com/synthetic-private-path?private=synthetic-private-query',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-private-bearer'});
+assert.deepEqual(oidcEvidence,{origin:'https://regional-qa.actions.githubusercontent.com'});
+assert.equal(Object.isFrozen(oidcEvidence),true);
+assert.doesNotMatch(JSON.stringify(oidcEvidence),/private|token|query|bearer|path/,'only the validated GitHub origin enters the safe evidence');
+for(const requestUrl of [undefined,'https://synthetic-private.invalid/path?token=synthetic-private','https://regional.actions.githubusercontent.com.evil.invalid/token']){
+  let failure;try{qaOidcOriginEvidence({ACTIONS_ID_TOKEN_REQUEST_URL:requestUrl});}catch(error){failure=error;}
+  assert.equal(failure?.message,'QA_OIDC_URL_INVALID');
+  assert.doesNotMatch(String(failure),/private|invalid\/path|token=|evil/,'foreign or malformed origins fail with a fixed error without the input URL');
+}
 const core = { status: 'PASS', headSha: config.headSha, requesterRunId: Number(config.runId), coreWorkflow: '.github/workflows/qa-isolated.yml', coreRunId: 123, coreRunAttempt: 2, coreRunStatus: 'completed', coreRunConclusion: 'success',
   checkedJobs: ['Static quality', 'Browser smoke'].map(name => ({ name, status: 'completed', conclusion: 'success', runAttempt: 2 })) };
 assert.equal(requireSuccessfulCoreEvidence(config, core), true);
@@ -152,6 +161,7 @@ assert.equal(processFailure.message, 'QA_LOCAL_COMMAND_FAILED');
 assert.deepEqual(safeQaProcessDiagnostic(processFailure), { command: 'unknown_command', exit_code: 23, exit_kind: 'PROCESS_EXIT', category: 'CONFIG_INVALID' });
 assert.doesNotMatch(JSON.stringify(processFailure), /PRIVATE_PASSWORD|sb_secret_|stderr|stdout/);
 const harnessSource = fs.readFileSync('tests/qa-authenticated-local.mjs', 'utf8');
+assert.ok(harnessSource.indexOf('const oidcOrigin = qaOidcOriginEvidence();')<harnessSource.indexOf('await fs.mkdir(config.directory);'),'origin validation precedes any owned provisioning');
 for (const phase of ['supabase_start', 'owned_container_inspection', 'container_deny_before_reset', 'supabase_db_reset', 'container_deny_after_reset', 'supabase_status']) assert.ok(harnessSource.includes(`substep('${phase}'`), 'fixed before/after phase markers must distinguish first full-stack failure: ' + phase);
 
 const response = body => new Response(JSON.stringify(body));

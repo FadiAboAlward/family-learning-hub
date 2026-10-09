@@ -5,12 +5,17 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
-import { readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { readQaTestingConfig, requireQaOidcUrl, verifyQaTestingBackend } from './qa-isolation.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
 const cli = path.resolve('node_modules/.bin/supabase');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/** Verified GitHub origin only: path, query, request bearer and JWT never enter evidence. */
+export function qaOidcOriginEvidence(env = process.env) {
+  return Object.freeze({ origin: requireQaOidcUrl(env.ACTIONS_ID_TOKEN_REQUEST_URL).origin });
+}
 
 /** Capture output in memory only: CLI status/start can include runtime credentials. */
 export function command(file, args, { input, env = process.env, timeout = 180000 } = {}) {
@@ -198,6 +203,9 @@ async function main() {
     try { core = JSON.parse(await fs.readFile(path.join(evidenceDirectory, 'core-prerequisite.json'), 'utf8')); } catch { throw new Error('QA_LOCAL_CORE_EVIDENCE_REQUIRED'); }
     requireSuccessfulCoreEvidence(config, core);
     if ((await command('git', ['rev-parse', 'HEAD'])).trim() !== config.headSha) throw new Error('QA_LOCAL_HEAD_MISMATCH');
+    const oidcOrigin = qaOidcOriginEvidence();
+    stages.push({ stage: 'oidc_origin', status: 'PASS', ...oidcOrigin });
+    console.log(`Local authenticated QA OIDC origin: ${JSON.stringify(oidcOrigin)}`);
     if ((await command(cli, ['--version'])).trim() !== '2.117.0') throw new Error('QA_LOCAL_CLI_VERSION_MISMATCH');
     await fs.mkdir(config.directory); // Existing directories are never reset/reused silently.
     await fs.writeFile(path.join(config.directory, 'owner.json'), JSON.stringify(owner), { mode: 0o600 });
