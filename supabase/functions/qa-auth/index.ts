@@ -30,7 +30,8 @@ const publicBackend = requireIsolatedQaBackend({
   projectRef: isolatedBackend.projectRef,
 });
 const SUPABASE_URL = isolatedBackend.backendUrl;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!SERVICE_ROLE?.trim()) throw new Error("QA_SERVICE_ROLE_REQUIRED");
 let admin: ReturnType<typeof createClient> | null = null;
 function adminClient() {
   return admin ||= createClient(SUPABASE_URL, SERVICE_ROLE, {
