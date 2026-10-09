@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
-import { completeJourneyRows, deriveLearnerJourney, eligibleJourneyAssignments, JOURNEY_ROW_LIMIT, readJourneyProgress } from "../_shared/learner-journey.mjs";
+import { deriveLearnerJourney, eligibleJourneyAssignments, readJourneyContext, readJourneyRows, readJourneyRowsByIds } from "../_shared/learner-journey.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -17,35 +17,57 @@ function buildBook(book:any,units:any[],quizzes:any[]){const unitRows=units.filt
 
 async function catalog(learnerId:string,trace:any){
   const now=Date.now();
-  const[{data:enrs},{data:direct},assignmentResult]=await trace.measure("library.access",{dbOperations:2,execution:"parallel"},()=>Promise.all([admin.from("learner_program_enrollments").select("id,is_primary,started_at,program:learning_programs(id,slug,code,title,description,program_type,grade_level,school_year,primary_language,status)").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),admin.from("learner_content_assignments").select("id,resource_type,resource_id,status").eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),readJourneyProgress(admin,WORKSPACE_ID,learnerId,null,trace)]));
+  const[enrs,direct,assignmentResult]=await Promise.all([
+    readJourneyRows(()=>admin.from("learner_program_enrollments").select("id,is_primary,started_at,program:learning_programs(id,slug,code,title,description,program_type,grade_level,school_year,primary_language,status)",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),trace,"library.access"),
+    readJourneyRows(()=>admin.from("learner_content_assignments").select("id,resource_type,resource_id,status",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("learner_id",learnerId).eq("status","active"),trace,"library.access"),
+    readJourneyContext(admin,WORKSPACE_ID,learnerId,null,trace)
+  ]);
   const assignmentRows=assignmentResult.assignments,eligibleAssignments=eligibleJourneyAssignments(assignmentRows,{workspaceId:WORKSPACE_ID,learnerId,now}),completedAssignments=assignmentRows.filter(a=>a.status==="completed"),assignedVersionIds=[...new Set([...eligibleAssignments,...completedAssignments].map(a=>a.quiz_version_id))];
-  let assignedVersions:any[]=[];
-  if(assignedVersionIds.length){const result=await trace.measure("library.assigned_versions",{dbOperations:1},()=>admin.from("quiz_versions").select("id,quiz_id",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("state","published").in("id",assignedVersionIds).limit(JOURNEY_ROW_LIMIT));assignedVersions=completeJourneyRows(result);}
+  const assignedVersionIdsSet=new Set(assignedVersionIds),assignedVersions=assignmentResult.versions.filter(v=>assignedVersionIdsSet.has(v.id));
   const assignedQuizIds=[...new Set(assignedVersions.map(v=>v.quiz_id))];
-  const programs=(enrs||[]).filter((e:any)=>e.program?.status==="active"),programIds=programs.map((e:any)=>e.program.id);let pbooks:any[]=[],pqs:any[]=[];
-  if(programIds.length){const[r1,r2]=await trace.measure("library.program_content",{dbOperations:2,execution:"parallel"},()=>Promise.all([admin.from("program_books").select("program_id,book_id,is_required,sort_order").eq("workspace_id",WORKSPACE_ID).in("program_id",programIds).order("sort_order"),admin.from("program_quizzes").select("program_id,quiz_id,sort_order,availability").eq("workspace_id",WORKSPACE_ID).in("program_id",programIds).eq("availability","available").order("sort_order")]));pbooks=r1.data||[];pqs=r2.data||[];}
+  const programs=enrs.filter((e:any)=>e.program?.status==="active"),programIds=programs.map((e:any)=>e.program.id);
+  const[pbooks,pqs]=await Promise.all([
+    readJourneyRowsByIds(programIds,ids=>admin.from("program_books").select("id,program_id,book_id,is_required,sort_order",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).in("program_id",ids),trace,"library.program_content"),
+    readJourneyRowsByIds(programIds,ids=>admin.from("program_quizzes").select("id,program_id,quiz_id,sort_order,availability",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).in("program_id",ids).eq("availability","available"),trace,"library.program_content")
+  ]);
   const programQuizIds=new Set(pqs.map((pq:any)=>pq.quiz_id)),lookupQuizIds=[...new Set([...assignedQuizIds,...programQuizIds])];
-  const directBookIds=(direct||[]).filter((x:any)=>x.resource_type==="book").map((x:any)=>x.resource_id),directUnitIds=(direct||[]).filter((x:any)=>x.resource_type==="unit").map((x:any)=>x.resource_id),directQuizIds=(direct||[]).filter((x:any)=>x.resource_type==="quiz").map((x:any)=>x.resource_id);let directUnits:any[]=[],directQuizzes:any[]=[];
-  if(directUnitIds.length){const{data}=await trace.measure("library.direct_units",{dbOperations:1},()=>admin.from("units").select("id,book_id").in("id",directUnitIds));directUnits=data||[];}
-  if(directQuizIds.length){const{data}=await trace.measure("library.direct_quizzes",{dbOperations:1},()=>admin.from("quizzes").select("id,book_id,unit_id").eq("workspace_id",WORKSPACE_ID).in("id",directQuizIds));directQuizzes=data||[];}
+  const directBookIds=direct.filter((x:any)=>x.resource_type==="book").map((x:any)=>x.resource_id),directUnitIds=direct.filter((x:any)=>x.resource_type==="unit").map((x:any)=>x.resource_id),directQuizIds=direct.filter((x:any)=>x.resource_type==="quiz").map((x:any)=>x.resource_id);
+  const[directUnits,directQuizzes]=await Promise.all([
+    readJourneyRowsByIds(directUnitIds,ids=>admin.from("units").select("id,book_id",{count:"exact"}).in("id",ids),trace,"library.direct_units"),
+    readJourneyRowsByIds(directQuizIds,ids=>admin.from("quizzes").select("id,book_id,unit_id",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).in("id",ids),trace,"library.direct_quizzes")
+  ]);
   const allBookIds=[...new Set([...pbooks.map((x:any)=>x.book_id),...directBookIds,...directUnits.map((x:any)=>x.book_id),...directQuizzes.map((x:any)=>x.book_id).filter(Boolean)])];if(!allBookIds.length&&!lookupQuizIds.length)return{programs:programs.map((e:any)=>({enrollment_id:e.id,is_primary:e.is_primary,...e.program,books:[]})),standalone_books:[],standalone_assessments:[]};
   const quizFields="id,slug,title,description,quiz_kind,delivery_config,book_id,unit_id,status";
-  const[{data:books},{data:units},{data:quizzes0},lookupQuizResult]=await trace.measure("library.catalog",{dbOperations:(allBookIds.length?3:0)+(lookupQuizIds.length?1:0),execution:"parallel"},()=>Promise.all([allBookIds.length?admin.from("books").select("id,code,title,grade_level,school_year,language,source_kind,source_metadata,curriculum_id,subject:subjects(id,code,name_ar,name_en)").in("id",allBookIds):Promise.resolve({data:[]}),allBookIds.length?admin.from("units").select("id,book_id,slug,title,sort_order,metadata").in("book_id",allBookIds).order("sort_order"):Promise.resolve({data:[]}),allBookIds.length?admin.from("quizzes").select(quizFields).eq("workspace_id",WORKSPACE_ID).eq("status","active").in("book_id",allBookIds):Promise.resolve({data:[]}),lookupQuizIds.length?admin.from("quizzes").select(quizFields,{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("status","active").in("id",lookupQuizIds).limit(JOURNEY_ROW_LIMIT):Promise.resolve({data:[],count:0})]));
-  const lookupQuizzes=completeJourneyRows(lookupQuizResult),quizzes=[...new Map([...(quizzes0||[]),...lookupQuizzes].map(q=>[q.id,q])).values()],quizIds=quizzes.map((q:any)=>q.id);let versions:any[]=[];
-  if(quizIds.length){const result=await trace.measure("library.published_versions",{dbOperations:1},()=>admin.from("quiz_versions").select("id,workspace_id,quiz_id,version_no,state,support_source:settings->>support_source",{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("state","published").in("quiz_id",quizIds).limit(JOURNEY_ROW_LIMIT));versions=completeJourneyRows(result);}
-  const published=new Set(versions.map((v:any)=>v.quiz_id)),activeQs=quizzes.filter((q:any)=>published.has(q.id)),bookMap=new Map((books||[]).map((b:any)=>[b.id,b])),unitRows=units||[];
+  const[books,units,quizzes0,lookupQuizzes]=await Promise.all([
+    readJourneyRowsByIds(allBookIds,ids=>admin.from("books").select("id,code,title,grade_level,school_year,language,source_kind,source_metadata,curriculum_id,subject:subjects(id,code,name_ar,name_en)",{count:"exact"}).in("id",ids),trace,"library.catalog"),
+    readJourneyRowsByIds(allBookIds,ids=>admin.from("units").select("id,book_id,slug,title,sort_order,metadata",{count:"exact"}).in("book_id",ids),trace,"library.catalog"),
+    readJourneyRowsByIds(allBookIds,ids=>admin.from("quizzes").select(quizFields,{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("status","active").in("book_id",ids),trace,"library.catalog"),
+    readJourneyRowsByIds(lookupQuizIds,ids=>admin.from("quizzes").select(quizFields,{count:"exact"}).eq("workspace_id",WORKSPACE_ID).eq("status","active").in("id",ids),trace,"library.catalog")
+  ]);
+  const quizzes=[...new Map([...quizzes0,...lookupQuizzes].map(q=>[q.id,q])).values()];
+  const programBookIds=new Set(pbooks.map((x:any)=>x.book_id)),directBookSet=new Set(directBookIds),directUnitSet=new Set(directUnitIds),directQuizSet=new Set(directQuizIds),standaloneIds=allBookIds.filter(id=>!programBookIds.has(id));
+  const candidateIds=new Set(lookupQuizzes.map(q=>q.id)),standaloneBookSet=new Set(standaloneIds);
+  for(const q of quizzes){
+    if(standaloneBookSet.has(q.book_id)&&(directBookSet.has(q.book_id)||(q.unit_id&&directUnitSet.has(q.unit_id))||directQuizSet.has(q.id)))candidateIds.add(q.id);
+  }
+  const{versions,attempts,assignments,paperVersionIds}=await readJourneyContext(admin,WORKSPACE_ID,learnerId,[...candidateIds],trace);
+  const published=new Set(versions.map((v:any)=>v.quiz_id)),activeQs=quizzes.filter((q:any)=>published.has(q.id)),bookMap=new Map(books.map((b:any)=>[b.id,b])),unitRows=units;
   const programResult=programs.map((e:any)=>{const rows=pbooks.filter((x:any)=>x.program_id===e.program.id).sort((a:any,b:any)=>a.sort_order-b.sort_order),allowed=new Set(pqs.filter((x:any)=>x.program_id===e.program.id).map((x:any)=>x.quiz_id));return{enrollment_id:e.id,is_primary:e.is_primary,started_at:e.started_at,...e.program,books:rows.map((pb:any)=>{const b=bookMap.get(pb.book_id);if(!b)return null;return{...buildBook(b,unitRows,activeQs.filter((q:any)=>allowed.has(q.id))),is_required:pb.is_required,sort_order:pb.sort_order};}).filter(Boolean)};});
-  const programBookIds=new Set(pbooks.map((x:any)=>x.book_id)),directBookSet=new Set(directBookIds),directUnitSet=new Set(directUnitIds),directQuizSet=new Set(directQuizIds),standaloneIds=allBookIds.filter(id=>!programBookIds.has(id));const standalone=standaloneIds.map(id=>{const b=bookMap.get(id);if(!b)return null;const allowed=activeQs.filter((q:any)=>q.book_id===id&&(directBookSet.has(id)||(q.unit_id&&directUnitSet.has(q.unit_id))||directQuizSet.has(q.id)));return{...buildBook(b,unitRows,allowed),access_origin:directBookSet.has(id)?"book":"direct"};}).filter(Boolean);
+  const standalone=standaloneIds.map(id=>{const b=bookMap.get(id);if(!b)return null;const allowed=activeQs.filter((q:any)=>q.book_id===id&&(directBookSet.has(id)||(q.unit_id&&directUnitSet.has(q.unit_id))||directQuizSet.has(q.id)));return{...buildBook(b,unitRows,allowed),access_origin:directBookSet.has(id)?"book":"direct"};}).filter(Boolean);
   // Program/eligible version assignments already authorize the start RPC.
   // Include their active published quiz outside books without broadening access.
   const visible:any[]=[];
   for(const book of [...programResult.flatMap((p:any)=>p.books),...standalone]){visible.push(...book.extras);for(const unit of book.units)visible.push(...unit.quizzes);}
-  const shownIds=new Set(visible.map(q=>q.id)),candidateIds=new Set([...shownIds,...lookupQuizzes.map(q=>q.id)]),visibleVersions=versions.filter(v=>candidateIds.has(v.quiz_id));
-  const{attempts,assignments,paperVersionIds}=await readJourneyProgress(admin,WORKSPACE_ID,learnerId,visibleVersions.map(v=>v.id),trace);
+  const shownIds=new Set(visible.map(q=>q.id));
   const assignedVersionMap=new Map(assignedVersions.map(v=>[v.id,v.quiz_id])),eligibleQuizIds=new Set(eligibleAssignments.map(a=>assignedVersionMap.get(a.quiz_version_id))),completedVersionIds=new Set(completedAssignments.map(a=>a.quiz_version_id));
   const completedQuizIds=new Set(attempts.filter(a=>a.workspace_id===WORKSPACE_ID&&a.learner_id===learnerId&&a.status==="submitted"&&completedVersionIds.has(a.quiz_version_id)).map(a=>assignedVersionMap.get(a.quiz_version_id)));
   const standaloneAssessments=lookupQuizzes.filter(q=>published.has(q.id)&&!shownIds.has(q.id)&&(programQuizIds.has(q.id)||eligibleQuizIds.has(q.id)||completedQuizIds.has(q.id))).map(cleanQuiz);visible.push(...standaloneAssessments);
-  for(const q of visible)q.journey=deriveLearnerJourney({quiz:q,versions:visibleVersions,attempts,assignments,paperVersionIds,workspaceId:WORKSPACE_ID,learnerId,programAccess:programQuizIds.has(q.id),now});
+  const versionQuiz=new Map(versions.map(v=>[v.id,v.quiz_id])),contexts=new Map<any,any>();
+  for(const v of versions){if(!contexts.has(v.quiz_id))contexts.set(v.quiz_id,{versions:[],attempts:[],assignments:[],paperVersionIds:[]});contexts.get(v.quiz_id).versions.push(v);}
+  for(const a of attempts)contexts.get(versionQuiz.get(a.quiz_version_id)).attempts.push(a);
+  for(const a of assignments)contexts.get(versionQuiz.get(a.quiz_version_id)).assignments.push(a);
+  for(const id of paperVersionIds)contexts.get(versionQuiz.get(id)).paperVersionIds.push(id);
+  for(const q of visible)q.journey=deriveLearnerJourney({quiz:q,...contexts.get(q.id),workspaceId:WORKSPACE_ID,learnerId,programAccess:programQuizIds.has(q.id),now});
   return{programs:programResult,standalone_books:standalone,standalone_assessments:standaloneAssessments};
 }
 

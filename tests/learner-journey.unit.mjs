@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
-import { completeJourneyRows, deriveLearnerJourney, eligibleJourneyAssignments, JOURNEY_ROW_LIMIT, readJourneyProgress } from '../supabase/functions/_shared/learner-journey.mjs';
+import { completeJourneyRows, deriveLearnerJourney, eligibleJourneyAssignments, JOURNEY_ROW_LIMIT, JOURNEY_PAGE_SIZE,
+  readJourneyProgress, readJourneyContext, readJourneyRows, readJourneyRowsByIds } from '../supabase/functions/_shared/learner-journey.mjs';
 
 // Synthetic fixtures only. No learner data, backend requests or attempt writes.
 const workspaceId = 'qa-workspace', learnerId = 'qa-testing';
@@ -156,24 +157,48 @@ function catalogHarness(tables, failedTable = null) {
     const scope = row => row.workspace_id === args.p_workspace_id && row.learner_id === args.p_learner_id;
     const ownAttempts = (tables.quiz_attempts || []).filter(row => scope(row) && ['in_progress', 'submitted'].includes(row.status) && ['learning', 'exam'].includes(row.delivery_mode));
     const published = (tables.quiz_versions || []).filter(row => row.workspace_id === args.p_workspace_id && row.state === 'published');
-    const relevant = (tables.quiz_assignments || []).filter(row => scope(row) && published.some(v => v.id === row.quiz_version_id)
+    const versionMap = new Map(published.map(v => [v.id, v]));
+    const relevant = (tables.quiz_assignments || []).filter(row => scope(row) && versionMap.has(row.quiz_version_id)
       && (eligibleJourneyAssignments([row], { workspaceId, learnerId, now }).length || (row.status === 'completed' && ownAttempts.some(t => t.quiz_version_id === row.quiz_version_id && t.status === 'submitted'))));
-    const versionIds = args.p_version_ids == null ? [...new Set(relevant.map(row => row.quiz_version_id))] : published.filter(v => args.p_version_ids.includes(v.id)).map(v => v.id);
-    if (versionIds.length > 1000) return { data: { error: 'JOURNEY_UNAVAILABLE' }, error: null };
+    const assignedQuizSet = new Set(relevant.map(a => versionMap.get(a.quiz_version_id).quiz_id));
     const latest = (rows, field) => rows.slice().sort((a, b) => (Date.parse(b[field]) || 0) - (Date.parse(a[field]) || 0) || String(b.id).localeCompare(String(a.id)))[0];
+    assert.equal(name, 'flh_learner_journey_context');
+    const discovery = args.p_quiz_ids === null;
+    const candidates = (tables.quizzes || []).filter(q => q.workspace_id === workspaceId && q.status === 'active'
+      && (discovery ? assignedQuizSet.has(q.id) : args.p_quiz_ids.includes(q.id)))
+      .map(q => q.id).sort();
+    const eligibleIds = candidates.filter(id => !args.p_after_quiz_id || id > args.p_after_quiz_id);
+    const hasMore = discovery && eligibleIds.length > args.p_page_size;
+    const quizIds = discovery ? eligibleIds.slice(0, args.p_page_size) : candidates;
+    const chosen = quizIds.flatMap(id => {
+      const ownVersions = published.filter(v => v.quiz_id === id), versionSet = new Set(ownVersions.map(v => v.id));
+      const activity = ownAttempts.filter(t => versionSet.has(t.quiz_version_id)), assigned = relevant.filter(a => versionSet.has(a.quiz_version_id));
+      return [ownVersions.slice().sort((a, b) => b.version_no - a.version_no)[0]?.id,
+        ...['learning', 'exam'].map(mode => latest(activity.filter(t => t.delivery_mode === mode && t.status === 'in_progress'), 'started_at')?.quiz_version_id),
+        latest(assigned.filter(a => a.status !== 'completed'), 'created_at')?.quiz_version_id,
+        latest(activity.filter(t => t.status === 'submitted'), 'submitted_at')?.quiz_version_id,
+        latest(assigned.filter(a => a.status === 'completed'), 'created_at')?.quiz_version_id].filter(Boolean);
+    });
+    const versionIds = [...new Set(chosen)];
+    calls.at(-1).contextVersionCount = versionIds.length;
     const assignments = versionIds.flatMap(id => [false, true].map(completed => latest(relevant.filter(row => row.quiz_version_id === id && (row.status === 'completed') === completed), 'created_at')).filter(Boolean));
-    const attempts = args.p_version_ids == null ? [] : versionIds.flatMap(id => ['learning', 'exam'].flatMap(mode => ['in_progress', 'submitted'].map(status => latest(ownAttempts.filter(t => t.quiz_version_id === id && t.delivery_mode === mode && t.status === status), status === 'in_progress' ? 'started_at' : 'submitted_at')).filter(Boolean)));
-    const paper = args.p_version_ids == null ? [] : versionIds.filter(id => ownAttempts.some(t => t.quiz_version_id === id && t.delivery_mode === 'exam' && String(t.paper_model_code || '').trim()));
-    return { data: { complete: true, version_count: versionIds.length, attempts, assignments, paper_version_ids: paper }, error: null };
+    const attempts = versionIds.flatMap(id => ['learning', 'exam'].flatMap(mode => ['in_progress', 'submitted'].map(status => latest(ownAttempts.filter(t => t.quiz_version_id === id && t.delivery_mode === mode && t.status === status), status === 'in_progress' ? 'started_at' : 'submitted_at')).filter(Boolean)));
+    const paper = versionIds.filter(id => ownAttempts.some(t => t.quiz_version_id === id && t.delivery_mode === 'exam' && String(t.paper_model_code || '').trim()));
+    return { data: { complete: true, quiz_ids: quizIds, quiz_count: quizIds.length, has_more: hasMore,
+      next_quiz_id: hasMore ? quizIds.at(-1) : null, versions: published.filter(v => versionIds.includes(v.id)),
+      version_count: versionIds.length, attempts, assignments, paper_version_ids: paper }, error: null };
   }, from(table) {
     const entry = { table, filters: [] }; calls.push(entry);
     const query = {
       select(columns, options) { entry.columns = columns; entry.counted = options?.count === 'exact'; return query; },
       eq(key, value) { entry.filters.push(['eq', key, value]); return query; },
       in(key, values) { entry.filters.push(['in', key, values]); return query; },
-      order() { return query; }, limit(value) { entry.limit = value; return query; },
+      gt(key, value) { entry.filters.push(['gt', key, value]); return query; },
+      order(key) { entry.order = key; return query; }, limit(value) { entry.limit = value; return query; },
       then(resolve, reject) {
-        const rows = (tables[table] || []).filter(row => entry.filters.every(([kind, key, value]) => kind === 'eq' ? row[key] === value : value.includes(row[key])));
+        const rows = (tables[table] || []).map((row, i) => ({ id: `${table}-${String(i).padStart(6, '0')}`, ...row }))
+          .filter(row => entry.filters.every(([kind, key, value]) => kind === 'eq' ? row[key] === value : kind === 'gt' ? row[key] > value : value.includes(row[key])))
+          .sort((a, b) => a[entry.order] < b[entry.order] ? -1 : a[entry.order] > b[entry.order] ? 1 : 0);
         return Promise.resolve(table === failedTable ? { data: null, count: null, error: { message: 'PRIVATE_DATABASE_FAILURE' } }
           : { data: structuredClone(rows.slice(0, entry.limit ?? rows.length)), count: entry.counted ? rows.length : null, error: null }).then(resolve, reject);
       },
@@ -183,7 +208,7 @@ function catalogHarness(tables, failedTable = null) {
   const body = source.slice(source.indexOf('function cleanQuiz'), source.indexOf('Deno.serve'));
   class FixedDate extends Date { static now() { return now; } }
   const catalog = vm.runInNewContext(stripTypeScriptTypes(body) + '\ncatalog;', { admin, WORKSPACE_ID: workspaceId, Date: FixedDate,
-    completeJourneyRows, deriveLearnerJourney, eligibleJourneyAssignments, JOURNEY_ROW_LIMIT, readJourneyProgress });
+    deriveLearnerJourney, eligibleJourneyAssignments, readJourneyContext, readJourneyRows, readJourneyRowsByIds });
   const trace = { measure: async (_name, _options, run) => run() };
   return { run: () => catalog(learnerId, trace), calls };
 }
@@ -196,7 +221,7 @@ test('actual catalog displays authorized bookless explicit assignment with old i
   assert.equal(d.standalone_assessments[0].journey.state, 'NEW'); assert.equal(d.standalone_books.length, 0);
   assert.doesNotMatch(JSON.stringify(d), /PRIVATE_|other-learner|sibling/);
   assert.equal(harness.calls.filter(c => c.table === 'quiz_assignments').length, 0, 'assignment history is compacted behind the service RPC');
-  assert.equal(harness.calls.filter(c => c.rpc === 'flh_learner_journey_progress').length, 2, 'bounded assignment discovery then visible-version progress');
+  assert.equal(harness.calls.filter(c => c.rpc === 'flh_learner_journey_context').length, 2, 'paged assignment discovery then compact visible quiz context');
   assert.ok(harness.calls.every(c => !/answer|key|reward|gamification/.test(c.table || c.rpc)), 'catalog reads no answer or award tables');
 });
 test('actual catalog displays authorized bookless program quiz without a book or assignment', async () => {
@@ -247,6 +272,118 @@ test('actual catalog remains correct with more than 1000 historical retakes and 
   const resumed = await catalogHarness({ ...base, quiz_attempts: [...history, attempt('original-active', 'learning', 'in_progress', 'v1')] }).run();
   assert.equal(resumed.standalone_assessments[0].journey.state, 'CONTINUE_LEARNING');
   assert.equal(resumed.standalone_assessments[0].journey.attempt_id, 'original-active');
+});
+
+test('1001 publications compact to all six relevant contexts and preserve old original active versions', async () => {
+  const publications = Array.from({ length: 1001 }, (_, i) => version(`publication-${String(i + 1).padStart(4, '0')}`, i + 1));
+  const ids = publications.map(v => v.id);
+  const harness = catalogHarness({ quizzes: [catalogQuiz()], quiz_versions: publications,
+    learner_program_enrollments: [{ workspace_id: workspaceId, learner_id: learnerId, status: 'active', program: { id: 'p', status: 'active' } }],
+    program_quizzes: [{ workspace_id: workspaceId, program_id: 'p', quiz_id: quiz.id, availability: 'available' }],
+    quiz_attempts: [attempt('original-learning', 'learning', 'in_progress', ids[0]), attempt('original-exam', 'exam', 'in_progress', ids[1]),
+      attempt('latest-result', 'exam', 'submitted', ids[3]), attempt('completed-assignment-result', 'learning', 'submitted', ids[4], { submitted_at: '2026-10-08T09:00:00Z' })],
+    quiz_assignments: [assignment('eligible-third', ids[2]), assignment('completed-fifth', ids[4], { status: 'completed' })] });
+  const result = await harness.run(), journey = result.standalone_assessments[0].journey;
+  assert.equal(journey.state, 'CONTINUE_LEARNING'); assert.equal(journey.quiz_version_id, ids[0]);
+  assert.equal(journey.exam.quiz_version_id, ids[1]); assert.equal(journey.latest_result_attempt_id, 'latest-result');
+  assert.ok(harness.calls.filter(c => c.rpc).every(c => c.contextVersionCount === 6), 'six independently required versions survive; other 995 publications never leave the RPC');
+  assert.equal(harness.calls.filter(c => c.table === 'quiz_versions').length, 0, 'never collect full publication metadata');
+  const untouched = await catalogHarness({ quizzes: [catalogQuiz()], quiz_versions: publications,
+    learner_program_enrollments: [{ workspace_id: workspaceId, learner_id: learnerId, status: 'active', program: { id: 'p', status: 'active' } }],
+    program_quizzes: [{ workspace_id: workspaceId, program_id: 'p', quiz_id: quiz.id, availability: 'available' }] }).run();
+  assert.equal(untouched.standalone_assessments[0].journey.state, 'NEW');
+  assert.equal(untouched.standalone_assessments[0].journey.quiz_version_id, ids.at(-1), 'untouched current publication stays current');
+});
+
+test('completed assigned version survives when latest own result belongs to another unassigned version', async () => {
+  const d = await catalogHarness({ quizzes: [catalogQuiz()], quiz_versions: versions,
+    quiz_assignments: [assignment('completed-old', 'v1', { status: 'completed' })],
+    quiz_attempts: [attempt('older-assigned-result', 'learning', 'submitted', 'v1', { submitted_at: '2026-10-08T08:00:00Z' }), attempt('newer-own-result', 'exam', 'submitted', 'v2')] }).run();
+  assert.equal(d.standalone_assessments.length, 1); assert.equal(d.standalone_assessments[0].journey.state, 'COMPLETE');
+  assert.equal(d.standalone_assessments[0].journey.result_attempt_id, 'newer-own-result');
+});
+
+test('1001 legitimate assigned activities page completely without a global catalog cap', async () => {
+  const activities = Array.from({ length: 1001 }, (_, i) => catalogQuiz({ id: `activity-${String(i).padStart(4, '0')}` }));
+  const publications = activities.map(q => version(`version-${q.id}`, 1, { quiz_id: q.id }));
+  const harness = catalogHarness({ quizzes: activities, quiz_versions: publications,
+    quiz_assignments: publications.map(v => assignment(`assignment-${v.id}`, v.id)) });
+  const result = await harness.run();
+  assert.equal(result.standalone_assessments.length, 1001);
+  assert.ok(result.standalone_assessments.every(q => q.journey.state === 'NEW' && q.journey.learning.available));
+  assert.equal(new Set(result.standalone_assessments.map(q => q.id)).size, 1001);
+  const rpc = harness.calls.filter(c => c.rpc);
+  assert.equal(rpc.filter(c => c.args.p_quiz_ids === null).length, 11, 'all discovery pages read through final cursor');
+  assert.equal(rpc.filter(c => c.args.p_quiz_ids !== null).length, 11, 'visible quiz contexts use <=100 quiz batches');
+  assert.ok(rpc.every(c => c.contextVersionCount <= 600));
+  assert.ok(harness.calls.flatMap(c => c.filters || []).filter(([kind]) => kind === 'in').every(([, , ids]) => ids.length <= JOURNEY_PAGE_SIZE));
+});
+
+test('1001 available program quizzes remain visible outside any book, with latest and original resume truth', async () => {
+  const activities = Array.from({ length: 1001 }, (_, i) => catalogQuiz({ id: `program-activity-${String(i).padStart(4, '0')}` }));
+  const publications = activities.flatMap(q => [version(`old-${q.id}`, 1, { quiz_id: q.id }), version(`latest-${q.id}`, 2, { quiz_id: q.id })]);
+  const harness = catalogHarness({ quizzes: activities, quiz_versions: publications,
+    learner_program_enrollments: [{ workspace_id: workspaceId, learner_id: learnerId, status: 'active', program: { id: 'p', status: 'active' } }],
+    program_quizzes: activities.map(q => ({ workspace_id: workspaceId, program_id: 'p', quiz_id: q.id, availability: 'available' })),
+    quiz_attempts: [attempt('program-original-active', 'exam', 'in_progress', `old-${activities.at(-1).id}`)] });
+  const result = await harness.run();
+  assert.equal(result.standalone_assessments.length, 1001); assert.equal(result.programs[0].books.length, 0);
+  assert.equal(result.standalone_assessments[0].journey.quiz_version_id, `latest-${activities[0].id}`);
+  const resumed = result.standalone_assessments.find(q => q.id === activities.at(-1).id).journey;
+  assert.equal(resumed.state, 'START_EXAM'); assert.equal(resumed.quiz_version_id, `old-${activities.at(-1).id}`);
+  assert.equal(resumed.attempt_id, 'program-original-active');
+  assert.equal(harness.calls.filter(c => c.table === 'program_quizzes').length, 11, 'program access rows also paginate rather than silently hit PostgREST row limit');
+});
+
+test('metadata pagination rejects truncation, count changes, repeats and failed later pages', async () => {
+  const page = Array.from({ length: 100 }, (_, i) => ({ id: `row-${String(i).padStart(4, '0')}` }));
+  const trace = { measure: async (_name, _options, run) => run() };
+  for (const broken of [{ data: [], count: 1 }, { data: [page.at(-1)], count: 1 }, { data: [{ id: 'row-0100' }], count: 2 },
+    { data: [{ id: 'row-0100' }], count: null }, { data: null, count: null, error: { message: 'PRIVATE_SQL_FAILURE' } }]) {
+    let calls = 0;
+    const factory = () => ({ order() { return this; }, limit(n) { assert.equal(n, 100); return this; }, gt(field, value) { assert.equal(field, 'id'); assert.equal(value, page.at(-1).id); return this; },
+      then(resolve) { return Promise.resolve(calls++ ? broken : { data: page, count: 101 }).then(resolve); } });
+    await assert.rejects(readJourneyRows(factory, trace, 'synthetic.metadata'), /^Error: JOURNEY_UNAVAILABLE$/);
+    assert.equal(calls, 2, 'failure is bounded and no partial catalog is returned');
+  }
+});
+
+test('context carriers reject missing counts, foreign scope, repeated cursors and oversized per-quiz metadata', async () => {
+  const carrier = { complete: true, quiz_ids: [quiz.id], quiz_count: 1, versions: [versions[0]], version_count: 1,
+    has_more: false, next_quiz_id: null, attempts: [], assignments: [], paper_version_ids: [] };
+  const trace = { measure: async (_name, _options, run) => run() };
+  for (const bad of [{ ...carrier, complete: false }, { ...carrier, quiz_count: 2 }, { ...carrier, quiz_ids: [] },
+    { ...carrier, versions: [] }, { ...carrier, versions: [version('foreign', 1, { workspace_id: 'foreign' })] },
+    { ...carrier, versions: [null] }, { ...carrier, attempts: [null] }, { ...carrier, assignments: [null] },
+    { ...carrier, attempts: [attempt('sibling', 'exam', 'submitted', 'v1', { learner_id: 'sibling' })] },
+    { ...carrier, attempts: [attempt('first', 'exam', 'submitted', 'v1'), attempt('second', 'exam', 'submitted', 'v1')] },
+    { ...carrier, assignments: [assignment('first'), assignment('second')] },
+    { ...carrier, paper_version_ids: ['v1', 'v1'] },
+    { ...carrier, has_more: true, next_quiz_id: quiz.id }, { ...carrier, next_quiz_id: quiz.id },
+    { ...carrier, versions: Array.from({ length: 7 }, (_, i) => version(`v${i}`, i + 1)), version_count: 7 }]) {
+    await assert.rejects(readJourneyContext({ rpc: async () => ({ data: bad }) }, workspaceId, learnerId, [quiz.id], trace), /^Error: JOURNEY_UNAVAILABLE$/);
+  }
+  const ids = Array.from({ length: 100 }, (_, i) => `quiz-${String(i).padStart(4, '0')}`);
+  const repeated = { ...carrier, quiz_ids: ids, quiz_count: 100, versions: ids.map(id => version(`v-${id}`, 1, { quiz_id: id })), version_count: 100, has_more: true, next_quiz_id: ids.at(-1) };
+  let calls = 0;
+  await assert.rejects(readJourneyContext({ rpc: async () => { calls++; return { data: repeated }; } }, workspaceId, learnerId, null, trace), /^Error: JOURNEY_UNAVAILABLE$/);
+  assert.equal(calls, 2, 'same discovery cursor is rejected before any retry loop');
+  let emptyCalls = 0;
+  await readJourneyContext({ rpc: async () => { emptyCalls++; } }, workspaceId, learnerId, [], trace);
+  assert.equal(emptyCalls, 0);
+});
+
+test('failed final context chunk rejects the whole 1001-activity read rather than returning partial success', async () => {
+  const ids = Array.from({ length: 1001 }, (_, i) => `quiz-${String(i).padStart(4, '0')}`), calls = [];
+  const admin = { rpc: async (_name, args) => {
+    calls.push(args);
+    if (calls.length === 11) return { error: { message: 'PRIVATE_FINAL_CHUNK_FAILURE' }, data: null };
+    return { data: { complete: true, quiz_ids: args.p_quiz_ids, quiz_count: args.p_quiz_ids.length,
+      versions: args.p_quiz_ids.map(id => version(`v-${id}`, 1, { quiz_id: id })), version_count: args.p_quiz_ids.length,
+      has_more: false, next_quiz_id: null, attempts: [], assignments: [], paper_version_ids: [] } };
+  } };
+  await assert.rejects(readJourneyContext(admin, workspaceId, learnerId, ids, { measure: async (_name, _opts, run) => run() }), /^Error: JOURNEY_UNAVAILABLE$/);
+  assert.equal(calls.length, 11); assert.ok(calls.every(c => c.p_quiz_ids.length <= 100 && c.p_workspace_id === workspaceId && c.p_learner_id === learnerId));
 });
 
 for (const { name, run } of checks) { await run(); console.log(`PASS ${name}`); }
