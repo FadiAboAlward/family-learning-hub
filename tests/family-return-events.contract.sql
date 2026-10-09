@@ -13,7 +13,7 @@ declare
   unknown_event constant uuid := '99000000-0000-4000-8000-000000000099';
   ordinary uuid; category_id uuid; sid uuid; sid2 uuid; legacy_id uuid;
   e1 uuid; e2 uuid; e3 uuid; foreign_event uuid; midnight1 uuid; midnight2 uuid; identity uuid;
-  result jsonb; second jsonb; original_rule jsonb; original_history jsonb; original_events bigint;
+  result jsonb; second jsonb; page_json jsonb; original_rule jsonb; original_history jsonb; original_events bigint;
   old_claim_time timestamptz := '2020-01-09T00:00:00Z'; failed boolean;
 begin
   execute $def$create or replace function pg_temp.return_assert(ok boolean,msg text) returns void
@@ -135,6 +135,32 @@ begin
     end loop;
     result:=public.flh_family_rewards_command(w,null,l1,'student_catalog',jsonb_build_object('return_event_day','2020-01-10'));
     perform pg_temp.return_assert(result->'return_events'='[]'::jsonb,'learner catalog exposes no parent occasion list');
+    result:=public.flh_family_rewards_command(w,owner_id,null,'parent_catalog',jsonb_build_object('return_event_day','2020-01-10','return_event_page_size',1));
+    page_json:=public.flh_family_rewards_command(w,owner_id,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10','return_event_page_size',1));
+    perform pg_temp.return_assert(page_json->'return_events'=result->'return_events'
+      and page_json->'return_event_next_cursor'=result->'return_event_next_cursor'
+      and (select array_agg(k order by k) from jsonb_object_keys(page_json) k)=array['ok','return_event_day','return_event_next_cursor','return_events'],'page-only carrier matches initial catalog page and omits all dashboard aggregates');
+    second:=public.flh_family_rewards_command(w,owner_id,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10','return_event_page_size',1,
+      'return_event_before_at',page_json->'return_event_next_cursor'->>'occurred_at','return_event_before_id',page_json->'return_event_next_cursor'->>'id'));
+    perform pg_temp.return_assert(jsonb_array_length(second->'return_events')=1 and second->'return_events'->0->>'id'<>page_json->'return_events'->0->>'id','page-only keyset request advances without replaying the first page');
+    result:=public.flh_family_rewards_command(w,admin_id,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10'));
+    perform pg_temp.return_assert(jsonb_array_length(result->'return_events')=3
+      and not exists(select 1 from jsonb_array_elements(result->'return_events') e where e ?| array['created_by','request_payload','idempotency_key'] or e->>'id'=foreign_event::text),'admin page-only carrier retains safe same-workspace context');
+    foreach identity in array array[teacher_id,outsider_id] loop
+      result:=public.flh_family_rewards_command(w,identity,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10'));
+      perform pg_temp.return_assert(result->>'error'='PARENT_MANAGE_FORBIDDEN','page-only reads deny teacher/foreign identities');
+    end loop;
+    result:=public.flh_family_rewards_command(other_w,admin_id,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10'));
+    perform pg_temp.return_assert(result->>'error'='PARENT_MANAGE_FORBIDDEN','membership in another workspace cannot read the foreign event page');
+    result:=public.flh_family_rewards_command(w,null,l1,'return_events_list',jsonb_build_object('return_event_day','2020-01-10'));
+    perform pg_temp.return_assert(result->>'error'='PARENT_MANAGE_FORBIDDEN','learner cannot access the parent page-only action');
+    result:=public.flh_family_rewards_command(w,owner_id,null,'return_events_list',jsonb_build_object('return_event_day','not-a-day'));
+    perform pg_temp.return_assert(result->>'error'='INVALID_INPUT','page-only action rejects malformed dates');
+    result:=public.flh_family_rewards_command(w,owner_id,null,'return_events_list',jsonb_build_object('return_event_day','2020-01-10','return_event_before_at','2020-01-10T07:00:00Z'));
+    perform pg_temp.return_assert(result->>'error'='INVALID_INPUT','page-only action requires a complete cursor pair');
+    perform pg_temp.return_assert((select reward_points=24 and xp=100 from public.learner_gamification_state where learner_id=l1)
+      and(select reward_points=2 and xp=200 from public.learner_gamification_state where learner_id=l2)
+      and(select count(*)=original_events+4 from public.family_return_events),'successful and denied page-only reads grant no points and create no occasions');
     execute 'reset role';
     -- RLS cannot turn a missing table grant into zero visible rows. Direct
     -- owner/admin/teacher/foreign-parent/learner reads must fail with 42501.

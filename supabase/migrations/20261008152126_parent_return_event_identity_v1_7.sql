@@ -240,11 +240,11 @@ begin
     return jsonb_build_object('ok',true,'ledger',v_page,'next_cursor',v_cursor);
   end if;
 
-  if p_action in ('parent_catalog','student_catalog') then
-    if p_action = 'parent_catalog' and not v_parent then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN'); end if;
+  if p_action in ('parent_catalog','student_catalog','return_events_list') then
+    if p_action in ('parent_catalog','return_events_list') and not v_parent then return jsonb_build_object('error','PARENT_MANAGE_FORBIDDEN'); end if;
     select coalesce(array_agg(id),'{}'::uuid[]) into v_ids from public.learners where workspace_id = p_workspace_id and is_active and
       case when p_action = 'student_catalog' then id = p_learner_id when coalesce((p_payload->>'test_only')::boolean,false) then coalesce((metadata->>'is_test')::boolean,false) else not coalesce((metadata->>'is_test')::boolean,false) and not coalesce((metadata->>'exclude_from_parent_metrics')::boolean,false) end;
-    if p_action='parent_catalog' then
+    if p_action in ('parent_catalog','return_events_list') then
       begin
         v_return_day := coalesce(nullif(p_payload->>'return_event_day','')::date,(v_now at time zone 'Europe/Istanbul')::date);
         v_return_before := nullif(p_payload->>'return_event_before_at','')::timestamptz;
@@ -271,6 +271,12 @@ begin
       if jsonb_array_length(v_return_page)=v_page_size then
         v_return_cursor := jsonb_build_object('occurred_at',v_return_page->(v_page_size-1)->>'occurred_at','id',v_return_page->(v_page_size-1)->>'id');
       end if;
+    end if;
+    -- Page-only reads reuse the same authorization, visible-learner scope and
+    -- keyset query, then stop before full catalog/history aggregates.
+    if p_action='return_events_list' then
+      return jsonb_build_object('ok',true,'return_events',v_return_page,
+        'return_event_day',v_return_day,'return_event_next_cursor',v_return_cursor);
     end if;
     return jsonb_build_object(
       'ok',true,

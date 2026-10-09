@@ -339,7 +339,7 @@
     view.returnPages.set(day,page);
     view.root.querySelectorAll('[data-fr-return-context]').forEach(control=>syncReturnControl(view,control));
     try{
-      const result=await call(view,'parent_rewards_dashboard',{return_event_day:day,...(cursor?{return_event_before_at:cursor.occurred_at,return_event_before_id:cursor.id}:{})});
+      const result=await call(view,'return_events_list',{return_event_day:day,...(cursor?{return_event_before_at:cursor.occurred_at,return_event_before_id:cursor.id}:{})});
       if(!current(view)||view.returnPages.get(day)?.serial!==serial)return;
       for(const event of result.return_events||[])view.returnEvents.set(event.id,event);
       page.rows=[...new Map([...page.rows,...(result.return_events||[])].map(event=>[event.id,event])).values()];

@@ -23,6 +23,14 @@ for(const action of ['behavior_review','behavior_record']){
 }
 await executeFamilyRewardsAction('parent_rewards_dashboard',{return_event_day:'2020-01-01',return_event_before_at:'2020-01-01T07:00:00Z',return_event_before_id:event,return_event_page_size:20,workspace_id:event},deps);
 assert.deepEqual(calls.at(-1).args.p_payload,{return_event_day:'2020-01-01',return_event_before_at:'2020-01-01T07:00:00Z',return_event_before_id:event,return_event_page_size:20},'only bounded day/cursor context crosses parent catalog boundary');
+await executeFamilyRewardsAction('return_events_list',{return_event_day:'2020-01-01',return_event_before_at:'2020-01-01T07:00:00Z',return_event_before_id:event,return_event_page_size:20,test_only:true,workspace_id:event,actor_id:event,learner_id:event,created_by:event,total_points:900},deps);
+assert.deepEqual(calls.at(-1).args,{p_workspace_id:workspace,p_actor_id:parent,p_learner_id:null,p_action:'return_events_list',p_payload:{return_event_day:'2020-01-01',return_event_before_at:'2020-01-01T07:00:00Z',return_event_before_id:event,return_event_page_size:20}},'occasion pagination forwards only its four bounded filters and verified parent scope');
+for(const role of ['teacher','viewer',null]){
+  const before=calls.length;
+  await assert.rejects(()=>executeFamilyRewardsAction('return_events_list',{}, {...deps,parentIdentity:async()=>({user:{id:parent},member:{role}})}),/NOT_REWARDS_ADMIN/);
+  assert.equal(calls.length,before,'unauthorized occasion reads stop before the privileged carrier');
+}
+await assert.rejects(()=>executeFamilyRewardsAction('return_events_list',{}, {...deps,parentIdentity:async()=>{throw new Error('AUTH_REQUIRED');}}),/AUTH_REQUIRED/,'a learner cannot use parent occasion pagination');
 await executeFamilyRewardsAction('student_rewards_dashboard',{return_event_day:'2020-01-01'},deps);
 assert.deepEqual(calls.at(-1).args.p_payload,{},'child catalog cannot query parent occasion context');
 for(const code of ['RETURN_EVENT_REQUIRED','RETURN_EVENT_NOT_FOUND','INVALID_RETURN_EVENT','RETURN_EVENT_IMMUTABLE'])assert.equal(publicRewardsError({message:code}),code);

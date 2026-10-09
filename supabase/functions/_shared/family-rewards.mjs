@@ -3,6 +3,7 @@ const parentActions = new Map([
   ['parent_rewards_dashboard', 'parent_catalog'],
   ['parent_rewards_ledger', 'parent_ledger'],
   ['parent_behavior_report', 'parent_report'],
+  ['return_events_list', 'return_events_list'],
   ...['category_save', 'rule_save', 'reward_save', 'behavior_record', 'behavior_review',
     'reward_review', 'reward_redeem', 'points_adjust', 'return_event_create'].map(action => [action, action]),
 ]);
@@ -15,6 +16,7 @@ const learnerActions = new Map([
 ]);
 const fields = {
   parent_catalog: ['test_only', 'return_event_day', 'return_event_before_at', 'return_event_before_id', 'return_event_page_size'],
+  return_events_list: ['return_event_day', 'return_event_before_at', 'return_event_before_id', 'return_event_page_size'],
   student_catalog: [],
   parent_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],
   student_ledger: ['before_id', 'page_size', 'category_id', 'source_type'],

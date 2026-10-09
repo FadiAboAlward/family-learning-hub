@@ -45,14 +45,21 @@ export function createRewardsFixture() {
     return event;
   };
   catalog.ledger.push({ id: id(), learner_id: LEARNER_ID, event_type: 'quiz_completed', reward_points_delta: 20, xp_delta: 100, source_type: 'quiz', source_id: 'qa-academic-attempt', reason: 'إكمال تدريب الاختبار', metadata: { status: 'approved' }, created_at: NOW });
+  const returnPage=(query={})=>{
+    const day=query.return_event_day||localDay(Date.now()),size=Math.max(1,Math.min(100,Number(query.return_event_page_size)||50));
+    const rows=catalog.return_events.filter(event=>localDay(event.occurred_at)===day
+      &&(!query.return_event_before_at||Date.parse(event.occurred_at)<Date.parse(query.return_event_before_at)
+        ||(Date.parse(event.occurred_at)===Date.parse(query.return_event_before_at)&&event.id<query.return_event_before_id)))
+      .sort((a,b)=>Date.parse(b.occurred_at)-Date.parse(a.occurred_at)||b.id.localeCompare(a.id)).slice(0,size)
+      .map(event=>({id:event.id,occurred_at:event.occurred_at,created_at:event.created_at,awarded_learner_ids:catalog.submissions.filter(row=>row.status==='approved'&&row.learner_id===LEARNER_ID&&row.return_event_id===event.id).map(row=>row.learner_id)}));
+    const last=rows.at(-1);
+    return{ok:true,return_event_day:day,return_events:clone(rows),return_event_next_cursor:rows.length===size?{occurred_at:last.occurred_at,id:last.id}:null};
+  };
   const snapshot = (role,query={}) => {
     const value = clone(catalog);
     value.submissions.forEach(row=>row.possible_duplicate=catalog.submissions.some(other=>other.id!==row.id&&other.status==='approved'&&other.learner_id===row.learner_id&&other.rule_id===row.rule_id&&(row.rule_id===GREETING_ID?row.return_event_id&&other.return_event_id===row.return_event_id:other.occurred_at===row.occurred_at)));
     value.ok = true;
-    const eventDay=query.return_event_day||localDay(Date.now());
-    value.return_event_day=role==='parent'?eventDay:null;
-    value.return_events=role==='parent'?catalog.return_events.filter(event=>localDay(event.occurred_at)===eventDay).map(event=>({...clone(event),awarded_learner_ids:catalog.submissions.filter(row=>row.status==='approved'&&row.return_event_id===event.id).map(row=>row.learner_id)})):[];
-    value.return_event_next_cursor=null;
+    Object.assign(value,role==='parent'?returnPage(query):{return_event_day:null,return_events:[],return_event_next_cursor:null});
     const breakdown = new Map();
     for (const row of catalog.ledger) {
       const key = `${row.metadata?.category_id || ''}:${row.source_type}`;
@@ -216,6 +223,7 @@ export function createRewardsFixture() {
       if (action === 'learner_choices') return respond({ learners: [learner] });
       if (action === 'student_login') return respond({ session: 'mock-rewards-testing-learner', profile: { learner, gamification: { ...state, badges: [], rewards: catalog.rewards } } });
       if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner',body));
+      if (action === 'return_events_list') return respond(returnPage(body));
       if (action === 'parent_rewards_ledger' || action === 'student_rewards_ledger') {
         const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || (body.source_type === 'academic' ? academicSource(row.source_type) : row.source_type === body.source_type)));
         return respond({ ledger: clone(ledger), next_cursor: null });
@@ -1035,6 +1043,31 @@ async function runBrowserSuite() {
     await sameClockControl.locator('[data-fr-return-select]').selectOption(thirdEvent.id);
     assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'changing to a distinct occasion removes the stale warning immediately');
     assert.equal(server.state.reward_points,warningBalance,'warning and selection changes award zero');
+    // Old-day loading, keyset More, refresh and recovery use only the bounded
+    // carrier. Several greeting controls must not cause full dashboard reads.
+    const pageDay='2020-02-01',pageStart=Date.parse(`${pageDay}T08:00:00Z`);
+    const pageEvents=Array.from({length:51},(_,index)=>({id:`99100000-0000-4000-8000-${String(index+1).padStart(12,'0')}`,occurred_at:new Date(pageStart+index*60000).toISOString(),created_at:NOW}));
+    server.catalog.return_events.push(...pageEvents);
+    const beforePageDashboard=server.calls.filter(call=>call.action==='parent_rewards_dashboard').length;
+    const firstPage=responseFor(page,'return_events_list');
+    await sameClockControl.locator('[data-fr-return-day]').fill(pageDay);await sameClockControl.locator('[data-fr-return-day]').dispatchEvent('change');await firstPage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents.at(-1).id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),51,'first event page is bounded to 50 plus its placeholder');
+    assert.equal(await sameClockControl.locator('[data-fr-return-more]').isVisible(),true,'a cursor exposes More for this day');
+    const morePage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-more]').click();await morePage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents[0].id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),52,'More appends the next unique event instead of replacing or duplicating the first page');
+    assert.equal(await sameClockControl.locator('[data-fr-return-more]').isHidden(),true,'a short final page hides More');
+    const pageCall=server.calls.filter(call=>call.action==='return_events_list').at(-1);
+    assert.equal(pageCall.return_event_day,pageDay);assert.ok(pageCall.return_event_before_at&&pageCall.return_event_before_id,'More sends both immutable cursor fields');
+    server.failBefore('return_events_list');
+    const failedPage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-load]').click();await failedPage;
+    await sameClockControl.locator('.fr-return-message').getByText(/تعذر تحميل المناسبات/).waitFor({state:'visible'});
+    const reloadPage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-load]').click();await reloadPage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents.at(-1).id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),51,'reload recovers with a fresh first page');
+    assert.equal(server.calls.filter(call=>call.action==='parent_rewards_dashboard').length,beforePageDashboard,'day/More/reload/recovery never reload the full parent dashboard');
+    assert.equal(server.state.reward_points,warningBalance,'event pagination and errors create no financial award');
     await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-results.png`,fullPage:true});
     }
 
