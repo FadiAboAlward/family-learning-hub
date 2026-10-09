@@ -1,4 +1,4 @@
-import { launchMockQaBrowser } from './qa-isolation.mjs';
+﻿import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -239,6 +239,4 @@ if(errors.length)throw new Error(errors.join('; '));
 mark('passed',{learnWidth,examWidth});
 console.log(`Smoke passed: Learning width=${Math.round(learnWidth)}px, Exam width=${Math.round(examWidth)}px, misconception-specific retry feedback, A-F labels, one-click flows, and RTL-safe math are active in Learning, Exam, and review.`);
 await browser.close();
-
-
 

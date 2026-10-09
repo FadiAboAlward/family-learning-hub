@@ -1,4 +1,4 @@
-import { launchMockQaBrowser } from './qa-isolation.mjs';
+﻿import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -62,5 +62,4 @@ await shot('04-exam-review');
 fs.writeFileSync(`${OUTPUT_DIR}/manifest.json`,JSON.stringify({generated_at:new Date().toISOString(),head_sha:(process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA)||null,run_id:process.env.GITHUB_RUN_ID||null,source:'mocked local Browser smoke',retention_days:7,files:['01-learning-math.png','02-learning-review.png','03-exam-math.png','04-exam-review.png'].flatMap(name=>[name,name.replace('.png','-desktop.png')])},null,2));
 console.log(`Screenshot evidence captured in ${OUTPUT_DIR}/ (8 PNGs, temporary GitHub artifact retention: 7 days).`);
 await browser.close();
-
 
