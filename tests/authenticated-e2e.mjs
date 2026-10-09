@@ -111,6 +111,24 @@ export async function assertQaResume(config, session, endpoint, action, fetchImp
   if (await request() !== await request()) throw new Error('QA_LOCAL_RESUME_ID_CHANGED');
 }
 
+/** Verify the submitted synthetic result while preserving a collapsed correct-answer group. */
+export async function assertQaExamCompletion(page) {
+  await page.locator('#examHome').waitFor({ state: 'visible', timeout: 30000 });
+  await page.getByText('100%', { exact: true }).waitFor({ state: 'visible', timeout: 30000 });
+  const reviews = page.locator('.exam-review');
+  await reviews.first().waitFor({ state: 'attached', timeout: 30000 });
+  if (await reviews.count() !== QA_QUESTION_COUNT) throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+  const grouped = page.locator('.flh-correct-review');
+  const groupCount = await grouped.count();
+  if (groupCount) {
+    if (groupCount !== 1) throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+    await grouped.locator(':scope > summary').waitFor({ state: 'visible', timeout: 30000 });
+    if (await grouped.getAttribute('open') !== null || await page.locator('.exam-review-wrong').count() !== 0) {
+      throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+    }
+  } else await reviews.first().waitFor({ state: 'visible', timeout: 30000 });
+}
+
 /** Synthetic parent's real Auth password grant and existing membership-bound API. */
 export async function assertQaParent(config, email, password, fetchImpl = fetch) {
   if (!email || !password) throw new Error('QA_LOCAL_PARENT_CONFIG_REQUIRED');
@@ -262,7 +280,7 @@ async function main() {
           return button && !button.disabled;
         }, null, { timeout: 10000 });
         await submit.click();
-        await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
+        await assertQaExamCompletion(page);
         });
 
         const attemptId = await runAuthenticatedStage('ATTEMPT_DISCOVERY', async () => {
