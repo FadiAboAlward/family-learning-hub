@@ -248,6 +248,7 @@ jobs:
             performance-summary.md
             parent-prefetch-performance-report.json
             parent-prefetch-performance-summary.md
+          retention-days: 7
           if-no-files-found: ignore
       - name: Run rendered Arabic copy QA
         env:
