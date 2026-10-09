@@ -185,7 +185,9 @@
       const source = text.slice(start, end);
       const nextStart = end - 1;
       const after = end < text.length ? text[end] : '';
-      if ((after && LETTER_OR_DIGIT.test(after)) || /^[A-Z][A-Z0-9_]*-[0-9]+$/.test(source)) { start = nextStart; continue; }
+      // Arabic unit suffixes stay outside the math run; Latin identifiers,
+      // trailing digits/marks and code-like tokens retain their lexical guard.
+      if ((after && /[\p{Script=Latin}\p{N}\p{M}_]/u.test(after)) || /^[A-Z][A-Z0-9_]*-[0-9]+$/.test(source)) { start = nextStart; continue; }
       // Do not turn prose words/identifiers or a standalone letter into math.
       if (!/[0-9٠-٩]/.test(source) && !/[=<>≤≥≠+\-−×÷*/^√]/.test(source)) continue;
       if (start > last) out.push({text: text.slice(last, start), math: false});

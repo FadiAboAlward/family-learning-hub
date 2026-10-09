@@ -17,6 +17,8 @@ try{
       <div class="question" id="wrappedQuestion">احسب: ${window.math('19 - (-7)')}</div>
       <div class="question" id="fallbackQuestion">احسب: (-7) - 19</div>
       <div class="review-body" id="negativeAnswer">إجابتك: -26</div>
+      <div class="question" id="arabicUnit">احسب: ${window.math('20 - 5 = 15س')}</div>
+      <div class="question" id="arabicUnitFallback">احسب: ٢٠ - ٥ = ١٥سم</div>
       <div class="question" id="latexFraction">Kesir: ${window.math('\\frac{9}{8}')}</div>
       <div class="question" id="nestedFraction">احسب: ${window.math('(1/2 + 3/4) × 2 = 2.5')}</div>
       <div class="question" id="fractionDivide">احسب: ${window.math('1/2 ÷ 3/4')}</div>
@@ -63,16 +65,18 @@ try{
       return new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size;
     };
     const prose={intrinsicWidth:document.getElementById('intrinsicProse').getBoundingClientRect().width,naturalWidth:document.getElementById('naturalProse').getBoundingClientRect().width,wordLines:textLines('intrinsicProse'),signedLines:textLines('negativeAnswer','.flh-math-ltr'),longText:document.getElementById('longArabic').textContent,longFits:document.getElementById('longArabic').scrollWidth<=document.getElementById('longArabic').clientWidth+1};
-    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0,wrapperCount:frac?Number(Boolean(fracWrapper)):0,wrapperDirection:fracWrapperStyle?.direction||'',wrapperUnicodeBidi:fracWrapperStyle?.unicodeBidi||''},fractionDivide:fractionOperands('fractionDivide'),numberDivide:fractionOperands('numberDivide'),fractionProduct:fractionOperands('fractionProduct'),prose,nested:structure('nestedFraction'),powerRoot:structure('powerRoot'),unicodePower:structure('unicodePower'),longPower:structure('longPower'),oversizedFallback:document.getElementById('oversizedFallback').textContent,fallbackRoot:structure('fallbackRoot'),partialCount:document.getElementById('partialMarkup').querySelectorAll('bdi').length,invalid:{text:document.getElementById('invalidMath').textContent,unsafe:document.getElementById('invalidMath').querySelector('img,script')!==null},overflow:document.documentElement.scrollWidth>innerWidth,input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi||'',value:input.value}};
+    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),arabicUnit:{...inspect('arabicUnit'),suffix:document.querySelector('#arabicUnit .flh-math-ltr')?.nextSibling?.textContent},arabicUnitFallback:{...inspect('arabicUnitFallback'),suffix:document.querySelector('#arabicUnitFallback .flh-math-ltr')?.nextSibling?.textContent},latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0,wrapperCount:frac?Number(Boolean(fracWrapper)):0,wrapperDirection:fracWrapperStyle?.direction||'',wrapperUnicodeBidi:fracWrapperStyle?.unicodeBidi||''},fractionDivide:fractionOperands('fractionDivide'),numberDivide:fractionOperands('numberDivide'),fractionProduct:fractionOperands('fractionProduct'),prose,nested:structure('nestedFraction'),powerRoot:structure('powerRoot'),unicodePower:structure('unicodePower'),longPower:structure('longPower'),oversizedFallback:document.getElementById('oversizedFallback').textContent,fallbackRoot:structure('fallbackRoot'),partialCount:document.getElementById('partialMarkup').querySelectorAll('bdi').length,invalid:{text:document.getElementById('invalidMath').textContent,unsafe:document.getElementById('invalidMath').querySelector('img,script')!==null},overflow:document.documentElement.scrollWidth>innerWidth,input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi||'',value:input.value}};
   });
 
   const assert=(ok,msg)=>{if(!ok)throw new Error(`${msg}\n${JSON.stringify(result,null,2)}`)};
   assert(result.wrapped.mathText==='19 - (-7)','Wrapped mixed Arabic/math question did not preserve source order.');
   assert(result.fallback.mathText==='(-7) - 19','DOM fallback did not preserve the opposite operand order.');
   assert(result.answer.mathText==='-26','Negative answer did not preserve the leading minus.');
+  assert(result.arabicUnit.text==='احسب: 20 - 5 = 15س'&&result.arabicUnit.mathText==='20 - 5 = 15'&&result.arabicUnit.suffix==='س','An adjacent Arabic unit must stay outside the complete mathematical LTR run.');
+  assert(result.arabicUnitFallback.text==='احسب: ٢٠ - ٥ = ١٥سم'&&result.arabicUnitFallback.mathText==='٢٠ - ٥ = ١٥'&&result.arabicUnitFallback.suffix==='سم','DOM fallback must preserve Arabic digits and their adjacent Arabic unit.');
   assert(result.latex.fracCount===1&&!result.latex.text.includes('\\frac'),'LaTeX-style fraction did not render through the shared fraction markup.');
   assert(result.latex.wrapperCount===1&&result.latex.wrapperDirection==='ltr'&&result.latex.wrapperUnicodeBidi==='isolate','Rendered fraction must stay inside one LTR bidi-isolation wrapper.');
-  for(const entry of [result.wrapped,result.fallback,result.answer]){
+  for(const entry of [result.wrapped,result.fallback,result.answer,result.arabicUnit,result.arabicUnitFallback]){
     assert(entry.dir==='ltr'&&entry.direction==='ltr',`Math run is not LTR: ${entry.mathText}`);
     assert(entry.unicodeBidi==='isolate',`Math run is not bidi-isolated: ${entry.mathText}`);
   }

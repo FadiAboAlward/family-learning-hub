@@ -7,7 +7,7 @@ const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 const errors=[];
 const calls={draft:0,answer:0,examSave:0,profile:0};
-const fractionOperandPrompt='؛ الكسور: 1/2 ÷ 3/4؛ ثم 6 ÷ 2/3؛ ثم 2/3 × 3/4';
+const fractionOperandPrompt='؛ الكسور: 1/2 ÷ 3/4؛ ثم 6 ÷ 2/3؛ ثم 2/3 × 3/4؛ ثم 20 - 5 = 15س';
 const mark=(stage,extra={})=>fs.writeFileSync('smoke-debug.json',JSON.stringify({stage,...extra,errors,calls},null,2));
 page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
 page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
@@ -70,6 +70,16 @@ async function assertFractionOperands(scope,label){
   if(await scope.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw new Error(`${label}: rendered math caused horizontal overflow`);
 }
 
+/** Keep an Arabic unit outside the painted full expression on mode/review UI. */
+async function assertArabicUnit(scope,label){
+  await assertMath(scope,'20 - 5 = 15',label);
+  const intact=await scope.evaluate(root=>{
+    const math=[...root.querySelectorAll('.flh-math-ltr')].find(node=>node.textContent==='20 - 5 = 15');
+    return Boolean(math&&math.getBoundingClientRect().width>0&&root.textContent.includes('20 - 5 = 15س')&&math.nextSibling?.textContent.startsWith('س'));
+  });
+  if(!intact)throw new Error(`${label}: the adjacent Arabic unit was lost or included inside the mathematical LTR wrapper`);
+}
+
 let examRewardApplied=false,delayNextProfile=false,signalDelayedProfileCaptured;
 const delayedProfileCaptured=new Promise(resolve=>{signalDelayedProfileCaptured=resolve;});
 const profile={learner:{id:'qa-learner',display_name:'طالب Testing',slug:'test',grade_level:7,is_test:true,avatar_emoji:'🧪'},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}};
@@ -98,6 +108,7 @@ mark('learning-open');
 await assertUnfinishedMath(page.locator('.question'),'19 - (-7)','Learning unanswered question');
 await assertStructuredMath(page.locator('.question'),'(1/2 + 3/4) × 2 = 2.5','Learning nested fractions',{fractions:2});
 await assertFractionOperands(page.locator('.question'),'Learning fraction operands');
+await assertArabicUnit(page.locator('.question'),'Learning Arabic unit');
 await assertMath(page.locator('.flh-learn-answer').first(),'-26','Learning negative option');
 mark('math-learning-verified');
 await page.waitForFunction(()=>[...document.querySelectorAll('.flh-learn-answer .answer-number')].map(x=>x.textContent.trim()).join(',')==='A,B');
@@ -132,6 +143,7 @@ await assertMath(page.locator('.exam-review').first(),'19 - (-7) = 26','Learning
 mark('math-learning-review-verified');
 await assertStructuredMath(page.locator('.exam-review').first(),'(1/2 + 3/4) × 2 = 2.5','Learning completed nested fractions',{fractions:2});
 await assertFractionOperands(page.locator('.exam-review').first(),'Learning completed fraction operands');
+await assertArabicUnit(page.locator('.exam-review').first(),'Learning completed Arabic unit');
 
 await page.evaluate(()=>window.FLH.startExamQuiz('qa-unit'));
 await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
@@ -139,6 +151,7 @@ mark('exam-open',{learnWidth});
 await assertUnfinishedMath(page.locator('.question'),'(-7) - 19','Exam unanswered question');
 await assertStructuredMath(page.locator('.question'),'(-3)^2 + sqrt(16) = 13','Exam power and root',{powers:1,roots:1});
 await assertFractionOperands(page.locator('.question'),'Exam fraction operands');
+await assertArabicUnit(page.locator('.question'),'Exam Arabic unit');
 await assertMath(page.locator('.exam-v3-answer').first(),'-26','Exam negative option');
 mark('math-exam-verified');
 await page.waitForFunction(()=>[...document.querySelectorAll('.exam-v3-answer .answer-number')].map(x=>x.textContent.trim()).join(',')==='A,B');
@@ -180,6 +193,7 @@ await assertMath(wrongReview,'(-7) - 19 = -26','Exam review explanation');
 mark('math-review-verified',{learnWidth,examWidth});
 await assertStructuredMath(wrongReview,'(-3)^2 + sqrt(16) = 13','Submitted Exam power and root',{powers:1,roots:1});
 await assertFractionOperands(wrongReview,'Submitted Exam fraction operands');
+await assertArabicUnit(wrongReview,'Submitted Exam Arabic unit');
 
 await page.evaluate(()=>{
   window.__qaExamOriginalHome=renderStudentHome;window.__qaExamHomeCalls=0;

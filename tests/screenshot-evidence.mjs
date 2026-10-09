@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const OUTPUT_DIR='playwright-screenshots';
-const fractionOperandPrompt='؛ الكسور: 1/2 ÷ 3/4؛ ثم 6 ÷ 2/3؛ ثم 2/3 × 3/4';
+const fractionOperandPrompt='؛ الكسور: 1/2 ÷ 3/4؛ ثم 6 ÷ 2/3؛ ثم 2/3 × 3/4؛ ثم 20 - 5 = 15س';
 fs.mkdirSync(OUTPUT_DIR,{recursive:true});
 
 const browser=await launchMockQaBrowser(chromium,BASE_URL);

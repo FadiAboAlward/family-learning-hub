@@ -34,6 +34,28 @@ for(const [source,classes] of corpus){
   assert.equal(isolateMathHtml(html),html,'Rendering must remain idempotent');
 }
 
+// An adjacent Arabic unit is prose outside the complete LTR expression,
+// rather than a Latin mathematical identifier that invalidates that run.
+for(const [expression,unit] of [
+  ['20 - 5 = 15','س'],
+  ['٢٠ - ٥ = ١٥','سم'],
+  ['-26','كغ'],
+  ['2/3 + 1/3 = 1','م'],
+  ['(-3)^2 = 9','سم²']
+]){
+  const source=`احسب: ${expression}${unit}`;
+  const parts=splitMathText(source),runs=parts.filter(part=>part.math);
+  assert.equal(runs.length,1,'An Arabic unit must retain the preceding complete math run');
+  assert.equal(runs[0].text,expression,source);
+  assert.equal(parts.map(part=>part.text).join(''),source,'Arabic-unit isolation must preserve every authored character');
+  const html=isolateMathHtml(source);
+  assert.ok(html.endsWith(`</bdi>${unit}`),'The Arabic unit must stay outside the LTR math wrapper');
+  assert.equal(isolateMathHtml(html),html,'Arabic-unit rendering must remain idempotent');
+}
+for(const source of ['20 - 5 = 15cm','-26kg','15öğrenci','2x','x2','٣٥abc','الوحدة2','Q-20260907401','QA_LTR-1']){
+  assert.equal(isolateMathHtml(source),source,'Latin identifiers and code-like prose must remain unchanged');
+}
+
 // Slash notation is a fraction operand, including beside × and ÷. A fraction
 // bar must not swallow an earlier multiplication/division into its numerator.
 for(const [source,operator,left,right] of [
