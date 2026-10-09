@@ -255,4 +255,8 @@ assert.doesNotMatch(workflow, /path: qa-authenticated-evidence\//, 'artifacts en
 const fixture = fs.readFileSync('tests/qa-authenticated-local.fixtures.sql', 'utf8');
 assert.doesNotMatch(fixture, /grant\s|disable.*(?:trigger|row level)|replication_role|insert into public\.quiz_attempts|\b(?:aya|mohammad)\b/i);
 assert.match(fixture, /technical_qa/); assert.match(fixture, /for position in 1\.\.3/);
+const keyLiteral = fixture.match(/insert into public\.quiz_question_answer_keys\([^;]+values\(workspace,question,'([^']+)'/);
+assert.ok(keyLiteral, 'the synthetic MCQ fixture must provide its server-side grading key');
+assert.deepEqual(JSON.parse(keyLiteral[1]), { option_position: 1 }, 'the real MCQ grader consumes option_position; the legacy position field caused ANSWER_KEY_NOT_FOUND');
+assert.match(fixture, /QA_LOCAL_ANSWER_KEY_INVALID/, 'a mismatched fixture key must fail SQL preflight before the browser');
 console.log('Authenticated Runner config/actual CLI zero-transport guards, owned target/teardown, hidden-key resume, parent Auth cleanup, local-only workflow and synthetic fixture regressions passed. No Docker/backend/network executed.');
