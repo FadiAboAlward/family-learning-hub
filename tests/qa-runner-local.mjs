@@ -96,6 +96,25 @@ const commands = new Set(['supabase_start', 'supabase_db_reset', 'supabase_statu
   'git_head', 'git_tracked_sources', 'node_authenticated_browser', 'python_local_server', 'unknown_command']);
 const categories = new Set(['CONFIG_INVALID', 'DOCKER_UNAVAILABLE', 'DISK_FULL', 'IMAGE_PULL_FAILED', 'HEALTH_CHECK_FAILED', 'PORT_IN_USE',
   'PERMISSION_DENIED', 'DATABASE_OR_MIGRATION_FAILED', 'LOCAL_TRANSPORT_FAILED', 'EXECUTABLE_OR_FILE_MISSING', 'PROCESS_TIMEOUT', 'UNKNOWN_FAILURE']);
+const authenticatedFailures = new Set(['OIDC_URL_REJECTED', 'OIDC_ENV_MISSING', 'OIDC_REQUEST_FAILED', 'OIDC_TOKEN_MISSING',
+  'ATTESTATION_FAILED', 'TESTING_CONFIG_INVALID', 'MODULE_MISSING', 'BROWSER_EXECUTABLE_MISSING', 'AUTH_PREPARE_FAILED', 'AUTH_CLEANUP_FAILED', 'UNCLASSIFIED']);
+
+/** Match fixed error identities only; captured URLs, tokens and response bodies never escape. */
+function authenticatedProcessFailure(stderr) {
+  for (const [pattern, code] of [
+    [/Error: QA_OIDC_URL_INVALID(?:\r?\n|$)/, 'OIDC_URL_REJECTED'],
+    [/Error: GitHub OIDC environment is unavailable(?:\r?\n|$)/, 'OIDC_ENV_MISSING'],
+    [/Error: GitHub OIDC request failed: \d{3}(?:\r?\n|$)/, 'OIDC_REQUEST_FAILED'],
+    [/Error: GitHub OIDC token missing(?:\r?\n|$)/, 'OIDC_TOKEN_MISSING'],
+    [/Error: QA_ISOLATION_ATTESTATION_FAILED(?:\r?\n|$)/, 'ATTESTATION_FAILED'],
+    [/Error: QA_(?:ISOLATION_CONFIG_REQUIRED|ISOLATION_URL_INVALID|ISOLATION_IDENTITY_MISMATCH|PUBLISHABLE_KEY_REQUIRED|PUBLISHABLE_KEY_INVALID|APP_URL_INVALID|APP_MUST_BE_LOCAL)(?:\r?\n|$)/, 'TESTING_CONFIG_INVALID'],
+    [/Error \[ERR_MODULE_NOT_FOUND\]:/, 'MODULE_MISSING'],
+    [/browserType\.launch: Executable doesn't exist/, 'BROWSER_EXECUTABLE_MISSING'],
+    [/Error: QA auth prepare failed: \d{3}(?: [A-Z_]+)?(?:\r?\n|$)/, 'AUTH_PREPARE_FAILED'],
+    [/Error: QA auth cleanup failed: \d{3}(?: [A-Z_]+)?(?:\r?\n|$)/, 'AUTH_CLEANUP_FAILED'],
+  ]) if (pattern.test(String(stderr))) return code;
+  return 'UNCLASSIFIED';
+}
 
 /** Fixed identities/categories only; never return the command line or captured stderr. */
 export function qaProcessDiagnostic(file, args, stderr, exitCode, reason = 'FAILED') {
@@ -132,11 +151,13 @@ export function qaProcessDiagnostic(file, args, stderr, exitCode, reason = 'FAIL
   ]) if (pattern.test(String(stderr))) { category = label; break; }
   if (reason === 'FAILED' && exitCode === 127) category = 'EXECUTABLE_OR_FILE_MISSING';
   // -1 explicitly means no process exit status (spawn failure/timeout), not a fabricated exit code.
-  return Object.freeze({ command, exit_code: Number.isInteger(exitCode) ? exitCode : -1, exit_kind: Number.isInteger(exitCode) ? 'PROCESS_EXIT' : 'NO_PROCESS_EXIT', category });
+  return Object.freeze({ command, exit_code: Number.isInteger(exitCode) ? exitCode : -1, exit_kind: Number.isInteger(exitCode) ? 'PROCESS_EXIT' : 'NO_PROCESS_EXIT', category,
+    ...(command === 'node_authenticated_browser' ? { authenticated_failure: authenticatedProcessFailure(stderr) } : {}) });
 }
 
 export function safeQaProcessDiagnostic(error) {
   const value = error?.diagnostic;
   if (!commands.has(value?.command) || !categories.has(value?.category) || !Number.isInteger(value?.exit_code) || !['PROCESS_EXIT', 'NO_PROCESS_EXIT'].includes(value?.exit_kind)) return null;
-  return { command: value.command, exit_code: value.exit_code, exit_kind: value.exit_kind, category: value.category };
+  return { command: value.command, exit_code: value.exit_code, exit_kind: value.exit_kind, category: value.category,
+    ...(value.command === 'node_authenticated_browser' && authenticatedFailures.has(value.authenticated_failure) ? { authenticated_failure: value.authenticated_failure } : {}) };
 }
