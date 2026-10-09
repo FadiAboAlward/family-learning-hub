@@ -128,6 +128,22 @@ assert.equal(qaProcessDiagnostic('docker', ['exec', 'private', 'sh'], '', 127).c
 assert.deepEqual(timeoutDiagnostic, { command: 'supabase_start', exit_code: -1, exit_kind: 'NO_PROCESS_EXIT', category: 'PROCESS_TIMEOUT' });
 assert.equal(safeQaProcessDiagnostic({ diagnostic: { command: syntheticPrivate, category: 'UNKNOWN_FAILURE', exit_code: 23, exit_kind: 'PROCESS_EXIT' } }), null);
 assert.deepEqual(safeQaProcessDiagnostic({ diagnostic: { ...timeoutDiagnostic, stderr: syntheticPrivate, stdout: syntheticPrivate } }), timeoutDiagnostic, 'raw subprocess fields never enter the artifact allowlist');
+for (const [message, expected] of [
+  ['Error: QA_OIDC_URL_INVALID', 'OIDC_URL_REJECTED'], ['Error: GitHub OIDC environment is unavailable', 'OIDC_ENV_MISSING'],
+  ['Error: GitHub OIDC request failed: 403', 'OIDC_REQUEST_FAILED'], ['Error: GitHub OIDC token missing', 'OIDC_TOKEN_MISSING'],
+  ['Error: QA_ISOLATION_ATTESTATION_FAILED', 'ATTESTATION_FAILED'], ['Error: QA_PUBLISHABLE_KEY_INVALID', 'TESTING_CONFIG_INVALID'],
+  ["Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'", 'MODULE_MISSING'],
+  ["browserType.launch: Executable doesn't exist at /private/browser", 'BROWSER_EXECUTABLE_MISSING'],
+  ['Error: QA auth prepare failed: 403 WORKFLOW_NOT_ALLOWED', 'AUTH_PREPARE_FAILED'],
+  ['Error: QA auth cleanup failed: 409 QA_LEASE_NOT_OWNED', 'AUTH_CLEANUP_FAILED'],
+  ['Error: '+syntheticPrivate, 'UNCLASSIFIED'], ['Error: QA_OIDC_URL_INVALID '+syntheticPrivate, 'UNCLASSIFIED'],
+]) {
+  const diagnostic = qaProcessDiagnostic(process.execPath, ['tests/authenticated-e2e.mjs'], message+'\n'+syntheticPrivate, 1);
+  assert.equal(diagnostic.authenticated_failure, expected);
+  assert.deepEqual(safeQaProcessDiagnostic({diagnostic}), diagnostic);
+  assert.doesNotMatch(JSON.stringify(diagnostic), /private|PASSWORD|sb_secret_|WORKFLOW_NOT_ALLOWED|playwright/);
+  assert.equal(safeQaProcessDiagnostic({diagnostic:{...diagnostic,authenticated_failure:syntheticPrivate}}).authenticated_failure, undefined);
+}
 let processFailure;
 try {
   await command(process.execPath, ['-e', `process.stdout.write(${JSON.stringify(syntheticPrivate)});process.stderr.write(${JSON.stringify('invalid config\n' + syntheticPrivate)});process.exit(23);`]);
