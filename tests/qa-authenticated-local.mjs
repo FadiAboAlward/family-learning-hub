@@ -151,7 +151,9 @@ export async function teardownLocal(config, exec = command) {
   if (owner.app_pid) await stopProcess(owner.app_pid, ['http.server', path.resolve('.')]);
   if (owner.functions_pid) await stopProcess(owner.functions_pid, ['functions', 'serve', config.directory]);
   const names = (await exec('docker', ['ps', '-a', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.Names}}'])).trim().split(/\s+/).filter(Boolean);
-  for (const name of names) if (!name.startsWith('supabase_') || !name.endsWith(`_${config.projectId}`)) throw new Error('QA_LOCAL_CONTAINER_NOT_OWNED');
+  const ownedName = name => (name.startsWith('supabase_') && name.endsWith(`_${config.projectId}`))
+    || name === `realtime-dev.supabase_realtime_${config.projectId}`;
+  for (const name of names) if (!ownedName(name)) throw new Error('QA_LOCAL_CONTAINER_NOT_OWNED');
   await exec(cli, ['stop', '--project-id', config.projectId, '--no-backup', '--workdir', config.directory]);
   const remaining = (await exec('docker', ['ps', '-a', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.ID}}'])).trim();
   if (remaining) throw new Error('QA_LOCAL_TEARDOWN_INCOMPLETE');

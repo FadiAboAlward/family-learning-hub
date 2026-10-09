@@ -258,8 +258,13 @@ try {
   fs.writeFileSync(ownerPath, JSON.stringify(owner));
   await assert.rejects(() => teardownLocal(testConfig, async (_file, args) => args.includes('{{.ID}}') ? 'remaining' : ''), /TEARDOWN_INCOMPLETE/);
   assert.equal(fs.existsSync(ownerPath), true, 'incomplete Docker teardown preserves ownership for the always() retry');
+  await assert.rejects(() => teardownLocal(testConfig, async (_file,args) => args.includes('{{.Names}}') ? 'realtime-dev.supabase_realtime_foreign' : ''), /CONTAINER_NOT_OWNED/);
+  assert.equal(fs.existsSync(ownerPath),true,'Unowned container preserves the owner marker and skips destructive teardown');
   const operations = [];
-  assert.equal(await teardownLocal(testConfig, async (_file, args) => { operations.push(args); return ''; }), 'PASS');
+  assert.equal(await teardownLocal(testConfig, async (_file, args) => {
+    operations.push(args);
+    return args.includes('{{.Names}}') ? `realtime-dev.supabase_realtime_${config.projectId}` : '';
+  }), 'PASS');
   assert.equal(fs.existsSync(testConfig.directory), false);
   assert.ok(operations.some(args => args.includes('--no-backup') && args.includes(config.projectId) && !args.includes('--all')));
   assert.equal(await teardownLocal(testConfig, fakeExec), 'NOT_PROVISIONED');
