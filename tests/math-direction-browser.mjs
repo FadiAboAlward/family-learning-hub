@@ -19,6 +19,9 @@ try{
       <div class="review-body" id="negativeAnswer">إجابتك: -26</div>
       <div class="question" id="latexFraction">Kesir: ${window.math('\\frac{9}{8}')}</div>
       <div class="question" id="nestedFraction">احسب: ${window.math('(1/2 + 3/4) × 2 = 2.5')}</div>
+      <div class="question" id="fractionDivide">احسب: ${window.math('1/2 ÷ 3/4')}</div>
+      <div class="question" id="numberDivide">احسب: ${window.math('6 ÷ 2/3')}</div>
+      <div class="question" id="fractionProduct">احسب: ${window.math('2/3 × 3/4')}</div>
       <div class="question" id="powerRoot">احسب: ${window.math('(-3)^2 + sqrt(16) = 13')}</div>
       <div class="question" id="unicodePower">احسب: ${window.math('2² + 3³ = 35')}</div>
       <div class="question" id="longPower">${window.math('9'.repeat(120)+'^2')}</div>
@@ -26,6 +29,9 @@ try{
       <div class="question" id="fallbackRoot">احسب: \\frac{1}{2} + \\sqrt{9} ≥ 3.5</div>
       <div class="question" id="partialMarkup">${window.math('2/3')} ثم 19 - (-7)</div>
       <div class="question" id="invalidMath">${window.math('\\sqrt{} و &lt;img src=x onerror=alert(1)&gt;')}</div>
+      <div class="question" id="intrinsicProse" style="display:inline-block;width:min-content;max-width:none">الرياضيات</div>
+      <div class="question" id="naturalProse" style="display:inline-block;width:max-content;max-width:none;white-space:nowrap">الرياضيات</div>
+      <div class="question" id="longArabic" style="width:160px">${'رياضيات'.repeat(100)}</div>
       <input id="numericAnswer" inputmode="numeric" value="-26">
     </section>`;
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -48,7 +54,16 @@ try{
       const bounds=el=>el?.getBoundingClientRect();
       return {count:root.querySelectorAll('bdi').length,label:bdi?.getAttribute('aria-label'),direction:bdi&&getComputedStyle(bdi).direction,unicodeBidi:bdi&&getComputedStyle(bdi).unicodeBidi,fractions:root.querySelectorAll('.frac').length,roots:root.querySelectorAll('.flh-math-root').length,powers:root.querySelectorAll('.flh-math-power').length,stacked:!fraction||bounds(numerator).bottom<=bounds(denominator).top,raised:!exponent||bounds(exponent).top<bounds(exponent.parentElement).top,rootLine:!radical||parseFloat(getComputedStyle(radicand).borderTopWidth)>0,width:bounds(bdi)?.width||0,available:bounds(root).width};
     };
-    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0,wrapperCount:frac?Number(Boolean(fracWrapper)):0,wrapperDirection:fracWrapperStyle?.direction||'',wrapperUnicodeBidi:fracWrapperStyle?.unicodeBidi||''},nested:structure('nestedFraction'),powerRoot:structure('powerRoot'),unicodePower:structure('unicodePower'),longPower:structure('longPower'),oversizedFallback:document.getElementById('oversizedFallback').textContent,fallbackRoot:structure('fallbackRoot'),partialCount:document.getElementById('partialMarkup').querySelectorAll('bdi').length,invalid:{text:document.getElementById('invalidMath').textContent,unsafe:document.getElementById('invalidMath').querySelector('img,script')!==null},overflow:document.documentElement.scrollWidth>innerWidth,input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi||'',value:input.value}};
+    const fractionOperands=id=>{
+      const math=document.getElementById(id).querySelector('.flh-math-ltr');
+      return {label:math?.getAttribute('aria-label'),operands:[...math.querySelectorAll(':scope > .frac')].map(fraction=>({numerator:fraction.querySelector(':scope > .n').textContent,denominator:fraction.querySelector(':scope > .d').textContent,nested:Boolean(fraction.querySelector('.frac'))})),between:[...math.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join('').trim()};
+    };
+    const textLines=(id,selector=null)=>{
+      const root=document.getElementById(id),range=document.createRange();range.selectNodeContents(selector?root.querySelector(selector):root);
+      return new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size;
+    };
+    const prose={intrinsicWidth:document.getElementById('intrinsicProse').getBoundingClientRect().width,naturalWidth:document.getElementById('naturalProse').getBoundingClientRect().width,wordLines:textLines('intrinsicProse'),signedLines:textLines('negativeAnswer','.flh-math-ltr'),longText:document.getElementById('longArabic').textContent,longFits:document.getElementById('longArabic').scrollWidth<=document.getElementById('longArabic').clientWidth+1};
+    return {wrapped:inspect('wrappedQuestion'),fallback:inspect('fallbackQuestion'),answer:inspect('negativeAnswer'),latex:{html:latex?.innerHTML||'',text:latex?.textContent||'',fracCount:latex?.querySelectorAll('.frac').length||0,wrapperCount:frac?Number(Boolean(fracWrapper)):0,wrapperDirection:fracWrapperStyle?.direction||'',wrapperUnicodeBidi:fracWrapperStyle?.unicodeBidi||''},fractionDivide:fractionOperands('fractionDivide'),numberDivide:fractionOperands('numberDivide'),fractionProduct:fractionOperands('fractionProduct'),prose,nested:structure('nestedFraction'),powerRoot:structure('powerRoot'),unicodePower:structure('unicodePower'),longPower:structure('longPower'),oversizedFallback:document.getElementById('oversizedFallback').textContent,fallbackRoot:structure('fallbackRoot'),partialCount:document.getElementById('partialMarkup').querySelectorAll('bdi').length,invalid:{text:document.getElementById('invalidMath').textContent,unsafe:document.getElementById('invalidMath').querySelector('img,script')!==null},overflow:document.documentElement.scrollWidth>innerWidth,input:{dir:input.getAttribute('dir')||'',direction:inputStyle.direction,unicodeBidi:inputStyle.unicodeBidi||'',value:input.value}};
   });
 
   const assert=(ok,msg)=>{if(!ok)throw new Error(`${msg}\n${JSON.stringify(result,null,2)}`)};
@@ -63,6 +78,12 @@ try{
   }
   assert(result.input.value==='-26'&&result.input.dir==='ltr'&&result.input.direction==='ltr','Numeric input did not retain -26 in LTR direction.');
   assert(result.nested.label==='(1/2 + 3/4) × 2 = 2.5'&&result.nested.fractions===2,'Nested fraction expression lost its complete accessible source or stacked fractions.');
+  assert(result.fractionDivide.label==='1/2 ÷ 3/4'&&JSON.stringify(result.fractionDivide.operands)===JSON.stringify([{numerator:'1',denominator:'2',nested:false},{numerator:'3',denominator:'4',nested:false}])&&result.fractionDivide.between==='÷','Fraction division must keep both authored fraction operands beside the division sign.');
+  assert(result.numberDivide.label==='6 ÷ 2/3'&&JSON.stringify(result.numberDivide.operands)===JSON.stringify([{numerator:'2',denominator:'3',nested:false}])&&result.numberDivide.between==='6 ÷','Division by a fraction must not put the earlier numeric operand under its fraction bar.');
+  assert(result.fractionProduct.label==='2/3 × 3/4'&&JSON.stringify(result.fractionProduct.operands)===JSON.stringify([{numerator:'2',denominator:'3',nested:false},{numerator:'3',denominator:'4',nested:false}])&&result.fractionProduct.between==='×','Fraction multiplication must keep both authored operands beside the multiplication sign.');
+  assert(Math.abs(result.prose.intrinsicWidth-result.prose.naturalWidth)<1&&result.prose.wordLines===1,'Arabic prose min-content sizing must retain the whole word instead of shrinking to a single character.');
+  assert(result.prose.signedLines===1,'The negative sign and digits must remain on one readable review line.');
+  assert(result.prose.longText==='رياضيات'.repeat(100)&&result.prose.longFits,'Long unbroken Arabic fallback text must remain complete and wrap inside its available width.');
   assert(result.powerRoot.label==='(-3)^2 + sqrt(16) = 13'&&result.powerRoot.powers===1&&result.powerRoot.roots===1,'Power/root expression was split or lost its mathematical structure.');
   assert(result.unicodePower.label==='2² + 3³ = 35'&&result.unicodePower.powers===2,'Unicode superscripts must stay raised inside one complete accessible math expression.');
   assert(result.longPower.count===1&&result.longPower.powers===1&&result.longPower.width<=result.longPower.available,'Long supported powers must stay within the question width.');

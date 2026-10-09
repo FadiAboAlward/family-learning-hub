@@ -84,7 +84,9 @@
       return node;
     };
     const operators = /^(?:&lt;=?|&gt;=?|<=|>=|[=<>≤≥≠+\-−×÷*/])/;
-    const precedence = op => /^(?:[=<>≤≥≠]|&(?:lt|gt);)/.test(op) ? 1 : /^[+\-−]$/.test(op) ? 2 : 3;
+    // A slash forms a stacked fraction operand before ×, ÷ or *. Rendering
+    // their whole left side as the next fraction numerator changes notation.
+    const precedence = op => /^(?:[=<>≤≥≠]|&(?:lt|gt);)/.test(op) ? 1 : /^[+\-−]$/.test(op) ? 2 : op === '/' ? 4 : 3;
     const expression = (minimum, depth) => {
       check(depth); skip(); const begin = pos; let left = unary(depth + 1);
       while (true) {

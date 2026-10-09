@@ -34,6 +34,46 @@ for(const [source,classes] of corpus){
   assert.equal(isolateMathHtml(html),html,'Rendering must remain idempotent');
 }
 
+// Slash notation is a fraction operand, including beside × and ÷. A fraction
+// bar must not swallow an earlier multiplication/division into its numerator.
+for(const [source,operator,left,right] of [
+  ['1/2 ÷ 3/4','÷',['1','2'],['3','4']],
+  ['6 ÷ 2/3','÷','6',['2','3']],
+  ['2/3 × 3/4','×',['2','3'],['3','4']],
+  ['2 * 3/4','*','2',['3','4']],
+  ['-1/2 ÷ -3/4','÷',['-1','2'],['-3','4']]
+]){
+  const mixed=`احسب: ${source} ثم اختر الجواب.`;
+  const parts=splitMathText(mixed),runs=parts.filter(part=>part.math);
+  assert.equal(runs.length,1,source);
+  assert.equal(parts.map(part=>part.text).join(''),mixed,'Every authored character must survive fraction parsing');
+  assert.equal(runs[0].text,source);
+  const node=runs[0].node;
+  assert.equal(node.kind,'binary',`${source} must retain its outer ${operator} operator`);
+  assert.equal(node.between.trim(),operator);
+  for(const [operand,expected] of [[node.left,left],[node.right,right]]){
+    if(Array.isArray(expected)){
+      assert.equal(operand.kind,'fraction',source);
+      assert.equal(operand.numerator.source,expected[0],`${source} numerator`);
+      assert.equal(operand.denominator.source,expected[1],`${source} denominator`);
+    }else{
+      assert.equal(operand.kind,'text',source);
+      assert.equal(operand.source,expected);
+    }
+  }
+  const html=isolateMathHtml(mixed);
+  assert.equal((html.match(/class="frac"/g)||[]).length,[left,right].filter(Array.isArray).length,source);
+  assert.ok(html.includes(`aria-label="${source}"`),'The complete canonical source must remain accessible');
+  assert.equal(isolateMathHtml(html),html,'Fraction operand rendering must remain idempotent');
+}
+const nestedDivision=splitMathText('(1/2 ÷ 3/4)/5').find(part=>part.math).node;
+assert.equal(nestedDivision.kind,'fraction');
+assert.equal(nestedDivision.numerator.kind,'group','Explicit parentheses must remain the outer fraction numerator');
+assert.equal(nestedDivision.numerator.inner.kind,'binary');
+assert.equal(nestedDivision.numerator.inner.left.numerator.source,'1');
+assert.equal(nestedDivision.numerator.inner.right.denominator.source,'4');
+assert.equal(nestedDivision.denominator.source,'5');
+
 // An unanswered exercise is not a malformed left-hand expression. Keep its
 // complete valid prefix isolated while the unparsed operator/blank stays text.
 for(const [prefix,classes] of [
