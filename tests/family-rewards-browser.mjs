@@ -1032,6 +1032,7 @@ async function runBrowserSuite() {
     assert.equal(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(secondEvent.occurred_at)),'08:00','the existing morning preset remains the actual verified instant');
     await page.waitForFunction(eventId=>document.querySelector('[data-fr-direct-return] [data-fr-return-select]')?.value===eventId,secondEvent.id);
     await perform(page,'behavior_record',()=>submit(page,'#frOccurrenceForm'));
+    assert.equal(await page.locator('[data-fr-direct-return] [data-fr-return-select]').inputValue(),'', 'A confirmed direct greeting cannot preselect the previous real-world return for the next child/occasion');
     assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected+2);
     // Equal claim clocks cannot warn for distinct canonical occasions. Selecting
     // an already-awarded occasion must warn despite a different child clock.

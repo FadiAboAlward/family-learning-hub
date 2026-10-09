@@ -79,7 +79,14 @@ try{
     assert.ok((await wrong.locator('.flh-review-correct').innerText()).includes('-26'));
     await wrong.locator('.flh-review-why').waitFor({state:'visible'});
     assert.ok((await wrong.locator('.flh-review-why').innerText()).includes('نطرح 19 من -7؛ لذلك نتحرك إلى -26.'));
-    assert.equal(await page.locator('.flh-correct-review').getAttribute('open'),null);
+    const correctGroup=page.locator('.flh-correct-review');
+    assert.equal(await correctGroup.getAttribute('open'),null);
+    await correctGroup.locator('summary').first().click();
+    const correctItem=correctGroup.locator('.exam-review').first();
+    await correctItem.locator('summary').click();
+    assert.match(await correctItem.locator('.flh-review-response').innerText(),/4/,'Even collapsed-by-default correct answers must reveal the learner-recorded answer');
+    assert.equal(await correctItem.locator('.flh-review-correct').count(),0,'Correct rows should not show a mistake-only comparison');
+    await correctGroup.locator('summary').first().click();
     assert.ok(await page.evaluate(()=>document.querySelector('.flh-mistake-review').getBoundingClientRect().top<document.querySelector('.stats').getBoundingClientRect().top),'Mistakes must appear before aggregate statistics');
     assert.equal(await page.locator('#flhExamElapsed').count(),0,'Submitted results must not keep an active Exam timer');
     assert.ok(!(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),'Timer/review UI must not overflow');

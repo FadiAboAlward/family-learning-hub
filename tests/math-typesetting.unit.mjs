@@ -141,6 +141,8 @@ for(const source of ['<img src=x onerror=alert(1)> 2/3','<script>alert(2)</scrip
   assert.ok(!/<(?:img|script)\b/i.test(html),'Untrusted HTML must stay escaped text');
   assert.ok(!/<[^>]*\bon(?:error|load|focus)=/i.test(html),'Generated tags must not carry event handlers');
 }
+const malformedOwned='<bdi class="flh-math-ltr" dir="ltr" role="math" aria-label="1>2">1</bdi>';
+assert.ok(isolateMathHtml(malformedOwned).includes('&lt;bdi '),'A foreign malformed owned math label must remain escaped, not accepted as trusted structure');
 const existing=isolateMathHtml('2/3 + 1/4');
 assert.ok(existing.includes('<span class="n">2</span><span class="d">3</span>')&&existing.includes(' + <span class="frac"><span class="n">1</span><span class="d">4</span>'),'Operand/fraction order must survive typesetting');
 assert.ok(isolateMathHtml('(-3)^2 + sqrt(16) = 13').includes('(-3)<sup>2</sup></span> + <span class="flh-math-root"><span class="flh-math-radical">√</span><span class="flh-math-radicand">16</span></span> = 13'),'Signed base, exponent, radicand and comparison operands must stay in mathematical order');
