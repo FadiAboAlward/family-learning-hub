@@ -62,7 +62,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: authenticated-local-${{ github.event.pull_request.head.sha || github.sha }}
+          name: authenticated-local-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: |
             qa-authenticated-evidence/core-prerequisite.json
             qa-authenticated-evidence/lifecycle.json
