@@ -65,6 +65,7 @@ For an important bug, prefer a deterministic regression at the lowest reliable l
 - Validated PR-head SHA for every required pre-merge gate: `<sha>`
 - [ ] Isolated QA Gate / Static quality passed for the exact PR-head SHA recorded above.
 - [ ] Isolated QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
+- [ ] Authenticated local API and browser Runner-local result and owned teardown are recorded for the exact PR-head SHA (PASS / FAIL / NOT RUN); NOT RUN is never treated as PASS.
 - [ ] QA used disposable Runner-local data and synthetic browser APIs; no Production traffic/writes, including the test account. Any hosted authenticated Testing result identifies an explicitly isolated backend; NOT RUN/BLOCKED is not PASS.
 - [ ] FLH026 isolation pin and disabled publication/legacy-workflow evidence are recorded where applicable; temporary screenshot manifests bind the checked-out PR-head SHA.
 - [ ] CodeRabbit review completed for the exact same PR-head SHA; all actionable findings are fixed or explicitly resolved with a verified architectural reason.
