@@ -114,7 +114,7 @@ export async function assertQaResume(config, session, endpoint, action, fetchImp
 /** Verify the submitted synthetic result while preserving a collapsed correct-answer group. */
 export async function assertQaExamCompletion(page) {
   await page.locator('#examHome').waitFor({ state: 'visible', timeout: 30000 });
-  await page.getByText('100%', { exact: true }).waitFor({ state: 'visible', timeout: 30000 });
+  await page.getByText('100%', { exact: true }).first().waitFor({ state: 'visible', timeout: 30000 });
   const reviews = page.locator('.exam-review');
   await reviews.first().waitFor({ state: 'attached', timeout: 30000 });
   if (await reviews.count() !== QA_QUESTION_COUNT) throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
