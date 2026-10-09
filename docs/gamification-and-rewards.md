@@ -120,7 +120,7 @@ All operations are POST actions of `family-api`:
 
 | Caller | Actions |
 | --- | --- |
-| Parent owner/admin | `parent_rewards_dashboard`, `parent_rewards_ledger`, `parent_behavior_report`, `category_save`, `rule_save`, `reward_save`, `behavior_record`, `behavior_review`, `reward_review`, `reward_redeem`, `points_adjust`, `return_event_create` |
+| Parent owner/admin | `parent_rewards_dashboard`, `parent_rewards_ledger`, `parent_behavior_report`, `category_save`, `rule_save`, `reward_save`, `behavior_record`, `behavior_review`, `reward_review`, `reward_redeem`, `points_adjust`, `return_event_create`, `return_events_list` |
 | Verified learner session | `student_rewards_dashboard`, `student_rewards_ledger`, `student_behavior_report`, `behavior_submit`, `reward_request` |
 
 Save actions accept an optional `id` to edit/disable an existing record. Creation and updates validate fields server-side. Behavior records/requests and adjustments require an `idempotency_key`; review decisions are `approved` or `rejected`. Ledger reads support `before_id`, `page_size` (maximum 100), `source_type` and `category_id`; only a parent may supply a learner filter. Behavior report reads support `period` (`last7` occurrences or `last30` days), `category_id` and `rule_id`; `parent_behavior_report` requires an explicitly selected learner while `student_behavior_report` always derives the learner from the verified learner session. Approved report history uses the snapshotted category when present so later rule edits do not rewrite historical classification. The transport never forwards a learner-supplied learner ID, workspace, actor, reviewer or calculated point delta. Public errors are allowlisted codes, with no raw database details or child free text in telemetry.
