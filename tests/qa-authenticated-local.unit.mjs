@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
+import { assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
@@ -193,6 +193,34 @@ assert.ok(harnessSource.indexOf('const oidcOrigin = qaOidcOriginEvidence();')<ha
 for (const phase of ['supabase_start', 'owned_container_inspection', 'container_deny_before_reset', 'supabase_db_reset', 'container_deny_after_reset', 'supabase_status']) assert.ok(harnessSource.includes(`substep('${phase}'`), 'fixed before/after phase markers must distinguish first full-stack failure: ' + phase);
 
 const response = body => new Response(JSON.stringify(body));
+function examCompletionPage({ grouped = false, rowCount = 3, open = null, wrongCount = 0, hidden = [] } = {}) {
+  const waits = [];
+  const locator = selector => ({
+    first: () => locator(selector),
+    locator: child => { assert.equal(child, ':scope > summary'); return locator('group-summary'); },
+    count: async () => selector === '.exam-review' ? rowCount : selector === '.flh-correct-review' ? Number(grouped) : wrongCount,
+    getAttribute: async name => { assert.equal(name, 'open'); return open; },
+    waitFor: async options => {
+      waits.push({ selector, ...options });
+      assert.equal(options.timeout, 30000);
+      if (options.state === 'visible' && hidden.includes(selector)) throw new Error('QA_TEST_RESULT_NOT_VISIBLE');
+    },
+  });
+  return { waits, locator, getByText: (text, options) => { assert.equal(text, '100%'); assert.deepEqual(options, { exact: true }); return locator('percentage'); } };
+}
+const groupedCompletion = examCompletionPage({ grouped: true, hidden: ['.exam-review'] });
+await assertQaExamCompletion(groupedCompletion);
+assert.ok(groupedCompletion.waits.some(wait => wait.selector === 'group-summary' && wait.state === 'visible'));
+assert.ok(!groupedCompletion.waits.some(wait => wait.selector === '.exam-review' && wait.state === 'visible'), 'correct rows intentionally remain hidden inside the closed group');
+const flatCompletion = examCompletionPage();
+await assertQaExamCompletion(flatCompletion);
+assert.ok(flatCompletion.waits.some(wait => wait.selector === '.exam-review' && wait.state === 'visible'), 'the original visible review assertion remains for the flat renderer');
+for (const changed of [{ rowCount: 2 }, { grouped: true, open: '' }, { grouped: true, wrongCount: 1 }]) {
+  await assert.rejects(() => assertQaExamCompletion(examCompletionPage(changed)), /QA_LOCAL_EXAM_REVIEW_INVALID/);
+}
+for (const changed of [{ hidden: ['#examHome'] }, { hidden: ['percentage'] }, { hidden: ['.exam-review'] }, { grouped: true, hidden: ['group-summary'] }]) {
+  await assert.rejects(() => assertQaExamCompletion(examCompletionPage(changed)), /QA_TEST_RESULT_NOT_VISIBLE/, 'attached rows alone cannot pass a missing visible completion result');
+}
 let resumeCalls = 0;
 await assertQaResume(runtime, 'synthetic-session', 'learning-api', 'start_quiz', async (_url, options) => {
   resumeCalls++; assert.equal(options.redirect, 'error'); return response({ attempt_id: 'synthetic-owned-attempt', resumed: true, queue: [] });
