@@ -49,9 +49,17 @@ begin
     insert into public.quiz_question_options(workspace_id,question_id,position,label,content)
       values(workspace,question,1,'A','Accept'),(workspace,question,2,'B','Decline');
     insert into public.quiz_question_answer_keys(workspace_id,question_id,correct_answer,explanation)
-      values(workspace,question,'{"position":1}','Synthetic transport fixture; no academic claim.');
+      values(workspace,question,'{"option_position":1}','Synthetic transport fixture; no academic claim.');
   end loop;
   if (select count(*) from public.quiz_questions where quiz_version_id=version) <> 3 then raise exception 'QA_LOCAL_QUESTION_COUNT_INVALID'; end if;
+  -- The real MCQ grader reads option_position. Validate the known synthetic
+  -- answer against its option before launching the authenticated browser.
+  if (select count(*) from public.quiz_questions q
+      join public.quiz_question_answer_keys k on k.workspace_id=q.workspace_id and k.question_id=q.id
+      join public.quiz_question_options o on o.workspace_id=q.workspace_id and o.question_id=q.id
+        and o.position=nullif(k.correct_answer->>'option_position','')::integer
+      where q.quiz_version_id=version and o.content='Accept') <> 3
+  then raise exception 'QA_LOCAL_ANSWER_KEY_INVALID'; end if;
   if not has_function_privilege('service_role','public.flh_qa_acquire_testing_lease(uuid,uuid,integer)','EXECUTE')
     or has_function_privilege('anon','public.flh_qa_acquire_testing_lease(uuid,uuid,integer)','EXECUTE')
     or has_table_privilege('anon','public.quiz_question_answer_keys','SELECT')

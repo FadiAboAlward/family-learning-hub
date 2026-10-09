@@ -219,8 +219,11 @@ async function main() {
         await runAuthenticatedStage('LEARNING_RESUME', () => assertQaResume(config, prepared.session, 'learning-api', 'start_quiz'));
         await runAuthenticatedStage('LEARNING_ANSWERS', async () => {
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-          await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-          await page.locator('.flh-learn-answer').first().click();
+          // This answer is known from the isolated synthetic fixture, never a
+          // key read from a learner response or a real academic package.
+          const answer = page.locator('.flh-learn-answer').filter({ hasText: /\bAccept$/ });
+          await answer.waitFor({ state: 'visible', timeout: 10000 });
+          await answer.click();
           await page.locator('#flhConfirmAnswer').click();
           const next = page.locator('#flhLearnNext');
           await next.waitFor({ state: 'visible', timeout: 10000 });
@@ -246,8 +249,9 @@ async function main() {
         await runAuthenticatedStage('EXAM_RESUME', () => assertQaResume(config, prepared.session, 'exam-v2-api', 'start_exam'));
         await runAuthenticatedStage('EXAM_ANSWERS', async () => {
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-          await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-          await page.locator('.exam-v3-answer').first().click();
+          const answer = page.locator('.exam-v3-answer').filter({ hasText: /\bAccept$/ });
+          await answer.waitFor({ state: 'visible', timeout: 10000 });
+          await answer.click();
           if (i < QA_QUESTION_COUNT - 1) await page.locator('#examNext').click();
         }
         });
