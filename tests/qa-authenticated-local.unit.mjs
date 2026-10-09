@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
+import { acceptQaParentBulkApproval, assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
@@ -246,6 +246,24 @@ await assert.rejects(() => assertQaParent(runtime, 'synthetic@example.test', 'sy
   return response(url.includes('/token?') ? { access_token: 'synthetic' } : { parent: { role: 'owner' }, learners: [{ slug: 'test' }] });
 }), /TEST_EXCLUSION_FAILED/);
 assert.equal(loggedOut, true, 'a failed parent assertion still revokes the owned synthetic parent session');
+
+// The dialog handler must be armed before the triggering click; otherwise Playwright blocks the click itself.
+const checkConfirmation = async (message, type = 'confirm') => {
+  let handler, accepted = 0, dismissed = 0;
+  const page = { once: (name, callback) => { assert.equal(name, 'dialog'); handler = callback; } };
+  const button = { click: async () => {
+    assert.equal(typeof handler, 'function', 'dialog listener must exist before click');
+    await handler({ type: () => type, message: () => message,
+      accept: async () => { accepted++; }, dismiss: async () => { dismissed++; } });
+  } };
+  return { run: () => acceptQaParentBulkApproval(page, button, 2), state: () => ({ accepted, dismissed }) };
+};
+const approvedDialog = await checkConfirmation('اعتماد طلبات QA؟ عدد الطلبات: 2');
+await approvedDialog.run();
+assert.deepEqual(approvedDialog.state(), { accepted: 1, dismissed: 0 });
+const rejectedDialog = await checkConfirmation('عدد الطلبات: 3');
+await assert.rejects(rejectedDialog.run(), /QA_LOCAL_PARENT_CONFIRMATION_INVALID/);
+assert.deepEqual(rejectedDialog.state(), { accepted: 0, dismissed: 1 });
 
 // Owned teardown retries preserve foreign fixtures and fail honestly if resources remain.
 const originalTemp = process.env.RUNNER_TEMP;

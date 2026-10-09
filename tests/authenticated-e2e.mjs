@@ -142,6 +142,23 @@ export async function assertQaDeviceLayout(page, expectedWidth) {
       || dimensions.body > expectedWidth + 2 || dimensions.hasError) throw new Error('QA_LOCAL_DEVICE_LAYOUT_INVALID');
 }
 
+/** Arm before the click: awaiting a dialog-triggering click first deadlocks Playwright. */
+export async function acceptQaParentBulkApproval(page, button, expectedCount) {
+  const confirmation = new Promise((resolve, reject) => {
+    page.once('dialog', async dialog => {
+      try {
+        if (dialog.type() !== 'confirm' || !dialog.message().includes(`عدد الطلبات: ${expectedCount}`)) {
+          await dialog.dismiss();
+          throw new Error('QA_LOCAL_PARENT_CONFIRMATION_INVALID');
+        }
+        await dialog.accept();
+        resolve(true);
+      } catch (error) { reject(error); }
+    });
+  });
+  await Promise.all([button.click({ timeout: 10000 }), confirmation]);
+}
+
 /** Synthetic parent's real Auth password grant and existing membership-bound API. */
 export async function assertQaParent(config, email, password, fetchImpl = fetch, verifyBrowser = null) {
   if (!email || !password) throw new Error('QA_LOCAL_PARENT_CONFIG_REQUIRED');
@@ -390,11 +407,7 @@ async function main() {
                 if (await group.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
                 await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-desktop.png', fullPage: true });
                 await runAuthenticatedStage('PARENT_BULK_APPROVAL', async () => {
-                  const dialogPending = parentPage.waitForEvent('dialog', { timeout: 10000 });
-                  await group.locator('[data-fr-approve-all]').click();
-                  const dialog = await dialogPending;
-                  if (!dialog.message().includes('عدد الطلبات: 2')) throw new Error('QA_LOCAL_PARENT_CONFIRMATION_INVALID');
-                  await dialog.accept();
+                  await acceptQaParentBulkApproval(parentPage, group.locator('[data-fr-approve-all]'), 2);
                   await parentPage.waitForFunction(() => {
                     const root = document.querySelector('[data-family-rewards][data-role="parent"]');
                     return root && !root.querySelector('[data-fr-approval-learner]') &&
