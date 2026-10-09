@@ -34,6 +34,12 @@ begin
       and not has_table_privilege('authenticated','public.family_return_events','SELECT')
       and not has_table_privilege('anon','public.family_return_events','SELECT')
       and has_table_privilege('service_role','public.family_return_events','SELECT')
+      and has_table_privilege('service_role','public.family_return_events','INSERT')
+      and has_table_privilege('service_role','public.family_return_events','UPDATE')
+      and has_table_privilege('service_role','public.family_return_events','DELETE')
+      and not has_table_privilege('service_role','public.family_return_events','TRUNCATE')
+      and not has_table_privilege('service_role','public.family_return_events','REFERENCES')
+      and not has_table_privilege('service_role','public.family_return_events','TRIGGER')
       and(select relrowsecurity from pg_class where oid='public.family_return_events'::regclass)
       and not has_function_privilege('authenticated','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE')
       and has_function_privilege('service_role','public.flh_family_rewards_command(uuid,uuid,uuid,text,jsonb)','EXECUTE'),'service-only mutation grants');
@@ -101,7 +107,9 @@ begin
     failed:=false;
     begin update public.behavior_submissions set return_event_id=foreign_event where id=sid; exception when foreign_key_violation then failed:=true; end;
     perform pg_temp.return_assert(failed and(select status='pending' and return_event_id is null and total_points=0 from public.behavior_submissions where id=sid),'same-workspace FK and failed mapping preserve pending');
+    execute 'set local role service_role';
     result:=public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved','return_event_id',e1));
+    execute 'reset role';
     perform pg_temp.return_assert(result->>'ok'='true' and(result->'submission'->>'total_points')::integer=2 and(result->'submission'->>'occurred_at')::timestamptz=old_claim_time
       and result->'submission'->'snapshot'->>'verified_event_day'='2020-01-10'
       and(select count(*)=1 and sum(reward_points_delta)=2 and sum(xp_delta)=0 from public.gamification_events where source_type='family_behavior' and source_id=sid::text and metadata->>'return_event_id'=e1::text),'actual grant preserves claim time and immutable canonical ledger provenance');
@@ -175,12 +183,14 @@ begin
     begin perform id from public.family_return_events;exception when insufficient_privilege then failed:=(sqlstate='42501');end;
     execute 'reset role';
     perform pg_temp.return_assert(failed,'direct anonymous register SELECT is permission denied');
+    execute 'set local role service_role';
     failed:=false;begin update public.family_return_events set occurred_at=occurred_at+interval '1 day' where id=e1;exception when check_violation then failed:=true;end;
-    perform pg_temp.return_assert(failed,'used verified event time immutable');
+    perform pg_temp.return_assert(failed,'service role cannot rewrite used verified event time');
     failed:=false;begin update public.behavior_submissions set return_event_id=e3 where id=sid;exception when check_violation then failed:=true;end;
     perform pg_temp.return_assert(failed,'completed award binding immutable');
     failed:=false;begin delete from public.family_return_events where id=e1;exception when check_violation then failed:=true;end;
-    perform pg_temp.return_assert(failed,'used event delete blocked');
+    perform pg_temp.return_assert(failed,'service role CRUD grant cannot bypass used-event delete guard');
+    execute 'reset role';
     -- Synthetic cutover history represents an existing award, never a fabricated event backfill.
     insert into public.behavior_submissions(workspace_id,learner_id,rule_id,occurred_at,requester_type,status,approved_at,base_points,total_points,idempotency_key)
       values(w,l1,greeting,'2020-01-12T10:00:00+03:00','parent','approved','2020-01-12T10:00:00+03:00',2,2,'qa-return-legacy') returning id into legacy_id;

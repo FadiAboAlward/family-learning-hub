@@ -14,8 +14,10 @@ create table if not exists public.family_return_events (
 );
 create index if not exists family_return_events_day_page_idx on public.family_return_events(workspace_id,occurred_at desc,id desc);
 alter table public.family_return_events enable row level security;
-revoke all on public.family_return_events from public,anon,authenticated;
-grant all on public.family_return_events to service_role;
+-- Clear inherited/default grants too; FOR SHARE needs UPDATE, while row
+-- guards preserve immutable provenance without granting TRUNCATE or DDL.
+revoke all on public.family_return_events from public,anon,authenticated,service_role;
+grant select,insert,update,delete on public.family_return_events to service_role;
 -- The approved browser carrier is the bounded, safe family-api catalog, not
 -- direct table reads of creator IDs, request keys or normalized provenance.
 drop policy if exists family_return_events_parent_read on public.family_return_events;

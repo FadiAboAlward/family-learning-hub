@@ -377,6 +377,7 @@
   function bindReturnControls(view){
     if(view.role!=='parent')return;
     for(const host of view.root.querySelectorAll('[data-fr-return-context]')){
+      host.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target?.matches?.('input'))event.preventDefault();});
       const select=host.querySelector('[data-fr-return-select]'),day=host.querySelector('[data-fr-return-day]'),key=host.dataset.frReturnContext,prefix=host.dataset.frReturnPrefix;
       select.onchange=()=>{if(select.value){view.returnSelections.set(key,select.value);clearReturnChoiceError(view,key,host);}else view.returnSelections.delete(key);syncReturnForecasts(view);};
       day.onchange=()=>{view.returnSelections.delete(key);loadReturnEvents(view,host);syncReturnForecasts(view);};
