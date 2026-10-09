@@ -5,8 +5,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
-import { command, teardownLocal } from './qa-authenticated-local.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+import { command, denyContainerProduction, teardownLocal } from './qa-authenticated-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
@@ -26,6 +26,54 @@ for (const changed of [{}, { ...env, FLH_QA_ISOLATION_MODE: 'isolated-testing' }
 const owned = { Name: `/supabase_db_${config.projectId}`, Config: { Labels: { 'com.supabase.cli.project': config.projectId } }, State: { Running: true } };
 assert.equal(assertOwnedContainer(config, owned), true);
 for (const changed of [{ ...owned, Name: '/supabase_db_other' }, { ...owned, Config: { Labels: {} } }, { ...owned, State: { Running: false } }]) assert.throws(() => assertOwnedContainer(config, changed), /NOT_OWNED/);
+const dockerRoot = '/var/lib/docker', fullId = 'a'.repeat(64), secondId = 'b'.repeat(64);
+const hostTarget = id => ({ ...owned, Id: id, HostsPath: `${dockerRoot}/containers/${id}/hosts` });
+assert.equal(ownedContainerHostsPath(config, dockerRoot, hostTarget(fullId), fullId), hostTarget(fullId).HostsPath);
+assert.equal(ownedContainerHostsPath(config, dockerRoot, { ...hostTarget(fullId), Name: `/realtime-dev.supabase_realtime_${config.projectId}` }, fullId), hostTarget(fullId).HostsPath);
+const invalidTargets = [
+  { ...hostTarget(fullId), Id: fullId.slice(0, 12) }, { ...hostTarget(fullId), Id: secondId },
+  { ...hostTarget(fullId), Name: '/foreign_container' }, { ...hostTarget(fullId), Config: { Labels: { 'com.supabase.cli.project': 'other' } } },
+  { ...hostTarget(fullId), State: { Running: false } }, { ...hostTarget(fullId), HostsPath: '/etc/hosts' },
+  { ...hostTarget(fullId), HostsPath: `${dockerRoot}/containers/${secondId}/hosts` },
+  { ...hostTarget(fullId), HostsPath: `${dockerRoot}/containers/${fullId}/../hosts` },
+  { ...hostTarget(fullId), HostsPath: `${dockerRoot}/containers/${fullId}//hosts` },
+];
+for (const value of invalidTargets) assert.throws(() => ownedContainerHostsPath(config, dockerRoot, value, fullId), /QA_LOCAL_/);
+for (const root of ['/', 'relative/docker', '//var/lib/docker', '/var/lib/docker/', '/var/lib/../docker', '/var/lib/docker\n', 'C:\\Docker']) assert.throws(() => ownedContainerHostsPath(config, root, hostTarget(fullId), fullId), /DOCKER_ROOT_INVALID/);
+
+function hostsExec(targets, { changed, readback = hosts, root = dockerRoot } = {}) {
+  const operations = [], writes = [];
+  let inspected = 0;
+  return { operations, writes, run: async (file, args, options) => {
+    operations.push({ file, args });
+    if (file === 'docker') {
+      assert.notEqual(args[0], 'exec', 'DNS containment never depends on executables inside container images');
+      if (args[0] === 'info') return JSON.stringify(root);
+      if (args[0] === 'ps') { assert.ok(args.includes('--no-trunc')); return targets.map(value => value.Id === fullId.slice(0, 12) ? fullId : value.Id).join('\n'); }
+      if (args[0] === 'inspect') { inspected++; return JSON.stringify([inspected > targets.length && changed ? changed : targets.find(value => value.Id === args[1]) || targets[0]]); }
+    }
+    assert.equal(file, 'sudo'); assert.equal(args[0], '-n');
+    if (args[1] === 'tee') { assert.equal(args[2], '-a'); assert.equal(args.length, 4); assert.equal(options.input, hosts); writes.push(args[3]); return ''; }
+    assert.deepEqual(args.slice(0, 2), ['-n', 'cat']); assert.equal(args.length, 3); return readback;
+  } };
+}
+const validHostExec = hostsExec([hostTarget(fullId), { ...hostTarget(secondId), Name: `/supabase_rest_${config.projectId}` }]);
+await denyContainerProduction(config, validHostExec.run);
+assert.deepEqual(validHostExec.writes, [hostTarget(fullId).HostsPath, hostTarget(secondId).HostsPath], 'every inspected container receives both IPv4/IPv6 denies through separate Runner argv');
+for (const invalid of invalidTargets) {
+  const invalidExec = hostsExec([invalid]);
+  await assert.rejects(() => denyContainerProduction(config, invalidExec.run), /QA_LOCAL_/);
+  assert.equal(invalidExec.writes.length, 0, 'foreign/malformed targets perform zero privileged writes');
+}
+const mixedExec = hostsExec([hostTarget(fullId), { ...hostTarget(secondId), HostsPath: '/etc/hosts' }]);
+await assert.rejects(() => denyContainerProduction(config, mixedExec.run), /HOSTS_PATH_INVALID/); assert.equal(mixedExec.writes.length, 0, 'all paths validate before the batch writes any file');
+const racedExec = hostsExec([hostTarget(fullId)], { changed: { ...hostTarget(fullId), State: { Running: false } } });
+await assert.rejects(() => denyContainerProduction(config, racedExec.run), /NOT_OWNED/); assert.equal(racedExec.writes.length, 0, 'a stopped/replaced target cannot reuse earlier approval');
+for (const root of ['relative/docker', '/var/lib/../docker', '/var/lib/docker/']) {
+  const rootExec = hostsExec([hostTarget(fullId)], { root });
+  await assert.rejects(() => denyContainerProduction(config, rootExec.run), /DOCKER_ROOT_INVALID/); assert.equal(rootExec.writes.length, 0, 'malformed daemon root performs zero privileged writes');
+}
+await assert.rejects(() => denyContainerProduction(config, hostsExec([hostTarget(fullId)], { readback: '' }).run), /DNS_NOT_DENIED/, 'failed readback remains a hard failure');
 const jwt = role => `header.${Buffer.from(JSON.stringify({ role, iss: 'supabase-demo' })).toString('base64url')}.synthetic`;
 const runtime = readLocalRuntime(config, { API_URL: config.backendUrl, ANON_KEY: jwt('anon'), SERVICE_ROLE_KEY: jwt('service_role') });
 assert.equal(runtime.publishableKey, jwt('anon'));
@@ -63,6 +111,9 @@ for (const [file, args, stderr, expectedCommand, category] of [
   ['supabase', ['db', 'reset', '--local'], 'SQLSTATE 42601 syntax error', 'supabase_db_reset', 'DATABASE_OR_MIGRATION_FAILED'],
   ['supabase', ['status', '-o', 'json'], 'connection refused', 'supabase_status', 'LOCAL_TRANSPORT_FAILED'],
   ['docker', ['inspect', 'private-container'], 'permission denied', 'docker_inspect', 'PERMISSION_DENIED'],
+  ['docker', ['info', '--format', '{{json .DockerRootDir}}'], 'permission denied', 'docker_info', 'PERMISSION_DENIED'],
+  ['sudo', ['-n', 'tee', '-a', '/private/hosts'], 'permission denied', 'container_hosts_append', 'PERMISSION_DENIED'],
+  ['sudo', ['-n', 'cat', '/private/hosts'], 'permission denied', 'container_hosts_read', 'PERMISSION_DENIED'],
   ['docker', ['exec', 'private-container', 'sh', '-c', 'cat >> /etc/hosts'], 'exec: "sh": executable file not found in $PATH', 'docker_exec_hosts', 'EXECUTABLE_OR_FILE_MISSING'],
   ['supabase', ['start'], 'manifest unknown', 'supabase_start', 'IMAGE_PULL_FAILED'],
   ['supabase', ['start'], 'failed to parse configuration', 'supabase_start', 'CONFIG_INVALID'],
@@ -73,6 +124,7 @@ for (const [file, args, stderr, expectedCommand, category] of [
   assert.doesNotMatch(JSON.stringify(diagnostic), /private|PASSWORD|sb_secret_|unhealthy container|configuration/);
 }
 const timeoutDiagnostic = qaProcessDiagnostic('supabase', ['start'], syntheticPrivate, null, 'TIMEOUT');
+assert.equal(qaProcessDiagnostic('docker', ['exec', 'private', 'sh'], '', 127).category, 'EXECUTABLE_OR_FILE_MISSING', 'actual command-not-found 127 has a stable category even when stderr is empty');
 assert.deepEqual(timeoutDiagnostic, { command: 'supabase_start', exit_code: -1, exit_kind: 'NO_PROCESS_EXIT', category: 'PROCESS_TIMEOUT' });
 assert.equal(safeQaProcessDiagnostic({ diagnostic: { command: syntheticPrivate, category: 'UNKNOWN_FAILURE', exit_code: 23, exit_kind: 'PROCESS_EXIT' } }), null);
 assert.deepEqual(safeQaProcessDiagnostic({ diagnostic: { ...timeoutDiagnostic, stderr: syntheticPrivate, stdout: syntheticPrivate } }), timeoutDiagnostic, 'raw subprocess fields never enter the artifact allowlist');

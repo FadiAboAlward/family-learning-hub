@@ -6,7 +6,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
 import { readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
 const cli = path.resolve('node_modules/.bin/supabase');
@@ -45,15 +45,23 @@ async function inspect(config, service) {
 }
 
 /** Provisioned containers have their own hosts files; Runner /etc/hosts alone is insufficient. */
-async function denyContainerProduction(config) {
-  const ids = (await command('docker', ['ps', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.ID}}'])).trim().split(/\s+/).filter(Boolean);
+export async function denyContainerProduction(config, exec = command) {
+  const dockerRootDir = JSON.parse(await exec('docker', ['info', '--format', '{{json .DockerRootDir}}']));
+  const ids = (await exec('docker', ['ps', '--no-trunc', '--filter', `label=com.supabase.cli.project=${config.projectId}`, '--format', '{{.ID}}'])).trim().split(/\s+/).filter(Boolean);
   if (!ids.length) throw new Error('QA_LOCAL_CONTAINERS_MISSING');
+  const targets = [];
   for (const id of ids) {
-    const [data] = JSON.parse(await command('docker', ['inspect', id]));
-    if (data.Config?.Labels?.['com.supabase.cli.project'] !== config.projectId || !data.Name?.endsWith(`_${config.projectId}`)) throw new Error('QA_LOCAL_CONTAINER_NOT_OWNED');
+    const [data] = JSON.parse(await exec('docker', ['inspect', id]));
+    targets.push({ id, hostsPath: ownedContainerHostsPath(config, dockerRootDir, data, id) });
+  }
+  // Validate the complete batch before any write, then re-inspect immediately
+  // before appending so a recreated/stopped container cannot retain stale approval.
+  for (const target of targets) {
+    const [current] = JSON.parse(await exec('docker', ['inspect', target.id]));
+    if (ownedContainerHostsPath(config, dockerRootDir, current, target.id) !== target.hostsPath) throw new Error('QA_LOCAL_CONTAINER_HOSTS_PATH_INVALID');
     const deny = `127.0.0.1 ${PRODUCTION_HOSTS.join(' ')}\n::1 ${PRODUCTION_HOSTS.join(' ')}\n`;
-    await command('docker', ['exec', '-u', '0', '-i', id, 'sh', '-c', 'cat >> /etc/hosts'], { input: deny });
-    const hosts = await command('docker', ['exec', id, 'cat', '/etc/hosts']);
+    await exec('sudo', ['-n', 'tee', '-a', target.hostsPath], { input: deny });
+    const hosts = await exec('sudo', ['-n', 'cat', target.hostsPath]);
     assertContainerProductionDenied(hosts);
   }
 }
