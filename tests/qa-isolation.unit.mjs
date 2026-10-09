@@ -129,7 +129,13 @@ function serverContext(env) {
 for(const env of [{},{SUPABASE_URL:production.backendUrl,FLH_QA_ISOLATION_MODE:'isolated-testing',FLH_QA_PROJECT_REF:'gkpoylfozvuwuwqeoduc'}]){
   const test=serverContext(env);assert.throws(test.start,/QA_/);assert.deepEqual(test.counts,{clients:0,oidc:0,fetch:0},'server rejects unsafe config before client/DB/OIDC construction');
 }
-const localServer=serverContext({SUPABASE_URL:'http://kong:8000',FLH_QA_BACKEND_URL:'http://127.0.0.1:54321',FLH_QA_ISOLATION_MODE:'runner-local',FLH_QA_PROJECT_REF:'local'});
+const localEnvironment={SUPABASE_URL:'http://kong:8000',FLH_QA_BACKEND_URL:'http://127.0.0.1:54321',FLH_QA_ISOLATION_MODE:'runner-local',FLH_QA_PROJECT_REF:'local'};
+for(const key of [undefined,'','   ']){
+  const test=serverContext({...localEnvironment,SUPABASE_SERVICE_ROLE_KEY:key});
+  assert.throws(test.start,/QA_SERVICE_ROLE_REQUIRED/);
+  assert.deepEqual(test.counts,{clients:0,oidc:0,fetch:0},'missing service key fails before any client or transport');
+}
+const localServer=serverContext({...localEnvironment,SUPABASE_SERVICE_ROLE_KEY:'synthetic-local-service-key'});
 localServer.start();
 const attestation=await (await localServer.request({action:'isolation_status'})).json();
 assert.deepEqual(attestation,{ok:true,isolation:{mode:'runner-local',project_ref:'local',backend_origin:'http://127.0.0.1:54321'}});
