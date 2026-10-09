@@ -138,7 +138,7 @@ Parent adjudication maps a physical return to its canonical record. Different cl
 
 The earlier migration 20261008044606_consolidated_family_rewards_v1_4_v1_6.sql is preserved. New forward migration 20261008152126_parent_return_event_identity_v1_7.sql adds the register/binding and updates the RPC. Existing completed NULL-event greeting rows are not backfilled and still count their original local day; legacy pending greetings need explicit parent verification. Used event identity and finalized binding/provenance are immutable. Authorized learner/workspace erasure retains its existing cascade boundary. Unrelated behavior capture/current-policy fallback and UTC approval cadence remain unchanged.
 
-Implementation remains a candidate until Runner-local database/concurrency, isolated authenticated QA, exact-head GitHub gates and CodeRabbit/Change Stack evidence pass. FLH-026 v1.0 revision 2 governs isolation. No Production application, deployment or real-family QA write is authorized.
+Implementation remains a candidate until Runner-local database/concurrency, isolated authenticated QA, exact-head GitHub gates and CodeRabbit/Change Stack evidence pass. FLH-026 v1.1 revision 2 governs isolation. No Production application, deployment or real-family QA write is authorized.
 
 ### Linked prayer bonuses
 
