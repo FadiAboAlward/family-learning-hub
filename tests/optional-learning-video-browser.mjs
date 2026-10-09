@@ -225,7 +225,20 @@ async function authoredOutcomes(browser, device) {
   const {page,fixture}=test;
   try{
     await start(page);await page.locator('#flhOptionalVideo').waitFor({state:'visible'});
-    assert.deepEqual(await page.locator('.flh-video-outcomes li').allTextContents(),firstOutcomes,'Active video renders only its vetted outcomes');
+    // The shared math renderer stacks fractions visually; textContent omits their slash.
+    // Compare the accessible original notation and verify actual numerator/denominator markup.
+    const renderedOutcomes=await page.locator('.flh-video-outcomes li').evaluateAll(rows=>rows.map(row=>{
+      const semanticText=node=>{
+        if(node.nodeType===Node.TEXT_NODE)return node.nodeValue;
+        if(node.nodeType!==Node.ELEMENT_NODE)return '';
+        if(node.matches('bdi[role="math"][aria-label]'))return node.getAttribute('aria-label');
+        return Array.from(node.childNodes).map(semanticText).join('');
+      };
+      return semanticText(row);
+    }));
+    assert.deepEqual(renderedOutcomes,firstOutcomes,'Active video preserves each vetted outcome including accessible fraction notation');
+    assert.deepEqual(await page.locator('.flh-video-outcomes .frac .n').allTextContents(),['1','3','5'],'Fraction numerators retain their exact authored values');
+    assert.deepEqual(await page.locator('.flh-video-outcomes .frac .d').allTextContents(),['2','4','4'],'Fraction denominators retain their exact authored values');
     const heading=page.getByRole('heading',{name:'ماذا ستتعلم؟'});assert.equal(await heading.count(),1);
     assert.equal(await page.locator('.flh-video-outcomes').getAttribute('aria-labelledby'),await heading.getAttribute('id'),'Outcomes region has an accessible title');
     assert.ok(await page.locator('.flh-video-outcomes').evaluate(element=>element.compareDocumentPosition(document.querySelector('.flh-video-player'))&Node.DOCUMENT_POSITION_FOLLOWING),'Outcomes precede the player');
