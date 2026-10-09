@@ -885,6 +885,14 @@ async function runBrowserSuite() {
     await page.locator('[data-fr-refresh]').click();await greetingDashboard;
     await page.locator(`#frSelfReportRule option[value="${greetingId}"]`).waitFor({state:'attached'});
     await page.locator('#frSelfReportRule').selectOption(greetingId);
+    const greetingNote=page.locator('#frSelfReportForm .fr-note');
+    assert.equal(await greetingNote.evaluate(details=>details.open),false,'selecting the greeting keeps its optional note disclosure closed');
+    assert.equal(await page.locator('#frSelfReportReason').isVisible(),false,'greeting common path never paints the optional note textarea before disclosure');
+    await greetingNote.locator('summary').focus();await page.keyboard.press('Enter');
+    await page.locator('#frSelfReportReason').waitFor({state:'visible'});
+    assert.equal(await greetingNote.evaluate(details=>details.open),true,'keyboard disclosure intentionally makes the optional note available');
+    await greetingNote.locator('summary').click();
+    assert.equal(await page.locator('#frSelfReportReason').isVisible(),false,'closing optional notes restores the simple greeting path');
     for(const key of ['initiative','congregation','mosque','sunnah','adhkar'])assert.equal(await page.locator(`[data-fr-${key}="frSelfReport"]`).isHidden(),true,'greeting has no unsupported bonus controls');
     const greetingBalance=server.state.reward_points;
     await perform(page,'behavior_submit',()=>submit(page,'#frSelfReportForm'));

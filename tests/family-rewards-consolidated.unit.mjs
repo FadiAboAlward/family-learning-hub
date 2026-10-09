@@ -5,11 +5,21 @@ import { executeFamilyRewardsAction } from '../supabase/functions/_shared/family
 // These fast checks protect the release boundary; executed PostgreSQL contracts
 // and overlapping transactions remain the proof of persistence and concurrency.
 const migration=fs.readFileSync(new URL('../supabase/migrations/20261008044606_consolidated_family_rewards_v1_4_v1_6.sql',import.meta.url),'utf8').replace(/\r\n/g,'\n');
-const code=migration.replace(/--[^\n]*/g,'');
-const seed=code.slice(code.indexOf('do $seed_parent_return$'));
-assert.doesNotMatch(code,/\b(?:alter|drop|truncate)\s+table\b/i,'feature must not rewrite schemas or erase history');
+const baselineCode=migration.replace(/--[^\n]*/g,'');
+const seed=baselineCode.slice(baselineCode.indexOf('do $seed_parent_return$'));
+assert.doesNotMatch(baselineCode,/\b(?:alter|drop|truncate)\s+table\b/i,'prospective baseline seed must not rewrite schemas or erase history');
 assert.doesNotMatch(seed,/\b(?:insert\s+into|update|delete\s+from)\s+public\.(?:behavior_submissions|gamification_events|learner_gamification_state|reward_claims)\b/i,'prospective seed must not backfill wallet or history');
-assert.match(code,/security invoker set search_path = ''/,'existing invoker authority remains');
+// The seed remains in its prospective baseline migration. Command invariants
+// must exercise the last applied definition, including the canonical R1 event.
+const migrationDirectory=new URL('../supabase/migrations/',import.meta.url);
+const commandDefinitions=fs.readdirSync(migrationDirectory).filter(name=>name.endsWith('.sql')).sort().map(name=>({
+  name,code:fs.readFileSync(new URL(name,migrationDirectory),'utf8').replace(/\r\n/g,'\n').replace(/--[^\n]*/g,''),
+})).filter(({code})=>/create or replace function public\.flh_family_rewards_command\s*\(/i.test(code));
+const latest=commandDefinitions.at(-1);
+assert.ok(latest,'an authoritative family command definition exists');
+const commandStart=latest.code.search(/create or replace function public\.flh_family_rewards_command\s*\(/i);
+const code=latest.code.slice(commandStart);
+assert.match(code,/security invoker set search_path = ''/,'latest invoker authority remains');
 assert.match(code,/revoke all on function public\.flh_family_rewards_command\([^;]+from public, anon, authenticated;/,'privileged command stays closed to browser roles');
 assert.match(code,/grant execute on function public\.flh_family_rewards_command\([^;]+to service_role;/);
 assert.match(seed,/v_rule constant uuid := 'a315e8af-9d9b-473b-95ac-c5425ad7de5b'/);
@@ -18,8 +28,9 @@ assert.ok(seed.includes("'تقبيل يد الأب أو الأم عند العو
 assert.match(seed,/2,0,'all','day',2,true,true,0,0,0,0/,'seed canonical two points, no bonuses and combined two-slot cap');
 
 const learnerLock=code.indexOf("select * into v_learner from public.learners where id=p_learner_id and workspace_id=p_workspace_id and is_active for update;");
-const occurrenceCap=code.indexOf("(occurred_at at time zone 'Europe/Istanbul')::date=(v_submission.occurred_at at time zone 'Europe/Istanbul')::date");
-assert.ok(learnerLock>=0&&occurrenceCap>learnerLock,'local occurrence cap must run under the shared wallet/learner lock');
+const occurrenceCap=code.indexOf("(coalesce(e.occurred_at,s.occurred_at) at time zone 'Europe/Istanbul')::date=(v_return_event.occurred_at at time zone 'Europe/Istanbul')::date");
+assert.ok(learnerLock>=0&&occurrenceCap>learnerLock,'verified canonical event day and legacy fallback cap must run under the shared wallet/learner lock');
+assert.match(code.slice(learnerLock,occurrenceCap),/s\.status='approved' and s\.return_event_id=v_return_id/,'same canonical event is checked before wallet mutation regardless of claim timestamp');
 assert.match(code.slice(learnerLock,occurrenceCap),/v_now := clock_timestamp\(\)/,'wall clock is refreshed after waiting for the shared lock');
 assert.match(code.slice(occurrenceCap),/if v_count>=2 then/,'fixed cap does not trust editable max_awards');
 assert.match(code,/if v_submission\.initiative or v_submission\.adhkar_completed or v_submission\.congregation_completed[\s\S]+return jsonb_build_object\('error','INVALID_INPUT'\)/,'legacy canonical pending bonus flags cannot be approved');
@@ -63,4 +74,4 @@ assert.deepEqual(calls[0],{name:'flh_family_rewards_command',args:{p_workspace_i
 await executeFamilyRewardsAction('behavior_review',{...browserReport,submission_id:submission,decision:'approved',reason:'verified genuine return'},dependencies);
 assert.deepEqual(calls[2].args,{p_workspace_id:workspace,p_actor_id:parent,p_learner_id:null,p_action:'behavior_review',
   p_payload:{submission_id:submission,decision:'approved',reason:'verified genuine return'}},'parent approval passes no calculated money or forged learner identity');
-console.log('Consolidated rewards prospective migration, lock/capture authority and stable API retry regressions passed (DB contracts remain separate).');
+console.log(`Consolidated rewards baseline seed and latest ${latest.name} lock/capture/canonical-day authority plus stable API retries passed (DB contracts remain separate).`);
