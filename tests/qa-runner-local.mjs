@@ -97,7 +97,74 @@ const commands = new Set(['supabase_start', 'supabase_db_reset', 'supabase_statu
 const categories = new Set(['CONFIG_INVALID', 'DOCKER_UNAVAILABLE', 'DISK_FULL', 'IMAGE_PULL_FAILED', 'HEALTH_CHECK_FAILED', 'PORT_IN_USE',
   'PERMISSION_DENIED', 'DATABASE_OR_MIGRATION_FAILED', 'LOCAL_TRANSPORT_FAILED', 'EXECUTABLE_OR_FILE_MISSING', 'PROCESS_TIMEOUT', 'UNKNOWN_FAILURE']);
 const authenticatedFailures = new Set(['OIDC_URL_REJECTED', 'OIDC_ENV_MISSING', 'OIDC_REQUEST_FAILED', 'OIDC_TOKEN_MISSING',
-  'ATTESTATION_FAILED', 'TESTING_CONFIG_INVALID', 'MODULE_MISSING', 'BROWSER_EXECUTABLE_MISSING', 'AUTH_PREPARE_FAILED', 'AUTH_CLEANUP_FAILED', 'UNCLASSIFIED']);
+  'ATTESTATION_FAILED', 'TESTING_CONFIG_INVALID', 'MODULE_MISSING', 'BROWSER_EXECUTABLE_MISSING', 'AUTH_PREPARE_FAILED', 'AUTH_CLEANUP_FAILED',
+  'TRANSPORT_FAILED', 'RESPONSE_JSON_INVALID', 'BROWSER_TIMEOUT', 'BROWSER_ERRORS', 'NETWORK_REJECTED', 'SESSION_INVALID', 'QUIZ_INVALID',
+  'RESUME_FAILED', 'ANSWER_KEY_LEAK', 'PARENT_CONFIG_FAILED', 'PARENT_LOGIN_FAILED', 'PARENT_DASHBOARD_FAILED', 'PARENT_EXCLUSION_FAILED',
+  'PARENT_LOGOUT_FAILED', 'ATTEMPT_NOT_FOUND', 'DEEP_LINK_INVALID', 'UNCLASSIFIED']);
+export const AUTHENTICATED_QA_STAGES = Object.freeze(['CONFIG', 'ATTESTATION', 'PLAYWRIGHT_IMPORT', 'OIDC_REQUEST', 'AUTH_PREPARE', 'SESSION_VALIDATION',
+  'BROWSER_LAUNCH', 'BROWSER_NAVIGATION', 'PROGRAM_READY', 'PROGRAM_OPEN', 'BOOK_READY', 'BOOK_OPEN', 'LEARNING_OPEN', 'LEARNING_RESUME',
+  'LEARNING_ANSWERS', 'LEARNING_FINISH', 'EXAM_OPEN', 'EXAM_RESUME', 'EXAM_ANSWERS', 'EXAM_SUBMIT', 'ATTEMPT_DISCOVERY',
+  'DEEP_LINK', 'SCREENSHOT', 'PARENT_AUTH', 'BROWSER_SAFETY', 'AUTH_CLEANUP']);
+const authenticatedResponseErrors = new Set(['QA_AUTH_FAILED', 'QA_BUSY', 'QA_LEARNER_NOT_READY', 'QA_QUIZ_NOT_FOUND', 'QA_VERSION_NOT_FOUND',
+  'QA_ATTEMPT_CLEANUP_FAILED', 'QA_LEASE_ACQUIRE_FAILED', 'QA_LEASE_RELEASE_FAILED', 'QA_LEASE_NOT_OWNED', 'INVALID_RUN_ID', 'UNKNOWN_ACTION', 'METHOD_NOT_ALLOWED']);
+const safeHttpStatus = value => Number.isInteger(value) && value >= 100 && value <= 599;
+const safeCount = value => Number.isSafeInteger(value) && value >= 0 && value <= 100000;
+
+/** Only fixed identities/numeric status escape; the error object stays private. */
+export function safeAuthenticatedFailure(error) {
+  const codes = {
+    QA_OIDC_URL_INVALID:'OIDC_URL_REJECTED', QA_ISOLATION_ATTESTATION_FAILED:'ATTESTATION_FAILED',
+    QA_ISOLATION_CONFIG_REQUIRED:'TESTING_CONFIG_INVALID', QA_ISOLATION_URL_INVALID:'TESTING_CONFIG_INVALID',
+    QA_ISOLATION_IDENTITY_MISMATCH:'TESTING_CONFIG_INVALID', QA_PRODUCTION_FORBIDDEN:'TESTING_CONFIG_INVALID',
+    QA_PUBLISHABLE_KEY_REQUIRED:'TESTING_CONFIG_INVALID', QA_PUBLISHABLE_KEY_INVALID:'TESTING_CONFIG_INVALID',
+    QA_APP_URL_INVALID:'TESTING_CONFIG_INVALID', QA_APP_MUST_BE_LOCAL:'TESTING_CONFIG_INVALID',
+    QA_AUTH_PREPARE_FAILED:'AUTH_PREPARE_FAILED', QA_AUTH_CLEANUP_FAILED:'AUTH_CLEANUP_FAILED',
+    QA_OIDC_REQUEST_FAILED:'OIDC_REQUEST_FAILED', QA_OIDC_TOKEN_MISSING:'OIDC_TOKEN_MISSING',
+    QA_AUTH_SESSION_INVALID:'SESSION_INVALID', QA_AUTH_QUIZ_INVALID:'QUIZ_INVALID',
+    QA_BROWSER_NETWORK_REJECTED:'NETWORK_REJECTED', QA_BROWSER_ERRORS:'BROWSER_ERRORS',
+    QA_LOCAL_RESUME_API_FAILED:'RESUME_FAILED', QA_LOCAL_RESUME_INVALID:'RESUME_FAILED', QA_LOCAL_RESUME_ID_CHANGED:'RESUME_FAILED',
+    QA_LOCAL_ANSWER_KEY_LEAK:'ANSWER_KEY_LEAK', QA_LOCAL_PARENT_CONFIG_REQUIRED:'PARENT_CONFIG_FAILED',
+    QA_LOCAL_PARENT_LOGIN_FAILED:'PARENT_LOGIN_FAILED', QA_LOCAL_PARENT_DASHBOARD_FAILED:'PARENT_DASHBOARD_FAILED',
+    QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED:'PARENT_EXCLUSION_FAILED', QA_LOCAL_PARENT_LOGOUT_FAILED:'PARENT_LOGOUT_FAILED',
+    QA_LOCAL_ATTEMPT_NOT_FOUND:'ATTEMPT_NOT_FOUND', QA_LOCAL_DEEP_LINK_QUERY_REMAIN:'DEEP_LINK_INVALID',
+  };
+  let code = Object.hasOwn(codes, error?.message) ? codes[error.message] : 'UNCLASSIFIED';
+  if (error?.message === 'GitHub OIDC environment is unavailable') code = 'OIDC_ENV_MISSING';
+  else if (error?.name === 'TimeoutError') code = 'BROWSER_TIMEOUT';
+  else if (error?.name === 'SyntaxError') code = 'RESPONSE_JSON_INVALID';
+  else if (error?.name === 'TypeError' && error?.message === 'fetch failed') code = 'TRANSPORT_FAILED';
+  else if (error?.code === 'ERR_MODULE_NOT_FOUND') code = 'MODULE_MISSING';
+  else if (String(error?.message || '').startsWith("browserType.launch: Executable doesn't exist")) code = 'BROWSER_EXECUTABLE_MISSING';
+  return { code, ...(safeHttpStatus(error?.qaHttpStatus) ? { http_status: error.qaHttpStatus } : {}),
+    ...(authenticatedResponseErrors.has(error?.qaResponseError) ? { response_error: error.qaResponseError } : {}) };
+}
+
+function authenticatedProcessDetails(stderr) {
+  let failure, terminal, stage, network;
+  for (const line of String(stderr).split(/\r?\n/)) {
+    let value;
+    try {
+      if (line.startsWith('QA_AUTH_FAILURE ')) {
+        value = JSON.parse(line.slice('QA_AUTH_FAILURE '.length));
+        if (!failure && AUTHENTICATED_QA_STAGES.includes(value.stage) && authenticatedFailures.has(value.code)) failure = value;
+      } else if (line.startsWith('QA_AUTH_TERMINAL ')) {
+        value = JSON.parse(line.slice('QA_AUTH_TERMINAL '.length)); if (authenticatedFailures.has(value.code)) terminal = value;
+      } else if (line.startsWith('QA_AUTH_STAGE ')) {
+        value = JSON.parse(line.slice('QA_AUTH_STAGE '.length)); if (AUTHENTICATED_QA_STAGES.includes(value.stage) && value.status === 'START') stage = value.stage;
+      } else if (line.startsWith('QA_AUTH_NETWORK ')) {
+        value = JSON.parse(line.slice('QA_AUTH_NETWORK '.length));
+        if (['PASS','FAIL','NOT_STARTED'].includes(value.status) && safeCount(value.unexpected_requests) && safeCount(value.browser_errors)) network = {
+          status: value.status, unexpected_requests: value.unexpected_requests, browser_errors: value.browser_errors };
+      }
+    } catch {}
+  }
+  const selected = failure || terminal;
+  return { authenticated_failure: selected?.code || authenticatedProcessFailure(stderr),
+    ...(failure || stage ? { authenticated_stage: failure?.stage || stage } : {}),
+    ...(safeHttpStatus(selected?.http_status) ? { authenticated_http_status: selected.http_status } : {}),
+    ...(authenticatedResponseErrors.has(selected?.response_error) ? { authenticated_response_error: selected.response_error } : {}),
+    ...(network ? { authenticated_network: network } : {}) };
+}
 
 /** Match fixed error identities only; captured URLs, tokens and response bodies never escape. */
 function authenticatedProcessFailure(stderr) {
@@ -152,12 +219,18 @@ export function qaProcessDiagnostic(file, args, stderr, exitCode, reason = 'FAIL
   if (reason === 'FAILED' && exitCode === 127) category = 'EXECUTABLE_OR_FILE_MISSING';
   // -1 explicitly means no process exit status (spawn failure/timeout), not a fabricated exit code.
   return Object.freeze({ command, exit_code: Number.isInteger(exitCode) ? exitCode : -1, exit_kind: Number.isInteger(exitCode) ? 'PROCESS_EXIT' : 'NO_PROCESS_EXIT', category,
-    ...(command === 'node_authenticated_browser' ? { authenticated_failure: authenticatedProcessFailure(stderr) } : {}) });
+    ...(command === 'node_authenticated_browser' ? authenticatedProcessDetails(stderr) : {}) });
 }
 
 export function safeQaProcessDiagnostic(error) {
   const value = error?.diagnostic;
   if (!commands.has(value?.command) || !categories.has(value?.category) || !Number.isInteger(value?.exit_code) || !['PROCESS_EXIT', 'NO_PROCESS_EXIT'].includes(value?.exit_kind)) return null;
   return { command: value.command, exit_code: value.exit_code, exit_kind: value.exit_kind, category: value.category,
-    ...(value.command === 'node_authenticated_browser' && authenticatedFailures.has(value.authenticated_failure) ? { authenticated_failure: value.authenticated_failure } : {}) };
+    ...(value.command === 'node_authenticated_browser' && authenticatedFailures.has(value.authenticated_failure) ? { authenticated_failure: value.authenticated_failure } : {}),
+    ...(value.command === 'node_authenticated_browser' && AUTHENTICATED_QA_STAGES.includes(value.authenticated_stage) ? { authenticated_stage: value.authenticated_stage } : {}),
+    ...(value.command === 'node_authenticated_browser' && safeHttpStatus(value.authenticated_http_status) ? { authenticated_http_status: value.authenticated_http_status } : {}),
+    ...(value.command === 'node_authenticated_browser' && authenticatedResponseErrors.has(value.authenticated_response_error) ? { authenticated_response_error: value.authenticated_response_error } : {}),
+    ...(value.command === 'node_authenticated_browser' && ['PASS','FAIL','NOT_STARTED'].includes(value.authenticated_network?.status)
+      && safeCount(value.authenticated_network?.unexpected_requests) && safeCount(value.authenticated_network?.browser_errors)
+      ? { authenticated_network: { status:value.authenticated_network.status, unexpected_requests:value.authenticated_network.unexpected_requests, browser_errors:value.authenticated_network.browser_errors } } : {}) };
 }
