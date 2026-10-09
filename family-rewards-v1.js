@@ -625,6 +625,7 @@
         if(result?.already_reviewed)success='تمت مراجعة الطلب سابقًا؛ لم تُضف نقاط جديدة.';
         else if(payload.decision==='approved')success=`تم الاعتماد. أُضيفت ${number(result?.submission?.total_points)} نقطة بالفعل.`;
       }
+      if(action==='behavior_record')view.returnSelections.delete('direct');
       // The command succeeded; a failed dashboard read must not invite resubmission.
       delete keyHolder.dataset.idempotencyKey;
       delete keyHolder.dataset.occurredAt;delete keyHolder.dataset.occurrenceSignature;
