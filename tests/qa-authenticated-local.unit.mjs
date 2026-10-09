@@ -235,6 +235,11 @@ await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', as
   return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [], states: [], attempts: [] } : {});
 });
 assert.equal(parentCalls.length, 3);
+let parentBrowserCalls = 0;
+await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async url => {
+  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [], attempts: [], states: [] } : {});
+}, async token => { parentBrowserCalls++; assert.equal(token, 'synthetic-parent-token'); });
+assert.equal(parentBrowserCalls, 1, 'authenticated browser callback runs after Testing-only exclusion');
 let loggedOut = false;
 await assert.rejects(() => assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async url => {
   if (url.endsWith('/logout')) { loggedOut = true; return response({}); }

@@ -68,5 +68,9 @@ jobs:
             qa-authenticated-evidence/lifecycle.json
             qa-authenticated-evidence/manifest.json
             qa-authenticated-evidence/attempt-deep-link-mobile.png
+            qa-authenticated-evidence/attempt-deep-link-desktop.png
+            qa-authenticated-evidence/parent-dashboard-mobile.png
+            qa-authenticated-evidence/parent-rewards-mobile.png
+            qa-authenticated-evidence/parent-rewards-desktop.png
           retention-days: 7
           if-no-files-found: warn
