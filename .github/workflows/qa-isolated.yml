@@ -204,6 +204,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/content-direction-browser.mjs
+      - name: Run exact source-grounded academic candidate in Exam UI (390 and desktop)
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/academic-exact-candidate-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/
