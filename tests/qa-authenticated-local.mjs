@@ -275,11 +275,23 @@ async function main() {
     stage = 'authenticated_parent_rewards_persistence';
     await sql(config, `do $qa$ begin
       if (select count(*) from public.behavior_submissions
-          where learner_id='02610000-0000-4000-8000-000000000101' and status='approved') <> 2
+          where learner_id='02610000-0000-4000-8000-000000000101' and status='approved') <> 3
         or (select reward_points from public.learner_gamification_state
-          where learner_id='02610000-0000-4000-8000-000000000101') <> 6
+          where learner_id='02610000-0000-4000-8000-000000000101') <> 8
         or (select count(*) from public.gamification_events
           where learner_id='02610000-0000-4000-8000-000000000101' and reward_points_delta=3) <> 2
+        -- Two existing approvals remain exactly once, plus one real authorized
+        -- synthetic parent-return event (+2 RP, zero XP) attached to the
+        -- canonical server-issued occasion, never a second clock-based claim.
+        or (select count(*) from public.family_return_events) <> 1
+        or (select count(*) from public.behavior_submissions s
+          join public.family_return_events e on e.id=s.return_event_id and e.workspace_id=s.workspace_id
+          where s.learner_id='02610000-0000-4000-8000-000000000101'
+            and s.rule_id='a315e8af-9d9b-473b-95ac-c5425ad7de5b'
+            and s.status='approved' and s.total_points=2) <> 1
+        or (select count(*) from public.gamification_events
+          where learner_id='02610000-0000-4000-8000-000000000101'
+            and reward_points_delta=2 and xp_delta=0 and source_type='family_behavior') <> 1
         or (select count(*) from public.behavior_submissions
           where learner_id='02610000-0000-4000-8000-000000000102' and status='approved') <> 1
         or (select count(*) from public.behavior_submissions
