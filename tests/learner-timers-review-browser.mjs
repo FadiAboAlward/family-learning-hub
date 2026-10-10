@@ -90,6 +90,10 @@ try{
     holdFinalSave=true;holdSubmission=true;
     await page.locator('.exam-v3-answer').nth(1).click();
     await finalSaveHeld;
+    await page.locator('#examSubmit').click();
+    await page.locator('.loading-card').filter({hasText:'لحظة'}).waitFor();
+    // Arm only AFTER the submitting shell is visible: ordinary timer ticks
+    // before clicking Submit are not evidence of a post-submit resurrection.
     await page.evaluate(()=>{
       window.__qaExamResurrected=false;
       window.__qaSubmittingObserver=new MutationObserver(()=>{
@@ -97,8 +101,6 @@ try{
       });
       window.__qaSubmittingObserver.observe(document.body,{subtree:true,childList:true});
     });
-    await page.locator('#examSubmit').click();
-    await page.locator('.loading-card').filter({hasText:'لحظة'}).waitFor();
     releaseFinalSave();
     await submissionHeld;
     assert.equal(await page.locator('#flhExamElapsed,.exam-v3-answer').count(),0,'Delayed answer-save may not restore the Exam/timer while submitting');
