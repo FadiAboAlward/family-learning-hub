@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { runOwnedQaLifecycle } from './authenticated-e2e.mjs';
+import { assertAuthenticatedBrowserSafety, runAuthenticatedStage, runOwnedQaLifecycle } from './authenticated-e2e.mjs';
 import {
   ACTOR_ID,
   LEASE_TTL_SECONDS,
@@ -9,6 +9,7 @@ import {
   REPOSITORY_ID,
   SESSION_SECONDS,
   WORKFLOW_PREFIX,
+  WORKFLOW_PREFIXES,
   executeQaAction,
   validateGithubClaims,
 } from '../supabase/functions/qa-auth/logic.mjs';
@@ -22,7 +23,39 @@ const validClaims = {
   runner_environment: 'github-hosted',
 };
 
+const diagnosticLines=[],privateValue='synthetic-private-token-url-body';
+const emit=line=>diagnosticLines.push(line);
+assert.equal(await runAuthenticatedStage('OIDC_REQUEST',async()=>privateValue,emit),privateValue);
+assert.equal(diagnosticLines.length,2);
+assert.ok(diagnosticLines.every(line=>!line.includes(privateValue)),'operation values never enter diagnostic markers');
+const originalFailure=Object.assign(new Error(privateValue),{name:'TimeoutError'});
+await assert.rejects(()=>runAuthenticatedStage('PROGRAM_READY',async()=>{throw originalFailure;},emit),error=>error===originalFailure,'stage instrumentation rethrows the actual original exception');
+assert.ok(diagnosticLines.at(-1).includes('"code":"BROWSER_TIMEOUT"'));
+assert.ok(!diagnosticLines.at(-1).includes(privateValue));
+let invalidOperationCalls=0;
+await assert.rejects(()=>runAuthenticatedStage(privateValue,async()=>{invalidOperationCalls++;},emit),/QA_AUTH_DIAGNOSTIC_STAGE_INVALID/);
+assert.equal(invalidOperationCalls,0);
+let guardCalls=0;
+const safetyLines=[];
+assert.throws(()=>assertAuthenticatedBrowserSafety({unexpected:[privateValue],assertNoUnexpectedRequests(){guardCalls++;throw new Error(privateValue);}},[privateValue],line=>safetyLines.push(line)),/QA_BROWSER_NETWORK_REJECTED/);
+assert.equal(guardCalls,1);
+assert.deepEqual(JSON.parse(safetyLines[0].slice('QA_AUTH_NETWORK '.length)),{status:'FAIL',unexpected_requests:1,browser_errors:1});
+assert.ok(!safetyLines[0].includes(privateValue),'only network/browser-error counts escape even when the flow failed');
+assert.throws(()=>assertAuthenticatedBrowserSafety({unexpected:[],assertNoUnexpectedRequests(){}},[privateValue],()=>{}),/QA_BROWSER_ERRORS/);
+let cleanupAfterDiagnostic=false;
+await assert.rejects(()=>runOwnedQaLifecycle({
+  prepare:async()=>({run_id:'owned-synthetic',session:privateValue}),
+  validate:async()=>{},
+  run:()=>runAuthenticatedStage('PROGRAM_READY',async()=>{throw originalFailure;},emit),
+  cleanup:async()=>{cleanupAfterDiagnostic=true;throw new Error('secondary cleanup failure');},
+}),error=>error===originalFailure);
+assert.equal(cleanupAfterDiagnostic,true,'original failure still triggers owned cleanup and keeps priority');
+
 assert.equal(validateGithubClaims(validClaims), true);
+assert.equal(WORKFLOW_PREFIXES.length, 2);
+assert.equal(validateGithubClaims({ ...validClaims, workflow_ref: `${WORKFLOW_PREFIXES[1]}refs/pull/147/merge` }, 'runner-local'), true);
+assert.throws(() => validateGithubClaims({ ...validClaims, workflow_ref: `${WORKFLOW_PREFIXES[1]}refs/pull/147/merge` }, 'isolated-testing'), /WORKFLOW_NOT_ALLOWED/);
+assert.throws(() => validateGithubClaims({ ...validClaims, workflow_ref: `${REPOSITORY}/.github/workflows/qa-authenticated-local.yml.evil@refs/heads/main` }), /WORKFLOW_NOT_ALLOWED/);
 for (const [field, value, expected] of [
   ['repository', 'other/repo', 'REPOSITORY_NOT_ALLOWED'],
   ['repository_id', '1', 'REPOSITORY_NOT_ALLOWED'],
@@ -119,10 +152,12 @@ await assert.rejects(
 assert.equal(browserFlowRan, false, 'browser flow must not run after validation failure');
 assert.deepEqual(lifecycleCleanupIds, [validationFailureRunId], 'owned run must be cleaned after validation failure');
 
-const workflow = fs.readFileSync('.github/workflows/qa-smoke.yml', 'utf8').replace(/\r\n/g, '\n');
+const workflow = fs.readFileSync('.github/workflows/qa-isolated.yml', 'utf8').replace(/\r\n/g, '\n');
 assert.match(workflow, /supabase\/functions\/qa-auth\/index\.ts/);
 assert.match(workflow, /^  static-quality:\n(?:.*\n)*?    concurrency:\n      group: qa-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: true$/m, 'stale static QA should cancel without interrupting shared Testing cleanup');
-assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: family-learning-hub-testing-learner\n      cancel-in-progress: false$/m, 'Testing browser job must be serialized without cancellation');
+assert.match(workflow, /^  browser-smoke:\n(?:.*\n)*?    concurrency:\n      group: isolated-browser-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: true$/m, 'independent mock browser checks cancel superseded own-PR/ref work without cancelling unrelated heads');
+const authenticatedWorkflow = fs.readFileSync('.github/workflows/qa-authenticated-local.yml', 'utf8').replace(/\r\n/g, '\n');
+assert.match(authenticatedWorkflow, /concurrency:\n      group: authenticated-local-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n      cancel-in-progress: false/, 'owned authenticated lifecycle retains cleanup without cancellation');
 
 const migration = fs.readFileSync('supabase/migrations/20260909055000_harden_testing_qa_concurrency.sql', 'utf8');
 assert.match(migration, /on conflict \(workspace_id, slug\) do update/);

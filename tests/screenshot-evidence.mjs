@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -5,7 +6,7 @@ const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const OUTPUT_DIR='playwright-screenshots';
 fs.mkdirSync(OUTPUT_DIR,{recursive:true});
 
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 
 /** Capture one stable, human-readable QA screenshot without storing credentials. */
@@ -53,6 +54,6 @@ const wrongReview=page.locator('.exam-review.exam-review-wrong').first();
 await wrongReview.locator('.exam-review-explain').click();
 await shot('04-exam-review');
 
-fs.writeFileSync(`${OUTPUT_DIR}/manifest.json`,JSON.stringify({generated_at:new Date().toISOString(),head_sha:process.env.GITHUB_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,source:'mocked local Browser smoke',retention_days:7,files:['01-learning-math.png','02-learning-review.png','03-exam-math.png','04-exam-review.png']},null,2));
+fs.writeFileSync(`${OUTPUT_DIR}/manifest.json`,JSON.stringify({generated_at:new Date().toISOString(),head_sha:(process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA)||null,run_id:process.env.GITHUB_RUN_ID||null,source:'mocked local Browser smoke',retention_days:7,files:['01-learning-math.png','02-learning-review.png','03-exam-math.png','04-exam-review.png']},null,2));
 console.log(`Screenshot evidence captured in ${OUTPUT_DIR}/ (4 PNGs, temporary GitHub artifact retention: 7 days).`);
 await browser.close();

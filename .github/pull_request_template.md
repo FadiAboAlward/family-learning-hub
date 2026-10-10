@@ -63,8 +63,11 @@ For an important bug, prefer a deterministic regression at the lowest reliable l
 - [ ] Existing assertions were not weakened merely to make QA pass.
 - [ ] Playwright screenshot evidence was captured for each meaningful user-facing UI change, or marked N/A with reason. Evidence is stored as a temporary GitHub Actions artifact under `playwright-screenshots/`, not committed to repository history, with seven-day retention.
 - Validated PR-head SHA for every required pre-merge gate: `<sha>`
-- [ ] QA Gate / Static quality passed for the exact PR-head SHA recorded above.
-- [ ] QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
+- [ ] Isolated QA Gate / Static quality passed for the exact PR-head SHA recorded above.
+- [ ] Isolated QA Gate / Browser smoke passed for the exact same PR-head SHA recorded above.
+- [ ] Authenticated local API and browser Runner-local result and owned teardown are recorded for the exact PR-head SHA (PASS / FAIL / NOT RUN); NOT RUN is never treated as PASS.
+- [ ] QA used disposable Runner-local data and synthetic browser APIs; no Production traffic/writes, including the test account. Any hosted authenticated Testing result identifies an explicitly isolated backend; NOT RUN/BLOCKED is not PASS.
+- [ ] FLH026 isolation pin and disabled publication/legacy-workflow evidence are recorded where applicable; temporary screenshot manifests bind the checked-out PR-head SHA.
 - [ ] CodeRabbit review completed for the exact same PR-head SHA; all actionable findings are fixed or explicitly resolved with a verified architectural reason.
 - [ ] CodeRabbit built-in Pre-Merge Checks and the five Family Learning Hub custom policy checks were reviewed for this PR; warning-mode findings are fixed or explicitly dispositioned with a verified reason.
 - [ ] Change Stack was reviewed if this PR spans at least three architectural concern layers or combines a database/schema migration with an externally observable API/UI change; otherwise record N/A and why in Notes for reviewer.
