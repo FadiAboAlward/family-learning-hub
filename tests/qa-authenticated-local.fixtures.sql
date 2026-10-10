@@ -11,6 +11,10 @@ declare
   quiz constant uuid := '02610000-0000-4000-8000-000000000003';
   version constant uuid := '02610000-0000-4000-8000-000000000004';
   learner uuid;
+  reward_learner constant uuid := '02610000-0000-4000-8000-000000000101';
+  qa_category uuid;
+  qa_rule uuid;
+  qa_result jsonb;
   subject bigint;
   question uuid;
 begin
@@ -51,6 +55,36 @@ begin
     insert into public.quiz_question_answer_keys(workspace_id,question_id,correct_answer,explanation)
       values(workspace,question,'{"option_position":1}','Synthetic transport fixture; no academic claim.');
   end loop;
+  -- A second wholly synthetic learner is visible ONLY inside this disposable
+  -- Runner-local backend. The canonical is_test=true learner stays excluded
+  -- from the real parent dashboard. Never seed this into hosted/Production.
+  insert into public.learners(id,workspace_id,display_name,slug,grade_level,is_active,metadata)
+    values(reward_learner,workspace,'QA Isolated Parent Learner','qa-parent-visible',7,true,
+      '{"qa_automation":true,"synthetic_only":true,"runner_parent_visibility":true}');
+  insert into public.learner_gamification_state(workspace_id,learner_id,xp,reward_points,current_streak,longest_streak)
+    values(workspace,reward_learner,0,0,0,0);
+  set local role service_role;
+  qa_result := public.flh_family_rewards_command(workspace,parent_id,null,'category_save',
+    '{"title":"QA Isolated Parent Category"}'::jsonb);
+  if qa_result->>'ok' <> 'true' then raise exception 'QA_LOCAL_REWARDS_CATEGORY_FAILED'; end if;
+  qa_category := (qa_result->'category'->>'id')::uuid;
+  qa_result := public.flh_family_rewards_command(workspace,parent_id,null,'rule_save',
+    jsonb_build_object('title','QA Isolated Family Task','category_id',qa_category,'base_points',3,
+      'initiative_bonus_points',0,'cadence','unlimited','max_awards',null,
+      'self_report_allowed',true,'parent_approval_required',true,
+      'learner_scope','selected','learner_ids',jsonb_build_array(reward_learner)));
+  if qa_result->>'ok' <> 'true' then raise exception 'QA_LOCAL_REWARDS_RULE_FAILED'; end if;
+  qa_rule := (qa_result->'rule'->>'id')::uuid;
+  for position in 1..2 loop
+    qa_result := public.flh_family_rewards_command(workspace,null,reward_learner,'behavior_submit',
+      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 3-position),
+        'idempotency_key','qa-parent-pending-'||position));
+    if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_REWARDS_PENDING_FAILED'; end if;
+  end loop;
+  if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 2
+    or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) <> 0
+  then raise exception 'QA_LOCAL_REWARDS_PREAPPROVAL_INVALID'; end if;
+
   if (select count(*) from public.quiz_questions where quiz_version_id=version) <> 3 then raise exception 'QA_LOCAL_QUESTION_COUNT_INVALID'; end if;
   -- The real MCQ grader reads option_position. Validate the known synthetic
   -- answer against its option before launching the authenticated browser.

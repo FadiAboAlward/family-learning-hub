@@ -8,6 +8,7 @@ const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
 const QA_QUESTION_COUNT = 3;
+const QA_PARENT_VISIBLE_LEARNER = '02610000-0000-4000-8000-000000000101';
 const QA_BUSY_RETRIES = 20;
 const QA_BUSY_RETRY_MS = 10000;
 
@@ -129,8 +130,37 @@ export async function assertQaExamCompletion(page) {
   } else await reviews.first().waitFor({ state: 'visible', timeout: 30000 });
 }
 
+/** Read-only device layout evidence; independent of provider fixtures and browser dimensions. */
+export async function assertQaDeviceLayout(page, expectedWidth) {
+  const dimensions = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth,
+    body: document.body.scrollWidth,
+    hasError: !!document.querySelector('[data-family-rewards] .error'),
+  }));
+  if (dimensions.viewport !== expectedWidth || dimensions.document > expectedWidth + 2
+      || dimensions.body > expectedWidth + 2 || dimensions.hasError) throw new Error('QA_LOCAL_DEVICE_LAYOUT_INVALID');
+}
+
+/** Arm before the click: awaiting a dialog-triggering click first deadlocks Playwright. */
+export async function acceptQaParentBulkApproval(page, button, expectedCount) {
+  const confirmation = new Promise((resolve, reject) => {
+    page.once('dialog', async dialog => {
+      try {
+        if (dialog.type() !== 'confirm' || !dialog.message().includes(`عدد الطلبات: ${expectedCount}`)) {
+          await dialog.dismiss();
+          throw new Error('QA_LOCAL_PARENT_CONFIRMATION_INVALID');
+        }
+        await dialog.accept();
+        resolve(true);
+      } catch (error) { reject(error); }
+    });
+  });
+  await Promise.all([button.click({ timeout: 10000 }), confirmation]);
+}
+
 /** Synthetic parent's real Auth password grant and existing membership-bound API. */
-export async function assertQaParent(config, email, password, fetchImpl = fetch) {
+export async function assertQaParent(config, email, password, fetchImpl = fetch, verifyBrowser = null) {
   if (!email || !password) throw new Error('QA_LOCAL_PARENT_CONFIG_REQUIRED');
   const login = await fetchRunnerLocalAuth(config, '/auth/v1/token?grant_type=password', {
     method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey }, body: JSON.stringify({ email, password }),
@@ -145,7 +175,14 @@ export async function assertQaParent(config, email, password, fetchImpl = fetch)
     }, fetchImpl);
     if (!result.ok) throw responseFailure('QA_LOCAL_PARENT_DASHBOARD_FAILED', result);
     const data = await result.json();
-    if (data.parent?.role !== 'owner' || !Array.isArray(data.learners) || data.learners.length || data.attempts?.length || data.states?.length) throw new Error('QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED');
+    if (data.parent?.role !== 'owner' || !Array.isArray(data.learners) ||
+      data.learners.length !== 1 || data.learners[0]?.id !== QA_PARENT_VISIBLE_LEARNER ||
+      data.learners[0]?.slug !== 'qa-parent-visible' || data.attempts?.length ||
+      (data.states || []).some(row => row.learner_id !== QA_PARENT_VISIBLE_LEARNER)) {
+      throw new Error('QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED');
+    }
+    // Read-only real-browser device QA runs only after authorization and test-only exclusion.
+    if (verifyBrowser) await verifyBrowser(token);
   } catch (error) { primary = error; }
   try {
     const logout = await fetchRunnerLocalAuth(config, '/auth/v1/logout', { method: 'POST', headers: { apikey: config.publishableKey, authorization: `Bearer ${token}` } }, fetchImpl);
@@ -321,7 +358,70 @@ async function main() {
         await page.screenshot({ path: `${evidencePath}/attempt-deep-link-mobile.png`, fullPage: true });
         });
 
-        if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD));
+        await runAuthenticatedStage('LEARNER_DESKTOP', async () => {
+          await page.setViewportSize({ width: 1280, height: 900 });
+          await page.locator('.flh-attempt-summary').waitFor({ state: 'visible', timeout: 10000 });
+          await assertQaDeviceLayout(page, 1280);
+          await page.screenshot({ path: 'qa-authenticated-evidence/attempt-deep-link-desktop.png', fullPage: true });
+        });
+
+        if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(
+          config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD, fetch,
+          async parentToken => {
+            const parentContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+            let parentNetwork;
+            try {
+              parentNetwork = await installQaBrowserIsolation(parentContext, config);
+              await parentContext.addInitScript(value => localStorage.setItem('parent_session', JSON.stringify({ access_token: value })), parentToken);
+              const parentPage = await parentContext.newPage();
+              parentPage.on('pageerror', error => errors.push(`parent pageerror: ${error.message}`));
+              parentPage.on('console', message => { if (message.type() === 'error') errors.push(`parent console: ${message.text()}`); });
+
+              await runAuthenticatedStage('PARENT_DEVICE_MOBILE', async () => {
+                await parentPage.goto(`${APP_URL}#parents`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await parentPage.locator('[data-parent-center-nav]').waitFor({ state: 'visible', timeout: 15000 });
+                await assertQaDeviceLayout(parentPage, 390);
+                if (await parentPage.locator('.card').filter({ hasText: 'QA Isolated Parent Learner' }).count() !== 1 ||
+                    await parentPage.locator('.card').filter({ hasText: 'QA Automation' }).count()) throw new Error('QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED');
+                await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-dashboard-mobile.png', fullPage: true });
+              });
+              await runAuthenticatedStage('PARENT_REWARDS_MOBILE', async () => {
+                await parentPage.goto(`${APP_URL}#parent-rewards`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                const root = parentPage.locator('[data-family-rewards][data-role="parent"]');
+                await root.waitFor({ state: 'visible', timeout: 15000 });
+                await parentPage.waitForFunction(() => {
+                  const root = document.querySelector('[data-family-rewards][data-role="parent"]');
+                  return root && !root.querySelector('.loading-card');
+                }, null, { timeout: 15000 });
+                await assertQaDeviceLayout(parentPage, 390);
+                const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
+                await group.waitFor({ state: 'visible', timeout: 15000 });
+                if (await group.locator('[data-fr-submission]').count() !== 2 ||
+                    await group.locator('[data-fr-pending-count]').count() !== 1) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
+                await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-mobile.png', fullPage: true });
+              });
+              await runAuthenticatedStage('PARENT_REWARDS_DESKTOP', async () => {
+                await parentPage.setViewportSize({ width: 1280, height: 900 });
+                await assertQaDeviceLayout(parentPage, 1280);
+                const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
+                if (await group.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
+                await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-desktop.png', fullPage: true });
+                await runAuthenticatedStage('PARENT_BULK_APPROVAL', async () => {
+                  await acceptQaParentBulkApproval(parentPage, group.locator('[data-fr-approve-all]'), 2);
+                  await parentPage.waitForFunction(() => {
+                    const root = document.querySelector('[data-family-rewards][data-role="parent"]');
+                    return root && !root.querySelector('[data-fr-approval-learner]') &&
+                      root.querySelector('[role="status"]')?.textContent?.includes('تم اعتماد 2 من 2');
+                  }, null, { timeout: 20000 });
+                  await assertQaDeviceLayout(parentPage, 1280);
+                });
+              });
+              parentNetwork.assertNoUnexpectedRequests();
+            } finally {
+              await parentContext.close().catch(() => {});
+            }
+          }
+        ));
       } catch (error) {
         primary = error;
       } finally {

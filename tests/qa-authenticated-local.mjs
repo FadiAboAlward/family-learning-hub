@@ -109,7 +109,7 @@ function ownedProcessFailure(code, child) {
 async function saveEvidence(config, stages, auth, teardown) {
   await fs.mkdir(evidenceDirectory, { recursive: true });
   if ((await fs.lstat(evidenceDirectory)).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID');
-  for (const name of ['lifecycle.json', 'manifest.json', 'attempt-deep-link-mobile.png']) {
+  for (const name of ['lifecycle.json', 'manifest.json', 'attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
     try { if ((await fs.lstat(path.join(evidenceDirectory, name))).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
@@ -123,10 +123,12 @@ async function saveEvidence(config, stages, auth, teardown) {
     product_acceptance: 'NOT_ASSERTED_BY_TECHNICAL_SMOKE', hosted_authentication: 'NOT_RUN',
   }, null, 2));
   const screenshots = [];
-  try {
-    const name = 'attempt-deep-link-mobile.png', bytes = await fs.readFile(path.join(evidenceDirectory, name));
-    screenshots.push({ file: name, sha256: createHash('sha256').update(bytes).digest('hex') });
-  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  for (const name of ['attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
+    try {
+      const bytes = await fs.readFile(path.join(evidenceDirectory, name));
+      screenshots.push({ file: name, sha256: createHash('sha256').update(bytes).digest('hex') });
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   await fs.writeFile(path.join(evidenceDirectory, 'manifest.json'), JSON.stringify({
     head_sha: config.headSha, run_id: config.runId, run_attempt: config.runAttempt,
     captured_at: new Date().toISOString(), fixture_kind: 'synthetic_technical_qa', screenshots,
@@ -270,6 +272,17 @@ async function main() {
     readQaTestingConfig(childEnv); // Publishable/anon only; service key never reaches the browser child.
     await command(process.execPath, ['tests/authenticated-e2e.mjs'], { env: childEnv, timeout: 240000 });
     authentication = 'PASS'; mark(stage);
+    stage = 'authenticated_parent_rewards_persistence';
+    await sql(config, `do $qa$ begin
+      if (select count(*) from public.behavior_submissions
+          where learner_id='02610000-0000-4000-8000-000000000101' and status='approved') <> 2
+        or (select reward_points from public.learner_gamification_state
+          where learner_id='02610000-0000-4000-8000-000000000101') <> 6
+        or (select count(*) from public.gamification_events
+          where learner_id='02610000-0000-4000-8000-000000000101' and reward_points_delta=3) <> 2
+      then raise exception 'QA_LOCAL_PARENT_AWARDS_INCORRECT'; end if;
+    end $qa$;`);
+    mark(stage);
     stage = 'owned_lease_cleanup';
     await sql(config, "do $$ begin if exists(select 1 from private.qa_run_leases) or exists(select 1 from public.quiz_attempts a join public.quiz_versions v on v.id=a.quiz_version_id join public.quizzes q on q.id=v.quiz_id where q.slug='qa-automation-core') then raise exception 'QA_LOCAL_LEASE_OR_ATTEMPTS_REMAIN'; end if; end; $$;");
     mark(stage);
