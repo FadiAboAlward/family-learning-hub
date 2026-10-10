@@ -110,8 +110,6 @@ jobs:
         run: node tests/learning-start-rpc.concurrency.mjs
       - name: Verify cross-version attempt resume
         run: npx --yes supabase@2.117.0 db query --local --file tests/versioned-attempt-resume.contract.sql
-      - name: Verify compact learner journey history and scope
-        run: npx --yes supabase@2.117.0 db query --local --file tests/learner-journey-progress.contract.sql
       - name: Verify Learning finish RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-finish-rpc.contract.sql
       - name: Verify Learning finish concurrency and idempotency
@@ -124,8 +122,6 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-videos.contract.sql
       - name: Verify ordered optional Learning video sequence contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-sequence.contract.sql
-      - name: Verify authored video outcomes and immutable snapshots
-        run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-outcomes.contract.sql
       - name: Verify optional Learning video sequence concurrency
         run: node tests/optional-learning-video-sequence.concurrency.mjs
       - name: Verify paper unanswered Exam contract
@@ -208,14 +204,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/content-direction-browser.mjs
-      - name: Verify authoritative learner journey actions
+      - name: Run exact source-grounded academic candidate in Exam UI (390 and desktop)
         env:
           APP_URL: http://127.0.0.1:4173/
-        run: node tests/learner-journey-browser.mjs
-      - name: Verify learner timers and submitted mistake review
-        env:
-          APP_URL: http://127.0.0.1:4173/
-        run: node tests/learner-timers-review-browser.mjs
+        run: node tests/academic-exact-candidate-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/

@@ -4,9 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acceptQaParentBulkApproval, assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
+import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
+
+assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_INDIVIDUAL_SIBLING_REVIEW'), 'Every real authenticated synthetic QA stage must be allowlisted before it starts');
+assert.equal(qaEvidenceDirectory('runner-local'),'qa-authenticated-evidence', 'Runner-owned screenshots stay with runner evidence');
+assert.equal(qaEvidenceDirectory('isolated-testing'),'playwright-screenshots', 'Isolated-testing screenshots stay in the browser evidence folder');
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
@@ -232,12 +236,12 @@ await assert.rejects(() => assertQaResume(runtime, 'synthetic-session', 'exam-v2
 const parentCalls = [];
 await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async (url, options) => {
   parentCalls.push(url); assert.equal(options.redirect, 'error');
-  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }], states: [], attempts: [] } : {});
+  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }, { id: '02610000-0000-4000-8000-000000000102', slug: 'qa-sibling-visible' }], states: [], attempts: [] } : {});
 });
 assert.equal(parentCalls.length, 3);
 let parentBrowserCalls = 0;
 await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async url => {
-  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }], states: [], attempts: [] } : {});
+  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }, { id: '02610000-0000-4000-8000-000000000102', slug: 'qa-sibling-visible' }], states: [], attempts: [] } : {});
 }, async token => { parentBrowserCalls++; assert.equal(token, 'synthetic-parent-token'); });
 assert.equal(parentBrowserCalls, 1, 'authenticated browser callback runs after Testing-only exclusion');
 let loggedOut = false;
@@ -256,11 +260,14 @@ const checkConfirmation = async (message, type = 'confirm') => {
     await handler({ type: () => type, message: () => message,
       accept: async () => { accepted++; }, dismiss: async () => { dismissed++; } });
   } };
-  return { run: () => acceptQaParentBulkApproval(page, button, 2), state: () => ({ accepted, dismissed }) };
+  return { run: (accept = true) => handleQaParentBulkConfirmation(page, button, 2, accept), state: () => ({ accepted, dismissed }) };
 };
 const approvedDialog = await checkConfirmation('اعتماد طلبات QA؟ عدد الطلبات: 2');
 await approvedDialog.run();
 assert.deepEqual(approvedDialog.state(), { accepted: 1, dismissed: 0 });
+const cancelledDialog = await checkConfirmation('اعتماد طلبات QA؟ عدد الطلبات: 2');
+await cancelledDialog.run(false);
+assert.deepEqual(cancelledDialog.state(), { accepted: 0, dismissed: 1 });
 const rejectedDialog = await checkConfirmation('عدد الطلبات: 3');
 await assert.rejects(rejectedDialog.run(), /QA_LOCAL_PARENT_CONFIRMATION_INVALID/);
 assert.deepEqual(rejectedDialog.state(), { accepted: 0, dismissed: 1 });
