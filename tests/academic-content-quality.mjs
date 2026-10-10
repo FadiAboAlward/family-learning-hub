@@ -12,6 +12,12 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+// Real official Grade 7 English Unit 1 (PDF 13–14) academic-QA candidate;
+// synthetic learner only, no publication or real student evidence.
+const sourceGrounded20 = validateAcademicPackage(read('english-unit1-source-grounded-20.json'));
+assert.equal(sourceGrounded20.ok, true, JSON.stringify(sourceGrounded20, null, 2));
+assert.deepEqual(sourceGrounded20.errors, []);
+
 const sourceDependent = read('valid-package.json');
 sourceDependent.questions[1].prompt_language = 'tr';
 sourceDependent.questions[1].prompt = 'Kitapta verilen kurala göre doğru seçenek hangisidir?';
@@ -1156,6 +1162,127 @@ const unknownCoveragePrimaryTarget = read('valid-package.json');
 unknownCoveragePrimaryTarget.academic_context.coverage_plan.primary_target_concepts = ['not-declared'];
 const unknownCoveragePrimaryTargetResult = validateAcademicPackage(unknownCoveragePrimaryTarget);
 assert.ok(unknownCoveragePrimaryTargetResult.errors.some(x => x.code === 'COVERAGE_PRIMARY_TARGET_UNKNOWN'), 'Coverage primary targets must resolve to declared concept targets');
+
+// Synthetic design fixtures isolate package-level rules; metadata is not a semantic verdict.
+function designPackage(surface, positions, contextualCount = 14) {
+  const pkg = read('valid-package.json');
+  const source = pkg.questions[0];
+  const blueprint = pkg.blueprint[0];
+  delete pkg.academic_context.answer_position_exceptions;
+  pkg.academic_context.answer_position_exceptions = { [surface]: 'Synthetic non-standard set isolates a design boundary rather than a complete assessment.' };
+  pkg.blueprint = [];
+  pkg.questions = positions.map((position, i) => {
+    const letter = String.fromCharCode(65 + i);
+    const role = positions.length === 20 ? i < 4 ? 'support' : i < 16 ? 'target' : 'transfer' : i === 0 ? 'support' : 'target';
+    const difficulty = role === 'support' ? 1 : role === 'transfer' ? 3 : 2;
+    const q = structuredClone(source);
+    q.question_code = 'DESIGN-' + surface + '-' + letter;
+    q.delivery_surface = surface;
+    q.prompt = 'حالة ' + letter + ': تحرك من الصفر 4 وحدات إلى اليسار. أين تصل؟';
+    q.difficulty_level = difficulty;
+    q.options = q.options.slice(0, 4);
+    q.options[0].position = position;
+    q.options[position - 1].position = 1;
+    delete q.option_count_justification;
+    if (surface !== 'learning') delete q.hints;
+    pkg.blueprint.push({
+      ...blueprint, question_code: q.question_code, delivery_surface: surface,
+      difficulty_role: role, difficulty_level: difficulty, reasoning_signature: 'synthetic-design-form-' + letter,
+      context_type: i < contextualCount ? 'contextual' : 'direct',
+      ...(i < contextualCount ? { context_necessary: true, context_necessity_reason: 'The stated direction and distance determine the location being requested.' } : {})
+    });
+    return q;
+  });
+  return pkg;
+}
+const cyclicTwenty = Array.from({ length: 20 }, (_, i) => i % 4 + 1);
+for (const surface of ['learning', 'exam', 'paper']) {
+  const pkg = designPackage(surface, cyclicTwenty);
+  const before = JSON.stringify(pkg);
+  const result = validateAcademicPackage(pkg);
+  assert.equal(result.ok, true, JSON.stringify(result, null, 2));
+  assert.equal(JSON.stringify(pkg), before, 'Validation must not reorder or rewrite questions/options.');
+  assert.ok(result.warnings.some(x => x.code === 'ASSESSMENT_SEMANTIC_REVIEW_REQUIRED'), 'Metadata PASS cannot claim context/distractor/source semantic PASS.');
+}
+const boundaryTwenty = designPackage('exam', [...cyclicTwenty.slice(0, 16), 3, 4, 3, 4]);
+assert.equal(validateAcademicPackage(boundaryTwenty).ok, true, '4/4/6/6 meets both inclusive balance boundaries.');
+const skewedTwenty = designPackage('exam', [1,2,1,3,1,4,1,2,1,3,1,4,1,2,3,4,2,3,4,4]);
+assert.ok(validateAcademicPackage(skewedTwenty).errors.some(x => x.code === 'ANSWER_POSITION_DISTRIBUTION'), 'Seven answers at A must fail even without a run of three.');
+skewedTwenty.academic_context.answer_position_exceptions.exam = 'A generic exemption cannot bypass an eligible standard set.';
+assert.ok(validateAcademicPackage(skewedTwenty).errors.some(x => x.code === 'ANSWER_POSITION_DISTRIBUTION'), 'An exception field must not become a blanket standard-set bypass.');
+const repeatedTwenty = designPackage('exam', [1,1,1,2,3,4,1,2,3,4,1,2,3,4,2,3,4,2,3,4]);
+assert.ok(validateAcademicPackage(repeatedTwenty).errors.some(x => x.code === 'ANSWER_POSITION_RUN'), 'Balanced total counts do not excuse three consecutive identical positions.');
+const pairedTwenty = designPackage('exam', [1,1,2,2,3,3,4,4,1,2,3,4,1,2,3,4,1,2,3,4]);
+assert.equal(validateAcademicPackage(pairedTwenty).ok, true, 'A run of exactly two is allowed.');
+const tenPositions = [1,2,3,4,1,2,3,4,1,2];
+assert.equal(validateAcademicPackage(designPackage('learning', tenPositions)).ok, true, 'Learning 10 accepts 3/3/2/2.');
+const skewedTen = designPackage('learning', [1,2,1,2,1,2,1,3,4,3]);
+assert.ok(validateAcademicPackage(skewedTen).errors.some(x => x.code === 'ANSWER_POSITION_DISTRIBUTION'), 'Learning 10 rejects four answers at one position.');
+const repeatedTen = designPackage('learning', [1,1,1,2,3,4,2,3,4,4]);
+assert.ok(validateAcademicPackage(repeatedTen).errors.some(x => x.code === 'ANSWER_POSITION_RUN'), 'Learning 10 also rejects a run of three.');
+const skewedHalves = designPackage('learning', [1,2,1,2,1,2,1,2,3,4,3,4,3,4,3,4,3,4,1,2]);
+assert.ok(validateAcademicPackage(skewedHalves).errors.some(x => x.code === 'ANSWER_POSITION_DISTRIBUTION' && x.message.includes('subset')), 'Learning 20 must check both authored 10-item subsets even with balanced totals.');
+for (const size of [9, 11, 19, 21]) {
+  const pkg = designPackage('learning', Array.from({ length: size }, (_, i) => i % 4 + 1));
+  assert.ok(validateAcademicPackage(pkg).warnings.some(x => x.code === 'ANSWER_POSITION_EXCEPTION_REVIEW'), 'Irregular sets record an explicit exception for review.');
+  delete pkg.academic_context.answer_position_exceptions;
+  assert.ok(validateAcademicPackage(pkg).errors.some(x => x.code === 'ANSWER_POSITION_EXCEPTION_REQUIRED'), 'Non-standard size ' + size + ' cannot silently skip balance.');
+}
+const invalidException = designPackage('learning', [1,2,3,4]);
+invalidException.academic_context.answer_position_exceptions = { learning: true };
+assert.ok(validateAcademicPackage(invalidException).errors.some(x => x.code === 'ASSESSMENT_JUSTIFICATION_INVALID'), 'A boolean is not a documented exception.');
+const mixedFormat = designPackage('exam', cyclicTwenty);
+mixedFormat.questions[0].question_type = 'numeric';
+mixedFormat.questions[0].options = [];
+const mixedResult = validateAcademicPackage(mixedFormat);
+assert.ok(!mixedResult.errors.some(x => ['ANSWER_POSITION_DISTRIBUTION','ANSWER_POSITION_RUN'].includes(x.code)), 'Mixed/non-MCQ sets are not forced into A-D balance.');
+assert.ok(mixedResult.errors.some(x => x.code === 'UNSUPPORTED_QUESTION_TYPE'), 'Generic typed contracts remain unchanged; supported typed packages use their established validator.');
+assert.ok(mixedResult.warnings.some(x => x.code === 'ANSWER_POSITION_EXCEPTION_REVIEW'), 'A mixed-format exception must be dispositioned.');
+
+for (const count of [13, 15]) assert.equal(validateAcademicPackage(designPackage('exam', cyclicTwenty, count)).ok, true, 'Context target boundaries are inclusive.');
+for (const count of [12, 16]) assert.ok(validateAcademicPackage(designPackage('exam', cyclicTwenty, count)).errors.some(x => x.code === 'CONTEXT_RATIO_OUT_OF_TARGET'), 'Context outside 65–75% requires a specific justification.');
+const contextOverride = designPackage('exam', cyclicTwenty, 10);
+contextOverride.academic_context.context_ratio_justifications = { exam: 'This focused sign-isolation diagnostic deliberately splits contextual transfer and direct skill evidence equally.' };
+const overrideResult = validateAcademicPackage(contextOverride);
+assert.equal(overrideResult.ok, true, JSON.stringify(overrideResult, null, 2));
+assert.ok(overrideResult.warnings.some(x => x.code === 'CONTEXT_RATIO_OVERRIDE_REVIEW'), 'A valid ratio override still requires semantic disposition.');
+const missingContext = designPackage('exam', cyclicTwenty);
+delete missingContext.blueprint[0].context_type;
+missingContext.academic_context.context_ratio_justifications = contextOverride.academic_context.context_ratio_justifications;
+assert.ok(validateAcademicPackage(missingContext).errors.some(x => x.code === 'CONTEXT_TYPE_REQUIRED'), 'A ratio override cannot bypass classification of a standard set.');
+const decorativeContext = designPackage('exam', cyclicTwenty);
+decorativeContext.blueprint[0].context_necessary = false;
+decorativeContext.academic_context.context_ratio_justifications = contextOverride.academic_context.context_ratio_justifications;
+assert.ok(validateAcademicPackage(decorativeContext).errors.some(x => x.code === 'CONTEXT_NECESSITY_REQUIRED'), 'Declared decorative context cannot count even under a ratio override.');
+const unexplainedContext = designPackage('exam', cyclicTwenty);
+delete unexplainedContext.blueprint[0].context_necessity_reason;
+assert.ok(validateAcademicPackage(unexplainedContext).errors.some(x => x.code === 'CONTEXT_NECESSITY_REQUIRED'), 'Claiming meaningful context without an inspectable explanation fails.');
+const invalidRatioOverride = designPackage('exam', cyclicTwenty, 10);
+invalidRatioOverride.academic_context.context_ratio_justifications = { exam: '\u200e' };
+assert.ok(validateAcademicPackage(invalidRatioOverride).errors.some(x => x.code === 'CONTEXT_RATIO_OUT_OF_TARGET'), 'Invisible override text cannot waive the ratio.');
+for (const count of [5, 6]) {
+  const pkg = read('valid-package.json');
+  pkg.questions[0].options = pkg.questions[0].options.slice(0, count);
+  if (count === 6) pkg.questions[0].options.push({ position: 6, content: '-88', is_correct: false, distractor_rationale: 'A distinct synthetic sixth-choice error.' });
+  delete pkg.questions[0].option_count_justification;
+  assert.ok(validateAcademicPackage(pkg).errors.some(x => x.code === 'OPTION_COUNT_OVERRIDE_REQUIRED'), 'Five/six options require justification.');
+  pkg.questions[0].option_count_justification = 'Preserved synthetic source choices test this exact option-count exception without introducing filler into a live assessment.';
+  assert.equal(validateAcademicPackage(pkg).ok, true, 'Justified legacy-supported option counts remain accepted.');
+}
+const tooManyOptions = read('valid-package.json');
+tooManyOptions.questions[0].options.push({ position: 6, content: '-88', is_correct: false, distractor_rationale: 'A distinct synthetic sixth-choice error.' });
+tooManyOptions.questions[0].options.push({ position: 7, content: '-99', is_correct: false, distractor_rationale: 'A distinct synthetic invalid-range distractor.' });
+assert.ok(validateAcademicPackage(tooManyOptions).errors.some(x => x.code === 'OPTION_COUNT_OUT_OF_RANGE'), 'Justification cannot allow an unsupported seventh option.');
+const positionOutsideChoices = read('valid-package.json');
+positionOutsideChoices.questions[0].options[0].position = 7;
+assert.ok(validateAcademicPackage(positionOutsideChoices).errors.some(x => x.code === 'OPTION_POSITION_INVALID'), 'Positions must map to the actual option count.');
+const supportCandidatePath = fileURLToPath(new URL('../content/tr-math-g5-meb-support-set1-v1.json', import.meta.url));
+const supportBefore = fs.readFileSync(supportCandidatePath, 'utf8');
+const supportCli = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/academic-content-quality.mjs', import.meta.url)), supportCandidatePath], { encoding: 'utf8' });
+assert.equal(supportCli.status, 0, supportCli.stdout + supportCli.stderr);
+assert.equal(fs.readFileSync(supportCandidatePath, 'utf8'), supportBefore, 'Historical typed workbook must pass its established gate without rewriting its package.');
+assert.ok(JSON.parse(supportCli.stdout).ok, 'Numeric/short-answer source package remains delegated rather than forced into MCQ balance.');
+console.log('Assessment design tests passed: scoped 10/20 balance, run limits, context ratio/necessity, justified exceptions, immutable input and existing typed-package delegation.');
 
 const unassessedCoveragePrimaryTarget = read('valid-package.json');
 unassessedCoveragePrimaryTarget.academic_context.concept_targets.push({

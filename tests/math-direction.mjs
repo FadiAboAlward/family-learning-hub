@@ -24,7 +24,9 @@ for(const [input,expected] of cases){
   const math=parts.filter(x=>x.math).map(x=>x.text);
   if(!math.includes(expected))throw new Error(`Expected isolated math run ${JSON.stringify(expected)} in ${JSON.stringify(input)}; got ${JSON.stringify(math)}`);
   const html=api.isolateMathHtml(input);
-  if(!html.includes(`<bdi class="flh-math-ltr" dir="ltr">${expected}</bdi>`))throw new Error(`Missing LTR bdi for ${JSON.stringify(expected)}.`);
+  if(expected==='2/3 > 1/2'){
+    if(!html.includes('aria-label="2/3 &gt; 1/2"')||(html.match(/class="frac"/g)||[]).length!==2||(html.match(/<bdi /g)||[]).length!==1)throw new Error('Fraction comparison must render two stacked fractions inside one complete LTR math unit.');
+  }else if(!html.includes(`<bdi class="flh-math-ltr" dir="ltr">${expected}</bdi>`))throw new Error(`Missing LTR bdi for ${JSON.stringify(expected)}.`);
 }
 
 for(const input of ['Q-20260907401','الوحدة الأولى','محمد']){

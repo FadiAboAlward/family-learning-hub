@@ -1,7 +1,8 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 const badVisible=[/\bLevel\s+\d+\b/i,/\bHints?\b/i,/\bLearning Mode\b/i,/\bExam Mode\b/i,/جارِ/,/2026[-–]2025/];
 

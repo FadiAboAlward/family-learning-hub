@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -6,6 +7,8 @@ const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const OUTPUT_DIR = 'playwright-screenshots';
 const LEARNER_ID = '11111111-1111-4111-8111-111111111111';
 const NOW = '2026-10-01T09:00:00Z';
+const GREETING_ID='a315e8af-9d9b-473b-95ac-c5425ad7de5b';
+const localDay=value=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
 const learner = { id: LEARNER_ID, slug: 'test', display_name: 'طالب الاختبار', grade_level: 7, is_test: true, avatar_emoji: '🧪' };
 const clone = value => structuredClone(value);
 const json = (route, value, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
@@ -14,7 +17,7 @@ const academicSource = source => !source || ['academic', 'quiz', 'quiz_attempt',
 /** Isolated server fixtures exercise the real UI without touching any family data. */
 export function createRewardsFixture() {
   const state = { learner_id: LEARNER_ID, xp: 100, reward_points: 20, current_level: 1, current_streak: 2, longest_streak: 3 };
-  const catalog = { learners: [learner], states: [state], categories: [], rules: [], rewards: [], submissions: [], claims: [], ledger: [], breakdown: [], badges: [{ code: 'qa-consistency', title: 'استمرارية التعلّم', is_active: true }, { code: 'qa-effort', title: 'جهد مثمر', is_active: true }] };
+  const catalog = { learners: [learner], states: [state], categories: [], rules: [], rewards: [], return_events: [], submissions: [], claims: [], ledger: [], breakdown: [], badges: [{ code: 'qa-consistency', title: 'استمرارية التعلّم', is_active: true }, { code: 'qa-effort', title: 'جهد مثمر', is_active: true }] };
   const calls = [];
   const results = new Map();
   let counter = 0;
@@ -25,6 +28,11 @@ export function createRewardsFixture() {
   let delayPromise;
   const id = () => `00000000-0000-4000-8000-${String(++counter).padStart(12, '0')}`;
   const find = (rows, target) => rows.find(row => row.id === target);
+  const previewFor=(rule,body)=>{
+    const parts={base_points:rule.base_points};
+    for(const [key,flag] of [['initiative_bonus_points','initiative'],['congregation_bonus_points','congregation_completed'],['mosque_bonus_points','mosque_completed'],['sunnah_bonus_points','sunnah_completed'],['adhkar_bonus_points','adhkar_completed']])parts[key]=body[flag]?(rule[key]||0):0;
+    return{rule_id:rule.id,policy_version:'flh-010-v1.5',status:'pending',...parts,total_points:Object.values(parts).reduce((sum,value)=>sum+value,0)};
+  };
   const pushEvent = (delta, reason, extra = {}) => {
     state.reward_points += delta;
     const event = {
@@ -37,9 +45,21 @@ export function createRewardsFixture() {
     return event;
   };
   catalog.ledger.push({ id: id(), learner_id: LEARNER_ID, event_type: 'quiz_completed', reward_points_delta: 20, xp_delta: 100, source_type: 'quiz', source_id: 'qa-academic-attempt', reason: 'إكمال تدريب الاختبار', metadata: { status: 'approved' }, created_at: NOW });
-  const snapshot = role => {
+  const returnPage=(query={})=>{
+    const day=query.return_event_day||localDay(Date.now()),size=Math.max(1,Math.min(100,Number(query.return_event_page_size)||50));
+    const rows=catalog.return_events.filter(event=>localDay(event.occurred_at)===day
+      &&(!query.return_event_before_at||Date.parse(event.occurred_at)<Date.parse(query.return_event_before_at)
+        ||(Date.parse(event.occurred_at)===Date.parse(query.return_event_before_at)&&event.id<query.return_event_before_id)))
+      .sort((a,b)=>Date.parse(b.occurred_at)-Date.parse(a.occurred_at)||b.id.localeCompare(a.id)).slice(0,size)
+      .map(event=>({id:event.id,occurred_at:event.occurred_at,created_at:event.created_at,awarded_learner_ids:catalog.submissions.filter(row=>row.status==='approved'&&row.learner_id===LEARNER_ID&&row.return_event_id===event.id).map(row=>row.learner_id)}));
+    const last=rows.at(-1);
+    return{ok:true,return_event_day:day,return_events:clone(rows),return_event_next_cursor:rows.length===size?{occurred_at:last.occurred_at,id:last.id}:null};
+  };
+  const snapshot = (role,query={}) => {
     const value = clone(catalog);
+    value.submissions.forEach(row=>row.possible_duplicate=catalog.submissions.some(other=>other.id!==row.id&&other.status==='approved'&&other.learner_id===row.learner_id&&other.rule_id===row.rule_id&&(row.rule_id===GREETING_ID?row.return_event_id&&other.return_event_id===row.return_event_id:other.occurred_at===row.occurred_at)));
     value.ok = true;
+    Object.assign(value,role==='parent'?returnPage(query):{return_event_day:null,return_events:[],return_event_next_cursor:null});
     const breakdown = new Map();
     for (const row of catalog.ledger) {
       const key = `${row.metadata?.category_id || ''}:${row.source_type}`;
@@ -76,8 +96,22 @@ export function createRewardsFixture() {
     }
     return value;
   };
+  const greetingError=(body,learnerId=LEARNER_ID)=>{
+    if(body.rule_id!==GREETING_ID)return null;
+    const event=find(catalog.return_events,body.return_event_id);
+    if(!body.return_event_id)return{error:'RETURN_EVENT_REQUIRED',status:400};
+    if(!event)return{error:'RETURN_EVENT_NOT_FOUND',status:404};
+    if(catalog.submissions.some(row=>row.status==='approved'&&row.learner_id===learnerId&&row.return_event_id===event.id))return{error:'DUPLICATE_OCCURRENCE',status:409};
+    if(catalog.submissions.filter(row=>row.status==='approved'&&row.learner_id===learnerId&&row.rule_id===GREETING_ID&&localDay(row.snapshot?.verified_occurred_at||row.occurred_at)===localDay(event.occurred_at)).length>=2)return{error:'CADENCE_LIMIT',status:409};
+    return null;
+  };
   const mutate = body => {
     const action = body.action;
+    if(action==='return_event_create'){
+      if(!Number.isFinite(new Date(body.occurred_at).getTime())||new Date(body.occurred_at).getTime()>Date.now())return{error:'INVALID_OCCURRED_AT',status:400};
+      const event={id:id(),occurred_at:new Date(body.occurred_at).toISOString(),created_at:NOW};
+      catalog.return_events.push(event);return{return_event:clone(event)};
+    }
     if (action === 'category_save') {
       const row = find(catalog.categories, body.id) || { id: id() };
       Object.assign(row, body, { id: row.id });
@@ -94,6 +128,7 @@ export function createRewardsFixture() {
     if (action === 'behavior_record' || action === 'behavior_submit') {
       const rule = find(catalog.rules, body.rule_id);
       assert.ok(rule, 'behavior request references a configured rule');
+      if(action==='behavior_record'){const failure=greetingError(body,body.learner_id||LEARNER_ID);if(failure)return failure;}
       const occurredAt = body.occurred_at || NOW;
       if (action === 'behavior_submit') {
         const existing = catalog.submissions.find(row => row.status === 'pending' && row.learner_id === LEARNER_ID && row.rule_id === rule.id && row.occurred_at === occurredAt);
@@ -113,7 +148,9 @@ export function createRewardsFixture() {
         adhkar_completed: !!body.adhkar_completed, congregation_completed: !!body.congregation_completed,
         mosque_completed: !!body.mosque_completed, sunnah_completed: !!body.sunnah_completed,
         requester_type: action === 'behavior_record' ? 'parent' : 'learner', requester_id: 'qa-requester', reviewer_id: action === 'behavior_record' ? 'qa-parent' : null,
+        snapshot:action==='behavior_submit'?previewFor(rule,body):{},
       };
+      if(action==='behavior_record'&&rule.id===GREETING_ID){row.return_event_id=body.return_event_id;row.snapshot={return_event_id:body.return_event_id,verified_occurred_at:find(catalog.return_events,body.return_event_id).occurred_at};}
       row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points + row.congregation_bonus_points + row.mosque_bonus_points + row.sunnah_bonus_points;
       catalog.submissions.unshift(row);
       if (action === 'behavior_record') pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: clone(row) });
@@ -122,20 +159,17 @@ export function createRewardsFixture() {
     if (action === 'behavior_review') {
       const row = find(catalog.submissions, body.submission_id);
       assert.ok(row, 'review references a pending submission');
+      if(row.status===body.decision)return{submission:clone(row),already_reviewed:true};
       if (row.status === 'pending') {
-        if (body.decision === 'approved' && catalog.submissions.some(other => other.id !== row.id && other.status === 'approved' && other.learner_id === row.learner_id && other.rule_id === row.rule_id && other.occurred_at === row.occurred_at)) {
+        if(body.decision==='approved'){const failure=greetingError({...row,return_event_id:body.return_event_id},row.learner_id);if(failure)return failure;}
+        if (row.rule_id!==GREETING_ID && body.decision === 'approved' && catalog.submissions.some(other => other.id !== row.id && other.status === 'approved' && other.learner_id === row.learner_id && other.rule_id === row.rule_id && other.occurred_at === row.occurred_at)) {
           return { error: 'DUPLICATE_OCCURRENCE', status: 409 };
         }
         row.status = body.decision;
         if (row.status === 'approved') {
-          const rule = find(catalog.rules, row.rule_id);
-          row.base_points = rule.base_points;
-          row.initiative_bonus_points = row.initiative ? rule.initiative_bonus_points : 0;
-          row.adhkar_bonus_points = row.adhkar_completed ? (rule.adhkar_bonus_points || 0) : 0;
-          row.congregation_bonus_points = row.congregation_completed ? (rule.congregation_bonus_points || 0) : 0;
-          row.mosque_bonus_points = row.mosque_completed ? (rule.mosque_bonus_points || 0) : 0;
-          row.sunnah_bonus_points = row.sunnah_completed ? (rule.sunnah_bonus_points || 0) : 0;
-          row.total_points = row.base_points + row.initiative_bonus_points + row.adhkar_bonus_points + row.congregation_bonus_points + row.mosque_bonus_points + row.sunnah_bonus_points;
+          const rule = find(catalog.rules, row.rule_id),preview=row.snapshot?.policy_version==='flh-010-v1.5'?row.snapshot:previewFor(rule,row);
+          for(const key of ['base_points','initiative_bonus_points','adhkar_bonus_points','congregation_bonus_points','mosque_bonus_points','sunnah_bonus_points','total_points'])row[key]=preview[key];
+          if(row.rule_id===GREETING_ID){row.return_event_id=body.return_event_id;row.snapshot={...row.snapshot,status:'approved',return_event_id:body.return_event_id,verified_occurred_at:find(catalog.return_events,body.return_event_id).occurred_at};}
           pushEvent(row.total_points, row.reason, { source_id: row.id, metadata: { ...clone(row), reviewer_id: 'qa-parent', approved_at: NOW } });
         }
       }
@@ -188,7 +222,8 @@ export function createRewardsFixture() {
       if (action === 'parent_dashboard') return respond({ parent: { id: 'qa-parent', relation: 'father', role: 'owner' }, learners: [learner], states: [state], attempts: [], reward_claims: catalog.claims });
       if (action === 'learner_choices') return respond({ learners: [learner] });
       if (action === 'student_login') return respond({ session: 'mock-rewards-testing-learner', profile: { learner, gamification: { ...state, badges: [], rewards: catalog.rewards } } });
-      if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner'));
+      if (action === 'parent_rewards_dashboard' || action === 'student_rewards_dashboard') return respond(snapshot(action.startsWith('parent') ? 'parent' : 'learner',body));
+      if (action === 'return_events_list') return respond(returnPage(body));
       if (action === 'parent_rewards_ledger' || action === 'student_rewards_ledger') {
         const ledger = catalog.ledger.filter(row => (!body.category_id || row.metadata?.category_id === body.category_id) && (!body.source_type || (body.source_type === 'academic' ? academicSource(row.source_type) : row.source_type === body.source_type)));
         return respond({ ledger: clone(ledger), next_cursor: null });
@@ -218,7 +253,7 @@ export function createRewardsFixture() {
       }
       const key = `${action}:${body.idempotency_key || ''}`;
       const result = results.has(key) && body.idempotency_key ? results.get(key) : mutate(body);
-      if (body.idempotency_key) results.set(key, clone(result));
+      if (body.idempotency_key && !result.error) results.set(key, clone(result));
       if (action === failAfter) { failAfter = ''; return respond({ error: 'INTERNAL_ERROR' }, 500); }
       return respond({ ok: !result.error, ...result }, result.error ? result.status || 400 : 200);
     },
@@ -266,8 +301,15 @@ const submit = (page, selector) => page.locator(`${selector} button[type="submit
 async function setOccurrenceTime(page, prefix, day, time = '12:00') {
   await page.locator(`#${prefix}DateMode`).selectOption('custom');
   await page.locator(`#${prefix}Date`).fill(day);
-  await page.locator(`#${prefix}TimeMode`).selectOption('custom');
-  await page.locator(`#${prefix}Time`).fill(time);
+  if(prefix==='frOccurrence'){
+    await page.locator(`#${prefix}TimeMode`).selectOption('custom');
+    await page.locator(`#${prefix}Time`).fill(time);
+  }
+}
+async function selfReportNote(page,text){
+  const input=page.locator('#frSelfReportReason');
+  if(!(await input.isVisible()))await input.locator('xpath=ancestor::details[1]').locator('summary').click();
+  await input.fill(text);
 }
 const balance = (page, value) => page.locator('[data-fr-balance]').filter({ hasText: new RegExp(`^${value}$`) }).waitFor({ state: 'visible' });
 
@@ -292,7 +334,7 @@ async function screenshot(page, name, target = page) {
 
 async function runBrowserSuite() {
   const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchMockQaBrowser(chromium,APP_URL);
   try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     const { name, ...contextOptions } = device;
@@ -376,7 +418,7 @@ async function runBrowserSuite() {
     await perform(page, 'rule_save', () => page.locator(`[data-fr-toggle-rule="${ruleId}"]`).click());
     assert.equal(server.catalog.rules[0].is_active, false, 'rule can be deactivated');
     await open(page, 'student');
-    assert.equal(await page.locator(`#frSelfReportCategory option[value="${categoryId}"]`).count(), 0, 'a category with no active eligible self-report rules is hidden');
+    assert.equal(await page.locator('#frSelfReportRule option').count(),1,'inactive catalog leaves only the direct-picker placeholder');
     assert.equal(await page.locator(`#frSelfReportRule option[value="${ruleId}"]`).count(), 0, 'inactive rules are absent from learner self-report choices');
     await open(page, 'parent');
     await showForm(page, '#frRuleForm');
@@ -412,14 +454,26 @@ async function runBrowserSuite() {
     // Self-report never awards locally and never submits a client-controlled learner identity.
     await open(page, 'student');
     assert.equal(await page.locator('#frSelfReportDateMode').inputValue(), 'today', 'learner behavior date defaults to today');
-    assert.equal(await page.locator('#frSelfReportTimeMode').inputValue(), 'now', 'learner behavior time defaults to now');
-    await page.locator('#frSelfReportCategory').selectOption(categoryId);
+    assert.equal(await page.locator('#frSelfReportTimeMode,input[type="time"]').count(),0,'common learner path has no clock-time controls');
+    assert.equal(await page.locator('#frSelfReportCategory').count(),0,'behavior selection does not require category-first entry');
+    assert.equal(await page.locator('#frSelfReportReason').isVisible(),false,'optional notes begin collapsed');
+    assert.equal(await page.locator('#frSelfReportForm button[type="submit"]').innerText(),'تم');
+    await page.locator('#frSelfReportDateMode').selectOption('yesterday');
+    assert.equal(await page.locator('#frSelfReportDate').isVisible(),false,'Yesterday is directly available without a custom date field');
+    await page.locator('#frSelfReportDateMode').selectOption('today');
+    await screenshot(page,`family-rewards-${device.name}-learner-entry`,page.locator('#frSelfReportForm'));
     await page.locator('#frSelfReportRule').selectOption(ruleId);
     await page.locator('#frSelfReportInitiative').check();
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-02', '12:00');
-    await page.locator('#frSelfReportReason').fill('بادرت بترتيب الغرفة');
+    await selfReportNote(page,'بادرت بترتيب الغرفة');
+    server.failAfter('behavior_submit');
+    await perform(page,'behavior_submit',()=>submit(page,'#frSelfReportForm'),{status:500,refresh:false});
+    const pastRetry=clone(server.last('behavior_submit'));
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
-    assert.equal(server.last('behavior_submit').occurred_at, '2026-10-02T09:00:00.000Z', 'learner custom time is interpreted in Istanbul rather than the browser timezone');
+    assert.equal(server.last('behavior_submit').occurred_at,pastRetry.occurred_at,'lost-response retry keeps the automatic past timestamp');
+    assert.equal(server.last('behavior_submit').idempotency_key,pastRetry.idempotency_key,'lost-response self-report retry reuses the same request identity');
+    assert.equal(server.catalog.submissions.filter(row=>row.status==='pending').length,1,'lost-response retry produces one pending occurrence');
+    assert.equal(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(server.last('behavior_submit').occurred_at)),'02/10/2026','automatic learner occurrence stays on the chosen Istanbul date in a UTC browser');
     assert.equal('learner_id' in server.last('behavior_submit'), false, 'self-report identity is session-derived');
     await balance(page, 28);
     const pendingId = server.catalog.submissions[0].id;
@@ -427,11 +481,21 @@ async function runBrowserSuite() {
     const pendingRow = page.locator(`[data-fr-submission="${pendingId}"]`).first();
     assert.match(await pendingRow.innerText(), /بانتظار موافقة الأهل/, 'learner sees pending approval state');
     assert.equal(await pendingRow.locator('button').count(), 0, 'learner cannot approve their own report');
+    assert.equal(server.catalog.submissions[0].total_points,0,'pending amount columns remain uncredited');
+    assert.equal(server.catalog.submissions[0].snapshot.total_points,8,'server-captured preview includes base and selected initiative');
     await screenshot(page, `family-rewards-${device.name}-pending`, pendingRow);
     await assertLayout(page, `${device.name} pending learner`);
 
     // In-flight approval accepts one action and shows the server result rather than optimistic points.
+    server.catalog.rules.find(row=>row.id===ruleId).base_points=50;
     await open(page, 'parent');
+    const capturedCard=page.locator(`[data-fr-approvals] [data-fr-submission="${pendingId}"]`);
+    assert.match(await capturedCard.locator('.fr-estimate').innerText(),/8/,'current rule edit cannot reprice captured pending preview');
+    assert.equal(await capturedCard.locator('.fr-preview-parts').isVisible(),false,'component details are initially collapsed');
+    await capturedCard.locator('.fr-submission-details summary').click();
+    await screenshot(page,`family-rewards-${device.name}-captured-preview`,capturedCard);
+    assert.match(await capturedCard.locator('.fr-preview-parts').innerText(),/أساس السلوك.*5.*المبادرة.*3.*المجموع المتوقع.*8/s,'captured applicable components reconcile independently of current rule');
+    await capturedCard.locator('.fr-submission-details summary').click();
     await page.locator('#frReviewReason').fill('مبادرة موفّقة');
     const approval = page.locator(`[data-fr-behavior-approve="${pendingId}"]`).first();
     const reviewResponse = responseFor(page, 'behavior_review');
@@ -441,20 +505,21 @@ async function runBrowserSuite() {
     await approval.evaluate(button => { button.click(); button.click(); });
     await approval.locator('xpath=..').locator('[aria-busy="true"]').waitFor({ state: 'attached' });
     assert.equal(await approval.isDisabled(), true, 'approval disables during the request');
+    assert.equal(await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).isDisabled(),true,'learner bulk approval is disabled during an individual approval');
     assert.equal(server.count('behavior_review'), reviewCount + 1, 'double action sends one approval request');
     await balance(page, 28);
     server.release();
     assert.equal((await reviewResponse).status(), 200);
     await reviewDashboard;
     await balance(page, 36);
+    server.catalog.rules.find(row=>row.id===ruleId).base_points=5;
     assert.equal(server.catalog.ledger.length, 3, 'approval shows one new award');
 
     // Rejection and cadence errors show a clear result and preserve the balance.
     await open(page, 'student');
-    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(ruleId);
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '12:00');
-    await page.locator('#frSelfReportReason').fill('طلب يحتاج مراجعة');
+    await selfReportNote(page,'طلب يحتاج مراجعة');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     const rejectedId = server.catalog.submissions[0].id;
     await open(page, 'parent');
@@ -462,7 +527,6 @@ async function runBrowserSuite() {
     await balance(page, 36);
     assert.equal(server.catalog.ledger.length, 3, 'rejection has no point movement');
     await open(page, 'student');
-    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(ruleId);
     server.failBefore('behavior_submit', 'CADENCE_LIMIT_REACHED', 409);
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'), { status: 409, refresh: false });
@@ -703,7 +767,6 @@ async function runBrowserSuite() {
     await assertLayout(page, `${device.name} parent prayer controls`);
 
     await open(page, 'student');
-    await page.locator('#frSelfReportCategory').selectOption(categoryId);
     await page.locator('#frSelfReportRule').selectOption(prayerRuleId);
     for (const key of ['congregation','mosque','sunnah','adhkar']) {
       assert.equal(await page.locator(`[data-fr-${key}="frSelfReport"]`).isVisible(), true, `learner sees configured ${key} option`);
@@ -713,7 +776,7 @@ async function runBrowserSuite() {
     await page.locator('#frSelfReportSunnah').check();
     await page.locator('#frSelfReportAdhkar').check();
     await setOccurrenceTime(page, 'frSelfReport', '2026-10-03', '13:00');
-    await page.locator('#frSelfReportReason').fill('صلاة مع المكونات بانتظار الاعتماد');
+    await selfReportNote(page,'صلاة مع المكونات بانتظار الاعتماد');
     await perform(page, 'behavior_submit', () => submit(page, '#frSelfReportForm'));
     assert.deepEqual({
       congregation:server.last('behavior_submit').congregation_completed,
@@ -748,6 +811,18 @@ async function runBrowserSuite() {
     assert.equal(await page.locator(`[data-fr-approvals] [data-fr-submission="${legacyA.id}"] .fr-duplicate`).count(), 1, 'first exact duplicate-looking approval card is flagged');
     assert.equal(await page.locator(`[data-fr-approvals] [data-fr-submission="${legacyB.id}"] .fr-duplicate`).count(), 1, 'second exact duplicate-looking approval card is flagged');
     const bulkButton = page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`);
+    const group=page.locator(`[data-fr-approval-learner="${LEARNER_ID}"]`);
+    const countBefore=(await group.locator('[data-fr-pending-count]').innerText()).trim(),estimateBefore=(await group.locator('[data-fr-pending-total]').innerText()).trim();
+    assert.equal(Number(countBefore),3,'summary counts exactly the learner visible pending rows');
+    assert.match(estimateBefore,/17/,'estimate sums captured prayer once and exact legacy occurrence once');
+    const columns=await group.locator('.fr-card-grid').evaluate(element=>getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    assert.equal(columns,device.name==='mobile'?1:2,'pending cards retain the approved desktop/mobile grid');
+    await screenshot(page,`family-rewards-${device.name}-approval-inbox`,page.locator('[data-fr-approvals]'));
+    assert.match(await group.locator(`[data-fr-submission="${legacyA.id}"] .fr-preview-source`).innerText(),/القاعدة الحالية/,'legacy pending rows are explicit current-rule estimates');
+    const beforeCancel=server.count('behavior_review');
+    page.once('dialog',async dialog=>{assert.ok(dialog.message().includes('طالب الاختبار'));assert.ok(dialog.message().includes(countBefore));await dialog.dismiss();});
+    await bulkButton.click();assert.equal(server.count('behavior_review'),beforeCancel,'cancel sends no approval command');
+    page.once('dialog',async dialog=>{assert.ok(dialog.message().includes(countBefore));assert.ok(dialog.message().includes(estimateBefore.split(' ')[0]));await dialog.accept();});
     await bulkButton.click();
     await page.getByRole('alert').filter({ hasText: 'تعذر اعتماد 1' }).waitFor({ state: 'visible' });
     assert.equal(server.catalog.submissions.find(row => row.id === secondLearnerPending.id).status, 'pending', 'learner-level approve all never crosses into another learner');
@@ -756,6 +831,26 @@ async function runBrowserSuite() {
     const remainingLegacyDuplicate = server.catalog.submissions.find(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'pending');
     assert.ok(remainingLegacyDuplicate, 'one legacy exact duplicate remains pending after the partial bulk approval');
     assert.equal(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] [data-fr-submission="${remainingLegacyDuplicate.id}"] .fr-duplicate`).count(), 1, 'the remaining exact duplicate card stays flagged after partial bulk approval');
+    assert.equal(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] [data-fr-submission="${remainingLegacyDuplicate.id}"] .fr-item-error`).count(),1,'item-level duplicate failure survives the dashboard refresh');
+    assert.match(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] [data-fr-submission="${remainingLegacyDuplicate.id}"] .fr-estimate`).innerText(),/0/,'known approved duplicate does not promise another reward');
+    await page.getByRole('status').filter({hasText:/أُضيفت 17 نقطة بالفعل/}).waitFor({state:'visible'});
+    // Another authorized reviewer can finish a visible item before this parent's batch begins.
+    await server.handle({action:'behavior_submit',rule_id:ruleId,occurred_at:'2026-10-06T10:00:00Z',reason:'حالة اختبار للمراجعة المتزامنة',idempotency_key:'stale-visible-testing-item'});
+    const staleId=server.catalog.submissions[0].id;
+    await open(page,'parent');
+    const staleDashboard=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await staleDashboard;
+    await page.locator(`[data-fr-approvals] [data-fr-submission="${staleId}"]`).waitFor({state:'visible'});
+    await server.handle({action:'behavior_review',submission_id:staleId,decision:'approved'});
+    const beforeStaleLedger=server.catalog.ledger.length;
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).click();
+    try {
+      await page.getByRole('status').filter({hasText:/أُضيفت 0 نقطة بالفعل.*تمت مراجعتها سابقًا/}).waitFor({state:'visible'});
+    } catch (error) {
+      throw new Error(`${error.message}\nMocked review feedback: ${JSON.stringify(await page.locator('[data-family-rewards] [role="status"],[data-family-rewards] [role="alert"]').allTextContents())}; calls: ${JSON.stringify(server.calls.slice(-8).map(row=>({action:row.action,submission_id:row.submission_id})))}`, {cause:error});
+    }
+    assert.equal(server.catalog.ledger.length,beforeStaleLedger,'already-reviewed result cannot be counted or granted twice');
 
     await page.locator('#frReportLearner').selectOption(LEARNER_ID);
     await page.locator('#frReportCategory').selectOption(categoryId);
@@ -780,7 +875,7 @@ async function runBrowserSuite() {
     historicalRule.self_report_allowed = false;
     await open(page, 'student');
     assert.equal(await page.locator('#frReportLearner').count(), 0, 'learner report cannot switch to a sibling');
-    assert.equal(await page.locator(`#frSelfReportCategory option[value="${categoryId}"]`).count(), 0, 'disabled historical category is absent from new self-report choices');
+    assert.equal(await page.locator(`#frSelfReportRule option[value="${prayerRuleId}"]`).count(),0,'behaviors in a disabled historical category cannot be newly reported');
     assert.equal(await page.locator(`#frReportCategory option[value="${categoryId}"]`).count(), 1, 'disabled historical category remains available in learner report filters');
     assert.equal(await page.locator(`#frReportRule option[value="${reportRuleId}"]`).count(), 1, 'disabled historical rule remains available in learner report filters');
     await page.locator('#frReportCategory').selectOption(categoryId);
@@ -789,10 +884,217 @@ async function runBrowserSuite() {
     assert.match(await page.locator('[data-fr-report]').innerText(), /1\s*معتمد.*1\s*بانتظار الموافقة.*3\s*نقطة/s, 'learner sees the same report summary for self only');
     await assertLayout(page, `${device.name} rewards report`);
 
+    // The new configured greeting uses the same direct report and captured estimate flow.
+    const greetingCategory='a315e8af-9d9b-473b-95ac-c5425ad7de50',greetingId='a315e8af-9d9b-473b-95ac-c5425ad7de5b';
+    server.catalog.categories.push({id:greetingCategory,title:'الأدب وبرّ الوالدين',is_active:true});
+    server.catalog.rules.push({id:greetingId,category_id:greetingCategory,title:'تقبيل يد الأب أو الأم عند العودة إلى المنزل',base_points:2,initiative_bonus_points:0,congregation_bonus_points:0,mosque_bonus_points:0,sunnah_bonus_points:0,adhkar_bonus_points:0,learner_scope:'selected',learner_ids:[LEARNER_ID],cadence:'day',max_awards:2,self_report_allowed:true,parent_approval_required:true,is_active:true});
+    await open(page,'student');
+    const greetingDashboard=responseFor(page,'student_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await greetingDashboard;
+    await page.locator(`#frSelfReportRule option[value="${greetingId}"]`).waitFor({state:'attached'});
+    await page.locator('#frSelfReportRule').selectOption(greetingId);
+    const greetingNote=page.locator('#frSelfReportForm .fr-note');
+    assert.equal(await greetingNote.evaluate(details=>details.open),false,'selecting the greeting keeps its optional note disclosure closed');
+    assert.equal(await page.locator('#frSelfReportReason').isVisible(),false,'greeting common path never paints the optional note textarea before disclosure');
+    await greetingNote.locator('summary').focus();await page.keyboard.press('Enter');
+    await page.locator('#frSelfReportReason').waitFor({state:'visible'});
+    assert.equal(await greetingNote.evaluate(details=>details.open),true,'keyboard disclosure intentionally makes the optional note available');
+    await greetingNote.locator('summary').click();
+    assert.equal(await page.locator('#frSelfReportReason').isVisible(),false,'closing optional notes restores the simple greeting path');
+    for(const key of ['initiative','congregation','mosque','sunnah','adhkar'])assert.equal(await page.locator(`[data-fr-${key}="frSelfReport"]`).isHidden(),true,'greeting has no unsupported bonus controls');
+    const greetingBalance=server.state.reward_points;
+    await perform(page,'behavior_submit',()=>submit(page,'#frSelfReportForm'));
+    const greetingSubmission=server.catalog.submissions[0];
+    assert.equal(greetingSubmission.total_points,0);assert.equal(greetingSubmission.snapshot.total_points,2);
+    assert.equal(server.state.reward_points,greetingBalance,'a normal behavior+Today self-report remains pending');
+    await open(page,'parent');
+    const greetingCard=page.locator(`[data-fr-approvals] [data-fr-submission="${greetingSubmission.id}"]`);
+    assert.match(await greetingCard.innerText(),/تقبيل يد الأب أو الأم عند العودة إلى المنزل/);
+    assert.match(await greetingCard.locator('.fr-estimate').innerText(),/2/);
+    await greetingCard.locator('.fr-submission-details summary').click();
+    assert.match(await greetingCard.locator('.fr-preview-parts').innerText(),/أساس السلوك.*2.*المجموع المتوقع.*2/s);
+    assert.doesNotMatch(await greetingCard.locator('.fr-preview-parts').innerText(),/المبادرة|صلاة الجماعة|أذكار/,'Details show only applicable captured components');
+    assert.equal(await page.locator('[data-fr-approvals] .fr-submission-details[open]').count(),1,'Details disclosures expand independently');
+    await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);await page.locator('#frOccurrenceCategory').selectOption(greetingCategory);await page.locator('#frOccurrenceRule').selectOption(greetingId);
+    assert.equal(await page.locator('[data-fr-initiative="frOccurrence"]').isHidden(),true,'parent direct greeting cannot request an unsupported initiative');
+
+    // R1: a missing occasion fails pending; cancel creation performs no request.
+    {
+    const missingResponse=responseFor(page,'behavior_review');
+    await greetingCard.locator('[data-fr-behavior-approve]').click();await missingResponse;
+    await greetingCard.locator('.fr-item-error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,greetingBalance);
+    const control=greetingCard.locator('[data-fr-return-context]');
+    await control.locator('[data-fr-return-create-details] summary').click();
+    const returnPrefix=await control.getAttribute('data-fr-return-prefix');
+    const returnDateMode=control.locator(`#${returnPrefix}DateMode`),returnTimeMode=control.locator(`#${returnPrefix}TimeMode`);
+    const returnDate=control.locator(`#${returnPrefix}Date`),returnTime=control.locator(`#${returnPrefix}Time`);
+    assert.equal(await returnDate.isVisible(),false,'Today hides the custom verified return date');
+    assert.equal(await returnTime.isVisible(),false,'Now hides the custom verified return time');
+    await returnDateMode.selectOption('custom');
+    assert.equal(await returnDate.isVisible(),true,'a custom return day reveals its date field');
+    assert.equal(await returnTimeMode.inputValue(),'morning','leaving Today replaces the invalid Now preset');
+    assert.equal(await returnTimeMode.locator('option[value="now"]').isDisabled(),true,'Now is unavailable for a past or custom return day');
+    await returnDate.fill('2020-01-10');await returnTimeMode.selectOption('custom');
+    assert.equal(await returnTime.isVisible(),true,'a custom return clock reveals its time field');
+    await returnTime.fill('08:45');await returnTimeMode.selectOption('evening');
+    assert.equal(await returnTime.isVisible(),false,'a return-time preset hides the custom clock field');
+    await returnDateMode.selectOption('yesterday');
+    assert.equal(await returnDate.isVisible(),false,'Yesterday hides the custom date field');
+    await returnDateMode.selectOption('today');
+    assert.equal(await returnTimeMode.locator('option[value="now"]').isDisabled(),false,'returning to Today restores the Now option');
+    await returnTimeMode.selectOption('now');
+    const beforeCancel=server.calls.filter(call=>call.action==='return_event_create').length;
+    await control.locator('[data-fr-return-cancel]').click();
+    assert.equal(server.calls.filter(call=>call.action==='return_event_create').length,beforeCancel);
+    // Lost response retry retains the actual server-issued event, without granting money.
+    await control.locator('[data-fr-return-create-details] summary').click();
+    server.failAfter('return_event_create');
+    const failedCreate=responseFor(page,'return_event_create');
+    await control.locator('[data-fr-return-create]').click();await failedCreate;
+    await control.locator('.fr-return-message .error').waitFor({state:'visible'});
+    assert.equal(server.catalog.return_events.length,1);
+    const retryCreate=responseFor(page,'return_event_create');
+    await control.locator('[data-fr-return-create]').click();await retryCreate;
+    const eventId=server.catalog.return_events[0].id;
+    await page.waitForFunction(({sid,eventId})=>document.querySelector(`[data-fr-submission="${sid}"] [data-fr-return-select]`)?.value===eventId,{sid:greetingSubmission.id,eventId});
+    assert.equal(server.catalog.return_events.length,1);
+    assert.equal(server.state.reward_points,greetingBalance,'creation/retry itself awards zero');
+    assert.equal(await greetingCard.locator('.fr-item-error').count(),0,'a valid chosen occasion clears the resolved missing-binding alert');
+    const createCalls=server.calls.filter(call=>call.action==='return_event_create');
+    assert.equal(createCalls.at(-1).idempotency_key,createCalls.at(-2).idempotency_key);
+    assert.equal(createCalls.at(-1).occurred_at,createCalls.at(-2).occurred_at);
+    await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-choice.png`,fullPage:true});
+    await perform(page,'behavior_review',()=>greetingCard.locator('[data-fr-behavior-approve]').click());
+    assert.equal(server.state.reward_points,greetingBalance+2);
+    assert.equal(greetingSubmission.return_event_id,eventId);
+    assert.equal(greetingSubmission.snapshot.verified_occurred_at,server.catalog.return_events[0].occurred_at);
+    // Different child clocks choose the same canonical occasion: known forecast zero,
+    // bulk reports the duplicate failure while an ordinary visible item can succeed.
+    const duplicateResult=await server.handle({action:'behavior_submit',rule_id:greetingId,occurred_at:'2020-01-03T08:00:00Z',idempotency_key:'r1-duplicate-'+device.name});
+    const duplicateId=duplicateResult.body.submission.id;
+    await server.handle({action:'behavior_submit',rule_id:ruleId,occurred_at:'2020-01-04T08:00:00Z',idempotency_key:'r1-ordinary-'+device.name});
+    server.catalog.submissions=server.catalog.submissions.filter(row=>row.status!=='pending'||row.id===duplicateId||row.occurred_at==='2020-01-04T08:00:00Z');
+    await open(page,'parent');
+    const r1FreshDashboard=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await r1FreshDashboard;
+    const duplicateCard=page.locator(`[data-fr-approvals] [data-fr-submission="${duplicateId}"]`),duplicateControl=duplicateCard.locator('[data-fr-return-context]');
+    await duplicateCard.waitFor({state:'visible'});
+    await duplicateControl.locator('[data-fr-return-day]').fill(localDay(server.catalog.return_events[0].occurred_at));
+    await duplicateControl.locator('[data-fr-return-day]').dispatchEvent('change');
+    await duplicateControl.locator(`[data-fr-return-select] option[value="${eventId}"]`).waitFor({state:'attached'});
+    await duplicateControl.locator('[data-fr-return-select]').selectOption(eventId);
+    assert.match(await duplicateCard.locator('.fr-estimate').innerText(),/^0/);
+    const beforeBulk=server.state.reward_points,group=page.locator(`[data-fr-approval-learner="${LEARNER_ID}"]`);
+    page.once('dialog',dialog=>dialog.dismiss());
+    await group.locator('[data-fr-approve-all]').click();
+    assert.equal(server.state.reward_points,beforeBulk,'bulk cancel grants nothing');
+    const ordinaryPending=server.catalog.submissions.find(row=>row.status==='pending'&&row.rule_id===ruleId);
+    const ordinaryExpected=ordinaryPending.snapshot.total_points;
+    page.once('dialog',dialog=>dialog.accept());
+    await group.locator('[data-fr-approve-all]').click();
+    await duplicateCard.locator('.fr-item-error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected,'partial bulk sums only fresh actual ordinary award');
+    assert.equal(server.catalog.submissions.find(row=>row.id===duplicateId).status,'pending');
+    // Direct entry also chooses a canonical event. An unbound record cannot bypass it.
+    await page.locator('#frOccurrenceLearner').selectOption(LEARNER_ID);await page.locator('#frOccurrenceCategory').selectOption(greetingCategory);await page.locator('#frOccurrenceRule').selectOption(greetingId);
+    const direct=page.locator('[data-fr-direct-return] [data-fr-return-context]');
+    assert.equal(await direct.isVisible(),true);
+    const directMissing=responseFor(page,'behavior_record');await submit(page,'#frOccurrenceForm');await directMissing;
+    await page.locator('#frOccurrenceForm .fr-message .error').waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected);
+    await direct.locator('[data-fr-return-create-details] summary').click();
+    const directPrefix=await direct.getAttribute('data-fr-return-prefix');
+    const beforeDirectEnter=server.calls.filter(call=>call.action==='behavior_record').length;
+    await direct.locator(`#${directPrefix}TimeMode`).selectOption('custom');
+    await direct.locator(`#${directPrefix}Time`).fill('08:45');
+    await direct.locator(`#${directPrefix}Time`).press('Enter');
+    await page.waitForTimeout(100);
+    assert.equal(server.calls.filter(call=>call.action==='behavior_record').length,beforeDirectEnter,'Enter in an occasion clock must not implicitly submit the enclosing behavior record');
+    await direct.locator(`#${directPrefix}DateMode`).selectOption('custom');
+    await direct.locator(`#${directPrefix}Date`).fill('2020-01-10');
+    await direct.locator(`#${directPrefix}Date`).press('Enter');
+    await page.waitForTimeout(100);
+    assert.equal(server.calls.filter(call=>call.action==='behavior_record').length,beforeDirectEnter,'Enter in an occasion date must not implicitly approve the parent behavior');
+    await direct.locator('[data-fr-return-day]').press('Enter');
+    await page.waitForTimeout(100);
+    assert.equal(server.calls.filter(call=>call.action==='behavior_record').length,beforeDirectEnter,'Enter in the event-list day must not submit the enclosing parent form');
+    await direct.locator(`#${directPrefix}DateMode`).selectOption('today');
+    await direct.locator(`#${directPrefix}TimeMode`).selectOption('now');
+    await direct.locator(`#${directPrefix}DateMode`).selectOption('yesterday');
+    assert.equal(await direct.locator(`#${directPrefix}TimeMode`).inputValue(),'morning','direct entry also replaces Yesterday plus Now with a valid preset');
+    assert.equal(await direct.locator(`#${directPrefix}Date`).isVisible(),false);
+    assert.equal(await direct.locator(`#${directPrefix}Time`).isVisible(),false);
+    const directCreate=responseFor(page,'return_event_create');await direct.locator('[data-fr-return-create]').press('Enter');await directCreate;
+    const secondEvent=server.catalog.return_events.at(-1);
+    const yesterday=new Date(Date.now()-24*60*60*1000);
+    assert.equal(localDay(secondEvent.occurred_at),localDay(yesterday),'direct Yesterday creates the verified previous Istanbul day');
+    assert.equal(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(secondEvent.occurred_at)),'08:00','the existing morning preset remains the actual verified instant');
+    await page.waitForFunction(eventId=>document.querySelector('[data-fr-direct-return] [data-fr-return-select]')?.value===eventId,secondEvent.id);
+    await perform(page,'behavior_record',()=>submit(page,'#frOccurrenceForm'));
+    assert.equal(await page.locator('[data-fr-direct-return] [data-fr-return-select]').inputValue(),'', 'A confirmed direct greeting cannot preselect the previous real-world return for the next child/occasion');
+    assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected+2);
+    // Equal claim clocks cannot warn for distinct canonical occasions. Selecting
+    // an already-awarded occasion must warn despite a different child clock.
+    const warningBalance=server.state.reward_points;
+    const thirdResult=await server.handle({action:'return_event_create',occurred_at:new Date(Date.now()-60000).toISOString(),idempotency_key:'r1-warning-event-'+device.name});
+    const thirdEvent=thirdResult.body.return_event;
+    const sameClockResult=await server.handle({action:'behavior_submit',rule_id:greetingId,occurred_at:greetingSubmission.occurred_at,idempotency_key:'r1-warning-claim-'+device.name});
+    const sameClockId=sameClockResult.body.submission.id;
+    const warningDashboard=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await warningDashboard;
+    const sameClockCard=page.locator(`[data-fr-approvals] [data-fr-submission="${sameClockId}"]`),sameClockControl=sameClockCard.locator('[data-fr-return-context]');
+    await sameClockCard.waitFor({state:'visible'});
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'unbound equal greeting clocks do not imply a duplicate');
+    await sameClockControl.locator('[data-fr-return-day]').fill(localDay(thirdEvent.occurred_at));
+    await sameClockControl.locator('[data-fr-return-day]').dispatchEvent('change');
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${thirdEvent.id}"]`).waitFor({state:'attached'});
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(thirdEvent.id);
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'same-clock different selected occasion remains clear');
+    assert.match(await sameClockCard.locator('.fr-estimate').innerText(),/^2/,'distinct unawarded occasion retains its conditional estimate');
+    await duplicateControl.locator('[data-fr-return-select]').selectOption(eventId);
+    await duplicateCard.locator('.fr-duplicate').waitFor({state:'visible'});
+    assert.match(await duplicateCard.locator('.fr-estimate').innerText(),/^0/,'same selected awarded occasion remains zero despite different clocks');
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(eventId);
+    await sameClockCard.locator('.fr-duplicate').waitFor({state:'visible'});
+    await sameClockControl.locator('[data-fr-return-select]').selectOption(thirdEvent.id);
+    assert.equal(await sameClockCard.locator('.fr-duplicate').count(),0,'changing to a distinct occasion removes the stale warning immediately');
+    assert.equal(server.state.reward_points,warningBalance,'warning and selection changes award zero');
+    // Old-day loading, keyset More, refresh and recovery use only the bounded
+    // carrier. Several greeting controls must not cause full dashboard reads.
+    const pageDay='2020-02-01',pageStart=Date.parse(`${pageDay}T08:00:00Z`);
+    const pageEvents=Array.from({length:51},(_,index)=>({id:`99100000-0000-4000-8000-${String(index+1).padStart(12,'0')}`,occurred_at:new Date(pageStart+index*60000).toISOString(),created_at:NOW}));
+    server.catalog.return_events.push(...pageEvents);
+    const beforePageDashboard=server.calls.filter(call=>call.action==='parent_rewards_dashboard').length;
+    const firstPage=responseFor(page,'return_events_list');
+    await sameClockControl.locator('[data-fr-return-day]').fill(pageDay);await sameClockControl.locator('[data-fr-return-day]').dispatchEvent('change');await firstPage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents.at(-1).id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),51,'first event page is bounded to 50 plus its placeholder');
+    assert.equal(await sameClockControl.locator('[data-fr-return-more]').isVisible(),true,'a cursor exposes More for this day');
+    const morePage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-more]').click();await morePage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents[0].id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),52,'More appends the next unique event instead of replacing or duplicating the first page');
+    assert.equal(await sameClockControl.locator('[data-fr-return-more]').isHidden(),true,'a short final page hides More');
+    const pageCall=server.calls.filter(call=>call.action==='return_events_list').at(-1);
+    assert.equal(pageCall.return_event_day,pageDay);assert.ok(pageCall.return_event_before_at&&pageCall.return_event_before_id,'More sends both immutable cursor fields');
+    server.failBefore('return_events_list');
+    const failedPage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-load]').click();await failedPage;
+    await sameClockControl.locator('.fr-return-message').getByText(/تعذر تحميل المناسبات/).waitFor({state:'visible'});
+    const reloadPage=responseFor(page,'return_events_list');await sameClockControl.locator('[data-fr-return-load]').click();await reloadPage;
+    await sameClockControl.locator(`[data-fr-return-select] option[value="${pageEvents.at(-1).id}"]`).waitFor({state:'attached'});
+    assert.equal(await sameClockControl.locator('[data-fr-return-select] option').count(),51,'reload recovers with a fresh first page');
+    assert.equal(server.calls.filter(call=>call.action==='parent_rewards_dashboard').length,beforePageDashboard,'day/More/reload/recovery never reload the full parent dashboard');
+    assert.equal(server.state.reward_points,warningBalance,'event pagination and errors create no financial award');
+    await page.screenshot({path:`${OUTPUT_DIR}/family-rewards-${device.name}-return-results.png`,fullPage:true});
+    }
+
+    assert.equal(server.state.xp,100,'new canonical family behavior remains Reward-Points-only');
+    await assertLayout(page,`${device.name} greeting and compact inbox`);
+
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-010', spec_version: '1.1', compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-025', spec_version: '1.1', governing_versions: ['010-v1.4','010-v1.5','010-v1.7'], compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report','learner-entry','captured-preview','approval-inbox','return-choice','return-results'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();

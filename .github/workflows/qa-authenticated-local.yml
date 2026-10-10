@@ -1,0 +1,78 @@
+name: Authenticated Runner Testing
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  FLH_QA_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  FLH_QA_DNS_DENY_EXPECTED: '1'
+  FLH_QA_ISOLATION_MODE: runner-local
+  FLH_QA_PROJECT_REF: local
+  FLH_QA_BACKEND_URL: http://127.0.0.1:54321
+  APP_URL: http://localhost:4173/
+
+jobs:
+  authenticated-local:
+    name: Authenticated local API and browser
+    if: github.repository == 'FadiAboAlward/family-learning-hub' && github.actor_id == '320162789' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    concurrency:
+      group: authenticated-local-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Assert checked-out SHA
+        run: test "$(git rev-parse HEAD)" = "$FLH_QA_HEAD_SHA"
+      - name: Deny Production backend traffic
+        run: |
+          printf '%s\n' '127.0.0.1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' '::1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' | sudo tee -a /etc/hosts > /dev/null
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify Production network deny
+        run: node tests/qa-ci-network.mjs
+      - name: Require successful core gates on this exact head
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tests/qa-core-prerequisite.mjs
+      - name: Install pinned local QA tools
+        run: |
+          npm install --no-save playwright@1.55.0 supabase@2.117.0
+          npx playwright install --with-deps chromium
+      - name: Run unmocked disposable local API and browser QA
+        run: node tests/qa-authenticated-local.mjs
+      - name: Verify owned local teardown
+        if: always()
+        run: node tests/qa-authenticated-local.mjs teardown
+      - name: Upload sanitized exact-head evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: authenticated-local-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            qa-authenticated-evidence/core-prerequisite.json
+            qa-authenticated-evidence/lifecycle.json
+            qa-authenticated-evidence/manifest.json
+            qa-authenticated-evidence/attempt-deep-link-mobile.png
+            qa-authenticated-evidence/attempt-deep-link-desktop.png
+            qa-authenticated-evidence/parent-dashboard-mobile.png
+            qa-authenticated-evidence/student-rewards-mobile.png
+            qa-authenticated-evidence/student-rewards-desktop.png
+            qa-authenticated-evidence/parent-rewards-mobile.png
+            qa-authenticated-evidence/parent-rewards-desktop.png
+          retention-days: 7
+          if-no-files-found: warn
