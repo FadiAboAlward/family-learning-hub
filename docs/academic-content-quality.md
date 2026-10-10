@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016, and complements, rather than replaces, docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the Drive Adaptive Assessment SOP.
+This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016 and the prospective assessment-design rules in [FLH-FEAT-2026-023 v1.0](https://docs.google.com/document/d/17kG1T74t5-K_uOYwN7sZWjwuzdj5GUq1F1oF0BZSOh8/edit), Drive revision `3`. It complements docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the canonical Drive Adaptive Assessment, Paper & Follow-up SOP v1.13.
 
 The gate is an authoring/QA control. It does not add a live AI dependency to a learner attempt.
 
@@ -85,13 +85,25 @@ The reasoning_signature is deliberately explicit. It prevents Learning, Exam, an
 
 ## Question and option quality
 
-A single-choice question must have one unambiguous correct option. Options must be unique after Unicode/whitespace normalization.
+A single-choice question normally has four coherent options and one unambiguous correct option. Options must be unique after Unicode/whitespace normalization, and their positions must cover 1 through the actual option count. The existing five/six-option format remains available only with a question-level `option_count_justification` explaining the source/skill-specific exception. This emits `OPTION_COUNT_OVERRIDE_REVIEW`; an exception never permits fewer than four or more than six choices, ambiguous answers or filler distractors.
 
 Wrong options must carry a short distractor_rationale explaining why a learner could plausibly choose them. Rationales inside one question must be distinct rather than duplicated filler. Where a known misconception is confidently represented, a wrong option may also carry misconception_code. When a blueprint row declares misconception_target, at least one wrong option must carry the same misconception_code. Never attach a misconception to the correct option and never invent a misconception merely to satisfy metadata.
 
 The deterministic gate cannot prove every semantic property of a distractor. It therefore combines machine checks with author responsibility: plausibility, age-appropriate language, source fidelity, and lack of grammatical/visual answer giveaways still require content review. The validator emits a warning when the correct option is unusually long compared with distractors.
 
 Ordering questions must not disclose the requested order through the input itself. For supported Arabic, Turkish, and English prompts, the guard first requires explicit ordering intent, then isolates the contiguous candidate-number list instead of treating unrelated contextual numerals as values to order. Numeric tokenization follows learner-language conventions so compact English comma-separated integer lists remain lists while Turkish comma decimals remain decimals. When the candidate list contains at least three parseable values, the authoring validator rejects `ORDERING_PROMPT_PRE_SORTED_INPUT` if the candidates are already nondecreasing for an ascending task or nonincreasing for a descending task. Descriptive statements such as a sequence merely being “in ascending order” do not trigger the guard. Shuffle the displayed candidate values before publication so the learner must actually perform the ordering skill. This rule applies equally to Learning, Exam, and Paper surfaces.
+
+## Answer positions and meaningful context
+
+For each eligible standard 20-question surface, every item is single-choice with four options, and correct positions A/B/C/D occur 4–6 times each. No sequence may exceed two identical correct positions. Learning also requires 2–3 of each position in every 10-question subset: a 20-question Learning surface uses the first ten and next ten items in its authored `questions` order. A standalone 10-question Learning surface uses the same 2–3 rule. Preserve the delivery order when preparing the publication payload; the validator never shuffles options, changes answers or writes content.
+
+Small, irregular, mixed-format and non-four-option sets require `academic_context.answer_position_exceptions`, a map from the affected surface (`learning`, `exam` or `paper`) to a specific academic reason. The validator emits `ANSWER_POSITION_EXCEPTION_REVIEW`; disposition it against the exact candidate. This is not a blanket exemption for an otherwise eligible standard set. Never force an existing supported typed response into MCQ to obtain balance. The existing `support_workbook` gate continues to validate its numeric/short-answer/source-specific format; the generic academic manifest's supported response contract remains unchanged. Published packages remain immutable and are not retrospectively rewritten to meet prospective rules.
+
+For a standard 20-question surface, use the existing blueprint to classify each item with `context_type: contextual | direct`. A contextual item also records `context_necessary: true` and a non-empty `context_necessity_reason` explaining how its embedded passage, situation, table, visual or data affects the answer or required reasoning. A decorative story that can be removed without changing the task cannot count as contextual. These fields are local authoring/review metadata, not new database columns or learner runtime payloads.
+
+The standard design target is 13–15 meaningful contextual items out of 20 (65–75%) and 5–7 direct skill-isolation items (25–35%). A content/skill-specific exception is recorded in `academic_context.context_ratio_justifications` under the affected surface and emits `CONTEXT_RATIO_OVERRIDE_REVIEW`. A ratio justification cannot bypass missing classifications or declared decorative/unsupported context. Non-standard sizes receive proportionate semantic review rather than an invented rounded ratio requirement.
+
+The deterministic gate verifies declared counts and necessary metadata. It cannot prove that a reason is true, that a distractor is reachable, or that the challenge fits the learner. `ASSESSMENT_SEMANTIC_REVIEW_REQUIRED` therefore needs an explicit exact-candidate disposition: check the assigned source, confirmed learner scope, real context necessity, distinct error paths, clarity, reasoning diversity and progression. Modestly increased challenge must remain inside verified scope; future-unit terminology and trick wording are not acceptable substitutes for reasoning. Preserve the established 4/12/4 difficulty contract and four-level hints.
 
 ## Wording clarity review
 
@@ -178,6 +190,8 @@ Before an agent creates or updates any migration, seed/import payload, backend r
 3. stop on any validator error;
 4. review and disposition warnings before continuing;
 5. record the package-specific validation result in the PR/Issue handoff or equivalent durable delivery evidence.
+
+Follow SOP v1.13's bounded authoring procedure: initial exact-candidate validation and one package-level semantic review, followed by at most two targeted repair/revalidation rounds if needed. Repair the failing item or smallest dependent set and revalidate the whole changed candidate. If a blocker remains, record `QUALITY_BLOCKED` or `SOURCE_REMEDIATION_REQUIRED`; do not publish. Record candidate identity, corrected requirements/items, warning dispositions and semantic review result. This is an authoring procedure, not a new runtime retry algorithm. A deterministic PASS alone is never overall academic PASS while semantic or visual evidence is missing.
 
 Do not place real learner attempts into repository regression fixtures merely to satisfy this boundary. The exact package may be validated from a temporary working file; synthetic Testing-learner fixtures remain the committed regression evidence.
 

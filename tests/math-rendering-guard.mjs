@@ -176,7 +176,7 @@ for(const surface of ['learning','exam','review']){
 }
 if(!smoke.includes('math-learning-review-verified'))fail('Learning completed-review math coverage is missing.');
 
-const qa=read('.github/workflows/qa-smoke.yml');
+const qa=read('.github/workflows/qa-isolated.yml');
 const staticJob=yamlJobBlock(qa,'static-quality');
 const browserJob=yamlJobBlock(qa,'browser-smoke');
 if(yamlJobCondition(staticJob)!==null)fail('Static quality job must not have an if: condition.');

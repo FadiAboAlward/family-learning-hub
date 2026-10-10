@@ -393,6 +393,79 @@ function softSourceReference(value) {
   return SOFT_SOURCE_REFERENCE_PATTERNS.some(re => re.test(normalized));
 }
 
+// Prospective authoring checks only: never shuffle options or rewrite a candidate to obtain a pass.
+function validateAssessmentDesign(ctx, questions, blueByCode, errors, warnings) {
+  for (const key of ['answer_position_exceptions', 'context_ratio_justifications']) {
+    const value = ctx?.[key];
+    if (value === undefined) continue;
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        Object.entries(value).some(([surface, reason]) => !SURFACES.has(surface) || !text(reason))) {
+      issue(errors, 'ASSESSMENT_JUSTIFICATION_INVALID', 'academic_context.' + key, 'Use a delivery-surface map of non-empty, specific academic justifications.');
+    }
+  }
+
+  const checkPositions = (rows, surface, label) => {
+    const positions = rows.map(q => q.options.filter(o => o?.is_correct === true));
+    // Per-question validation reports malformed answers; balance is meaningful only once all correct positions are valid.
+    if (positions.some(opts => opts.length !== 1 || !Number.isInteger(opts[0].position) || opts[0].position < 1 || opts[0].position > 4)) return;
+    const answers = positions.map(opts => opts[0].position);
+    const counts = [1, 2, 3, 4].map(position => answers.filter(answer => answer === position).length);
+    const min = rows.length === 10 ? 2 : 4;
+    const max = rows.length === 10 ? 3 : 6;
+    if (counts.some(count => count < min || count > max)) {
+      issue(errors, 'ANSWER_POSITION_DISTRIBUTION', 'questions', label + ' requires ' + min + '–' + max + ' correct answers at each A/B/C/D position; found ' + counts.join('/') + '.');
+    }
+    if (answers.some((answer, i) => i >= 2 && answer === answers[i - 1] && answer === answers[i - 2])) {
+      issue(errors, 'ANSWER_POSITION_RUN', 'questions', surface + ' must not contain more than two consecutive identical correct positions.');
+    }
+  };
+
+  for (const surface of SURFACES) {
+    const rows = questions.filter(q => q?.delivery_surface === surface);
+    if (!rows.length) continue;
+    const eligible = rows.every(q => q.question_type === 'single_choice' && Array.isArray(q.options) && q.options.length === 4);
+    if (eligible && (rows.length === 20 || (surface === 'learning' && rows.length === 10))) {
+      checkPositions(rows, surface, surface + ' ' + rows.length + '-question set');
+      if (surface === 'learning' && rows.length === 20) {
+        checkPositions(rows.slice(0, 10), surface, 'learning first 10-question subset');
+        checkPositions(rows.slice(10), surface, 'learning second 10-question subset');
+      }
+    } else {
+      const exception = text(ctx?.answer_position_exceptions?.[surface]);
+      if (!exception) issue(errors, 'ANSWER_POSITION_EXCEPTION_REQUIRED', 'academic_context.answer_position_exceptions.' + surface, 'Small, irregular, mixed-format or non-four-option ' + surface + ' sets require a specific documented balance exception.');
+      else issue(warnings, 'ANSWER_POSITION_EXCEPTION_REVIEW', 'academic_context.answer_position_exceptions.' + surface, exception + ' Review the applicable answer-position pattern; do not add filler or change correct answers to manufacture balance.');
+    }
+
+    let contextual = 0;
+    let classified = 0;
+    for (const q of rows) {
+      const b = blueByCode.get(text(q.question_code));
+      const type = text(b?.context_type);
+      const p = 'blueprint.' + text(q.question_code);
+      if (!type && rows.length !== 20) continue;
+      if (!['contextual', 'direct'].includes(type)) {
+        issue(errors, 'CONTEXT_TYPE_REQUIRED', p + '.context_type', 'Classify each standard-set item as contextual or direct; use the embedded stimulus and intended reasoning, not story keywords.');
+        continue;
+      }
+      classified++;
+      if (type === 'contextual') {
+        if (b.context_necessary !== true || !text(b.context_necessity_reason)) {
+          issue(errors, 'CONTEXT_NECESSITY_REQUIRED', p, 'A contextual item must declare context_necessary=true and explain how the embedded context/stimulus changes the answer or required reasoning. Decorative context is not eligible.');
+        } else contextual++;
+      }
+    }
+    if (rows.length === 20 && classified === rows.length) {
+      const justification = text(ctx?.context_ratio_justifications?.[surface]);
+      if ((contextual < 13 || contextual > 15) && !justification) {
+        issue(errors, 'CONTEXT_RATIO_OUT_OF_TARGET', 'blueprint', surface + ' requires 13–15 meaningful contextual items out of 20 (65–75%) or a content/skill-specific context_ratio_justifications.' + surface + '; found ' + contextual + '.');
+      } else if (justification) {
+        issue(warnings, 'CONTEXT_RATIO_OVERRIDE_REVIEW', 'academic_context.context_ratio_justifications.' + surface, justification + ' Verify the override against the exact candidate and assigned source.');
+      }
+    }
+  }
+  if (questions.length) issue(warnings, 'ASSESSMENT_SEMANTIC_REVIEW_REQUIRED', 'blueprint', 'Review the exact candidate against its source and learner scope: context necessity, reachable distractors, reasoning/challenge, wording and progressive hints are not proven by metadata or validator PASS.');
+}
+
 export function validateAcademicPackage(pkg) {
   const errors = [];
   const warnings = [];
@@ -633,7 +706,11 @@ export function validateAcademicPackage(pkg) {
     if (!q || q.question_type !== 'single_choice') issue(errors, 'UNSUPPORTED_QUESTION_TYPE', p + '.question_type', 'This first academic QA gate currently validates single_choice packages only.');
 
     const opts = Array.isArray(q && q.options) ? q.options : [];
-    if (opts.length < 4 || opts.length > 6) issue(errors, 'OPTION_COUNT_OUT_OF_RANGE', p + '.options', 'single_choice questions require 4 to 6 options.');
+    if (opts.length < 4 || opts.length > 6) issue(errors, 'OPTION_COUNT_OUT_OF_RANGE', p + '.options', 'single_choice questions require 4 options by default, with a justified 5–6-option exception.');
+    else if (opts.length !== 4) {
+      if (!text(q.option_count_justification)) issue(errors, 'OPTION_COUNT_OVERRIDE_REQUIRED', p + '.option_count_justification', 'A five- or six-option question needs a specific source/skill justification; never add filler.');
+      else issue(warnings, 'OPTION_COUNT_OVERRIDE_REVIEW', p + '.option_count_justification', text(q.option_count_justification));
+    }
 
     const normalizedOptions = new Map();
     const optionPositions = new Map();
@@ -651,8 +728,8 @@ export function validateAcademicPackage(pkg) {
       else normalizedOptions.set(n, op);
 
       const position = o && o.position;
-      if (!Number.isInteger(position) || position < 1) {
-        issue(errors, 'OPTION_POSITION_INVALID', op + '.position', 'Option position must be a positive integer.');
+      if (!Number.isInteger(position) || position < 1 || position > opts.length) {
+        issue(errors, 'OPTION_POSITION_INVALID', op + '.position', 'Option position must be an integer from 1 through the option count.');
       } else if (optionPositions.has(position)) {
         issue(errors, 'DUPLICATE_OPTION_POSITION', op + '.position', 'Option position duplicates ' + optionPositions.get(position) + '.');
       } else {
@@ -765,6 +842,8 @@ export function validateAcademicPackage(pkg) {
   for (const code of blueByCode.keys()) {
     if (!seenQuestionCodes.has(code)) issue(errors, 'BLUEPRINT_ORPHAN', 'blueprint.' + code, 'Blueprint item ' + code + ' has no question.');
   }
+
+  validateAssessmentDesign(ctx, questions, blueByCode, errors, warnings);
 
   return { ok: errors.length === 0, errors, warnings };
 }

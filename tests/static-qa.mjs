@@ -252,7 +252,7 @@ for(const required of ['Level','Hints','Learning Mode','Exam Mode','جارٍ','�
 
 const examLogic=read('supabase/functions/exam-v2-api/logic.mjs');
 const examTests=read('tests/exam-v2-api.mjs');
-const qa=read('.github/workflows/qa-smoke.yml');
+const qa=read('.github/workflows/qa-isolated.yml');
 const staticJob=yamlJobBlock(qa,'static-quality'),browserJob=yamlJobBlock(qa,'browser-smoke');
 if(!examLogic.includes('typeof body.is_flagged!=="boolean"'))fail('Exam API boolean flag guard missing.');
 if(!examLogic.includes('.eq("learner_id",learnerId)'))fail('Exam API learner scope guard missing.');

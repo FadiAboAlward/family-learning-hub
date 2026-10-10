@@ -14,7 +14,9 @@ This is a platform invariant for **every learner**, current or future. It is not
 
 ## Architecture
 
-`app.js` provides the base `math()` formatting helper. `math-direction-v1.js` loads immediately after it and wraps the shared renderer before Learning, Exam, and review runtimes load. Mathematical runs are emitted as isolated LTR `bdi` elements. A scoped `#app` DOM fallback is retained only as a safety net for dynamic student UI that bypasses the shared helper accidentally.
+`app.js` provides the base `math()` formatting helper. `math-direction-v1.js` loads immediately after it and wraps the shared renderer before Learning, Exam, and review runtimes load. The wrapper reads the original escaped source before the legacy helper expands fractions, so a complete expression has one isolated LTR `bdi` boundary. Its bounded source parser supports signed integers and decimals (including Arabic digits), nested parentheses, comparisons and arithmetic operators, slash/`\\frac{…}{…}` stacked fractions, `^` powers (including braced exponents) and Unicode superscripts such as `2²` or `2⁻³`, and `√`, `sqrt(…)` or `\\sqrt{…}` roots. It typesets source without evaluating or changing answers.
+
+Structured expressions retain the complete authored expression as their accessible `aria-label`. Numerators/denominators, superscripts and radical bars are scoped to the math wrapper and reuse the existing fraction markup. Arabic prose and ordinary Turkish/English remain unchanged; renderer-owned existing markup is idempotent while newly appended math is still enhanced. Unknown or malformed notation falls back to readable escaped text, with bounded nesting/token/source limits and no runtime library or HTML execution. A scoped `#app` DOM fallback uses the same parser only as a safety net for dynamic student UI that bypasses the shared helper accidentally.
 
 The fallback is not a replacement for using the shared math renderer in the main Learning, Exam, and review code paths.
 
@@ -55,6 +57,12 @@ At minimum, deterministic tests must retain:
 - `19 + (-7)`
 - `-21 - (-6)`
 - `-26`
+- `(1/2 + 3/4) × 2 = 2.5`
+- `(-3)^2 + sqrt(16) = 13`
+- `2² + 3³ = 35`
+- `\\frac{1}{2} + \\sqrt{9} ≥ 3.5`
+
+`tests/math-typesetting.unit.mjs` additionally protects operator families, safe invalid/oversized input, ordinary learner languages, and partial already-rendered content. The low-level browser regression checks actual fraction stacking, raised exponents, radical bars, complete-source labels and no overflow on mobile and desktop; actual Learning/Exam/review smoke remains required.
 
 ## Review gate
 

@@ -1,8 +1,9 @@
 import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { fetchQaBackend, fetchQaOidc, installQaBrowserIsolation, qaBrowserLaunchOptions, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { AUTHENTICATED_QA_STAGES, fetchRunnerLocalAuth, safeAuthenticatedFailure } from './qa-runner-local.mjs';
 
-const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
-const QA_AUTH_URL = 'https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/qa-auth';
+const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
@@ -10,26 +11,58 @@ const QA_QUESTION_COUNT = 3;
 const QA_BUSY_RETRIES = 20;
 const QA_BUSY_RETRY_MS = 10000;
 
+/** Fixed markers only; operation values and original exceptions remain private. */
+export async function runAuthenticatedStage(stage, operation, emit = line => console.error(line)) {
+  if (!AUTHENTICATED_QA_STAGES.includes(stage)) throw new Error('QA_AUTH_DIAGNOSTIC_STAGE_INVALID');
+  emit('QA_AUTH_STAGE '+JSON.stringify({stage,status:'START'}));
+  try {
+    const value = await operation();
+    emit('QA_AUTH_STAGE '+JSON.stringify({stage,status:'PASS'}));
+    return value;
+  } catch (error) {
+    emit('QA_AUTH_FAILURE '+JSON.stringify({stage,...safeAuthenticatedFailure(error)}));
+    throw error;
+  }
+}
+
+function responseFailure(code, response, payload) {
+  const error = new Error(code);
+  error.qaHttpStatus = response.status;
+  error.qaResponseError = payload?.error;
+  return error;
+}
+
+/** Called on failed flows too; no network origins or browser error messages escape. */
+export function assertAuthenticatedBrowserSafety(network, errors, emit = line => console.error(line)) {
+  let networkFailed = false;
+  if (network) try { network.assertNoUnexpectedRequests(); } catch { networkFailed = true; }
+  emit('QA_AUTH_NETWORK '+JSON.stringify({status:network?(networkFailed?'FAIL':'PASS'):'NOT_STARTED',
+    unexpected_requests:network?.unexpected?.length||0,browser_errors:errors.length}));
+  if (networkFailed) throw new Error('QA_BROWSER_NETWORK_REJECTED');
+  if (errors.length) throw new Error('QA_BROWSER_ERRORS');
+}
+
 /** Request a GitHub Actions OIDC token scoped to the Family Learning Hub QA audience. */
 async function githubOidcToken() {
+  return runAuthenticatedStage('OIDC_REQUEST', async () => {
+  const config = readQaTestingConfig();
   const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
   const bearer = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
   if (!url || !bearer) throw new Error('GitHub OIDC environment is unavailable');
-  const sep = url.includes('?') ? '&' : '?';
-  const response = await fetch(`${url}${sep}audience=family-learning-hub-qa`, {
-    headers: { Authorization: `Bearer ${bearer}` },
-  });
-  if (!response.ok) throw new Error(`GitHub OIDC request failed: ${response.status}`);
+  const response = await fetchQaOidc(config, url, bearer);
+  if (!response.ok) throw responseFailure('QA_OIDC_REQUEST_FAILED', response);
   const payload = await response.json();
-  if (!payload.value) throw new Error('GitHub OIDC token missing');
+  if (!payload.value) throw new Error('QA_OIDC_TOKEN_MISSING');
   return payload.value;
+  });
 }
 
 /** Call qa-auth with an explicit owned lifecycle action and optional run identifier. */
 async function requestQaAuth(action, runId = null) {
-  const response = await fetch(QA_AUTH_URL, {
+  const config = readQaTestingConfig();
+  const response = await fetchQaBackend(config, 'qa-auth', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', apikey: config.publishableKey },
     body: JSON.stringify({
       oidc_token: await githubOidcToken(),
       action,
@@ -49,16 +82,76 @@ async function prepareQaRun() {
       await new Promise(resolve => setTimeout(resolve, QA_BUSY_RETRY_MS));
       continue;
     }
-    throw new Error(`QA auth prepare failed: ${response.status} ${payload.error || ''}`.trim());
+    throw responseFailure('QA_AUTH_PREPARE_FAILED', response, payload);
   }
-  throw new Error('QA auth prepare retries exhausted');
+  throw new Error('QA_AUTH_PREPARE_FAILED');
 }
 
 /** Clear canonical Testing QA attempts and release the owned run lease. */
 async function cleanupQaRun(runId) {
   const { response, payload } = await requestQaAuth('cleanup', runId);
-  if (!response.ok) throw new Error(`QA auth cleanup failed: ${response.status} ${payload.error || ''}`.trim());
+  if (!response.ok) throw responseFailure('QA_AUTH_CLEANUP_FAILED', response, payload);
   return payload;
+}
+
+/** Verify actual persisted resume without logging question content or the learner session. */
+export async function assertQaResume(config, session, endpoint, action, fetchImpl = fetch) {
+  const request = async () => {
+    const response = await fetchQaBackend(config, endpoint, {
+      method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey, authorization: `Bearer ${session}` },
+      body: JSON.stringify({ action, quiz_slug: QA_QUIZ_SLUG }),
+    }, fetchImpl);
+    if (!response.ok) throw responseFailure('QA_LOCAL_RESUME_API_FAILED', response);
+    const payload = await response.json();
+    const hiddenKey = value => value && typeof value === 'object' && Object.entries(value).some(([key, child]) => ['correct_answer', 'explanation', 'grading_config'].includes(key) || hiddenKey(child));
+    if (hiddenKey(payload)) throw new Error('QA_LOCAL_ANSWER_KEY_LEAK');
+    if (!payload.attempt_id || payload.resumed !== true) throw new Error('QA_LOCAL_RESUME_INVALID');
+    return payload.attempt_id;
+  };
+  if (await request() !== await request()) throw new Error('QA_LOCAL_RESUME_ID_CHANGED');
+}
+
+/** Verify the submitted synthetic result while preserving a collapsed correct-answer group. */
+export async function assertQaExamCompletion(page) {
+  await page.locator('#examHome').waitFor({ state: 'visible', timeout: 30000 });
+  await page.getByText('100%', { exact: true }).first().waitFor({ state: 'visible', timeout: 30000 });
+  const reviews = page.locator('.exam-review');
+  await reviews.first().waitFor({ state: 'attached', timeout: 30000 });
+  if (await reviews.count() !== QA_QUESTION_COUNT) throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+  const grouped = page.locator('.flh-correct-review');
+  const groupCount = await grouped.count();
+  if (groupCount) {
+    if (groupCount !== 1) throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+    await grouped.locator(':scope > summary').waitFor({ state: 'visible', timeout: 30000 });
+    if (await grouped.getAttribute('open') !== null || await page.locator('.exam-review-wrong').count() !== 0) {
+      throw new Error('QA_LOCAL_EXAM_REVIEW_INVALID');
+    }
+  } else await reviews.first().waitFor({ state: 'visible', timeout: 30000 });
+}
+
+/** Synthetic parent's real Auth password grant and existing membership-bound API. */
+export async function assertQaParent(config, email, password, fetchImpl = fetch) {
+  if (!email || !password) throw new Error('QA_LOCAL_PARENT_CONFIG_REQUIRED');
+  const login = await fetchRunnerLocalAuth(config, '/auth/v1/token?grant_type=password', {
+    method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey }, body: JSON.stringify({ email, password }),
+  }, fetchImpl);
+  if (!login.ok) throw responseFailure('QA_LOCAL_PARENT_LOGIN_FAILED', login);
+  const token = (await login.json()).access_token;
+  if (!token) throw new Error('QA_LOCAL_PARENT_LOGIN_FAILED');
+  let primary;
+  try {
+    const result = await fetchQaBackend(config, 'family-api', {
+      method: 'POST', headers: { 'content-type': 'application/json', apikey: config.publishableKey, authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'parent_dashboard' }),
+    }, fetchImpl);
+    if (!result.ok) throw responseFailure('QA_LOCAL_PARENT_DASHBOARD_FAILED', result);
+    const data = await result.json();
+    if (data.parent?.role !== 'owner' || !Array.isArray(data.learners) || data.learners.length || data.attempts?.length || data.states?.length) throw new Error('QA_LOCAL_PARENT_TEST_EXCLUSION_FAILED');
+  } catch (error) { primary = error; }
+  try {
+    const logout = await fetchRunnerLocalAuth(config, '/auth/v1/logout', { method: 'POST', headers: { apikey: config.publishableKey, authorization: `Bearer ${token}` } }, fetchImpl);
+    if (!logout.ok) throw responseFailure('QA_LOCAL_PARENT_LOGOUT_FAILED', logout);
+  } catch (error) { primary ||= error; }
+  if (primary) throw primary;
 }
 
 /**
@@ -96,49 +189,67 @@ export async function runOwnedQaLifecycle({ prepare, validate, run, cleanup }) {
 
 /** Run the authenticated Testing learner browser flow against the real backend. */
 async function main() {
-  const { chromium } = await import('playwright');
+  const config = await runAuthenticatedStage('CONFIG', () => readQaTestingConfig());
+  await runAuthenticatedStage('ATTESTATION', () => verifyQaTestingBackend(config));
+  const { chromium } = await runAuthenticatedStage('PLAYWRIGHT_IMPORT', () => import('playwright'));
 
   await runOwnedQaLifecycle({
-    prepare: prepareQaRun,
-    validate: async prepared => {
+    prepare: () => runAuthenticatedStage('AUTH_PREPARE', prepareQaRun),
+    validate: prepared => runAuthenticatedStage('SESSION_VALIDATION', async () => {
       if (!prepared.session || prepared.learner?.slug !== 'test' || !prepared.run_id) {
-        throw new Error('QA auth returned invalid Testing learner session or run ownership');
+        throw new Error('QA_AUTH_SESSION_INVALID');
       }
       if (prepared.quiz_slug !== QA_QUIZ_SLUG) {
-        throw new Error('QA auth returned unexpected canonical quiz');
+        throw new Error('QA_AUTH_QUIZ_INVALID');
       }
-    },
+    }),
     run: async prepared => {
-      let browser;
+      let browser, network, primary;
+      const errors = [];
       try {
-        browser = await chromium.launch({ headless: true });
-        const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-        const errors = [];
+        browser = await runAuthenticatedStage('BROWSER_LAUNCH', () => chromium.launch(qaBrowserLaunchOptions()));
+        const page = await runAuthenticatedStage('BROWSER_LAUNCH', async () => {
+          const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+          network = await installQaBrowserIsolation(page.context(), config);
+          return page;
+        });
         page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
         page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
 
+        await runAuthenticatedStage('BROWSER_NAVIGATION', async () => {
         await page.addInitScript(value => localStorage.setItem('learner_session', value), prepared.session);
         await page.goto(`${APP_URL}?qa=${Date.now()}#student`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        });
 
         const qaProgram = page.locator('[data-open-program]').filter({ hasText: QA_PROGRAM_TITLE });
-        await qaProgram.waitFor({ state: 'visible', timeout: 10000 });
-        await qaProgram.click();
+        await runAuthenticatedStage('PROGRAM_READY', () => qaProgram.waitFor({ state: 'visible', timeout: 10000 }));
+        await runAuthenticatedStage('PROGRAM_OPEN', () => qaProgram.click());
         const qaBook = page.locator('[data-book]').filter({ hasText: QA_BOOK_TITLE });
-        await qaBook.waitFor({ state: 'visible', timeout: 10000 });
-        await qaBook.click();
+        await runAuthenticatedStage('BOOK_READY', () => qaBook.waitFor({ state: 'visible', timeout: 10000 }));
+        await runAuthenticatedStage('BOOK_OPEN', () => qaBook.click());
 
+        await runAuthenticatedStage('LEARNING_OPEN', async () => {
         const learningButton = page.locator(`[data-learn="${QA_QUIZ_SLUG}"]`);
         await learningButton.waitFor({ state: 'visible', timeout: 10000 });
         await learningButton.click();
+        await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+        });
+        await runAuthenticatedStage('LEARNING_RESUME', () => assertQaResume(config, prepared.session, 'learning-api', 'start_quiz'));
+        await runAuthenticatedStage('LEARNING_ANSWERS', async () => {
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-          await page.locator('.flh-learn-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-          await page.locator('.flh-learn-answer').first().click();
+          // This answer is known from the isolated synthetic fixture, never a
+          // key read from a learner response or a real academic package.
+          const answer = page.locator('.flh-learn-answer').filter({ has: page.getByText('Accept', { exact: true }) });
+          await answer.waitFor({ state: 'visible', timeout: 10000 });
+          await answer.click();
           await page.locator('#flhConfirmAnswer').click();
           const next = page.locator('#flhLearnNext');
           await next.waitFor({ state: 'visible', timeout: 10000 });
           await next.click();
         }
+        });
 
+        await runAuthenticatedStage('LEARNING_FINISH', async () => {
         await page.waitForFunction(
           () => document.querySelector('#learnHome') || document.querySelector('#learnRetryFinish'),
           null,
@@ -147,38 +258,53 @@ async function main() {
         const retryFinish = page.locator('#learnRetryFinish');
         if (await retryFinish.isVisible().catch(() => false)) await retryFinish.click();
         await page.locator('#learnHome').waitFor({ state: 'visible', timeout: 30000 });
+        });
 
+        await runAuthenticatedStage('EXAM_OPEN', async () => {
         await page.evaluate(slug => window.FLH.startExamQuiz(slug), QA_QUIZ_SLUG);
+        await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
+        });
+        await runAuthenticatedStage('EXAM_RESUME', () => assertQaResume(config, prepared.session, 'exam-v2-api', 'start_exam'));
+        await runAuthenticatedStage('EXAM_ANSWERS', async () => {
         for (let i = 0; i < QA_QUESTION_COUNT; i++) {
-          await page.locator('.exam-v3-answer').first().waitFor({ state: 'visible', timeout: 10000 });
-          await page.locator('.exam-v3-answer').first().click();
+          const answer = page.locator('.exam-v3-answer').filter({ has: page.getByText('Accept', { exact: true }) });
+          await answer.waitFor({ state: 'visible', timeout: 10000 });
+          await answer.click();
           if (i < QA_QUESTION_COUNT - 1) await page.locator('#examNext').click();
         }
+        });
+        await runAuthenticatedStage('EXAM_SUBMIT', async () => {
         const submit = page.locator('#examSubmit');
         await page.waitForFunction(() => {
           const button = document.querySelector('#examSubmit');
           return button && !button.disabled;
         }, null, { timeout: 10000 });
         await submit.click();
-        await page.locator('.exam-review').first().waitFor({ state: 'visible', timeout: 30000 });
+        await assertQaExamCompletion(page);
+        });
 
-        const attemptId = await page.evaluate(async slug => {
+        const attemptId = await runAuthenticatedStage('ATTEMPT_DISCOVERY', async () => {
+        const foundId = await page.evaluate(async ({ slug, backendUrl, publishableKey }) => {
           const token = localStorage.getItem('learner_session') || sessionStorage.getItem('learner_session') || '';
-          const response = await fetch('https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/attempt-history-api', {
+          const response = await fetch(`${backendUrl}/functions/v1/attempt-history-api`, {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              apikey: 'sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W',
+              apikey: publishableKey,
               authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ action: 'list_attempts', page_size: 10, mode: 'exam' }),
+            redirect: 'error',
           });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.error || 'ATTEMPT_HISTORY_FAILED');
           return payload.items?.find(item => item.context?.quiz?.slug === slug)?.id || null;
-        }, QA_QUIZ_SLUG);
-        if (!attemptId) throw new Error('QA exam attempt was not discoverable in attempt history');
+        }, { slug: QA_QUIZ_SLUG, backendUrl: config.backendUrl, publishableKey: config.publishableKey });
+        if (!foundId) throw new Error('QA_LOCAL_ATTEMPT_NOT_FOUND');
+        return foundId;
+        });
 
+        await runAuthenticatedStage('DEEP_LINK', async () => {
         const direct = new URL(APP_URL);
         direct.searchParams.set('attempt', attemptId);
         direct.searchParams.set('learner', 'test');
@@ -187,20 +313,29 @@ async function main() {
         await page.locator('.flh-attempt-summary').waitFor({ state: 'visible', timeout: 30000 });
         await page.locator('.flh-history-review').first().waitFor({ state: 'attached', timeout: 30000 });
         await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
-        if (new URL(page.url()).searchParams.has('learner')) throw new Error('Attempt deep link did not clean learner query parameter');
-        await mkdir('playwright-screenshots', { recursive: true });
-        await page.screenshot({ path: 'playwright-screenshots/attempt-deep-link-mobile.png', fullPage: true });
+        if (new URL(page.url()).searchParams.has('learner')) throw new Error('QA_LOCAL_DEEP_LINK_QUERY_REMAIN');
+        });
+        await runAuthenticatedStage('SCREENSHOT', async () => {
+        const evidencePath = config.mode === 'runner-local' ? 'qa-authenticated-evidence' : 'playwright-screenshots';
+        await mkdir(evidencePath, { recursive: true });
+        await page.screenshot({ path: `${evidencePath}/attempt-deep-link-mobile.png`, fullPage: true });
+        });
 
-        if (errors.length) throw new Error(errors.join('; '));
-        console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode, direct attempt deep link.');
+        if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD));
+      } catch (error) {
+        primary = error;
       } finally {
         if (browser) await browser.close().catch(() => {});
+        try { await runAuthenticatedStage('BROWSER_SAFETY', () => assertAuthenticatedBrowserSafety(network, errors)); } catch (error) { primary ||= error; }
       }
+      if (primary) throw primary;
+      console.log('Authenticated QA passed: isolated Testing learner, owned lease, QA-only content, real backend, Learning Mode, Exam Mode, direct attempt deep link.');
     },
-    cleanup: cleanupQaRun,
+    cleanup: runId => runAuthenticatedStage('AUTH_CLEANUP', () => cleanupQaRun(runId)),
   });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await main();
+  try { await main(); }
+  catch (error) { console.error('QA_AUTH_TERMINAL '+JSON.stringify(safeAuthenticatedFailure(error))); process.exitCode = 1; }
 }
