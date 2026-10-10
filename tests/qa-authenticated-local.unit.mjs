@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acceptQaParentBulkApproval, assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
+import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
@@ -256,11 +256,14 @@ const checkConfirmation = async (message, type = 'confirm') => {
     await handler({ type: () => type, message: () => message,
       accept: async () => { accepted++; }, dismiss: async () => { dismissed++; } });
   } };
-  return { run: () => acceptQaParentBulkApproval(page, button, 2), state: () => ({ accepted, dismissed }) };
+  return { run: (accept = true) => handleQaParentBulkConfirmation(page, button, 2, accept), state: () => ({ accepted, dismissed }) };
 };
 const approvedDialog = await checkConfirmation('اعتماد طلبات QA؟ عدد الطلبات: 2');
 await approvedDialog.run();
 assert.deepEqual(approvedDialog.state(), { accepted: 1, dismissed: 0 });
+const cancelledDialog = await checkConfirmation('اعتماد طلبات QA؟ عدد الطلبات: 2');
+await cancelledDialog.run(false);
+assert.deepEqual(cancelledDialog.state(), { accepted: 0, dismissed: 1 });
 const rejectedDialog = await checkConfirmation('عدد الطلبات: 3');
 await assert.rejects(rejectedDialog.run(), /QA_LOCAL_PARENT_CONFIRMATION_INVALID/);
 assert.deepEqual(rejectedDialog.state(), { accepted: 0, dismissed: 1 });

@@ -143,7 +143,7 @@ export async function assertQaDeviceLayout(page, expectedWidth) {
 }
 
 /** Arm before the click: awaiting a dialog-triggering click first deadlocks Playwright. */
-export async function acceptQaParentBulkApproval(page, button, expectedCount) {
+export async function handleQaParentBulkConfirmation(page, button, expectedCount, accept = true) {
   const confirmation = new Promise((resolve, reject) => {
     page.once('dialog', async dialog => {
       try {
@@ -151,7 +151,7 @@ export async function acceptQaParentBulkApproval(page, button, expectedCount) {
           await dialog.dismiss();
           throw new Error('QA_LOCAL_PARENT_CONFIRMATION_INVALID');
         }
-        await dialog.accept();
+        if (accept) await dialog.accept(); else await dialog.dismiss();
         resolve(true);
       } catch (error) { reject(error); }
     });
@@ -406,8 +406,18 @@ async function main() {
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
                 await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-desktop.png', fullPage: true });
+                await runAuthenticatedStage('PARENT_BULK_CANCEL', async () => {
+                  await handleQaParentBulkConfirmation(parentPage, group.locator('[data-fr-approve-all]'), 2, false);
+                  const cards = group.locator('[data-fr-submission]');
+                  if (await cards.count() !== 2 ||
+                      (await group.locator('[data-fr-pending-count]').textContent())?.trim() !== '2' ||
+                      await group.locator('[data-fr-approve-all]').isDisabled()) {
+                    throw new Error('QA_LOCAL_PARENT_CANCEL_MUTATED_PENDING');
+                  }
+                  await assertQaDeviceLayout(parentPage, 1280);
+                });
                 await runAuthenticatedStage('PARENT_BULK_APPROVAL', async () => {
-                  await acceptQaParentBulkApproval(parentPage, group.locator('[data-fr-approve-all]'), 2);
+                  await handleQaParentBulkConfirmation(parentPage, group.locator('[data-fr-approve-all]'), 2);
                   await parentPage.waitForFunction(() => {
                     const root = document.querySelector('[data-family-rewards][data-role="parent"]');
                     return root && !root.querySelector('[data-fr-approval-learner]') &&
