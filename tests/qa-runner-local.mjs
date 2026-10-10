@@ -102,7 +102,7 @@ const authenticatedFailures = new Set(['OIDC_URL_REJECTED', 'OIDC_ENV_MISSING', 
   'RESUME_FAILED', 'ANSWER_KEY_LEAK', 'PARENT_CONFIG_FAILED', 'PARENT_LOGIN_FAILED', 'PARENT_DASHBOARD_FAILED', 'PARENT_EXCLUSION_FAILED',
   'PARENT_LOGOUT_FAILED', 'ATTEMPT_NOT_FOUND', 'DEEP_LINK_INVALID', 'UNCLASSIFIED']);
 export const AUTHENTICATED_QA_STAGES = Object.freeze(['CONFIG', 'ATTESTATION', 'PLAYWRIGHT_IMPORT', 'OIDC_REQUEST', 'AUTH_PREPARE', 'SESSION_VALIDATION',
-  'BROWSER_LAUNCH', 'BROWSER_NAVIGATION', 'PROGRAM_READY', 'PROGRAM_OPEN', 'BOOK_READY', 'BOOK_OPEN', 'LEARNING_OPEN', 'LEARNING_RESUME',
+  'BROWSER_LAUNCH', 'BROWSER_CONTEXT', 'BROWSER_NAVIGATION', 'PROGRAM_READY', 'PROGRAM_OPEN', 'BOOK_READY', 'BOOK_OPEN', 'LEARNING_OPEN', 'LEARNING_RESUME',
   'LEARNING_ANSWERS', 'LEARNING_FINISH', 'EXAM_OPEN', 'EXAM_RESUME', 'EXAM_ANSWERS', 'EXAM_SUBMIT', 'ATTEMPT_DISCOVERY',
   'DEEP_LINK', 'SCREENSHOT', 'PARENT_AUTH', 'BROWSER_SAFETY', 'AUTH_CLEANUP']);
 const authenticatedResponseErrors = new Set(['QA_AUTH_FAILED', 'QA_BUSY', 'QA_LEARNER_NOT_READY', 'QA_QUIZ_NOT_FOUND', 'QA_VERSION_NOT_FOUND',
@@ -168,18 +168,19 @@ function authenticatedProcessDetails(stderr) {
 
 /** Match fixed error identities only; captured URLs, tokens and response bodies never escape. */
 function authenticatedProcessFailure(stderr) {
+  // Explicit QA_* failure lines share the same fixed-code allowlist as the
+  // primary browser failure mapper. Captured tokens/URLs never enter output.
+  const output = String(stderr);
+  const fixed = /(?:^|\r?\n)Error: (QA_[A-Z_]+)(?:\r?\n|$)/.exec(output);
+  if (fixed) {
+    const code = safeAuthenticatedFailure({message:fixed[1]}).code;
+    if (code !== 'UNCLASSIFIED') return code;
+  }
   for (const [pattern, code] of [
-    [/Error: QA_OIDC_URL_INVALID(?:\r?\n|$)/, 'OIDC_URL_REJECTED'],
     [/Error: GitHub OIDC environment is unavailable(?:\r?\n|$)/, 'OIDC_ENV_MISSING'],
-    [/Error: GitHub OIDC request failed: \d{3}(?:\r?\n|$)/, 'OIDC_REQUEST_FAILED'],
-    [/Error: GitHub OIDC token missing(?:\r?\n|$)/, 'OIDC_TOKEN_MISSING'],
-    [/Error: QA_ISOLATION_ATTESTATION_FAILED(?:\r?\n|$)/, 'ATTESTATION_FAILED'],
-    [/Error: QA_(?:ISOLATION_CONFIG_REQUIRED|ISOLATION_URL_INVALID|ISOLATION_IDENTITY_MISMATCH|PUBLISHABLE_KEY_REQUIRED|PUBLISHABLE_KEY_INVALID|APP_URL_INVALID|APP_MUST_BE_LOCAL)(?:\r?\n|$)/, 'TESTING_CONFIG_INVALID'],
     [/Error \[ERR_MODULE_NOT_FOUND\]:/, 'MODULE_MISSING'],
     [/browserType\.launch: Executable doesn't exist/, 'BROWSER_EXECUTABLE_MISSING'],
-    [/Error: QA auth prepare failed: \d{3}(?: [A-Z_]+)?(?:\r?\n|$)/, 'AUTH_PREPARE_FAILED'],
-    [/Error: QA auth cleanup failed: \d{3}(?: [A-Z_]+)?(?:\r?\n|$)/, 'AUTH_CLEANUP_FAILED'],
-  ]) if (pattern.test(String(stderr))) return code;
+  ]) if (pattern.test(output)) return code;
   return 'UNCLASSIFIED';
 }
 

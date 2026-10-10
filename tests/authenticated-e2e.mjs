@@ -208,7 +208,7 @@ async function main() {
       const errors = [];
       try {
         browser = await runAuthenticatedStage('BROWSER_LAUNCH', () => chromium.launch(qaBrowserLaunchOptions()));
-        const page = await runAuthenticatedStage('BROWSER_LAUNCH', async () => {
+        const page = await runAuthenticatedStage('BROWSER_CONTEXT', async () => {
           const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
           network = await installQaBrowserIsolation(page.context(), config);
           return page;

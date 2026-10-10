@@ -12,6 +12,7 @@ const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http:/
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
   GITHUB_RUN_ID: '123456', GITHUB_RUN_ATTEMPT: '2', FLH_QA_HEAD_SHA: 'a'.repeat(40), RUNNER_TEMP: os.tmpdir() };
 const config = requireRunnerLocal(env);
+assert.ok(AUTHENTICATED_QA_STAGES.includes('BROWSER_CONTEXT'), 'Actual page/context creation has a separate diagnostic stage');
 const oidcEvidence=qaOidcOriginEvidence({ACTIONS_ID_TOKEN_REQUEST_URL:'https://regional-qa.actions.githubusercontent.com/synthetic-private-path?private=synthetic-private-query',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-private-bearer'});
 assert.deepEqual(oidcEvidence,{origin:'https://regional-qa.actions.githubusercontent.com'});
 assert.equal(Object.isFrozen(oidcEvidence),true);
@@ -139,12 +140,14 @@ assert.equal(safeQaProcessDiagnostic({ diagnostic: { command: syntheticPrivate, 
 assert.deepEqual(safeQaProcessDiagnostic({ diagnostic: { ...timeoutDiagnostic, stderr: syntheticPrivate, stdout: syntheticPrivate } }), timeoutDiagnostic, 'raw subprocess fields never enter the artifact allowlist');
 for (const [message, expected] of [
   ['Error: QA_OIDC_URL_INVALID', 'OIDC_URL_REJECTED'], ['Error: GitHub OIDC environment is unavailable', 'OIDC_ENV_MISSING'],
-  ['Error: GitHub OIDC request failed: 403', 'OIDC_REQUEST_FAILED'], ['Error: GitHub OIDC token missing', 'OIDC_TOKEN_MISSING'],
+  ['Error: QA_OIDC_REQUEST_FAILED', 'OIDC_REQUEST_FAILED'], ['Error: QA_OIDC_TOKEN_MISSING', 'OIDC_TOKEN_MISSING'],
   ['Error: QA_ISOLATION_ATTESTATION_FAILED', 'ATTESTATION_FAILED'], ['Error: QA_PUBLISHABLE_KEY_INVALID', 'TESTING_CONFIG_INVALID'],
   ["Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'", 'MODULE_MISSING'],
   ["browserType.launch: Executable doesn't exist at /private/browser", 'BROWSER_EXECUTABLE_MISSING'],
-  ['Error: QA auth prepare failed: 403 WORKFLOW_NOT_ALLOWED', 'AUTH_PREPARE_FAILED'],
-  ['Error: QA auth cleanup failed: 409 QA_LEASE_NOT_OWNED', 'AUTH_CLEANUP_FAILED'],
+  ['Error: QA_AUTH_PREPARE_FAILED', 'AUTH_PREPARE_FAILED'],
+  ['Error: QA_AUTH_CLEANUP_FAILED', 'AUTH_CLEANUP_FAILED'],
+  ['Error: GitHub OIDC request failed: 403', 'UNCLASSIFIED'],
+  ['Error: GitHub OIDC token missing', 'UNCLASSIFIED'],
   ['Error: '+syntheticPrivate, 'UNCLASSIFIED'], ['Error: QA_OIDC_URL_INVALID '+syntheticPrivate, 'UNCLASSIFIED'],
 ]) {
   const diagnostic = qaProcessDiagnostic(process.execPath, ['tests/authenticated-e2e.mjs'], message+'\n'+syntheticPrivate, 1);
