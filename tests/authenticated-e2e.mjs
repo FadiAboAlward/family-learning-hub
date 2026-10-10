@@ -157,7 +157,7 @@ export async function assertQaParentApprovalAccessibility(page, expectedColumns)
       const grid = group.querySelector('.fr-card-grid');
       const cards = [...grid.querySelectorAll(':scope > [data-fr-submission]')];
       return {
-        columns: getComputedStyle(grid).gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+        columns: getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length,
         cards: cards.length,
         collapsed: cards.every(card => !card.querySelector('.fr-submission-details')?.open),
       };
