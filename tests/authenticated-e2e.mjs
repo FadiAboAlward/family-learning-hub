@@ -131,6 +131,11 @@ export async function assertQaExamCompletion(page) {
   } else await reviews.first().waitFor({ state: 'visible', timeout: 30000 });
 }
 
+/** All authenticated screenshots use the mode-owned evidence directory. */
+export function qaEvidenceDirectory(mode) {
+  return mode === 'runner-local' ? 'qa-authenticated-evidence' : 'playwright-screenshots';
+}
+
 /** Read-only device layout evidence; independent of provider fixtures and browser dimensions. */
 export async function assertQaDeviceLayout(page, expectedWidth) {
   const dimensions = await page.evaluate(() => ({
@@ -355,8 +360,8 @@ async function main() {
         await page.waitForFunction(() => !new URL(location.href).searchParams.has('attempt'), null, { timeout: 10000 });
         if (new URL(page.url()).searchParams.has('learner')) throw new Error('QA_LOCAL_DEEP_LINK_QUERY_REMAIN');
         });
+        const evidencePath = qaEvidenceDirectory(config.mode);
         await runAuthenticatedStage('SCREENSHOT', async () => {
-        const evidencePath = config.mode === 'runner-local' ? 'qa-authenticated-evidence' : 'playwright-screenshots';
         await mkdir(evidencePath, { recursive: true });
         await page.screenshot({ path: `${evidencePath}/attempt-deep-link-mobile.png`, fullPage: true });
         });
@@ -365,7 +370,7 @@ async function main() {
           await page.setViewportSize({ width: 1280, height: 900 });
           await page.locator('.flh-attempt-summary').waitFor({ state: 'visible', timeout: 10000 });
           await assertQaDeviceLayout(page, 1280);
-          await page.screenshot({ path: 'qa-authenticated-evidence/attempt-deep-link-desktop.png', fullPage: true });
+          await page.screenshot({ path: `${evidencePath}/attempt-deep-link-desktop.png`, fullPage: true });
         });
 
         if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(

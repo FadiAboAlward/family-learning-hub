@@ -4,9 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume } from './authenticated-e2e.mjs';
+import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+
+assert.equal(qaEvidenceDirectory('runner-local'),'qa-authenticated-evidence', 'Runner-owned screenshots stay with runner evidence');
+assert.equal(qaEvidenceDirectory('isolated-testing'),'playwright-screenshots', 'Isolated-testing screenshots stay in the browser evidence folder');
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
