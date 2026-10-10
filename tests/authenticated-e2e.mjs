@@ -408,7 +408,7 @@ async function main() {
                 const sibling = parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2 ||
                     await group.locator('[data-fr-pending-count]').count() !== 1 ||
-                    await sibling.locator('[data-fr-submission]').count() !== 1) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
+                    await sibling.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
                 await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-mobile.png', fullPage: true });
               });
               await runAuthenticatedStage('PARENT_REWARDS_DESKTOP', async () => {
@@ -416,7 +416,7 @@ async function main() {
                 await assertQaDeviceLayout(parentPage, 1280);
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2 ||
-                    await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 1)
+                    await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 2)
                   throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
                 const submittedIds = await group.locator('[data-fr-submission]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-fr-submission')));
                 if (submittedIds.length !== 2 || new Set(submittedIds).size !== 2 ||
@@ -438,12 +438,34 @@ async function main() {
                     const root = document.querySelector('[data-family-rewards][data-role="parent"]');
                     return root &&
                       !root.querySelector('[data-fr-approval-learner="02610000-0000-4000-8000-000000000101"]') &&
-                      root.querySelectorAll('[data-fr-approval-learner="02610000-0000-4000-8000-000000000102"] [data-fr-submission]').length === 1 &&
+                      root.querySelectorAll('[data-fr-approval-learner="02610000-0000-4000-8000-000000000102"] [data-fr-submission]').length === 2 &&
                       root.querySelector('[role="status"]')?.textContent?.includes('تم اعتماد 2 من 2');
                   }, null, { timeout: 20000 });
                   await assertQaDeviceLayout(parentPage, 1280);
-                  if (await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 1)
+                  if (await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 2)
                     throw new Error('QA_LOCAL_SIBLING_CROSS_APPROVED');
+                });
+                await runAuthenticatedStage('PARENT_INDIVIDUAL_SIBLING_REVIEW', async () => {
+                  const siblingGroup = parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"]`);
+                  const ids = await siblingGroup.locator('[data-fr-submission]').evaluateAll(nodes =>
+                    nodes.map(node => node.getAttribute('data-fr-submission')));
+                  if (ids.length !== 2 || new Set(ids).size !== 2) throw new Error('QA_LOCAL_SIBLING_INDIVIDUAL_IDS_INVALID');
+                  await siblingGroup.locator(`[data-fr-behavior-reject="${ids[0]}"]`).click();
+                  await parentPage.waitForFunction(id =>
+                    document.querySelectorAll(`[data-fr-approval-learner="${id}"] [data-fr-submission]`).length === 1
+                      && [...document.querySelectorAll('[role="status"]')].some(node => node.textContent.includes('تم رفض الطلب')),
+                    QA_SIBLING_VISIBLE_LEARNER, { timeout: 20000 });
+                  if (await parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"] [data-fr-submission]`).count())
+                    throw new Error('QA_LOCAL_PRIMARY_REAPPROVED');
+                  await parentPage.locator(`[data-fr-behavior-approve="${ids[1]}"]`).click();
+                  await parentPage.waitForFunction(id =>
+                    !document.querySelector(`[data-fr-approval-learner="${id}"]`)
+                      && [...document.querySelectorAll('[role="status"]')].some(node => node.textContent.includes('تم الاعتماد')),
+                    QA_SIBLING_VISIBLE_LEARNER, { timeout: 20000 });
+                  await parentPage.setViewportSize({ width: 390, height: 844 });
+                  await assertQaDeviceLayout(parentPage, 390);
+                  await parentPage.setViewportSize({ width: 1280, height: 900 });
+                  await assertQaDeviceLayout(parentPage, 1280);
                 });
                 await runAuthenticatedStage('PARENT_REVIEW_REPLAY_GUARD', async () => {
                   // Authenticated parent API, never a service-role shortcut. Re-review

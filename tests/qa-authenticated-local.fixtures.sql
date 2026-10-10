@@ -87,12 +87,15 @@ begin
         'idempotency_key','qa-parent-pending-'||position));
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_REWARDS_PENDING_FAILED'; end if;
   end loop;
-  qa_result := public.flh_family_rewards_command(workspace,null,sibling_learner,'behavior_submit',
-    jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-interval '5 minutes',
-      'idempotency_key','qa-sibling-pending-1'));
-  if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_SIBLING_PENDING_FAILED'; end if;
+  -- Two distinct synthetic sibling claims: one will be rejected, one approved.
+  for position in 1..2 loop
+    qa_result := public.flh_family_rewards_command(workspace,null,sibling_learner,'behavior_submit',
+      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 5+position),
+        'idempotency_key','qa-sibling-pending-'||position));
+    if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_SIBLING_PENDING_FAILED'; end if;
+  end loop;
   if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 2
-    or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 1
+    or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 2
     or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) <> 0
     or (select reward_points from public.learner_gamification_state where learner_id=sibling_learner) <> 0
   then raise exception 'QA_LOCAL_REWARDS_PREAPPROVAL_INVALID'; end if;
