@@ -148,6 +148,37 @@ export async function assertQaDeviceLayout(page, expectedWidth) {
       || dimensions.body > expectedWidth + 2 || dimensions.hasError) throw new Error('QA_LOCAL_DEVICE_LAYOUT_INVALID');
 }
 
+/** Assert the actual authenticated parent approval UI remains accessible on both devices. */
+export async function assertQaParentApprovalAccessibility(page, expectedColumns) {
+  const snapshot = await page.locator('[data-fr-approvals]').evaluate(section => {
+    const visible = element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+    const groups = [...section.querySelectorAll('[data-fr-approval-learner]')];
+    const grids = groups.map(group => {
+      const grid = group.querySelector('.fr-card-grid');
+      const cards = [...grid.querySelectorAll(':scope > [data-fr-submission]')];
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+        cards: cards.length,
+        collapsed: cards.every(card => !card.querySelector('.fr-submission-details')?.open),
+      };
+    });
+    const fields = [...section.querySelectorAll('input:not([type="hidden"]),select,textarea')].filter(visible);
+    const buttons = [...section.querySelectorAll('.fr-approval-group button')].filter(visible);
+    return {
+      direction: document.documentElement.dir,
+      grids,
+      unlabeledFields: fields.filter(field => !field.labels?.length && !field.getAttribute('aria-label') && !field.getAttribute('aria-labelledby')).length,
+      unnamedButtons: buttons.filter(button => !button.textContent.trim() && !button.getAttribute('aria-label')).length,
+      shortActions: buttons.filter(button => button.getBoundingClientRect().height < 40).length,
+    };
+  });
+  if (snapshot.direction !== 'rtl' || snapshot.grids.length !== 2
+      || snapshot.grids.some(grid => grid.columns !== expectedColumns || grid.cards !== 2 || !grid.collapsed)
+      || snapshot.unlabeledFields || snapshot.unnamedButtons || snapshot.shortActions) {
+    throw new Error('QA_LOCAL_PARENT_APPROVAL_ACCESSIBILITY_INVALID');
+  }
+}
+
 /** Arm before the click: awaiting a dialog-triggering click first deadlocks Playwright. */
 export async function handleQaParentBulkConfirmation(page, button, expectedCount, accept = true) {
   const confirmation = new Promise((resolve, reject) => {
@@ -403,17 +434,26 @@ async function main() {
                   return root && !root.querySelector('.loading-card');
                 }, null, { timeout: 15000 });
                 await assertQaDeviceLayout(parentPage, 390);
+                await assertQaParentApprovalAccessibility(parentPage, 1);
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 await group.waitFor({ state: 'visible', timeout: 15000 });
                 const sibling = parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2 ||
                     await group.locator('[data-fr-pending-count]').count() !== 1 ||
                     await sibling.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
+                const details = group.locator('.fr-submission-details').first();
+                const toggle = details.locator('summary');
+                await toggle.focus();
+                await parentPage.keyboard.press('Enter');
+                if (await details.getAttribute('open') === null) throw new Error('QA_LOCAL_PARENT_KEYBOARD_DETAILS_INVALID');
+                await parentPage.keyboard.press('Enter');
+                if (await details.getAttribute('open') !== null) throw new Error('QA_LOCAL_PARENT_KEYBOARD_DETAILS_INVALID');
                 await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-mobile.png', fullPage: true });
               });
               await runAuthenticatedStage('PARENT_REWARDS_DESKTOP', async () => {
                 await parentPage.setViewportSize({ width: 1280, height: 900 });
                 await assertQaDeviceLayout(parentPage, 1280);
+                await assertQaParentApprovalAccessibility(parentPage, 2);
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2 ||
                     await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 2)
