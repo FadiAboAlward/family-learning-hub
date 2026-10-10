@@ -440,7 +440,7 @@
       "question_code": "QA-EN7-U1-EX-05",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Selma is tall with big brown eyes. She is punctual and rather quiet. Which reply correctly answers “What does Selma look like?” using these facts?",
+      "prompt": "Selma is tall with big brown eyes. She is very punctual and not very outgoing. Which reply correctly answers “What does Selma look like?” using these facts?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 2,
       "origin": "GENERATED_SIMILAR",
@@ -454,7 +454,7 @@
         },
         {
           "position": 2,
-          "content": "She is punctual and rather quiet.",
+          "content": "She is very punctual and not very outgoing.",
           "is_correct": false,
           "distractor_rationale": "Describes inner character rather than visible features."
         },
@@ -477,7 +477,7 @@
       "question_code": "QA-EN7-U1-EX-06",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Selma is tall with big brown eyes. She is punctual and rather quiet. Which reply correctly answers “What is Selma like?” using these facts?",
+      "prompt": "Selma is tall with big brown eyes. She is very punctual and not very outgoing. Which reply correctly answers “What is Selma like?” using these facts?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 2,
       "origin": "GENERATED_SIMILAR",
@@ -492,7 +492,7 @@
         },
         {
           "position": 2,
-          "content": "She is punctual and rather quiet.",
+          "content": "She is very punctual and not very outgoing.",
           "is_correct": true
         },
         {
@@ -726,7 +726,7 @@
         },
         {
           "position": 4,
-          "content": "Selma is punctual and quiet, while Laura is smart and a little stubborn.",
+          "content": "Selma is very punctual and not very outgoing, while Laura is very smart and a little stubborn.",
           "is_correct": true
         }
       ],
