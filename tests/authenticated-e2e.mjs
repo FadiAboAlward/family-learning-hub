@@ -559,6 +559,92 @@ async function main() {
                     throw new Error('QA_LOCAL_PARENT_REVIEW_TRANSITION_INVALID');
                   }
                 });
+                await runAuthenticatedStage('PARENT_RETURN_EVENT_API_AUTH', async () => {
+                  // An actual authorized parent token and the disposable Testing
+                  // database: no service-role shortcut, mocks or real child records.
+                  const invoke = async (token, payload) => fetchQaBackend(config, 'family-api', {
+                    method: 'POST',
+                    headers: {
+                      'content-type': 'application/json',
+                      apikey: config.publishableKey,
+                      authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                  });
+                  const parse = async (response, code) => {
+                    if (!response.ok) throw new Error(code);
+                    const data = await response.json();
+                    if (!data?.ok) throw new Error(code);
+                    return data;
+                  };
+                  const catalog = async () => parse(await invoke(parentToken, {
+                    action: 'parent_rewards_dashboard',
+                  }), 'QA_LOCAL_PARENT_RETURN_DASHBOARD_INVALID');
+                  const before = await catalog();
+                  const original = before.states?.find(row => row.learner_id === QA_PARENT_VISIBLE_LEARNER);
+                  if (!Number.isInteger(original?.reward_points)) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_BASELINE_INVALID');
+                  }
+                  const timestamp = new Date(Date.now() - 120000).toISOString();
+                  const localDay = new Intl.DateTimeFormat('sv-SE', {
+                    timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit',
+                  }).format(new Date(timestamp));
+                  const idempotency_key = `qa-auth-return-event-${prepared.run_id}`;
+                  const eventPayload = { action: 'return_event_create', occurred_at: timestamp, idempotency_key };
+                  const created = await parse(await invoke(parentToken, eventPayload),
+                    'QA_LOCAL_PARENT_RETURN_CREATE_INVALID');
+                  const eventId = created.return_event?.id;
+                  if (!/^[0-9a-f-]{36}$/i.test(eventId || '') || created.already_created) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_ID_INVALID');
+                  }
+                  const replay = await parse(await invoke(parentToken, eventPayload),
+                    'QA_LOCAL_PARENT_RETURN_CREATE_REPLAY_INVALID');
+                  if (replay.return_event?.id !== eventId || replay.already_created !== true) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_CREATE_REPLAY_INVALID');
+                  }
+                  const page = await parse(await invoke(parentToken, {
+                    action: 'return_events_list', return_event_day: localDay, return_event_page_size: 50,
+                  }), 'QA_LOCAL_PARENT_RETURN_LIST_INVALID');
+                  if (!page.return_events?.some(event => event.id === eventId) ||
+                      page.return_events?.some(event => Object.hasOwn(event, 'created_by') ||
+                        Object.hasOwn(event, 'idempotency_key'))) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_PAGE_PRIVACY_INVALID');
+                  }
+                  const denied = await invoke(prepared.session, {
+                    action: 'return_events_list', return_event_day: localDay,
+                  });
+                  if (denied.ok) throw new Error('QA_LOCAL_PARENT_RETURN_LEARNER_AUTH_INVALID');
+                  const claim = {
+                    action: 'behavior_record',
+                    learner_id: QA_PARENT_VISIBLE_LEARNER,
+                    rule_id: 'a315e8af-9d9b-473b-95ac-c5425ad7de5b',
+                    return_event_id: eventId,
+                    occurred_at: timestamp,
+                    idempotency_key: `qa-auth-return-award-${prepared.run_id}`,
+                  };
+                  const awarded = await parse(await invoke(parentToken, claim),
+                    'QA_LOCAL_PARENT_RETURN_AWARD_INVALID');
+                  if (awarded.submission?.total_points !== 2 ||
+                      awarded.submission?.return_event_id !== eventId) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_AWARD_SNAPSHOT_INVALID');
+                  }
+                  const repeat = await parse(await invoke(parentToken, claim),
+                    'QA_LOCAL_PARENT_RETURN_AWARD_REPLAY_INVALID');
+                  if (repeat.submission?.id !== awarded.submission?.id ||
+                      repeat.already_recorded !== true) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_AWARD_REPLAY_INVALID');
+                  }
+                  const otherKey = await invoke(parentToken, {
+                    ...claim, idempotency_key: `qa-auth-return-duplicate-${prepared.run_id}`,
+                  });
+                  if (otherKey.ok) throw new Error('QA_LOCAL_PARENT_RETURN_DUPLICATE_INVALID');
+                  const after = await catalog();
+                  const final = after.states?.find(row => row.learner_id === QA_PARENT_VISIBLE_LEARNER);
+                  if (final?.reward_points !== original.reward_points + 2 ||
+                      final.xp !== original.xp) {
+                    throw new Error('QA_LOCAL_PARENT_RETURN_LEDGER_INVALID');
+                  }
+                });
               });
               parentNetwork.assertNoUnexpectedRequests();
             } finally {
