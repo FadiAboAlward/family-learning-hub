@@ -280,6 +280,11 @@ async function main() {
           where learner_id='02610000-0000-4000-8000-000000000101') <> 6
         or (select count(*) from public.gamification_events
           where learner_id='02610000-0000-4000-8000-000000000101' and reward_points_delta=3) <> 2
+        or (select count(*) from public.behavior_submissions
+          where learner_id='02610000-0000-4000-8000-000000000102' and status='pending') <> 1
+        or (select reward_points from public.learner_gamification_state
+          where learner_id='02610000-0000-4000-8000-000000000102') <> 0
+        or exists(select 1 from public.gamification_events where learner_id='02610000-0000-4000-8000-000000000102' and reward_points_delta > 0)
       then raise exception 'QA_LOCAL_PARENT_AWARDS_INCORRECT'; end if;
     end $qa$;`);
     mark(stage);

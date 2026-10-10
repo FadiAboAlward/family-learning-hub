@@ -232,12 +232,12 @@ await assert.rejects(() => assertQaResume(runtime, 'synthetic-session', 'exam-v2
 const parentCalls = [];
 await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async (url, options) => {
   parentCalls.push(url); assert.equal(options.redirect, 'error');
-  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }], states: [], attempts: [] } : {});
+  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }, { id: '02610000-0000-4000-8000-000000000102', slug: 'qa-sibling-visible' }], states: [], attempts: [] } : {});
 });
 assert.equal(parentCalls.length, 3);
 let parentBrowserCalls = 0;
 await assertQaParent(runtime, 'synthetic@example.test', 'synthetic-password', async url => {
-  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }], states: [], attempts: [] } : {});
+  return response(url.includes('/token?') ? { access_token: 'synthetic-parent-token' } : url.includes('/family-api') ? { parent: { role: 'owner' }, learners: [{ id: '02610000-0000-4000-8000-000000000101', slug: 'qa-parent-visible' }, { id: '02610000-0000-4000-8000-000000000102', slug: 'qa-sibling-visible' }], states: [], attempts: [] } : {});
 }, async token => { parentBrowserCalls++; assert.equal(token, 'synthetic-parent-token'); });
 assert.equal(parentBrowserCalls, 1, 'authenticated browser callback runs after Testing-only exclusion');
 let loggedOut = false;
