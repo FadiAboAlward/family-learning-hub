@@ -175,11 +175,11 @@
       "difficulty_level": 3,
       "origin": "GENERATED_SIMILAR",
       "source_ref": "TR-ENGLISH-G7-2026-2027-P014",
-      "reasoning_signature": "appearance evidence for Laura from outward features",
+      "reasoning_signature": "transfer: distinguish shared brown hair from contrasting green-versus-blue eye colours across Laura and Mark",
       "difficulty_role": "transfer",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "The given named appearance and personality facts determine the correct response and exclude contradictory alternatives; without those exact facts the choice cannot be verified."
+      "context_necessity_reason": "The question requires comparing both named characters' source-grounded features or personality qualities, rather than copying a one-person appearance/personality description."
     },
     {
       "question_code": "QA-EN7-U1-EX-12",
@@ -188,11 +188,11 @@
       "difficulty_level": 3,
       "origin": "GENERATED_SIMILAR",
       "source_ref": "TR-ENGLISH-G7-2026-2027-P014",
-      "reasoning_signature": "character evidence for Laura from inner qualities",
+      "reasoning_signature": "transfer: integrate Selma's and Laura's behavioural qualities and reject correct-but-appearance-only comparisons",
       "difficulty_role": "transfer",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "The given named appearance and personality facts determine the correct response and exclude contradictory alternatives; without those exact facts the choice cannot be verified."
+      "context_necessity_reason": "The question requires comparing both named characters' source-grounded features or personality qualities, rather than copying a one-person appearance/personality description."
     },
     {
       "question_code": "QA-EN7-U1-EX-13",
@@ -301,8 +301,9 @@
       "options": [
         {
           "position": 1,
-          "content": "He is tall and thin with blue eyes.",
-          "is_correct": true
+          "content": "He is medium height with green eyes.",
+          "is_correct": false,
+          "distractor_rationale": "Invents physical features not supported by this person's description."
         },
         {
           "position": 2,
@@ -312,9 +313,8 @@
         },
         {
           "position": 3,
-          "content": "He is medium height with green eyes.",
-          "is_correct": false,
-          "distractor_rationale": "Invents physical features not supported by this person's description."
+          "content": "He is tall and thin with blue eyes.",
+          "is_correct": true
         },
         {
           "position": 4,
@@ -338,14 +338,14 @@
       "options": [
         {
           "position": 1,
-          "content": "He is medium height with green eyes.",
-          "is_correct": false,
-          "distractor_rationale": "Invents a physical description, not an answer about temperament."
+          "content": "He is honest and generous.",
+          "is_correct": true
         },
         {
           "position": 2,
-          "content": "He is honest and generous.",
-          "is_correct": true
+          "content": "He is medium height with green eyes.",
+          "is_correct": false,
+          "distractor_rationale": "Invents a physical description, not an answer about temperament."
         },
         {
           "position": 3,
@@ -387,14 +387,14 @@
         },
         {
           "position": 3,
-          "content": "He is medium height with green eyes and black hair.",
-          "is_correct": true
-        },
-        {
-          "position": 4,
           "content": "He is outgoing and sociable.",
           "is_correct": false,
           "distractor_rationale": "Describes inner character rather than visible features."
+        },
+        {
+          "position": 4,
+          "content": "He is medium height with green eyes and black hair.",
+          "is_correct": true
         }
       ],
       "hints": []
@@ -418,9 +418,8 @@
         },
         {
           "position": 2,
-          "content": "He is selfish and very shy.",
-          "is_correct": false,
-          "distractor_rationale": "Reverses or invents this person's described character."
+          "content": "He is outgoing and sociable.",
+          "is_correct": true
         },
         {
           "position": 3,
@@ -430,8 +429,9 @@
         },
         {
           "position": 4,
-          "content": "He is outgoing and sociable.",
-          "is_correct": true
+          "content": "He is selfish and very shy.",
+          "is_correct": false,
+          "distractor_rationale": "Reverses or invents this person's described character."
         }
       ],
       "hints": []
@@ -440,7 +440,7 @@
       "question_code": "QA-EN7-U1-EX-05",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Selma is tall with big brown eyes. She is punctual and rather quiet. Which reply correctly answers “What does Selma look like?” using these facts?",
+      "prompt": "Selma is tall with big brown eyes. She is very punctual and not very outgoing. Which reply correctly answers “What does Selma look like?” using these facts?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 2,
       "origin": "GENERATED_SIMILAR",
@@ -454,7 +454,7 @@
         },
         {
           "position": 2,
-          "content": "She is punctual and rather quiet.",
+          "content": "She is very punctual and not very outgoing.",
           "is_correct": false,
           "distractor_rationale": "Describes inner character rather than visible features."
         },
@@ -477,7 +477,7 @@
       "question_code": "QA-EN7-U1-EX-06",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Selma is tall with big brown eyes. She is punctual and rather quiet. Which reply correctly answers “What is Selma like?” using these facts?",
+      "prompt": "Selma is tall with big brown eyes. She is very punctual and not very outgoing. Which reply correctly answers “What is Selma like?” using these facts?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 2,
       "origin": "GENERATED_SIMILAR",
@@ -492,8 +492,9 @@
         },
         {
           "position": 2,
-          "content": "She is punctual and rather quiet.",
-          "is_correct": true
+          "content": "She is always late and very outgoing.",
+          "is_correct": false,
+          "distractor_rationale": "Reverses or invents this person's described character."
         },
         {
           "position": 3,
@@ -503,9 +504,8 @@
         },
         {
           "position": 4,
-          "content": "She is always late and very outgoing.",
-          "is_correct": false,
-          "distractor_rationale": "Reverses or invents this person's described character."
+          "content": "She is very punctual and not very outgoing.",
+          "is_correct": true
         }
       ],
       "hints": []
@@ -529,14 +529,14 @@
         },
         {
           "position": 2,
-          "content": "He is rude and dishonest.",
-          "is_correct": false,
-          "distractor_rationale": "Invents character qualities and does not describe the person's appearance."
+          "content": "He is handsome with blue eyes and brown hair.",
+          "is_correct": true
         },
         {
           "position": 3,
-          "content": "He is handsome with blue eyes and brown hair.",
-          "is_correct": true
+          "content": "He is rude and dishonest.",
+          "is_correct": false,
+          "distractor_rationale": "Invents character qualities and does not describe the person's appearance."
         },
         {
           "position": 4,
@@ -572,14 +572,14 @@
         },
         {
           "position": 3,
-          "content": "He is short with straight blond hair.",
-          "is_correct": false,
-          "distractor_rationale": "Invents a physical description, not an answer about temperament."
+          "content": "He is honest and polite.",
+          "is_correct": true
         },
         {
           "position": 4,
-          "content": "He is honest and polite.",
-          "is_correct": true
+          "content": "He is short with straight blond hair.",
+          "is_correct": false,
+          "distractor_rationale": "Invents a physical description, not an answer about temperament."
         }
       ],
       "hints": []
@@ -597,8 +597,9 @@
       "options": [
         {
           "position": 1,
-          "content": "He is tall and slim with short black hair.",
-          "is_correct": true
+          "content": "He is unkind and stubborn.",
+          "is_correct": false,
+          "distractor_rationale": "Invents character qualities and does not describe the person's appearance."
         },
         {
           "position": 2,
@@ -614,9 +615,8 @@
         },
         {
           "position": 4,
-          "content": "He is unkind and stubborn.",
-          "is_correct": false,
-          "distractor_rationale": "Invents character qualities and does not describe the person's appearance."
+          "content": "He is tall and slim with short black hair.",
+          "is_correct": true
         }
       ],
       "hints": []
@@ -662,7 +662,7 @@
       "question_code": "QA-EN7-U1-EX-11",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Laura is cute with green eyes and long straight brown hair. She is clever and a little stubborn. Which reply correctly answers “What does Laura look like?” using these facts?",
+      "prompt": "Laura has long straight brown hair and green eyes. Mark has brown hair and blue eyes. Which sentence correctly compares their appearances?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 3,
       "origin": "GENERATED_SIMILAR",
@@ -671,26 +671,26 @@
       "options": [
         {
           "position": 1,
-          "content": "She is tall with short red hair and blue eyes.",
-          "is_correct": false,
-          "distractor_rationale": "Invents physical features not supported by this person's description."
-        },
-        {
-          "position": 2,
-          "content": "She is selfish and careless.",
-          "is_correct": false,
-          "distractor_rationale": "Invents character qualities and does not describe the person's appearance."
-        },
-        {
-          "position": 3,
-          "content": "She is cute with green eyes and long straight brown hair.",
+          "content": "Both have brown hair, but Laura has green eyes and Mark has blue eyes.",
           "is_correct": true
         },
         {
-          "position": 4,
-          "content": "She is clever and a little stubborn.",
+          "position": 2,
+          "content": "Mark is honest and Laura is a little stubborn.",
           "is_correct": false,
-          "distractor_rationale": "Describes inner character rather than visible features."
+          "distractor_rationale": "Lists personality traits rather than answering the appearance comparison."
+        },
+        {
+          "position": 3,
+          "content": "Laura and Mark both have green eyes and long hair.",
+          "is_correct": false,
+          "distractor_rationale": "Overgeneralizes Laura's green eyes and long hair to Mark, contrary to his description."
+        },
+        {
+          "position": 4,
+          "content": "Laura has blue eyes, while Mark has green eyes.",
+          "is_correct": false,
+          "distractor_rationale": "Reverses the two named people's eye colours."
         }
       ],
       "hints": []
@@ -699,7 +699,7 @@
       "question_code": "QA-EN7-U1-EX-12",
       "delivery_surface": "exam",
       "question_type": "single_choice",
-      "prompt": "Laura is cute with green eyes and long straight brown hair. She is clever and a little stubborn. Which reply correctly answers “What is Laura like?” using these facts?",
+      "prompt": "Selma is tall with big brown eyes; she is punctual and not very outgoing. Laura has green eyes and long straight brown hair; she is very smart and a little stubborn. Which sentence compares their personalities, not their appearances?",
       "concept_code": "appearance-personality-inquiry",
       "difficulty_level": 3,
       "origin": "GENERATED_SIMILAR",
@@ -708,26 +708,26 @@
       "options": [
         {
           "position": 1,
-          "content": "She is cute with green eyes and long straight brown hair.",
+          "content": "Selma has big brown eyes, and Laura has green eyes.",
           "is_correct": false,
-          "distractor_rationale": "Gives appearance instead of a personality trait."
+          "distractor_rationale": "Accurately describes eye colours but compares appearances, not personalities."
         },
         {
           "position": 2,
-          "content": "She is selfish and careless.",
+          "content": "Selma is tall, and Laura has long straight hair.",
           "is_correct": false,
-          "distractor_rationale": "Reverses or invents this person's described character."
+          "distractor_rationale": "Accurately describes outward features but does not compare personalities."
         },
         {
           "position": 3,
-          "content": "She is tall with short red hair and blue eyes.",
-          "is_correct": false,
-          "distractor_rationale": "Invents a physical description, not an answer about temperament."
+          "content": "Selma is very punctual and not very outgoing, while Laura is very smart and a little stubborn.",
+          "is_correct": true
         },
         {
           "position": 4,
-          "content": "She is clever and a little stubborn.",
-          "is_correct": true
+          "content": "Selma is stubborn, and Laura is never punctual.",
+          "is_correct": false,
+          "distractor_rationale": "Swaps an attributed character trait and invents a conclusion about Laura's punctuality."
         }
       ],
       "hints": []
@@ -745,14 +745,14 @@
       "options": [
         {
           "position": 1,
-          "content": "Mike is more outgoing than Jim.",
-          "is_correct": true
-        },
-        {
-          "position": 2,
           "content": "Jim is more outgoing than Mike.",
           "is_correct": false,
           "distractor_rationale": "Reverses the comparison explicitly stated in the short description."
+        },
+        {
+          "position": 2,
+          "content": "Mike is more outgoing than Jim.",
+          "is_correct": true
         },
         {
           "position": 3,
@@ -788,14 +788,14 @@
         },
         {
           "position": 2,
-          "content": "Jim is taller than Mike.",
-          "is_correct": true
-        },
-        {
-          "position": 3,
           "content": "Mike has blue eyes.",
           "is_correct": false,
           "distractor_rationale": "Assigns Jim's eye colour to Mike."
+        },
+        {
+          "position": 3,
+          "content": "Jim is taller than Mike.",
+          "is_correct": true
         },
         {
           "position": 4,
@@ -819,9 +819,8 @@
       "options": [
         {
           "position": 1,
-          "content": "Is your classmate honest?",
-          "is_correct": false,
-          "distractor_rationale": "Asks about a moral quality."
+          "content": "What does your classmate look like?",
+          "is_correct": true
         },
         {
           "position": 2,
@@ -831,8 +830,9 @@
         },
         {
           "position": 3,
-          "content": "What does your classmate look like?",
-          "is_correct": true
+          "content": "Is your classmate honest?",
+          "is_correct": false,
+          "distractor_rationale": "Asks about a moral quality."
         },
         {
           "position": 4,
@@ -893,8 +893,9 @@
       "options": [
         {
           "position": 1,
-          "content": "She has curly hair and brown eyes.",
-          "is_correct": true
+          "content": "She is generous and polite.",
+          "is_correct": false,
+          "distractor_rationale": "Lists inner moral qualities."
         },
         {
           "position": 2,
@@ -904,9 +905,8 @@
         },
         {
           "position": 3,
-          "content": "She is generous and polite.",
-          "is_correct": false,
-          "distractor_rationale": "Lists inner moral qualities."
+          "content": "She has curly hair and brown eyes.",
+          "is_correct": true
         },
         {
           "position": 4,
@@ -930,14 +930,14 @@
       "options": [
         {
           "position": 1,
-          "content": "He has green eyes.",
-          "is_correct": false,
-          "distractor_rationale": "Describes physical eye colour."
+          "content": "He is honest and easy-going.",
+          "is_correct": true
         },
         {
           "position": 2,
-          "content": "He is honest and easy-going.",
-          "is_correct": true
+          "content": "He has green eyes.",
+          "is_correct": false,
+          "distractor_rationale": "Describes physical eye colour."
         },
         {
           "position": 3,
@@ -973,14 +973,14 @@
         },
         {
           "position": 2,
-          "content": "Favourite subject",
-          "is_correct": false,
-          "distractor_rationale": "The sentence mentions no academic subject."
+          "content": "Appearance",
+          "is_correct": true
         },
         {
           "position": 3,
-          "content": "Appearance",
-          "is_correct": true
+          "content": "Favourite subject",
+          "is_correct": false,
+          "distractor_rationale": "The sentence mentions no academic subject."
         },
         {
           "position": 4,

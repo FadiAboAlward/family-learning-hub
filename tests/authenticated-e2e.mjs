@@ -404,6 +404,37 @@ async function main() {
           await page.screenshot({ path: `${evidencePath}/attempt-deep-link-desktop.png`, fullPage: true });
         });
 
+        // Actual authenticated learner rewards rendering, read-only and outside
+        // the parent workspace. Never use a real learner or parent session here.
+        await runAuthenticatedStage('LEARNER_REWARDS', async () => {
+          await page.setViewportSize({ width: 390, height: 844 });
+          await page.goto(`${APP_URL}#student-rewards`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          const studentRoot = page.locator('[data-family-rewards][data-role="student"]');
+          await studentRoot.waitFor({ state: 'visible', timeout: 15000 });
+          await page.waitForFunction(() => {
+            const root = document.querySelector('[data-family-rewards][data-role="student"]');
+            return root && !root.querySelector('.loading-card');
+          }, null, { timeout: 15000 });
+          const verify = async width => {
+            await assertQaDeviceLayout(page, width);
+            const state = await studentRoot.evaluate(root => ({
+              rtl: document.documentElement.dir === 'rtl',
+              parentControls: root.querySelectorAll('[data-fr-approval-learner],[data-fr-approve-all],[data-fr-behavior-approve],[data-fr-behavior-reject],#frCategoryForm,#frRuleForm').length,
+              siblingSwitch: root.querySelectorAll('#frReportLearner').length,
+              hasBalance: Boolean(root.querySelector('[data-fr-balance]')),
+              activeAlerts: root.querySelectorAll('[role="alert"]').length,
+            }));
+            if (!state.rtl || state.parentControls || state.siblingSwitch || !state.hasBalance || state.activeAlerts) {
+              throw new Error('QA_LOCAL_STUDENT_REWARDS_ISOLATION_INVALID');
+            }
+          };
+          await verify(390);
+          await page.screenshot({ path: `${evidencePath}/student-rewards-mobile.png`, fullPage: true });
+          await page.setViewportSize({ width: 1280, height: 900 });
+          await verify(1280);
+          await page.screenshot({ path: `${evidencePath}/student-rewards-desktop.png`, fullPage: true });
+        });
+
         if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(
           config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD, fetch,
           async parentToken => {
