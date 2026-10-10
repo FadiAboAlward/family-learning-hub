@@ -6,8 +6,9 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
-import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
+import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
 
+assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_INDIVIDUAL_SIBLING_REVIEW'), 'Every real authenticated synthetic QA stage must be allowlisted before it starts');
 assert.equal(qaEvidenceDirectory('runner-local'),'qa-authenticated-evidence', 'Runner-owned screenshots stay with runner evidence');
 assert.equal(qaEvidenceDirectory('isolated-testing'),'playwright-screenshots', 'Isolated-testing screenshots stay in the browser evidence folder');
 
