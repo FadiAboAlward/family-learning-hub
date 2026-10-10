@@ -85,7 +85,7 @@
       answerSaveErrors.delete(qid);
       render();
       const prior=answerSaveChains.get(qid)||Promise.resolve();
-      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos})).then(()=>{answerSaveErrors.delete(qid);}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(questions[index]?.question_id===qid)render();});
+      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos})).then(()=>{answerSaveErrors.delete(qid);}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(!submitting&&questions[index]?.question_id===qid)render();});
       answerSaveChains.set(qid,chain);
     }
 

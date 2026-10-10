@@ -14,6 +14,9 @@ try{
     const errors=[],calls=[];
     const base=Date.parse('2026-10-08T12:00:00Z');let now=base;
     const examStarted=new Date(base-120000).toISOString(),saved=new Map();let examStarts=0,learningAnswers=0;
+    let holdFinalSave=false, releaseFinalSave, notifyFinalSave, holdSubmission=false, releaseSubmission, notifySubmission;
+    const finalSaveHeld=new Promise(resolve=>{notifyFinalSave=resolve;});
+    const submissionHeld=new Promise(resolve=>{notifySubmission=resolve;});
     const profile={learner:{id:'testing-timer-learner',slug:'test',display_name:'Testing',grade_level:7,is_test:true},gamification:{xp:0,reward_points:0,current_level:1,badges:[],rewards:[]}};
     const question=(id,prompt,options)=>({question_id:id,status:'active',source_role:'core',question:{id,prompt,prompt_language:'ar',options:options.map((content,index)=>({position:index+1,content})),assets:[]}});
     const learningQuestions=[question('lq1','احسب: 19 - (-7)',['-26','26']),question('lq2','احسب: 2 + 2',['4','5'])];
@@ -34,7 +37,17 @@ try{
       }
       if(service==='exam-v2-api'){
         if(body.action==='start_exam'){examStarts++;output={attempt_id:'testing-exam-attempt',started_at:examStarted,resumed:examStarts>1,quiz:{slug:'testing-timers',title:'امتحان Testing'},questions:examQuestions.map(row=>({...row,saved_response:saved.has(row.question_id)?{option_position:saved.get(row.question_id)}:null,is_flagged:false}))};}
-        if(body.action==='save_answer')saved.set(body.question_id,body.option_position);
+        if(body.action==='save_answer'){
+          if(holdFinalSave&&body.question_id==='eq2'){
+            notifyFinalSave();
+            await new Promise(resolve=>{releaseFinalSave=resolve;});
+          }
+          saved.set(body.question_id,body.option_position);
+        }
+        if(body.action==='submit_exam'&&holdSubmission){
+          notifySubmission();
+          await new Promise(resolve=>{releaseSubmission=resolve;});
+        }
         if(body.action==='submit_exam')output={percentage:50,score_points:1,max_points:2,review:[{question_id:'eq1',is_correct:false,prompt:'احسب: (-7) - 19',prompt_language:'ar',response:{option_position:2},correct_answer:{option_position:1},explanation:'نطرح 19 من -7؛ لذلك نتحرك إلى -26.',hints:[]},{question_id:'eq2',is_correct:true,prompt:'احسب: 2 + 2',prompt_language:'ar',response:{option_position:1},correct_answer:{option_position:1},explanation:'2 + 2 = 4',hints:[]}]};
       }
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(output)});
@@ -72,7 +85,29 @@ try{
     assert.equal(await page.locator('.exam-v3-answer.selected').getAttribute('data-pos'),'1','Resume preserves the saved answer');
     await advance(2000);await expectTime('flhExamElapsed','02:15');
     await shot('exam-timer-resume');
-    await page.locator('#examSubmit').click();await page.locator('.flh-mistake-review').waitFor();
+    // Race regression: a slow last answer-save must not re-render the Exam
+    // (or restart its timer) while the final submit is awaiting backend ACK.
+    holdFinalSave=true;holdSubmission=true;
+    await page.locator('.exam-v3-answer').nth(1).click();
+    await finalSaveHeld;
+    await page.locator('#examSubmit').click();
+    await page.locator('.loading-card').filter({hasText:'لحظة'}).waitFor();
+    // Arm only AFTER the submitting shell is visible: ordinary timer ticks
+    // before clicking Submit are not evidence of a post-submit resurrection.
+    await page.evaluate(()=>{
+      window.__qaExamResurrected=false;
+      window.__qaSubmittingObserver=new MutationObserver(()=>{
+        if(document.querySelector('#flhExamElapsed,.exam-v3-answer'))window.__qaExamResurrected=true;
+      });
+      window.__qaSubmittingObserver.observe(document.body,{subtree:true,childList:true});
+    });
+    releaseFinalSave();
+    await submissionHeld;
+    assert.equal(await page.locator('#flhExamElapsed,.exam-v3-answer').count(),0,'Delayed answer-save may not restore the Exam/timer while submitting');
+    assert.equal(await page.evaluate(()=>window.__qaExamResurrected),false,'Mutation trace catches transient Exam/timer resurrection');
+    releaseSubmission();
+    await page.locator('.flh-mistake-review').waitFor();
+    await page.evaluate(()=>{window.__qaSubmittingObserver.disconnect();});
     const wrong=page.locator('.exam-review-wrong');assert.equal(await wrong.count(),1);
     assert.equal(await wrong.getAttribute('open'),'');
     assert.ok((await wrong.locator('.flh-review-response').innerText()).includes('26'));

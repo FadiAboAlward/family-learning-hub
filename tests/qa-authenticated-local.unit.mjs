@@ -8,6 +8,7 @@ import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent,
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
 
+assert.ok(AUTHENTICATED_QA_STAGES.includes('BROWSER_CONTEXT'), 'Context/browser page construction must have its own stage');
 assert.ok(AUTHENTICATED_QA_STAGES.includes('LEARNER_REWARDS'), 'Student rewards diagnostics must use a dedicated allowlisted stage');
 assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_RETURN_EVENT_API_AUTH'), 'Isolated parent canonical return-event authenticated stage must be allowlisted');
 assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_INDIVIDUAL_SIBLING_REVIEW'), 'Every real authenticated synthetic QA stage must be allowlisted before it starts');
@@ -145,12 +146,14 @@ assert.equal(safeQaProcessDiagnostic({ diagnostic: { command: syntheticPrivate, 
 assert.deepEqual(safeQaProcessDiagnostic({ diagnostic: { ...timeoutDiagnostic, stderr: syntheticPrivate, stdout: syntheticPrivate } }), timeoutDiagnostic, 'raw subprocess fields never enter the artifact allowlist');
 for (const [message, expected] of [
   ['Error: QA_OIDC_URL_INVALID', 'OIDC_URL_REJECTED'], ['Error: GitHub OIDC environment is unavailable', 'OIDC_ENV_MISSING'],
-  ['Error: GitHub OIDC request failed: 403', 'OIDC_REQUEST_FAILED'], ['Error: GitHub OIDC token missing', 'OIDC_TOKEN_MISSING'],
+  ['Error: QA_OIDC_REQUEST_FAILED', 'OIDC_REQUEST_FAILED'], ['Error: QA_OIDC_TOKEN_MISSING', 'OIDC_TOKEN_MISSING'],
   ['Error: QA_ISOLATION_ATTESTATION_FAILED', 'ATTESTATION_FAILED'], ['Error: QA_PUBLISHABLE_KEY_INVALID', 'TESTING_CONFIG_INVALID'],
   ["Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'", 'MODULE_MISSING'],
   ["browserType.launch: Executable doesn't exist at /private/browser", 'BROWSER_EXECUTABLE_MISSING'],
-  ['Error: QA auth prepare failed: 403 WORKFLOW_NOT_ALLOWED', 'AUTH_PREPARE_FAILED'],
-  ['Error: QA auth cleanup failed: 409 QA_LEASE_NOT_OWNED', 'AUTH_CLEANUP_FAILED'],
+  ['Error: QA_AUTH_PREPARE_FAILED', 'AUTH_PREPARE_FAILED'],
+  ['Error: QA_AUTH_CLEANUP_FAILED', 'AUTH_CLEANUP_FAILED'],
+  ['Error: GitHub OIDC request failed: 403', 'UNCLASSIFIED'],
+  ['Error: GitHub OIDC token missing', 'UNCLASSIFIED'],
   ['Error: '+syntheticPrivate, 'UNCLASSIFIED'], ['Error: QA_OIDC_URL_INVALID '+syntheticPrivate, 'UNCLASSIFIED'],
 ]) {
   const diagnostic = qaProcessDiagnostic(process.execPath, ['tests/authenticated-e2e.mjs'], message+'\n'+syntheticPrivate, 1);
