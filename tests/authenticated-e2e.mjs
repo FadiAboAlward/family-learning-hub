@@ -405,6 +405,9 @@ async function main() {
                 await assertQaDeviceLayout(parentPage, 1280);
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 2) throw new Error('QA_LOCAL_PARENT_PENDING_INVALID');
+                const submittedIds = await group.locator('[data-fr-submission]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-fr-submission')));
+                if (submittedIds.length !== 2 || new Set(submittedIds).size !== 2 ||
+                    submittedIds.some(id => !/^[0-9a-f-]{36}$/i.test(id))) throw new Error('QA_LOCAL_PARENT_SUBMISSION_IDS_INVALID');
                 await parentPage.screenshot({ path: 'qa-authenticated-evidence/parent-rewards-desktop.png', fullPage: true });
                 await runAuthenticatedStage('PARENT_BULK_CANCEL', async () => {
                   await handleQaParentBulkConfirmation(parentPage, group.locator('[data-fr-approve-all]'), 2, false);
@@ -424,6 +427,27 @@ async function main() {
                       root.querySelector('[role="status"]')?.textContent?.includes('تم اعتماد 2 من 2');
                   }, null, { timeout: 20000 });
                   await assertQaDeviceLayout(parentPage, 1280);
+                });
+                await runAuthenticatedStage('PARENT_REVIEW_REPLAY_GUARD', async () => {
+                  // Authenticated parent API, never a service-role shortcut. Re-review
+                  // MUST NOT re-award and must reject the opposite transition.
+                  const review = async (submission_id, decision) => fetchQaBackend(config, 'family-api', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json', apikey: config.publishableKey, authorization: `Bearer ${parentToken}` },
+                    body: JSON.stringify({ action: 'behavior_review', submission_id, decision }),
+                  });
+                  for (const id of submittedIds) {
+                    const replay = await review(id, 'approved');
+                    if (!replay.ok) throw new Error('QA_LOCAL_PARENT_REPLAY_HTTP_INVALID');
+                    const body = await replay.json();
+                    if (body.already_reviewed !== true || body.submission?.id !== id ||
+                        body.submission?.status !== 'approved') throw new Error('QA_LOCAL_PARENT_REPLAY_RESULT_INVALID');
+                  }
+                  const opposite = await review(submittedIds[0], 'rejected');
+                  const rejected = await opposite.json().catch(() => ({}));
+                  if (opposite.status !== 409 || rejected?.error !== 'INVALID_TRANSITION') {
+                    throw new Error('QA_LOCAL_PARENT_REVIEW_TRANSITION_INVALID');
+                  }
                 });
               });
               parentNetwork.assertNoUnexpectedRequests();
