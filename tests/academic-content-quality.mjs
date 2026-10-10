@@ -12,6 +12,12 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+// Real official Grade 7 English Unit 1 (PDF 13–14) academic-QA candidate;
+// synthetic learner only, no publication or real student evidence.
+const sourceGrounded20 = validateAcademicPackage(read('english-unit1-source-grounded-20.json'));
+assert.equal(sourceGrounded20.ok, true, JSON.stringify(sourceGrounded20, null, 2));
+assert.deepEqual(sourceGrounded20.errors, []);
+
 const sourceDependent = read('valid-package.json');
 sourceDependent.questions[1].prompt_language = 'tr';
 sourceDependent.questions[1].prompt = 'Kitapta verilen kurala göre doğru seçenek hangisidir?';
