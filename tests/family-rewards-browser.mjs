@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -292,7 +293,7 @@ async function screenshot(page, name, target = page) {
 
 async function runBrowserSuite() {
   const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchMockQaBrowser(chromium,APP_URL);
   try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     const { name, ...contextOptions } = device;
@@ -792,7 +793,7 @@ async function runBrowserSuite() {
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-010', spec_version: '1.1', compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-010', spec_version: '1.1', compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();

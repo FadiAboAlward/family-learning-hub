@@ -1,4 +1,4 @@
-name: QA Gate
+name: Isolated QA Gate
 
 on:
   pull_request:
@@ -6,12 +6,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      run_real_backend_performance:
-        description: Run the report-only Testing learner backend benchmark
-        required: false
-        type: boolean
-        default: false
+
+env:
+  FLH_QA_DNS_DENY_EXPECTED: '1'
+  FLH_QA_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 permissions:
   contents: read
@@ -34,10 +32,15 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Deny Production backend traffic
+        run: |
+          printf '%s\n' '127.0.0.1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' '::1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' | sudo tee -a /etc/hosts > /dev/null
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+      - name: Verify Production network deny
+        run: node tests/qa-ci-network.mjs
       - name: JavaScript and TypeScript syntax checks
         run: |
           find . -maxdepth 1 -type f -name '*.js' -print0 | xargs -0 -n1 node --check
@@ -107,6 +110,8 @@ jobs:
         run: node tests/learning-start-rpc.concurrency.mjs
       - name: Verify cross-version attempt resume
         run: npx --yes supabase@2.117.0 db query --local --file tests/versioned-attempt-resume.contract.sql
+      - name: Verify compact learner journey history and scope
+        run: npx --yes supabase@2.117.0 db query --local --file tests/learner-journey-progress.contract.sql
       - name: Verify Learning finish RPC contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learning-finish-rpc.contract.sql
       - name: Verify Learning finish concurrency and idempotency
@@ -119,6 +124,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-videos.contract.sql
       - name: Verify ordered optional Learning video sequence contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-sequence.contract.sql
+      - name: Verify authored video outcomes and immutable snapshots
+        run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-outcomes.contract.sql
       - name: Verify optional Learning video sequence concurrency
         run: node tests/optional-learning-video-sequence.concurrency.mjs
       - name: Verify paper unanswered Exam contract
@@ -143,15 +150,16 @@ jobs:
 
   browser-smoke:
     name: Browser smoke
+    env:
+      FLH_QA_ISOLATION_MODE: mock-local
     needs: static-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
-      group: family-learning-hub-testing-learner
-      cancel-in-progress: false
+      group: isolated-browser-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -162,10 +170,15 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Deny Production backend traffic
+        run: |
+          printf '%s\n' '127.0.0.1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' '::1 gkpoylfozvuwuwqeoduc.supabase.co db.gkpoylfozvuwuwqeoduc.supabase.co' | sudo tee -a /etc/hosts > /dev/null
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+      - name: Verify Production network deny
+        run: node tests/qa-ci-network.mjs
       - name: Install browser QA tools
         run: |
           npm install --no-save playwright@1.55.0 http-server@14.1.1
@@ -179,6 +192,10 @@ jobs:
           done
           cat /tmp/family-learning-hub-server.log
           exit 1
+      - name: Run isolation browser regression
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/qa-isolation-browser.mjs
       - name: Run mobile browser smoke test
         env:
           APP_URL: http://127.0.0.1:4173/
@@ -191,6 +208,14 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/content-direction-browser.mjs
+      - name: Verify authoritative learner journey actions
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-journey-browser.mjs
+      - name: Verify learner timers and submitted mistake review
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-timers-review-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/
@@ -217,8 +242,13 @@ jobs:
         run: node tests/parent-prefetch-performance.mjs
       - name: Append performance summary
         run: |
-          cat performance-summary.md >> "$GITHUB_STEP_SUMMARY"
-          cat parent-prefetch-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
+          for summary_file in performance-summary.md parent-prefetch-performance-summary.md; do
+            if test -f "$summary_file"; then
+              cat "$summary_file" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf '%s\n' "Summary not produced: $summary_file" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
       - name: Upload performance report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -230,16 +260,12 @@ jobs:
             performance-summary.md
             parent-prefetch-performance-report.json
             parent-prefetch-performance-summary.md
+          retention-days: 7
           if-no-files-found: ignore
       - name: Run rendered Arabic copy QA
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/copy-smoke.mjs
-      - name: Run authenticated Testing learner E2E against real backend
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          APP_URL: http://localhost:4173/
-        run: node tests/authenticated-e2e.mjs
       - name: Upload Playwright screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -247,65 +273,4 @@ jobs:
           name: playwright-screenshots-${{ github.run_id }}
           path: playwright-screenshots/
           retention-days: 7
-          if-no-files-found: warn
-
-  real-backend-performance:
-    name: Real backend performance (report only)
-    if: github.event_name == 'workflow_dispatch' && inputs.run_real_backend_performance
-    needs: static-quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    concurrency:
-      group: family-learning-hub-testing-learner
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout exact workflow SHA
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Assert checked-out SHA
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '22'
-      - name: Install browser benchmark tools
-        run: |
-          npm install --no-save playwright@1.55.0 http-server@14.1.1
-          npx playwright install --with-deps chromium
-      - name: Start local app server
-        run: |
-          npx http-server . -p 4173 -c-1 > /tmp/family-learning-hub-server.log 2>&1 &
-          for i in {1..20}; do
-            curl -fsS http://localhost:4173/ >/dev/null && exit 0
-            sleep 1
-          done
-          cat /tmp/family-learning-hub-server.log
-          exit 1
-      - name: Run report-only real backend benchmark
-        continue-on-error: true
-        env:
-          APP_URL: http://localhost:4173/
-          PERF_BROWSER: '1'
-          PERF_BROWSER_RUN_COUNT: '3'
-          PERF_SAMPLE_COUNT: '10'
-        run: node tests/real-backend-performance.mjs
-      - name: Append real backend summary
-        if: always()
-        run: test ! -f real-backend-performance-summary.md || cat real-backend-performance-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload real backend report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: real-backend-performance-${{ github.run_id }}
-          path: |
-            real-backend-performance-report.json
-            real-backend-performance-summary.md
-          retention-days: 14
           if-no-files-found: warn

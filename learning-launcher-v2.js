@@ -16,10 +16,11 @@
   async function refreshProfile(){try{if(typeof api==='function'&&typeof state!=='undefined')state.learnerProfile=await api('student_profile',{},token());}catch{}}
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
-  function home(){if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile);}
+  function home(){globalThis.FLHElapsedTimer?.dispose();if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile);}
 
   async function openLearningVideos(slug){
     if(!slug||typeof shell!=='function')return;
+    globalThis.FLHElapsedTimer?.dispose();
     globalThis.FLHOptionalVideo?.dispose();
     shell('🎬 جاري تجهيز فيديوهات الدرس','لن نغيّر أي إجابة أو تقدّم محفوظ.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
     let preview;
@@ -51,6 +52,7 @@
 
   async function startLearningQuiz(slug){
     if(!slug||typeof shell!=='function')return;
+    globalThis.FLHElapsedTimer?.dispose();
     globalThis.FLHOptionalVideo?.dispose();
     shell('🧠 جاري تجهيز وضع التعلّم','رح نساعدك خطوة بخطوة.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
     let session;
@@ -59,6 +61,9 @@
 
     const queue=(session.queue||[]).map(x=>({...x}));
     let started=Date.now();
+    const questionTimer=globalThis.FLHElapsedTimer?.create();
+    const timerHtml='<span class="flh-elapsed-timer"><span aria-hidden="true">◷</span> وقت السؤال <b id="flhLearningElapsed" dir="ltr" role="timer" aria-live="off" aria-label="الوقت المنقضي في السؤال">00:00</b></span>';
+    const attachTimer=()=>questionTimer?.attach(document.getElementById('flhLearningElapsed'));
     let index=queue.findIndex(x=>x.status==='active');if(index<0)index=Math.max(0,queue.findIndex(x=>!['completed','skipped'].includes(x.status)));
     let busy=false,currentHint=queue[index]?.last_hint?.content?queue[index].last_hint:null,draftController=null,draftVersion=0;
     const remaining=()=>queue.some(x=>!['completed','skipped'].includes(x.status));
@@ -66,6 +71,7 @@
     const qshell=html=>shell(`🧠 ${safe(session.quiz.title)}`,'وضع التعلّم — اختَر، فكّر، واستعمل المساعدة وقت الحاجة.',html);
 
     async function finish(){
+      questionTimer?.dispose();
       qshell('<section class="panel"><div class="loading-card">عم نحسب النتيجة من إجاباتك المحفوظة…</div></section>');
       try{
         const d=await call('finish_quiz',{attempt_id:session.attempt_id,duration_seconds:Math.max(1,Math.round((Date.now()-started)/1000))});
@@ -127,6 +133,7 @@
     function render(){
       if(!remaining()||index<0||index>=queue.length)return finish();
       const row=queue[index],q=row?.question;if(!q)return finish();
+      questionTimer?.activate(`${session.attempt_id}:${row.question_id}`);
       const typed=['numeric','short_answer'].includes(q.question_type);
       const selected=Number(row.draft_option_position||0)||null;
       const typedDraft=typedValue(row);
@@ -143,7 +150,8 @@
       const ready=typed?Boolean(typedDraft.trim()):Boolean(selected);
       const status=row.typed_draft_error?'تعذر حفظ المسودة الآن. اضغط «رجوع لمكتبتي» لإعادة محاولة الحفظ، أو أكّد الإجابة.':busy?'جارٍ إرسال الإجابة…':ready?(typed?'الإجابة جاهزة. اضغط «تأكيد الإجابة» عندما تتأكد.':'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'):(typed?'اكتب إجابتك.':'اختر إجابتك.');
       const sourceNote=q.source_metadata?.support_source_derived?'<div class="muted flh-source-note">📚 سؤال من مصدر MEB الداعم الرسمي؛ التلميحات والشرح من Family Learning Hub.</div>':'';
-      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted" role="status" aria-live="polite">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted" role="status" aria-live="polite">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      attachTimer();
       document.getElementById('flhLearnExit')?.addEventListener('click',exitLearning);
       document.getElementById('flhHelp')?.addEventListener('click',help);
       document.getElementById('flhConfirmAnswer')?.addEventListener('click',confirmAnswer);
@@ -211,7 +219,8 @@
         busy=false;
         const ni=nextIndex();
         const feedback=`${d.ungraded?'<div class="award-pop">📝 تم حفظ إجابتك.</div>':d.is_correct?'<div class="award-pop">✅ ممتاز!</div>':'<div class="error">خلصت المحاولات لهذا السؤال.</div>'}${d.explanation?`<div class="flh-explanation"><b>الشرح</b><div dir="auto">${renderMath(d.explanation)}</div></div>`:''}<div class="flh-sticky-action"><button class="btn btn-primary flh-next-big" id="flhLearnNext">${ni>=0?'السؤال التالي':'إنهاء التدريب'}</button></div>`;
-        qshell(`<section class="panel flh-touch-quiz"><div class="topline"><b>السؤال ${index+1}</b><span class="mode-tag">تم</span></div><div class="question" ${questionAttrs(row.question)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}</section>`);
+        qshell(`<section class="panel flh-touch-quiz"><div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">تم</span></div><div class="question" ${questionAttrs(row.question)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}</section>`);
+        attachTimer();
         document.getElementById('flhLearnNext')?.addEventListener('click',()=>{if(ni>=0){index=ni;render();}else finish();});
         if(ni>=0)preloadQuestion(queue[ni]?.question);
       }catch{busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">صار خطأ بالحفظ. جرّب مرة ثانية.</div>';}

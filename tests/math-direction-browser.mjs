@@ -1,9 +1,11 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 
 const APP_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,APP_URL);
 try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
+  await page.route('**/functions/v1/family-api',route=>route.fulfill({status:200,contentType:'application/json',body:'{"learners":[]}'}));
   await page.goto(APP_URL,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>Boolean(window.FLHMathDirection&&typeof window.math==='function'));
 

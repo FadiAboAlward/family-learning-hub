@@ -16,4 +16,8 @@
 .flh-video-sequence-item[aria-current="true"]{font-weight:800;outline:2px solid currentColor;outline-offset:1px}
 .flh-video-lesson-status{font-weight:800;margin:.35rem 0 .6rem}
 #flhVideoLesson{min-width:0}
+.flh-video-outcomes{margin:.8rem 0;padding:.8rem 1rem;border:1px solid var(--border,#d5cbd7);border-radius:12px;background:#faf7fb;min-width:0}
+.flh-video-outcomes h4{margin:0 0 .45rem;font-size:1rem}
+.flh-video-outcomes ul{margin:0;padding-inline-start:1.3rem;line-height:1.55}
+.flh-video-outcomes li{overflow-wrap:anywhere}
 @media(max-width:480px){.flh-video-sequence{grid-template-columns:repeat(2,minmax(0,1fr))}}

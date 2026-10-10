@@ -28,6 +28,13 @@
 
   function dispose() { disposeCurrent(); disposeCurrent = () => {}; }
 
+  function learningOutcomes(value) {
+    if (!Array.isArray(value) || value.length < 1 || value.length > 3) return [];
+    const outcomes = value.map(item => typeof item === 'string' ? item.trim() : '');
+    if (outcomes.some(item => !item || [...item].length > 160 || /<\/?[A-Za-z][^>]*>|<!--|<!DOCTYPE|&(?:#(?:x[\da-f]+|\d+)|[a-z][\da-z]*);/iu.test(item)) || new Set(outcomes).size !== outcomes.length) return [];
+    return outcomes;
+  }
+
   function show({video, attemptId, call, renderShell, onStart, onExit, reportEnabled=true, startLabel='ابدأ التدريب الآن بدون انتظار'}) {
     dispose();
     const raw = Array.isArray(video?.videos) && video.videos.length ? video.videos : [video];
@@ -109,9 +116,12 @@
       const index = activeIndex, state = states[index], item = state.video;
       const language = ['ar','tr','en'].includes(item.language) ? item.language : 'ar';
       const isAvailable = available(item);
+      const outcomes = learningOutcomes(item.learning_outcomes);
+      const outcomeText = value => globalThis.FLHMathDirection?.isolateMathHtml?.(escape(value)) ?? escape(value);
       lesson.innerHTML = `<div class="flh-video-lesson-status">الدرس ${escape(item.position || index+1)} من ${videos.length}</div>
         <h3 dir="${language === 'ar' ? 'rtl' : 'ltr'}" lang="${language}">${escape(item.title || 'شرح للمهارة الحالية')}</h3>
         <p class="muted">مصدر الفيديو: YouTube</p>
+        ${isAvailable && outcomes.length ? `<section class="flh-video-outcomes" aria-labelledby="flhVideoOutcomesHeading"><h4 id="flhVideoOutcomesHeading">ماذا ستتعلم؟</h4><ul lang="${language}" dir="${language === 'ar' ? 'rtl' : 'ltr'}">${outcomes.map(outcome => `<li>${outcomeText(outcome)}</li>`).join('')}</ul></section>` : ''}
         ${isAvailable ? `<div class="flh-video-player"><iframe id="flhVideoFrame" title="${escape('فيديو YouTube اختياري: ' + (item.title || 'شرح للمهارة الحالية'))}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
         <p id="flhVideoFallback" role="status" ${isAvailable ? 'hidden' : ''}>هذا الفيديو غير متاح الآن. يمكنك اختيار درس آخر أو بدء التدريب مباشرة.</p>
         <button class="btn btn-soft" id="flhVideoUnavailable" ${isAvailable ? '' : 'hidden'}>الفيديو لا يعمل</button>
