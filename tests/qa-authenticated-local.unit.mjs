@@ -8,6 +8,7 @@ import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent,
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
 
+assert.ok(AUTHENTICATED_QA_STAGES.includes('LEARNER_REWARDS'), 'Student rewards diagnostics must use a dedicated allowlisted stage');
 assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_INDIVIDUAL_SIBLING_REVIEW'), 'Every real authenticated synthetic QA stage must be allowlisted before it starts');
 assert.equal(qaEvidenceDirectory('runner-local'),'qa-authenticated-evidence', 'Runner-owned screenshots stay with runner evidence');
 assert.equal(qaEvidenceDirectory('isolated-testing'),'playwright-screenshots', 'Isolated-testing screenshots stay in the browser evidence folder');
@@ -313,7 +314,7 @@ assert.match(workflow, /APP_URL: http:\/\/localhost:4173\//);
 assert.ok(workflow.indexOf('Deny Production backend traffic') < workflow.indexOf('Require successful core gates'));
 assert.ok(workflow.indexOf('run: node tests/qa-core-prerequisite.mjs') < workflow.indexOf('run: node tests/qa-authenticated-local.mjs'));
 assert.match(workflow, /name: Verify owned local teardown\n        if: always\(\)/);
-for (const screenshot of ['attempt-deep-link-mobile', 'attempt-deep-link-desktop', 'parent-dashboard-mobile', 'parent-rewards-mobile', 'parent-rewards-desktop']) {
+for (const screenshot of ['attempt-deep-link-mobile', 'attempt-deep-link-desktop', 'parent-dashboard-mobile', 'student-rewards-mobile', 'student-rewards-desktop', 'parent-rewards-mobile', 'parent-rewards-desktop']) {
   assert.ok(workflow.includes(`qa-authenticated-evidence/${screenshot}.png`), 'Only enumerated synthetic screenshots are uploaded');
 }
 assert.match(workflow, /qa-authenticated-evidence\/parent-rewards-desktop\.png\n          retention-days: 7/);

@@ -406,7 +406,7 @@ async function main() {
 
         // Actual authenticated learner rewards rendering, read-only and outside
         // the parent workspace. Never use a real learner or parent session here.
-        await runAuthenticatedStage('LEARNER_DESKTOP', async () => {
+        await runAuthenticatedStage('LEARNER_REWARDS', async () => {
           await page.setViewportSize({ width: 390, height: 844 });
           await page.goto(`${APP_URL}#student-rewards`, { waitUntil: 'domcontentloaded', timeout: 30000 });
           const studentRoot = page.locator('[data-family-rewards][data-role="student"]');

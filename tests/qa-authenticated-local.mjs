@@ -109,7 +109,7 @@ function ownedProcessFailure(code, child) {
 async function saveEvidence(config, stages, auth, teardown) {
   await fs.mkdir(evidenceDirectory, { recursive: true });
   if ((await fs.lstat(evidenceDirectory)).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID');
-  for (const name of ['lifecycle.json', 'manifest.json', 'attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
+  for (const name of ['lifecycle.json', 'manifest.json', 'attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'student-rewards-mobile.png', 'student-rewards-desktop.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
     try { if ((await fs.lstat(path.join(evidenceDirectory, name))).isSymbolicLink()) throw new Error('QA_LOCAL_EVIDENCE_PATH_INVALID'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
@@ -123,7 +123,7 @@ async function saveEvidence(config, stages, auth, teardown) {
     product_acceptance: 'NOT_ASSERTED_BY_TECHNICAL_SMOKE', hosted_authentication: 'NOT_RUN',
   }, null, 2));
   const screenshots = [];
-  for (const name of ['attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
+  for (const name of ['attempt-deep-link-mobile.png', 'attempt-deep-link-desktop.png', 'parent-dashboard-mobile.png', 'student-rewards-mobile.png', 'student-rewards-desktop.png', 'parent-rewards-mobile.png', 'parent-rewards-desktop.png']) {
     try {
       const bytes = await fs.readFile(path.join(evidenceDirectory, name));
       screenshots.push({ file: name, sha256: createHash('sha256').update(bytes).digest('hex') });
