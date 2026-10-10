@@ -457,7 +457,7 @@ async function main() {
                     QA_SIBLING_VISIBLE_LEARNER, { timeout: 20000 });
                   if (await parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"] [data-fr-submission]`).count())
                     throw new Error('QA_LOCAL_PRIMARY_REAPPROVED');
-                  await parentPage.locator(`[data-fr-behavior-approve="${ids[1]}"]`).click();
+                  await siblingGroup.locator(`[data-fr-behavior-approve="${ids[1]}"]`).click();
                   await parentPage.waitForFunction(id =>
                     !document.querySelector(`[data-fr-approval-learner="${id}"]`)
                       && [...document.querySelectorAll('[role="status"]')].some(node => node.textContent.includes('تم الاعتماد')),
