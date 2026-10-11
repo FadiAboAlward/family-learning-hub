@@ -324,6 +324,14 @@ assert.match(fs.readFileSync('supabase/functions/qa-auth/index.ts', 'utf8'), /va
 assert.doesNotMatch(workflow, /pull_request_target|workflow_run|continue-on-error|pages:\s*write|secrets\.|--linked|--db-url|db push|functions deploy|--no-verify-jwt/);
 assert.equal((workflow.match(/id-token: write/g) || []).length, 1);
 assert.match(workflow, /actions: read/);
+assert.match(workflow, /npm ci --prefix qa-tools --no-audit --no-fund/,'authenticated QA dependencies must install with the committed transitive lock');
+assert.doesNotMatch(workflow,/npm install --no-save/,'unlocked ad-hoc installs are forbidden in the privileged authenticated job');
+assert.match(workflow,/ln -s qa-tools\\/node_modules node_modules/,'locked QA binaries must also be visible to the existing root tests');
+const qaTools=JSON.parse(fs.readFileSync('qa-tools/package.json','utf8'));
+const qaLock=JSON.parse(fs.readFileSync('qa-tools/package-lock.json','utf8'));
+assert.deepEqual(qaTools.dependencies,{playwright:'1.55.0',supabase:'2.117.0'});
+assert.deepEqual(qaLock.packages[''].dependencies,qaTools.dependencies,'the checked-in lock must match the exact QA CLI versions');
+assert.ok(Object.entries(qaLock.packages).every(([name,info])=>!name||(Boolean(info.integrity)&&String(info.resolved||'').startsWith('https://'))),'every transitive QA dependency must carry a registry integrity digest');
 assert.match(workflow, /FLH_QA_HEAD_SHA: \$\{\{ github.event.pull_request.head.sha \|\| github.sha \}\}/);
 assert.match(workflow, /APP_URL: http:\/\/localhost:4173\//);
 assert.ok(workflow.indexOf('Deny Production backend traffic') < workflow.indexOf('Require successful core gates'));

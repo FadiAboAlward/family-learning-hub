@@ -49,10 +49,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node tests/qa-core-prerequisite.mjs
-      - name: Install pinned local QA tools
+      - name: Install lockfile-backed local QA tools
         run: |
-          npm install --no-save playwright@1.55.0 supabase@2.117.0
-          npx playwright install --with-deps chromium
+          npm ci --prefix qa-tools --no-audit --no-fund
+          ln -s qa-tools/node_modules node_modules
+          ./node_modules/.bin/playwright install --with-deps chromium
       - name: Run unmocked disposable local API and browser QA
         run: node tests/qa-authenticated-local.mjs
       - name: Verify owned local teardown
