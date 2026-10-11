@@ -101,7 +101,9 @@ assert.equal(launches,0,'unsafe mock app/mode fails before opening a browser');
 const oldMode=process.env.FLH_QA_ISOLATION_MODE,contextOptions=[];
 try{
   process.env.FLH_QA_ISOLATION_MODE='mock-local';
-  const context=()=>({route:async()=>{}});
+  // The fake Playwright context must expose both transport guards.
+  const context=()=>({route:async()=>{},routeWebSocket:async()=>{}});
+
   const fakeBrowser={newContext:async options=>{contextOptions.push(options);return context();},newPage:async options=>{contextOptions.push(options);const owner=context();return{context:()=>owner};},close:async()=>{}};
   const guarded=await launchMockQaBrowser({launch:async()=>fakeBrowser},'http://127.0.0.1:4173/');
   await guarded.newContext({serviceWorkers:'allow'});await guarded.newPage({serviceWorkers:'allow'});await guarded.close();
