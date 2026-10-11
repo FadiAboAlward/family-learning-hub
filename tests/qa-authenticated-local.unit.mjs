@@ -326,7 +326,7 @@ assert.equal((workflow.match(/id-token: write/g) || []).length, 1);
 assert.match(workflow, /actions: read/);
 assert.match(workflow, /npm ci --prefix qa-tools --no-audit --no-fund/,'authenticated QA dependencies must install with the committed transitive lock');
 assert.doesNotMatch(workflow,/npm install --no-save/,'unlocked ad-hoc installs are forbidden in the privileged authenticated job');
-assert.match(workflow,/ln -s qa-tools\\/node_modules node_modules/,'locked QA binaries must also be visible to the existing root tests');
+assert.match(workflow,/ln -s qa-tools\/node_modules node_modules/,'locked QA binaries must also be visible to the existing root tests');
 const qaTools=JSON.parse(fs.readFileSync('qa-tools/package.json','utf8'));
 const qaLock=JSON.parse(fs.readFileSync('qa-tools/package-lock.json','utf8'));
 assert.deepEqual(qaTools.dependencies,{playwright:'1.55.0',supabase:'2.117.0'});
