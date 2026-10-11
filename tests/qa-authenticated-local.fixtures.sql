@@ -96,8 +96,8 @@ begin
   end loop;
   if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 2
     or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 2
-    or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) <> 0
-    or (select reward_points from public.learner_gamification_state where learner_id=sibling_learner) <> 0
+    or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) is distinct from 0
+    or (select reward_points from public.learner_gamification_state where learner_id=sibling_learner) is distinct from 0
   then raise exception 'QA_LOCAL_REWARDS_PREAPPROVAL_INVALID'; end if;
 
   if (select count(*) from public.quiz_questions where quiz_version_id=version) <> 3 then raise exception 'QA_LOCAL_QUESTION_COUNT_INVALID'; end if;

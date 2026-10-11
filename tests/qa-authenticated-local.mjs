@@ -277,7 +277,7 @@ async function main() {
       if (select count(*) from public.behavior_submissions
           where learner_id='02610000-0000-4000-8000-000000000101' and status='approved') <> 3
         or (select reward_points from public.learner_gamification_state
-          where learner_id='02610000-0000-4000-8000-000000000101') <> 8
+          where learner_id='02610000-0000-4000-8000-000000000101') is distinct from 8
         or (select count(*) from public.gamification_events
           where learner_id='02610000-0000-4000-8000-000000000101' and reward_points_delta=3) <> 2
         -- Two existing approvals remain exactly once, plus one real authorized
@@ -299,7 +299,7 @@ async function main() {
         or (select count(*) from public.behavior_submissions
           where learner_id='02610000-0000-4000-8000-000000000102' and status='pending') <> 0
         or (select reward_points from public.learner_gamification_state
-          where learner_id='02610000-0000-4000-8000-000000000102') <> 3
+          where learner_id='02610000-0000-4000-8000-000000000102') is distinct from 3
         or (select count(*) from public.gamification_events
           where learner_id='02610000-0000-4000-8000-000000000102' and reward_points_delta=3) <> 1
       then raise exception 'QA_LOCAL_PARENT_AWARDS_INCORRECT'; end if;

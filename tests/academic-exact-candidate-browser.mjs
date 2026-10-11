@@ -80,6 +80,7 @@ async function run(device) {
       const options = page.locator('.exam-v3-answer');
       assert.equal(await options.count(), 4, 'Every exact candidate has four visible answer controls.');
       for (let j = 0; j < 4; j++) {
+        await page.waitForFunction(({ index, content }) => document.querySelectorAll('.exam-v3-answer')[index]?.textContent?.includes(content), { index: j, content: expected.options[j].content }, { timeout: 15000 });
         assert.ok((await options.nth(j).innerText()).includes(expected.options[j].content), 'Rendered candidate option mismatched: ' + expected.question_code);
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2 || document.body.scrollWidth > window.innerWidth + 2);

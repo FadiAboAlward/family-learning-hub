@@ -181,8 +181,10 @@ export async function assertQaParentApprovalAccessibility(page, expectedColumns)
 
 /** Arm before the click: awaiting a dialog-triggering click first deadlocks Playwright. */
 export async function handleQaParentBulkConfirmation(page, button, expectedCount, accept = true) {
+  let onDialog, timer;
   const confirmation = new Promise((resolve, reject) => {
-    page.once('dialog', async dialog => {
+    onDialog = async dialog => {
+      clearTimeout(timer);
       try {
         if (dialog.type() !== 'confirm' || !dialog.message().includes(`عدد الطلبات: ${expectedCount}`)) {
           await dialog.dismiss();
@@ -191,9 +193,19 @@ export async function handleQaParentBulkConfirmation(page, button, expectedCount
         if (accept) await dialog.accept(); else await dialog.dismiss();
         resolve(true);
       } catch (error) { reject(error); }
-    });
+    };
+    page.once('dialog', onDialog);
+    timer = setTimeout(() => {
+      page.off('dialog', onDialog);
+      reject(new Error('QA_LOCAL_PARENT_CONFIRMATION_MISSING'));
+    }, 10000);
   });
-  await Promise.all([button.click({ timeout: 10000 }), confirmation]);
+  try {
+    await Promise.all([button.click({ timeout: 10000 }), confirmation]);
+  } finally {
+    clearTimeout(timer);
+    page.off('dialog', onDialog);
+  }
 }
 
 /** Synthetic parent's real Auth password grant and existing membership-bound API. */

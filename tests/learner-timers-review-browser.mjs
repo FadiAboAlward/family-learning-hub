@@ -55,11 +55,17 @@ try{
     const advance=async milliseconds=>{now+=milliseconds;await page.evaluate(time=>window.__qaNow=time,now);};
     const expectTime=async(id,value)=>{await page.waitForFunction(({id,value})=>document.getElementById(id)?.textContent===value,{id,value});};
     const shot=async name=>{const file=`batch2-${name}-${viewport.width}.png`;await page.screenshot({path:`playwright-screenshots/${file}`,fullPage:true});files.push(file);};
+    const assertMathDirection=async (selector,expected,context)=>{
+      await page.waitForFunction(({selector,expected})=>[...document.querySelectorAll(selector)].some(node=>node.textContent?.includes(expected)),{selector,expected});
+      const directions=await page.locator(selector).evaluateAll(nodes=>nodes.map(node=>({text:node.textContent,dir:node.getAttribute('dir'),style:getComputedStyle(node).direction,bidi:getComputedStyle(node).unicodeBidi})));
+      assert.ok(directions.some(x=>x.text?.includes(expected)&&x.dir==='ltr'&&x.style==='ltr'&&x.bidi==='isolate'),context+' must preserve the complete signed expression in an isolated LTR run');
+    };
     await page.goto(`${baseUrl}#student`,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>Boolean(window.FLH?.startLearningQuiz&&window.FLHElapsedTimer));
     await page.waitForFunction(()=>typeof state!=='undefined'&&state.learnerProfile?.learner?.id==='testing-timer-learner');
     await page.evaluate(()=>window.FLH.startLearningQuiz('testing-timers'));
     await expectTime('flhLearningElapsed','00:00');
+    await assertMathDirection('.question .flh-math-ltr','19 - (-7)','Actual Learning question');
     await advance(5000);await expectTime('flhLearningElapsed','00:05');
     await page.locator('.flh-learn-answer').first().click();await expectTime('flhLearningElapsed','00:05');
     await page.locator('#flhHelp').click();await page.locator('.flh-hint-card').waitFor();await expectTime('flhLearningElapsed','00:05');
@@ -74,6 +80,7 @@ try{
     await page.locator('#flhLearnExit').click();await page.locator('#flhLearningElapsed').waitFor({state:'detached'});assert.equal(await page.locator('#flhLearningElapsed').count(),0);
 
     await page.evaluate(()=>window.FLH.startExamQuiz('testing-timers'));await expectTime('flhExamElapsed','02:10');
+    await assertMathDirection('.question .flh-math-ltr','(-7) - 19','Actual Exam question');
     assert.equal(await page.locator('.exam-review,.flh-review-why').count(),0,'Exam must not show correction before submission');
     assert.ok(!(await page.locator('body').innerText()).includes('نطرح 19 من -7؛ لذلك'));
     await page.locator('.exam-v3-answer').nth(1).click();await page.locator('#examNext').click();
@@ -107,6 +114,7 @@ try{
     assert.equal(await page.evaluate(()=>window.__qaExamResurrected),false,'Mutation trace catches transient Exam/timer resurrection');
     releaseSubmission();
     await page.locator('.flh-mistake-review').waitFor();
+    await assertMathDirection('.exam-review-wrong .flh-math-ltr','(-7) - 19','Submitted Exam review');
     await page.evaluate(()=>{window.__qaSubmittingObserver.disconnect();});
     const wrong=page.locator('.exam-review-wrong');assert.equal(await wrong.count(),1);
     assert.equal(await wrong.getAttribute('open'),'');

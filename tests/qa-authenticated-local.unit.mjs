@@ -259,7 +259,7 @@ assert.equal(loggedOut, true, 'a failed parent assertion still revokes the owned
 // The dialog handler must be armed before the triggering click; otherwise Playwright blocks the click itself.
 const checkConfirmation = async (message, type = 'confirm') => {
   let handler, accepted = 0, dismissed = 0;
-  const page = { once: (name, callback) => { assert.equal(name, 'dialog'); handler = callback; } };
+  const page = { once: (name, callback) => { assert.equal(name, 'dialog'); handler = callback; }, off: (name, callback) => { assert.equal(name, 'dialog'); if (handler === callback) handler = null; } };
   const button = { click: async () => {
     assert.equal(typeof handler, 'function', 'dialog listener must exist before click');
     await handler({ type: () => type, message: () => message,
@@ -276,6 +276,17 @@ assert.deepEqual(cancelledDialog.state(), { accepted: 0, dismissed: 1 });
 const rejectedDialog = await checkConfirmation('عدد الطلبات: 3');
 await assert.rejects(rejectedDialog.run(), /QA_LOCAL_PARENT_CONFIRMATION_INVALID/);
 assert.deepEqual(rejectedDialog.state(), { accepted: 0, dismissed: 1 });
+let absentListener, missingHandlerRemoved = false;
+const absentPage = {
+  once: (name, handler) => { assert.equal(name, 'dialog'); absentListener = handler; },
+  off: (name, handler) => { assert.equal(name, 'dialog'); assert.equal(handler, absentListener); missingHandlerRemoved = true; },
+};
+await assert.rejects(
+  () => handleQaParentBulkConfirmation(absentPage, { click: async () => {} }, 2),
+  /QA_LOCAL_PARENT_CONFIRMATION_MISSING/,
+  'Missing parent bulk dialog must fail with a bounded, recognizable error',
+);
+assert.equal(missingHandlerRemoved, true, 'Timed-out dialog listener must be removed');
 
 // Owned teardown retries preserve foreign fixtures and fail honestly if resources remain.
 const originalTemp = process.env.RUNNER_TEMP;
