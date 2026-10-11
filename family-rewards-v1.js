@@ -361,10 +361,13 @@
       if(!event?.id||!Number.isFinite(new Date(event.occurred_at).getTime()))throw new Error('SERVER_ERROR');
       view.returnEvents.set(event.id,{...event,awarded_learner_ids:[]});view.returnSelections.set(key,event.id);
       clearReturnChoiceError(view,key,host);
-      const day=zonedYmd(new Date(event.occurred_at)),page=view.returnPages.get(day)||{rows:[],loaded:true};
-      page.rows=[event,...page.rows.filter(row=>row.id!==event.id)];view.returnPages.set(day,page);
+      const day=zonedYmd(new Date(event.occurred_at)),page=view.returnPages.get(day);
+      // Do not mark an unrequested day as fully loaded with only this new event.
+      // Otherwise earlier canonical returns on that day disappear from the picker.
+      if(page?.loaded)page.rows=[event,...page.rows.filter(row=>row.id!==event.id)];
       host.querySelector('[data-fr-return-day]').value=day;host.querySelector('[data-fr-return-create-details]').open=false;
       delete host.dataset.idempotencyKey;delete host.dataset.createOccurredAt;
+      if(!page?.loaded&&!page?.busy)loadReturnEvents(view,host);
       syncReturnControl(view,host);syncReturnForecasts(view);messageHost.textContent='تم تسجيل المناسبة واختيارها. لم تُضف نقاط؛ اعتمد الطلب بعد التحقق.';
     }catch(error){if(current(view)&&host.isConnected)reportError(messageHost,error);}
     finally{host.dataset.frBusy='0';host.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=!!view.refreshRequired);}

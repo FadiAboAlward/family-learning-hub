@@ -17,6 +17,12 @@ assert.deepEqual(valid.errors, []);
 const sourceGrounded20 = validateAcademicPackage(read('english-unit1-source-grounded-20.json'));
 assert.equal(sourceGrounded20.ok, true, JSON.stringify(sourceGrounded20, null, 2));
 assert.deepEqual(sourceGrounded20.errors, []);
+// In-range contextual shares must not produce a spurious override-review warning.
+const inRangeRatio = read('english-unit1-source-grounded-20.json');
+inRangeRatio.academic_context.context_ratio_justifications = { exam: 'This note is unnecessary when the verified ratio already meets 13–15.' };
+const inRangeCheck = validateAcademicPackage(inRangeRatio);
+assert.equal(inRangeCheck.ok,true,JSON.stringify(inRangeCheck.errors));
+assert.ok(!inRangeCheck.warnings.some(w=>w.code==='CONTEXT_RATIO_OVERRIDE_REVIEW'&&w.path.endsWith('.exam')),'in-range contextual share never triggers an unused override warning');
 
 const sourceDependent = read('valid-package.json');
 sourceDependent.questions[1].prompt_language = 'tr';

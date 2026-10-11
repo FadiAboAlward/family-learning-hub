@@ -35,7 +35,7 @@ function fixture() {
     const qs = [activity('qa-complete', 'نشاط مكتمل', 'COMPLETE'), activity('qa-new', 'نشاط جديد', 'NEW'),
       activity('qa-continue', 'تابع نشاطك المحفوظ', learningDone ? 'START_EXAM' : 'CONTINUE_LEARNING'), activity('qa-exam-ready', 'جاهز للامتحان', 'START_EXAM'),
       activity('qa-support', 'تمرين تعلّم فقط', 'COMPLETE', { support_session: true, exam: { enabled: false } }), activity('qa-unavailable', 'نشاط يحتاج إتاحة', 'UNAVAILABLE')];
-    return { programs: [{ id: 'p', title: 'منهاج الاختبار', program_type: 'curriculum', grade_level: 7, is_primary: true,
+    return { programs: [{ id: 'p', title: 'منهاج الاختبار', program_type: 'curriculum', grade_level: 7, school_year: '2026/<img src=x onerror=alert(1)>', is_primary: true,
       books: [{ id: 'b', title: 'كتاب الاختبار', units: [{ id: 'u', title: 'وحدة الاختبار', quizzes: qs }], extras: [] }] }], standalone_books: [],
       standalone_assessments: [activity('qa-bookless-complete', 'نتيجة نشاط مستقل', 'COMPLETE'), activity('qa-bookless-new', 'نشاط مخصص دون كتاب', 'NEW')] };
   }
@@ -95,7 +95,7 @@ function fixture() {
   };
 }
 
-const openUnit = async page => { await page.locator('[data-open-program="0"]').click(); await page.locator('[data-book="0"]').click(); await page.locator('[data-unit="0"]').click(); };
+const openUnit = async page => { await page.locator('[data-open-program="0"]').click(); assert.equal(await page.locator('.flh-page-title img').count(),0,'school-year markup stays inert on program detail'); assert.ok((await page.locator('.flh-page-title small').textContent()).includes('<img'),'program subtitle escapes school-year metadata'); await page.locator('[data-book="0"]').click(); await page.locator('[data-unit="0"]').click(); };
 const card = (page, slug) => page.locator('.flh-activity-card').filter({ has: page.locator(`[data-learn="${slug}"], [data-exam="${slug}"]`) }).first();
 const overflow = async page => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'no horizontal overflow');
 const browser = await launchMockQaBrowser(chromium, APP_URL);
@@ -109,6 +109,8 @@ try {
     await context.route('**/functions/v1/*', route => data.handle(route));
     await page.goto(`${APP_URL}?journey-testing#student`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-open-program="0"]').waitFor();
+    assert.equal(await page.locator('.flh-library-card small img').count(),0,'unsafe school-year markup cannot create an element in the catalog');
+    assert.ok((await page.locator('.flh-library-card small').first().textContent()).includes('<img'),'catalog school-year is escaped and remains literal text');
     const bookless = page.locator('.flh-activity-card').filter({ hasText: 'نشاط مخصص دون كتاب' });
     assert.equal(await bookless.locator('[data-journey-primary]').getAttribute('data-learn'), 'qa-bookless-new');
     assert.equal(data.count('learning-api', 'start_quiz'), 0, 'catalog does not start Learning');

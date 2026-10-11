@@ -1025,9 +1025,18 @@ async function runBrowserSuite() {
     assert.equal(await direct.locator(`#${directPrefix}TimeMode`).inputValue(),'morning','direct entry also replaces Yesterday plus Now with a valid preset');
     assert.equal(await direct.locator(`#${directPrefix}Date`).isVisible(),false);
     assert.equal(await direct.locator(`#${directPrefix}Time`).isVisible(),false);
+    // A previously registered canonical return on Yesterday must stay visible
+    // after creating another return before that day's list has ever been loaded.
+    const yesterday=new Date(Date.now()-24*60*60*1000),yesterdayDay=localDay(yesterday);
+    const preexistingReturn=await server.handle({action:'return_event_create',occurred_at:`${yesterdayDay}T05:00:00.000Z`,idempotency_key:'qa-preexisting-yesterday-'+device.name});
+    const preexistingReturnId=preexistingReturn.body?.return_event?.id;
+    assert.ok(preexistingReturnId,'pre-existing canonical event was registered for yesterday');
+    const beforeYesterdayLoads=server.calls.filter(call=>call.action==='return_events_list'&&call.return_event_day===yesterdayDay).length;
     const directCreate=responseFor(page,'return_event_create');await direct.locator('[data-fr-return-create]').press('Enter');await directCreate;
     const secondEvent=server.catalog.return_events.at(-1);
-    const yesterday=new Date(Date.now()-24*60*60*1000);
+    await direct.locator(`[data-fr-return-select] option[value="${preexistingReturnId}"]`).waitFor({state:'attached'});
+    assert.ok(server.calls.filter(call=>call.action==='return_events_list'&&call.return_event_day===yesterdayDay).length>beforeYesterdayLoads,'creating a return on an unloaded day fetches the full canonical list');
+    assert.equal(await direct.locator('[data-fr-return-select]').inputValue(),secondEvent.id,'the newly created return stays selected while older events load');
     assert.equal(localDay(secondEvent.occurred_at),localDay(yesterday),'direct Yesterday creates the verified previous Istanbul day');
     assert.equal(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(secondEvent.occurred_at)),'08:00','the existing morning preset remains the actual verified instant');
     await page.waitForFunction(eventId=>document.querySelector('[data-fr-direct-return] [data-fr-return-select]')?.value===eventId,secondEvent.id);

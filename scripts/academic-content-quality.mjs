@@ -456,9 +456,10 @@ function validateAssessmentDesign(ctx, questions, blueByCode, errors, warnings) 
     }
     if (rows.length === 20 && classified === rows.length) {
       const justification = text(ctx?.context_ratio_justifications?.[surface]);
-      if ((contextual < 13 || contextual > 15) && !justification) {
+      const outOfTarget = contextual < 13 || contextual > 15;
+      if (outOfTarget && !justification) {
         issue(errors, 'CONTEXT_RATIO_OUT_OF_TARGET', 'blueprint', surface + ' requires 13–15 meaningful contextual items out of 20 (65–75%) or a content/skill-specific context_ratio_justifications.' + surface + '; found ' + contextual + '.');
-      } else if (justification) {
+      } else if (outOfTarget && justification) {
         issue(warnings, 'CONTEXT_RATIO_OVERRIDE_REVIEW', 'academic_context.context_ratio_justifications.' + surface, justification + ' Verify the override against the exact candidate and assigned source.');
       }
     }

@@ -26,8 +26,8 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
-      actions: read
-      id-token: write
+      actions: read # Exact-head Core workflow prerequisite verification.
+      id-token: write # GitHub OIDC lease preparation for disposable QA only.
     steps:
       - name: Checkout exact head
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
