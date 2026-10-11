@@ -1,11 +1,13 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 
-// FLH-FEAT-2026-012 / v1.1 / Drive revision 2. Real runtimes, synthetic Testing data.
+// FLH024 v1.1/revision2 + FLH022 v1.1/revision3, preserving FLH018 v1.5.
 // Provider rendering is intentionally mocked; live ads/navigation/tablet QA is separate.
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const OUTPUT_DIR = 'playwright-screenshots';
+const screenshotFiles = [];
 const ATTEMPT_ID = '11111111-1111-4111-8111-111111111112';
 const VIDEO_ID = '11111111-1111-4111-8111-111111111113';
 const ALLOWED_REPORTS = ['not_reported', 'not_watched', 'watched_part', 'watched_full'];
@@ -23,7 +25,7 @@ function videoFixture(overrides = {}) {
   };
 }
 
-function createFixture({ video = videoFixture(), language = 'tr', resumed = false, progressed = false, typedDraft = null } = {}) {
+function createFixture({ video = videoFixture(), previewVideo = video, language = 'tr', resumed = false, progressed = false, typedDraft = null } = {}) {
   const calls = [];
   const reportResults = new Map();
   let failure = null;
@@ -65,7 +67,7 @@ function createFixture({ video = videoFixture(), language = 'tr', resumed = fals
       }
       assert.equal(endpoint, 'learning-api', 'mock never forwards an unrecognized API to a live backend');
       if (body.action === 'preview_videos') {
-        return { body: { quiz_version_id: '11111111-1111-4111-8111-111111111115', resumable_attempt_id: started ? ATTEMPT_ID : null, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, optional_video: clone(video) } };
+        return { body: { quiz_version_id: '11111111-1111-4111-8111-111111111115', resumable_attempt_id: started ? ATTEMPT_ID : null, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, optional_video: clone(previewVideo) } };
       }
       if (body.action === 'start_quiz') {
         const response = { attempt_id: ATTEMPT_ID, resumed: started, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, queue: [clone(row)], optional_video: clone(video) };
@@ -209,6 +211,87 @@ async function layout(page, language, label) {
 async function screenshot(page, name) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   await page.screenshot({ path: `${OUTPUT_DIR}/${name}.png`, fullPage: true });
+  screenshotFiles.push(`${name}.png`);
+}
+
+async function authoredOutcomes(browser, device) {
+  const firstOutcomes=['تقارن: 1/2 + 3/4 = 5/4','تشرح كيف تجمع كسرين بمقامين مختلفين'];
+  const secondOutcomes=['Sayı doğrusunda -3 + 5 sonucunu bulursun'];
+  const first=videoFixture({position:1,language:'ar',title:'درس كسور الاختبار',learning_outcomes:firstOutcomes});
+  const second=videoFixture({id:'11111111-1111-4111-8111-111111111114',position:2,video_ref:'qaVideo0002',language:'tr',title:'Sayı doğrusu',learning_outcomes:secondOutcomes});
+  const legacy=videoFixture({id:'11111111-1111-4111-8111-111111111115',position:3,video_ref:'qaVideo0003',language:'ar',title:'درس قديم بلا أهداف'});
+  const malformed=videoFixture({id:'11111111-1111-4111-8111-111111111116',position:4,video_ref:'qaVideo0004',language:'ar',title:'بيانات اختيارية غير صالحة',learning_outcomes:['<script>unsafe</script>']});
+  const test=await setup(browser,device,{video:{...clone(first),videos:[first,second,legacy,malformed]},language:'ar',providerMode:'api-delay'});
+  const {page,fixture}=test;
+  try{
+    await start(page);await page.locator('#flhOptionalVideo').waitFor({state:'visible'});
+    // The shared math renderer stacks fractions visually; textContent omits their slash.
+    // Compare the accessible original notation and verify actual numerator/denominator markup.
+    const renderedOutcomes=await page.locator('.flh-video-outcomes li').evaluateAll(rows=>rows.map(row=>{
+      const semanticText=node=>{
+        if(node.nodeType===Node.TEXT_NODE)return node.nodeValue;
+        if(node.nodeType!==Node.ELEMENT_NODE)return '';
+        if(node.matches('bdi[role="math"][aria-label]'))return node.getAttribute('aria-label');
+        return Array.from(node.childNodes).map(semanticText).join('');
+      };
+      return semanticText(row);
+    }));
+    assert.deepEqual(renderedOutcomes,firstOutcomes,'Active video preserves each vetted outcome including accessible fraction notation');
+    assert.deepEqual(await page.locator('.flh-video-outcomes .frac .n').allTextContents(),['1','3','5'],'Fraction numerators retain their exact authored values');
+    assert.deepEqual(await page.locator('.flh-video-outcomes .frac .d').allTextContents(),['2','4','4'],'Fraction denominators retain their exact authored values');
+    const heading=page.getByRole('heading',{name:'ماذا ستتعلم؟'});assert.equal(await heading.count(),1);
+    assert.equal(await page.locator('.flh-video-outcomes').getAttribute('aria-labelledby'),await heading.getAttribute('id'),'Outcomes region has an accessible title');
+    assert.ok(await page.locator('.flh-video-outcomes').evaluate(element=>element.compareDocumentPosition(document.querySelector('.flh-video-player'))&Node.DOCUMENT_POSITION_FOLLOWING),'Outcomes precede the player');
+    assert.ok(await page.locator('.flh-video-outcomes bdi[dir="ltr"]').count()>0,'Mixed Arabic math uses existing LTR isolation');
+    assert.equal(await page.locator('.flh-video-outcomes ul').evaluate(element=>getComputedStyle(element).direction),'rtl');
+    await screenshot(page,`optional-video-${device.name}-outcomes-ar`);
+    await page.locator('.flh-video-sequence-item').nth(1).click();
+    assert.deepEqual(await page.locator('.flh-video-outcomes li').allTextContents(),secondOutcomes,'Rapid switch cannot retain the preceding video outcome');
+    assert.equal(await page.locator('.flh-video-outcomes ul').getAttribute('lang'),'tr');
+    assert.equal(await page.locator('.flh-video-outcomes ul').evaluate(element=>getComputedStyle(element).direction),'ltr');
+    await page.waitForFunction(()=>window.__qaVideoProvider.instances.length>=1);
+    assert.deepEqual(await page.locator('.flh-video-outcomes li').allTextContents(),secondOutcomes,'Late provider initialization cannot change the active outcomes');
+    await screenshot(page,`optional-video-${device.name}-outcomes-tr`);
+    await page.locator('.flh-video-sequence-item').nth(2).click();
+    assert.equal(await page.locator('.flh-video-outcomes').count(),0,'Legacy missing outcomes produces no fabricated summary');
+    assert.equal(await page.locator('#flhVideoStart').isEnabled(),true);await screenshot(page,`optional-video-${device.name}-outcomes-legacy`);
+    await page.locator('.flh-video-sequence-item').nth(3).click();
+    assert.equal(await page.locator('.flh-video-outcomes').count(),0,'Malformed optional outcomes retain Watch/Skip without an error card');
+    assert.equal(await page.locator('#flhOptionalVideo script').count(),0,'Optional metadata cannot inject markup');
+    assert.doesNotMatch(await page.locator('#flhOptionalVideo').innerText(),/unsafe/);
+    assert.equal(await page.getByRole('button',{name:/استعداد|أسئلة سريعة|quick check/i}).count(),0,'No readiness action is invented without its approved independent prerequisites');
+    assert.equal(fixture.count('save_video_report'),0);assert.equal(fixture.count('start_quiz'),1,'Video navigation adds no formal attempt calls');
+    assert.equal(fixture.count('answer')+fixture.count('save_draft')+fixture.count('finish_quiz'),0,'Outcomes and navigation never grade or save academic activity');
+    assert.equal(fixture.row.draft_option_position,null,'No answer is written by outcomes');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Compact outcomes and optional fallback have no horizontal overflow');
+    await screenshot(page,`optional-video-${device.name}-outcomes-malformed`);
+    await page.locator('#flhVideoStart').click();await questionReady(page);
+    assert.equal(await page.locator('.flh-video-outcomes').count(),0,'Starting Learning disposes the optional outcomes surface');
+    await test.verifyAndClose(`${device.name} authored outcomes`);
+  }catch(error){await test.context.close();throw error;}
+}
+
+async function previewThenFrozenOutcomes(browser, device) {
+  const frozenOutcomes=['تقارن كسرين باستخدام أجزاء متساوية'];
+  const currentOutcomes=['تجمع كسرين باستخدام مقام مشترك'];
+  const frozen=videoFixture({title:'الدرس المثبت للمحاولة',language:'ar',learning_outcomes:frozenOutcomes});
+  const current=videoFixture({id:'11111111-1111-4111-8111-111111111119',title:'نسخة الدرس الحالية',language:'ar',learning_outcomes:currentOutcomes});
+  const test=await setup(browser,device,{video:frozen,previewVideo:current,language:'ar',resumed:true,initialPath:'?quiz=qa-video&mode=learning&learner=test&videos=1#student'});
+  const {page,fixture}=test;
+  try {
+    await page.locator('#flhOptionalVideo').waitFor({state:'visible'});
+    assert.deepEqual(await page.locator('.flh-video-outcomes li').allTextContents(),currentOutcomes,'Read-only preview renders current authorized assignment outcomes');
+    assert.equal(fixture.count('start_quiz'),0,'Current preview does not create or snapshot an attempt');
+    assert.equal(await page.locator('#flhVideoReport').count(),0,'Current preview has no report persistence controls');
+    await page.locator('#flhVideoStart').click();
+    await page.waitForFunction(()=>document.querySelector('#flhVideoLesson h3')?.textContent==='الدرس المثبت للمحاولة');
+    assert.deepEqual(await page.locator('.flh-video-outcomes li').allTextContents(),frozenOutcomes,'Normal resume renders its frozen outcomes rather than current preview metadata');
+    assert.equal(fixture.count('start_quiz'),1);assert.equal(fixture.count('save_video_report'),0);
+    assert.equal(fixture.row.draft_option_position,null,'Preview and frozen resume do not write an academic answer');
+    await screenshot(page,`optional-video-${device.name}-outcomes-frozen-resume`);
+    await page.locator('#flhVideoStart').click();await questionReady(page);
+    await test.verifyAndClose(`${device.name} current preview versus frozen outcomes`);
+  } catch(error) { await test.context.close();throw error; }
 }
 
 async function explicitReports(browser, device) {
@@ -470,8 +553,8 @@ async function priorInteractionResume(browser, device) {
 async function failureScenarios(browser, device) {
   for (const scenario of [
     { name: 'no-video', video: null },
-    { name: 'status-unavailable', video: videoFixture({ availability: 'unavailable' }) },
-    { name: 'status-expired', video: videoFixture({ verification_expires_at: '2000-01-01T00:00:00Z' }) },
+    { name: 'status-unavailable', video: videoFixture({ availability: 'unavailable', learning_outcomes: ['Compare equal parts'] }) },
+    { name: 'status-expired', video: videoFixture({ verification_expires_at: '2000-01-01T00:00:00Z', learning_outcomes: ['Compare equal parts'] }) },
     { name: 'made-for-kids-unknown', video: videoFixture({ made_for_kids: null }) },
     { name: 'provider-error', providerMode: 'error' },
     { name: 'synchronous-provider-error', providerMode: 'sync-error' },
@@ -496,6 +579,7 @@ async function failureScenarios(browser, device) {
           assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'synchronous failure removes playback frame');
         }
         if (['status-unavailable', 'status-expired', 'made-for-kids-unknown'].includes(scenario.name)) {
+          assert.equal(await page.locator('.flh-video-outcomes').count(),0,'Outcomes are not shown for a video whose required provider status is unavailable');
           assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'invalid required status cannot start an embed');
           assert.equal(test.providerRequests.length, 0, 'invalid required status cannot initiate provider requests');
         }
@@ -578,9 +662,11 @@ async function examIndependence(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await launchMockQaBrowser(chromium,APP_URL);
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
+    await authoredOutcomes(browser, device);
+    await previewThenFrozenOutcomes(browser, device);
     await explicitReports(browser, device);
     await orderedSequence(browser, device);
     await stalePlayerInitialization(browser, device);
@@ -594,4 +680,5 @@ try {
     await examIndependence(browser, device);
     console.log(`Optional-video real-runtime regression PASS (${device.name}; synthetic Testing data; no live provider/device claim).`);
   }
+  fs.writeFileSync(`${OUTPUT_DIR}/optional-video-outcomes-manifest.json`,JSON.stringify({feature_id:'FLH-FEAT-2026-024',spec_version:'1.1',drive_revision_id:'2',child_feature_id:'FLH-FEAT-2026-022',child_spec_version:'1.1',child_drive_revision_id:'3',source:'guarded isolated mocked Testing runtime; no live provider/device claim',head_sha:process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,retention_days:7,files:screenshotFiles},null,2));
 } finally { await browser.close(); }

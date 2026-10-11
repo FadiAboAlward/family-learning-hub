@@ -1,10 +1,11 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const BASE_URL=process.env.APP_URL||'http://127.0.0.1:4173/';
 const SAVE_DELAY_MS=Number(process.env.PERF_SAVE_DELAY_MS||2500);
 const LIMITS={appReadyMs:Number(process.env.PERF_APP_READY_LIMIT_MS||2500),learningOpenUiMs:800,examOpenUiMs:Number(process.env.PERF_EXAM_OPEN_LIMIT_MS||800),answerVisualMs:Number(process.env.PERF_ANSWER_VISUAL_LIMIT_MS||250),nextQuestionMs:Number(process.env.PERF_NEXT_QUESTION_LIMIT_MS||250),resultUiMs:Number(process.env.PERF_RESULT_UI_LIMIT_MS||800)};
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
 const errors=[];let learningDraftStarted=0,learningDraftCompleted=0,examSaveStarted=0,examSaveCompleted=0;
 page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});

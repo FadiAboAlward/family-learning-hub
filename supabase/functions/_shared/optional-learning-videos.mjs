@@ -7,16 +7,28 @@ function invalid() { throw new Error('INVALID_VIDEO_INPUT'); }
 function uuid(value) { if (typeof value !== 'string' || !UUID.test(value)) invalid(); return value; }
 function text(value, maximum) { if (typeof value !== 'string' || !value.trim() || value.trim().length > maximum) invalid(); return value.trim(); }
 
+export function validateLearningOutcomes(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 3) invalid();
+  const outcomes = value.map(item => {
+    if (typeof item !== 'string') invalid();
+    const outcome = item.trim();
+    if (!outcome || [...outcome].length > 160 || /<\/?[A-Za-z][^>]*>|<!--|<!DOCTYPE|&(?:#(?:x[\da-f]+|\d+)|[a-z][\da-z]*);/iu.test(outcome)) invalid();
+    return outcome;
+  });
+  if (new Set(outcomes).size !== outcomes.length) invalid();
+  return outcomes;
+}
+
 export function validateVideoCandidate(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
-  const allowed = new Set(['learner_id','quiz_version_id','program_id','curriculum_id','grade_level','subject_id','concept_id','position','video_ref','title','language','rationale']);
+  const allowed = new Set(['learner_id','quiz_version_id','program_id','curriculum_id','grade_level','subject_id','concept_id','position','video_ref','title','language','rationale','learning_outcomes']);
   if (Object.keys(value).some(key => !allowed.has(key))) invalid();
   const result = {};
   for (const key of ['learner_id','quiz_version_id','program_id','curriculum_id','concept_id']) result[key] = uuid(value[key]);
   const hasPosition = Object.prototype.hasOwnProperty.call(value,'position');
   if (!Number.isInteger(value.grade_level) || value.grade_level < 1 || value.grade_level > 12 || !Number.isSafeInteger(value.subject_id) || value.subject_id < 1 || (hasPosition && (!Number.isInteger(value.position) || value.position < 1 || value.position > 20))) invalid();
   if (!VIDEO_ID.test(value.video_ref || '') || !['ar','tr','en'].includes(value.language)) invalid();
-  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,...(hasPosition ? {position:value.position} : {}),video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000)};
+  return {...result, grade_level:value.grade_level,subject_id:value.subject_id,...(hasPosition ? {position:value.position} : {}),video_ref:value.video_ref,title:text(value.title,200),language:value.language,rationale:text(value.rationale,1000),...(Object.hasOwn(value,'learning_outcomes') ? {learning_outcomes:validateLearningOutcomes(value.learning_outcomes)} : {})};
 }
 
 export function validateVideoReport(value) {

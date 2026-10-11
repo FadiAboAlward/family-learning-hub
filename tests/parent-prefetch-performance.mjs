@@ -1,3 +1,4 @@
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -6,7 +7,7 @@ const DASHBOARD_DELAY_MS=Number(process.env.PARENT_DASHBOARD_DELAY_MS||1500);
 const SUMMARY_DELAY_MS=Number(process.env.PARENT_SUMMARY_DELAY_MS||2500);
 const LIMIT_MS=Number(process.env.PARENT_SUMMARY_VISIBLE_LIMIT_MS||3200);
 
-const browser=await chromium.launch({headless:true});
+const browser=await launchMockQaBrowser(chromium,BASE_URL);
 const page=await browser.newPage({viewport:{width:1365,height:768}});
 const errors=[];
 page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));

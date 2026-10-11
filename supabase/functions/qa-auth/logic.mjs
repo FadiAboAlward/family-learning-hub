@@ -4,7 +4,11 @@ export const QA_QUIZ_SLUG = 'qa-automation-core';
 export const REPOSITORY = 'FadiAboAlward/family-learning-hub';
 export const REPOSITORY_ID = '1343709875';
 export const ACTOR_ID = '320162789';
-export const WORKFLOW_PREFIX = `${REPOSITORY}/.github/workflows/qa-smoke.yml@`;
+export const WORKFLOW_PREFIX = `${REPOSITORY}/.github/workflows/qa-isolated.yml@`;
+export const WORKFLOW_PREFIXES = Object.freeze([
+  WORKFLOW_PREFIX,
+  `${REPOSITORY}/.github/workflows/qa-authenticated-local.yml@`,
+]);
 export const AUDIENCE = 'family-learning-hub-qa';
 export const SESSION_SECONDS = 10 * 60;
 export const LEASE_TTL_SECONDS = 15 * 60;
@@ -13,11 +17,12 @@ export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]
 const ALLOWED_EVENTS = new Set(['pull_request', 'push', 'workflow_dispatch']);
 
 /** Validate the GitHub OIDC claims that bind QA access to this repository and workflow. */
-export function validateGithubClaims(payload) {
+export function validateGithubClaims(payload, isolationMode = null) {
   if (String(payload?.repository || '') !== REPOSITORY) throw new Error('REPOSITORY_NOT_ALLOWED');
   if (String(payload?.repository_id || '') !== REPOSITORY_ID) throw new Error('REPOSITORY_NOT_ALLOWED');
   if (String(payload?.actor_id || '') !== ACTOR_ID) throw new Error('ACTOR_NOT_ALLOWED');
-  if (!String(payload?.workflow_ref || '').startsWith(WORKFLOW_PREFIX)) throw new Error('WORKFLOW_NOT_ALLOWED');
+  if (!WORKFLOW_PREFIXES.some(prefix => String(payload?.workflow_ref || '').startsWith(prefix))) throw new Error('WORKFLOW_NOT_ALLOWED');
+  if (String(payload?.workflow_ref || '').startsWith(WORKFLOW_PREFIXES[1]) && isolationMode !== 'runner-local') throw new Error('WORKFLOW_NOT_ALLOWED');
   if (!ALLOWED_EVENTS.has(String(payload?.event_name || ''))) throw new Error('EVENT_NOT_ALLOWED');
   if (String(payload?.runner_environment || '') !== 'github-hosted') throw new Error('RUNNER_NOT_ALLOWED');
   return true;

@@ -11,6 +11,11 @@
       "assessment:test-fixture-2026-09-28"
     ],
     "next_target": "signed integer operations and number-line direction",
+    "answer_position_exceptions": {
+      "learning": "Single synthetic Learning item isolates hint and integer-direction contracts; not a standard assessment set.",
+      "exam": "Single synthetic Exam item isolates the integer-addition contract; not a standard assessment set.",
+      "paper": "Single synthetic Paper item isolates the integer-subtraction contract; not a standard assessment set."
+    },
     "concept_targets": [
       {
         "concept_code": "integer-direction",
@@ -93,6 +98,7 @@
       "delivery_surface": "learning",
       "question_type": "single_choice",
       "decomposable": true,
+      "option_count_justification": "Five preserved synthetic choices exercise normalization and distinct distractor rationale guards; this one-item fixture is not a standard authored assessment.",
       "prompt": "ابدأ من الصفر وتحرك 4 وحدات إلى اليسار. أين تصل؟",
       "concept_code": "integer-direction",
       "difficulty_level": 2,
@@ -214,6 +220,7 @@
       "question_code": "QA-E-001",
       "delivery_surface": "exam",
       "question_type": "single_choice",
+      "option_count_justification": "Five preserved synthetic choices exercise option and distractor guards for the Exam fixture; this is not a standard authored assessment.",
       "prompt": "كانت درجة الحرارة -2 ثم ارتفعت 5 درجات. ما الدرجة الجديدة؟",
       "concept_code": "integer-addition",
       "difficulty_level": 3,
@@ -258,6 +265,7 @@
       "question_code": "QA-P-001",
       "delivery_surface": "paper",
       "question_type": "single_choice",
+      "option_count_justification": "Five preserved synthetic choices exercise option and distractor guards for the Paper fixture; this is not a standard authored assessment.",
       "prompt": "أي تعبير يمثل نقصًا مقداره 6 من العدد 2؟",
       "concept_code": "integer-subtraction",
       "difficulty_level": 3,

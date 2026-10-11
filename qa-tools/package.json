@@ -1,0 +1,9 @@
+{
+  "name": "family-learning-hub-qa-tools",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "playwright": "1.55.0",
+    "supabase": "2.117.0"
+  }
+}

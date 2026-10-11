@@ -1,15 +1,13 @@
 import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
+import { fetchQaBackend, fetchQaOidc, installQaBrowserIsolation, qaBrowserLaunchOptions, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
 
-const SUPABASE_URL = 'https://gkpoylfozvuwuwqeoduc.supabase.co';
-const PUBLISHABLE_KEY = 'sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
-const QA_AUTH_URL = `${SUPABASE_URL}/functions/v1/qa-auth`;
 const QA_QUIZ_SLUG = 'qa-automation-core';
 const QA_PROGRAM_TITLE = 'QA Automation — Testing';
 const QA_BOOK_TITLE = 'QA Automation Book';
 const QA_QUESTION_COUNT = 3;
-const APP_URL = process.env.APP_URL || 'http://localhost:4173/';
+const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const REGIONS = { default: null, 'ap-southeast-1': 'ap-southeast-1' };
 
 export function parseSampleCount(value = '10') {
@@ -120,20 +118,21 @@ export function correlateUiTiming(actionStarted, uiReady, request = null) {
 }
 
 async function githubOidcToken() {
+  const config = readQaTestingConfig();
   const url = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
   const bearer = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
   if (!url || !bearer) throw new Error('GitHub OIDC environment is unavailable');
-  const separator = url.includes('?') ? '&' : '?';
-  const response = await fetch(`${url}${separator}audience=family-learning-hub-qa`, { headers: { Authorization: `Bearer ${bearer}` } });
+  const response = await fetchQaOidc(config, url, bearer);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload.value) throw new Error(`GitHub OIDC request failed: ${response.status}`);
   return payload.value;
 }
 
 async function requestQaAuth(action, runId = null) {
-  const response = await fetch(QA_AUTH_URL, {
+  const config = readQaTestingConfig();
+  const response = await fetchQaBackend(config, 'qa-auth', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', apikey: config.publishableKey },
     body: JSON.stringify({ oidc_token: await githubOidcToken(), action, ...(runId ? { run_id: runId } : {}) }),
   });
   const payload = await response.json().catch(() => ({}));
@@ -142,6 +141,7 @@ async function requestQaAuth(action, runId = null) {
 }
 
 async function prepareQaRun() {
+  await verifyQaTestingBackend(readQaTestingConfig());
   const prepared = await requestQaAuth('prepare');
   if (prepared.learner?.slug !== 'test' || prepared.quiz_slug !== QA_QUIZ_SLUG || !prepared.session || !prepared.run_id) {
     throw new Error('QA auth did not return the canonical Testing learner boundary');
@@ -170,16 +170,17 @@ async function withQaRun(run) {
 function functionHeaders(session, region) {
   return {
     'content-type': 'application/json',
-    apikey: PUBLISHABLE_KEY,
+    apikey: readQaTestingConfig().publishableKey,
     ...(session ? { authorization: `Bearer ${session}` } : {}),
     ...(region ? { 'x-region': region } : {}),
   };
 }
 
 async function invoke(functionName, body, { session = null, region = null } = {}) {
+  const config = readQaTestingConfig();
   const started = performance.now();
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+    const response = await fetchQaBackend(config, functionName, {
       method: 'POST',
       headers: functionHeaders(session, region),
       body: JSON.stringify(body),
@@ -470,12 +471,14 @@ function summarizeBrowserCheckpoints(runs, path) {
 async function browserCorrelation() {
   if (process.env.PERF_BROWSER !== '1') return { status: 'skipped', reason: 'PERF_BROWSER is not enabled' };
   const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: true });
+  const config = readQaTestingConfig();
+  const browser = await chromium.launch(qaBrowserLaunchOptions());
   const runs = [];
   try {
     for (let index = 0; index < BROWSER_RUN_COUNT; index++) {
       runs.push(await withQaRun(async prepared => {
-        const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+        const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+        const network = await installQaBrowserIsolation(context, config);
         try {
           const page = await context.newPage();
           const browserErrors = [];
@@ -500,6 +503,7 @@ async function browserCorrelation() {
             ...(await measureLearningJourney(page)),
           };
           const warm = await measureLearningJourney(page);
+          network.assertNoUnexpectedRequests();
           if (browserErrors.length) throw new Error(browserErrors.join('; '));
           return { run: index + 1, cold, warm };
         } finally {
@@ -583,6 +587,8 @@ function markdown(report) {
 }
 
 async function main() {
+  // Missing/unsafe isolation is a hard failure, never an empty successful benchmark.
+  readQaTestingConfig();
   const report = {
     generated_at: new Date().toISOString(),
     report_only: true,
