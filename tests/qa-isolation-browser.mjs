@@ -29,6 +29,18 @@ try{
   assert.equal(denied,true);
   assert.deepEqual(guard.unexpected,[`https://${PRODUCTION_HOSTS[0]}`]);
   assert.throws(()=>guard.assertNoUnexpectedRequests(),/QA_UNEXPECTED_NETWORK/,'unmocked requests fail the harness instead of becoming a hidden PASS');
+  // WebSockets bypass BrowserContext.route. An explicit untrusted socket must
+  // be closed by routeWebSocket and fail the same owned-network guard.
+  const socketResult=await page.evaluate(()=>new Promise(resolve=>{
+    const socket=new WebSocket('wss://untrusted-qa-egress.invalid/leak');
+    const done=state=>resolve(state);
+    socket.addEventListener('close',()=>done('closed'),{once:true});
+    socket.addEventListener('error',()=>done('blocked'),{once:true});
+    setTimeout(()=>done('timeout'),3000);
+  }));
+  assert.ok(['closed','blocked'].includes(socketResult),'untrusted WebSocket is blocked by the browser guard');
+  assert.deepEqual(guard.unexpected,[`https://${PRODUCTION_HOSTS[0]}`,'QA_WEBSOCKET_FORBIDDEN']);
+  assert.throws(()=>guard.assertNoUnexpectedRequests(),/QA_UNEXPECTED_NETWORK/,'WebSocket egress cannot be a false QA PASS');
   const redirects=createServer((request,response)=>{response.writeHead(302,{location:`https://${PRODUCTION_HOSTS[0]}/functions/v1/qa-auth`});response.end();});
   await new Promise(resolve=>redirects.listen(0,'127.0.0.1',resolve));
   try{

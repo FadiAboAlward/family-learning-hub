@@ -75,6 +75,14 @@ export async function installQaBrowserIsolation(context, config) {
     finally { const next = waiting.shift(); if (next) next(); else active--; }
   };
   context.on?.('close', () => { closed = true; });
+  // Playwright HTTP routing does not intercept ws:/wss: handshakes.
+  // This static QA site needs no sockets: fail closed for every WebSocket,
+  // including local origins, rather than leaving an unobserved egress path.
+  if (typeof context.routeWebSocket !== 'function') throw new Error('QA_WEBSOCKET_GUARD_UNAVAILABLE');
+  await context.routeWebSocket('**/*', socket => {
+    unexpected.push('QA_WEBSOCKET_FORBIDDEN');
+    return socket.close({ code: 1008, reason: 'QA WebSocket forbidden' });
+  });
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     const allowed = !url.username && !url.password && !isProductionQaHost(url.hostname) &&
