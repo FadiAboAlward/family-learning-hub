@@ -7,6 +7,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const rel = 'content/sy-g5-arabic-brochure-baseline-20261012-v1.json';
 const pkg = JSON.parse(readFileSync(path.join(root, rel), 'utf8'));
+assert.notEqual(pkg.status, 'QUALITY_BLOCKED', 'Academic package is QUALITY_BLOCKED: unresolved Learning/Exam reasoning mirrors; rebuild and review the entire Exam bank before publication');
 const validator = spawnSync(process.execPath, [path.join(root, 'scripts/academic-content-quality.mjs'), path.join(root, rel)], {
   cwd: root, encoding: 'utf8', timeout: 60_000
 });
