@@ -1,7 +1,7 @@
 -- Register Aya's Syria Grade 5 Arabic unit 1 brochure baseline, learning + exam.
 -- FORWARD-ONLY CONTENT REGISTRATION.  No schema/RLS changes or learner attempt writes.
 -- Canonical academic package: content/aya-arabic-g5-brochure-baseline-20261012-v2.json
--- Candidate source hash (authoring working bytes): SHA256 f6c85801706ccb41d9f0e4c8cb2a8696ab58c53f2da8f389ec2a642a37a7c5a8
+-- Candidate source hash (authoring working bytes): SHA256 b1837bbc953353d7d8c42c438163f56d5965075481988a3a9f128b65c160dc3d
 -- A new quiz/version is created: historical versions and attempts are left intact.
 do $aya_migration$
 declare
@@ -63,6 +63,22 @@ begin
   if jsonb_array_length(v_items) <> 40 then
     raise exception 'AYA_AR5_BROCHURE_PAYLOAD_COUNT_INVALID';
   end if;
+  -- On fresh CI reconstructions these three concepts have not been seeded.
+  -- Idempotent inserts retain existing Production learning history and ownership.
+  insert into public.learning_concepts(
+    workspace_id,subject_id,curriculum_id,code,title,description,grade_level,metadata
+  ) values
+    (v_workspace,v_arabic,v_curriculum,'arabic-g5-u1-brochure',
+     'تصميم المطويّة','مراحل تخطيط المطوية وإعدادها الفني واللغوي وعرضها الشفوي.',5,
+     jsonb_build_object('book_code','AR-LUGATI-G5-T1','pdf_pages',jsonb_build_array(7))),
+    (v_workspace,v_arabic,v_curriculum,'arabic-g5-u1-sentence-types',
+     'الجملة الاسمية والجملة الفعلية','تمييز نوع الجملة وفق البداية.',5,
+     jsonb_build_object('book_code','AR-LUGATI-G5-T1','pdf_pages',jsonb_build_array(8))),
+    (v_workspace,v_arabic,v_curriculum,'arabic-g5-u1-initial-hamza',
+     'الهمزة الأولية','همزتا الوصل والقطع في أوائل الكلمات.',5,
+     jsonb_build_object('book_code','AR-LUGATI-G5-T1','pdf_pages',jsonb_build_array(9)))
+  on conflict (workspace_id,code) do nothing;
+
   -- Guard the exact curriculum, grade, and subject of every reused learning concept.
   if exists(
     select 1 from jsonb_array_elements(v_items) item
