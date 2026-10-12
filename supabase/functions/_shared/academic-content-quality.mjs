@@ -7,7 +7,7 @@ const RAW_HTML_TAG_RE = /<\/?[a-z][a-z0-9-]*(?:\s+(?:(?:disabled|selected|checke
 const SOURCE_DEPENDENCY_PATTERNS = [
   /\bkitap(?:ta|taki|tan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkitaba\s+(?:g[oö]re|bak(?:arak)?|ba[sş]vur(?:arak)?)\b/iu,
-  /\bkitab[ıiuü]\s+(?:a[cç](?:ıp|arak)?|incele(?:yerek)?|kullan(?:arak)?)\b/iu,
+  /\bkitab[ıiuü]\s+(?:a[cç](?:ıp|arak)?|incele(?:yerek)?|kullan(?:arak)?)(?![\p{L}\p{N}_])/iu,
   /\bsayfaya\s+(?:bak(?:arak)?|git(?:erek)?|ba[sş]vur(?:arak)?|d[oö]n(?:erek)?)\b/iu,
   /\bsayfa(?:da|daki|dan)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,
   /\bkayna(?:kta|ktaki)\s+(?:verilen|yer\s+alan|bak(?:arak)?|incele(?:yerek)?|yararlan(?:arak)?)\b/iu,

@@ -120,6 +120,8 @@ const assertions=`
   update public.learning_programs set grade_level=7 where id='${ids.program}';update public.learning_concepts set grade_level=7 where workspace_id='${w}' and subject_id=(select id from public.subjects where code='qa-assessment-publication');
   result:=public.flh_learning_video_attach('${w}','${ids.parent}',video);perform pg_temp.check_assessment(result->>'ok'='true','authorized exact held attachment: '||coalesce(result->>'error','UNKNOWN'));
   result:=public.flh_learning_video_preview('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error'='QUIZ_NOT_FOUND','attached held version still hidden');
+  result:=public.flh_learner_journey_progress('${w}','${learner}',null);
+  perform pg_temp.check_assessment(result->>'error' is null and position('${ids.version}' in result::text)=0,'default assignment discovery excludes attached held versions without blocking unrelated progress');
   update public.workspace_settings set value='{"enabled":false,"test_only":true}' where workspace_id='${w}' and key='optional_learning_videos';
   begin perform ${cmd('release')};raise exception 'disabled video rollout released';exception when raise_exception then if sqlerrm<>'ASSESSMENT_VIDEO_GATE_FAILED' then raise;end if;end;
   perform pg_temp.check_assessment((select status='draft' from public.quizzes where id='${ids.quiz}'),'disabled preview keeps hold');
@@ -127,6 +129,8 @@ const assertions=`
   result:=${cmd('release')};perform pg_temp.check_assessment(result->>'state'='released','complete release succeeds');
   result:=${cmd('release')};perform pg_temp.check_assessment(result->>'duplicate'='true','release retry converges');
   perform pg_temp.check_assessment((select count(*)=1 from public.quiz_assignments where quiz_version_id='${ids.version}' and learner_id='${learner}'),'one intended assignment');
+  result:=public.flh_learner_journey_progress('${w}','${learner}',null);
+  perform pg_temp.check_assessment(result->>'error' is null and position('${ids.version}' in result::text)>0,'default assignment discovery includes released versions');
   result:=public.flh_learning_start('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released Learning accessible');
   result:=public.flh_exam_start('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released independent Exam accessible');
   result:=public.flh_learning_video_preview('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released verified video preview accessible');

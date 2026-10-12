@@ -191,6 +191,11 @@ assert.equal(poisoned.authenticated_network,undefined);
 assert.doesNotMatch(JSON.stringify(poisoned),/private|PASSWORD|sb_secret_/);
 assert.deepEqual(safeAuthenticatedFailure(Object.assign(new Error(syntheticPrivate),{name:'TimeoutError',qaHttpStatus:503,qaResponseError:syntheticPrivate})),{code:'BROWSER_TIMEOUT',http_status:503});
 assert.deepEqual(safeAuthenticatedFailure({message:syntheticPrivate,qaHttpStatus:1000,qaResponseError:syntheticPrivate}),{code:'UNCLASSIFIED'});
+for (const responseError of ['ASSESSMENT_DELIVERY_STATE_CONFLICT','ASSESSMENT_DELIVERY_INPUT_INVALID',
+  'ASSESSMENT_DELIVERY_EVIDENCE_INVALID','ASSESSMENT_DELIVERY_CONFLICT','ASSESSMENT_FORBIDDEN']) {
+  assert.deepEqual(safeAuthenticatedFailure({message:'QA_ASSESSMENT_FAILED',qaHttpStatus:409,qaResponseError:responseError}),
+    {code:'ASSESSMENT_FAILED',http_status:409,response_error:responseError},'Preserve only fixed delivery error identities');
+}
 try {
   await command(process.execPath, ['-e', `process.stdout.write(${JSON.stringify(syntheticPrivate)});process.stderr.write(${JSON.stringify('invalid config\n' + syntheticPrivate)});process.exit(23);`]);
 } catch (error) { processFailure = error; }

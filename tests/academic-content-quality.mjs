@@ -134,6 +134,21 @@ for (const [language, prompt] of [
   );
 }
 
+for (const prompt of ['Kitabı aç.', 'Kitabı aç', 'Kitabı aç ve 12. sayfayı oku.']) {
+  const externalBookPrompt = read('valid-package.json');
+  externalBookPrompt.questions[1].prompt_language = 'tr';
+  externalBookPrompt.questions[1].prompt = prompt;
+  assert.ok(validateAcademicPackage(externalBookPrompt).errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'The Turkish bare imperative must match before punctuation, whitespace or end of text');
+}
+for (const prompt of ['Kitabı açlık açısından ele al.', 'Kitabı açıklamalarla karşılaştır.']) {
+  const longerTurkishWord = read('valid-package.json');
+  longerTurkishWord.questions[1].prompt_language = 'tr';
+  longerTurkishWord.questions[1].prompt = prompt;
+  assert.ok(!validateAcademicPackage(longerTurkishWord).errors.some(x => x.code === 'EXTERNAL_SOURCE_DEPENDENCY'),
+    'The bare imperative must not match the prefix of a longer Turkish word');
+}
+
 const softSourceHint = read('valid-package.json');
 softSourceHint.questions[0].hints[0].content = 'Metinde geçen ifadeyi hatırla.';
 const softSourceHintResult = validateAcademicPackage(softSourceHint);
