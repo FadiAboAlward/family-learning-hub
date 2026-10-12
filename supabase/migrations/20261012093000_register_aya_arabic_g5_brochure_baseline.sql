@@ -37,7 +37,16 @@ begin
     and curriculum_id=v_curriculum and subject_id=v_arabic and grade_level=5 limit 1;
   if v_book is null then raise exception 'AYA_AR5_BROCHURE_BOOK_MISSING'; end if;
   select id into v_unit from public.units where book_id=v_book and slug='unit-1' limit 1;
-  if v_unit is null then raise exception 'AYA_AR5_BROCHURE_UNIT_MISSING'; end if;
+  if v_unit is null then
+    -- Freshly reconstructed CI databases can lack the book's first unit.
+    -- Create only this exact book-scoped unit if absent; keep any live unit untouched.
+    insert into public.units(book_id,slug,title,sort_order,metadata)
+    values(v_book,'unit-1','الوحدة الأولى — لغتي',1,'{}'::jsonb)
+    on conflict do nothing;
+    select id into v_unit from public.units
+      where book_id=v_book and slug='unit-1' limit 1;
+    if v_unit is null then raise exception 'AYA_AR5_BROCHURE_UNIT_MISSING'; end if;
+  end if;
   select id into v_program_subject from public.program_subjects
     where program_id=v_program and subject_id=v_arabic limit 1;
   if v_program_subject is null then raise exception 'AYA_AR5_BROCHURE_SUBJECT_MISSING'; end if;
