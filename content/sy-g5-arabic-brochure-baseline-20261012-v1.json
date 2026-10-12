@@ -339,7 +339,7 @@
       "difficulty_role": "support",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "سياق جديد: قررت سارة إعداد مطويّة عن السلامة أثناء اللعب في ساحة المدرسة. ما المعلومات التي يجب جمعها قبل تصميم الرسوم واختيار الخط؟",
+      "reasoning_signature": "كشف نقص محدد في حزمة بيانات موجودة",
       "context_type": "direct"
     },
     {
@@ -363,7 +363,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تحديد الجمهور من عبارة ندائية | exam",
+      "reasoning_signature": "تصحيح عدم ملاءمة المخاطبين للنطاق الجغرافي للنشاط",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -389,7 +389,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "سياق جديد: تعد مجموعة مطويّة عن عبور الطريق بأمان أمام المدرسة. أي رسم أكثر ملاءمة للهدف؟",
+      "reasoning_signature": "ترتيب المراحل الأربع لإعداد مطويّة بعد اكتمال العمل | exam",
       "context_type": "direct"
     },
     {
@@ -413,7 +413,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تحديد نقص معلومة تشغيلية | exam",
+      "reasoning_signature": "حل تعارض معلومات زمنية بالتحقق والتوحيد",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -426,7 +426,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تمييز التعليمات من الوصف | exam",
+      "reasoning_signature": "تلخيص إرشادين في رسالة واحدة تحافظ على معناهما",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -439,7 +439,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تصحيح همزة ضمن الضبط النهائي | exam",
+      "reasoning_signature": "تصحيح خطأ فصل الفاء عن فعل الأمر مع ضبط الوصل والترقيم",
       "context_type": "direct"
     },
     {
@@ -463,7 +463,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "كشف تناقض بين عناصر الرسالة | exam",
+      "reasoning_signature": "مراجعة تناقض بين معلومتين مكتوبتين والتحقق من حقيقتهما",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -476,7 +476,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تقويم إلقاء الإعلان الشفوي | exam",
+      "reasoning_signature": "تحسين أداء الإلقاء باستجابة موجهة لملاحظة مستمع",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -489,7 +489,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تطوير المطويّة بناء على استجابة جمهورها | exam",
+      "reasoning_signature": "إعادة ترتيب أولويات الإخراج وفق نتيجة تجربة قراءة",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -502,7 +502,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "مراجعة تصنيف بتركيب جديد | exam",
+      "reasoning_signature": "تحويل تركيب يبدأ باسم إلى فعل يبدأ به مع حفظ المعنى",
       "context_type": "direct"
     },
     {
@@ -513,7 +513,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "تمييز فعلية مع مفردات سياقية | exam",
+      "reasoning_signature": "تقويم تعليل نحوي خاطئ يتجاهل موقع الاسم في الجملة",
       "context_type": "direct"
     },
     {
@@ -524,7 +524,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "تحليل عبارتين مختلفتين في السياق | exam",
+      "reasoning_signature": "حل حالة حدّية: اسم يبدأ الجملة يليه فعل ضمن الخبر",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -537,7 +537,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
-      "reasoning_signature": "تصحيح همزة الوصل في صيغة أمر | exam",
+      "reasoning_signature": "الموازنة بين فعل رباعي مهموز القطع وفعل خماسي مهموز الوصل",
       "context_type": "direct"
     },
     {
@@ -548,7 +548,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
-      "reasoning_signature": "تطبيق سقوط همزة الوصل وسط الكلام | exam",
+      "reasoning_signature": "مقارنة نطق همزة الوصل في الابتداء والاتصال لنفس الاسم",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -1838,33 +1838,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "قررت سارة إعداد مطويّة عن السلامة أثناء اللعب في ساحة المدرسة. ما المعلومات التي يجب جمعها قبل تصميم الرسوم واختيار الخط؟",
+      "prompt": "فريق مطويّة عن سلامة اللعب جمع أسماء الألعاب ومواعيد الفسحة وأماكن الجلوس، لكن لا معلومة عن الأخطار. ما الذي ينبغي استكماله قبل الرسم؟",
       "options": [
         {
-          "content": "صور لألعاب متنوعة قبل اختيار قواعد السلامة",
+          "content": "تكبير العنوان قبل مراجعة المحتوى",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "صور الألعاب لا تكفي دون جمع القواعد الصحيحة للأمان.",
-          "position": 1
+          "distractor_rationale": "تكبير العنوان لا يضيف معلومات السلامة الناقصة."
         },
         {
-          "content": "أسماء المسابقات الرياضية غير المتعلقة بالأمان",
+          "content": "تغيير لون الغلاف فقط",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "أسماء مسابقات بعيدة عن السلامة لا تجيب عن خطر اللعب في الساحة.",
-          "position": 2
+          "distractor_rationale": "تغيير اللون لا يعالج غياب إرشادات الأمان."
         },
         {
-          "content": "ألوان اللافتات وأحجام الخطوط فقط",
+          "content": "إضافة أسماء الصفوف الأخرى",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "اختيار الألوان وأحجام الخطوط مرحلة تصميم لاحقة لجمع الإرشادات.",
-          "position": 3
+          "distractor_rationale": "أسماء الصفوف لا تشرح سلوك اللعب السليم."
         },
         {
-          "content": "إرشادات موثوقة عن اللعب الآمن في الساحة",
-          "is_correct": true,
-          "position": 4
+          "content": "جمع أخطار اللعب وقواعد تجنبها",
+          "position": 4,
+          "is_correct": true
         }
       ],
-      "explanation": "مرحلة جمع المعلومات تسبق التصميم، ومادتها هنا إرشادات اللعب الآمن ذات الصلة بموضوع المطويّة."
+      "explanation": "تفاصيل المكان والوقت لا تكفي لتعليم قواعد اللعب الآمن؛ فلا بد من بيانات عن الأخطار والتصرفات السليمة."
     },
     {
       "question_code": "SYAR-G5-20261012-E04",
@@ -1912,33 +1912,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "اقرئي: «يا سكان الشارع، نلتقي الأحد لطلاء المقاعد العامة». ما الجمهور الأول لهذا الإعلان؟",
+      "prompt": "مطويّة تدعو إلى صيانة مقاعد شارع واحد تبدأ «إلى جميع سكان البلاد» وتطلب الحضور إلى ذلك الشارع غداً. ما الإصلاح الأنسب؟",
       "options": [
         {
-          "content": "الطلاب الذين يدرسون في مدرسة أخرى حصراً",
+          "content": "حذف المكان والموعد حتى تبدو الدعوة عامة",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "تحديد طلاب مدرسة أخرى حصراً لا يتفق مع النداء المباشر لسكان الشارع.",
-          "position": 1
+          "distractor_rationale": "إخفاء المكان والموعد يعيق المشاركة ولا يحدد جمهورها."
         },
         {
-          "content": "سكان الشارع المعني",
-          "is_correct": true,
-          "position": 2
+          "content": "توجيه الخطاب إلى سكان الشارع القريبين مع توضيح موعد المشاركة",
+          "position": 2,
+          "is_correct": true
         },
         {
-          "content": "سكان الأحياء البعيدة من غير وصول إلى الشارع",
+          "content": "إضافة أخبار لا تخصّ المقاعد مع بقاء النداء الواسع",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "سكان الأحياء البعيدة ليسوا المخاطَبين أولاً بعبارة «يا سكان الشارع».",
-          "position": 3
+          "distractor_rationale": "الأخبار الإضافية لا تصلح مخاطبة جمهور أوسع من نطاق النشاط."
         },
         {
-          "content": "المسؤولون عن صيانة مقاعد المدينة كلها فقط",
+          "content": "تكبير صور المقاعد وترك المخاطبة كما هي",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "حصر الجمهور بفنيي الصيانة يضيف قيداً غير وارد في النداء.",
-          "position": 4
+          "distractor_rationale": "حجم الصور لا يغيّر من يتوجه إليه النداء."
         }
       ],
-      "explanation": "الجمهور يظهر من صيغة النداء والغرض المكاني للدعوة."
+      "explanation": "النداء المحدّد إلى سكان الشارع يطابق مكان النشاط ومن يستطيع المشاركة فيه."
     },
     {
       "question_code": "SYAR-G5-20261012-E06",
@@ -2060,33 +2060,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تدعو مطويّة إلى مسابقة للقراءة وتذكر الجائزة فقط، ولا تتضمن موعداً. ماذا يجب إضافة أولاً؟",
+      "prompt": "وجدت لجنة المراجعة في وجه المطويّة «تبدأ مسابقة القراءة الاثنين» وفي ظهرها «تبدأ الثلاثاء». ما أول إجراء قبل الطباعة؟",
       "options": [
         {
-          "content": "نوع الجوائز المقدمة من دون موعد",
+          "content": "حذف الموعدين والاكتفاء باسم المسابقة",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "زيادة تفاصيل الجوائز تترك القارئ دون معرفة موعد المشاركة.",
-          "position": 1
+          "distractor_rationale": "حذف الموعدين يمنع معرفة تاريخ المشاركة."
         },
         {
-          "content": "موعد المسابقة وكيفية الاشتراك",
-          "is_correct": true,
-          "position": 2
+          "content": "التحقق من الموعد الرسمي ثم توحيده في الموضعين",
+          "position": 2,
+          "is_correct": true
         },
         {
-          "content": "فكرة جديدة للغلاف بعد اختيار الألوان",
+          "content": "إبقاء اليومين ليختار كل قارئ منهما",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "فكرة الغلاف لا تحل غياب الموعد أو طريقة التسجيل.",
-          "position": 3
+          "distractor_rationale": "الاختيار بين تاريخين متناقضين لا يعطي معلومة موثوقة."
         },
         {
-          "content": "نبذة عن تاريخ المسابقات من دون معلومات المشاركة",
+          "content": "تغيير صورة الغلاف لإخفاء اختلاف الموعدين",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "تاريخ المسابقات لا يخبر القارئ متى يشارك في المسابقة الحالية.",
-          "position": 4
+          "distractor_rationale": "تغيير الصورة لا يصحح أيّاً من اليومين."
         }
       ],
-      "explanation": "غياب الموعد يمنع الجمهور من اتخاذ قرار المشاركة."
+      "explanation": "على الفريق التثبت من اليوم الحقيقي وتصحيح الجانبين حتى يتلقى القارئ موعداً واحداً صحيحاً."
     },
     {
       "question_code": "SYAR-G5-20261012-E10",
@@ -2097,33 +2097,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في مطويّة عن الحفاظ على الماء، أي عبارة تطلب من القارئ تصرفاً محدداً؟",
+      "prompt": "في مطويّة لترشيد الماء إرشادان: «أغلق الصنبور بعد الاستخدام» و«أبلغ شخصاً بالغاً إذا وجدت تسرباً». أي خاتمة تلخص الإرشادين دون إضافة معلومات؟",
       "options": [
         {
-          "content": "الماء من أهم الموارد الطبيعية",
+          "content": "الماء موجود في أماكن كثيرة",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "شرح أهمية الماء يعطي معلومة عامة ولا يطلب سلوكاً محدداً.",
-          "position": 1
+          "distractor_rationale": "المعلومة العامة لا تلخص الخطوتين."
         },
         {
-          "content": "توجد مصادر عديدة للمياه",
+          "content": "إن الحديث عن الماء أمر جميل",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "ذكر مصادر الماء معرفة وصفية لا تعليمات تنفيذية للقارئ.",
-          "position": 2
+          "distractor_rationale": "العبارة الإنشائية لا تعيد الإرشادين المحددين."
         },
         {
-          "content": "أغلق الصنبور أثناء تنظيف أسنانك",
-          "is_correct": true,
-          "position": 3
+          "content": "أغلق الصنبور عند انتهاء حاجتك وأخبر شخصاً بالغاً عن التسرب",
+          "position": 3,
+          "is_correct": true
         },
         {
-          "content": "من الجميل أن نتحدث عن المحافظة على الموارد",
+          "content": "لا حاجة لتغيير أي سلوك، فالماء مفيد",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الحديث عن جمال النقاش لا يوجّه القارئ إلى عمل يحفظ الماء.",
-          "position": 4
+          "distractor_rationale": "هذا البديل يلغي الإجراءات التي أوصت بها المطويّة."
         }
       ],
-      "explanation": "الدعوة المؤثرة تتضمن سلوكاً عملياً قابلاً للتنفيذ."
+      "explanation": "الخاتمة الدقيقة تجمع خطوة إغلاق الصنبور وخطوة الإبلاغ عن التسرب دون إلغاء أي منهما."
     },
     {
       "question_code": "SYAR-G5-20261012-E11",
@@ -2134,33 +2134,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "ما الهدف من التدقيق اللغوي الذي يسبق توزيع المطويّة؟",
+      "prompt": "كتبت تلميذة في المطويّة: «القراءة نافعة فا حافظوا على كتبكم». أي صياغة صحيحة في مرحلة المراجعة اللغوية؟",
       "options": [
         {
-          "content": "فحص الصور فقط لأن الكلمات لا تؤثر في المعنى",
+          "content": "القراءة نافعة فا حافظوا على كتبكم",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "مراجعة الصور فقط تتجاهل احتمال تغيير الخطأ الكتابي معنى الرسالة.",
-          "position": 1
+          "distractor_rationale": "الخطأ «فا حافظوا» ما زال كما هو."
         },
         {
-          "content": "تغيير حجم العنوان بدلاً من مراجعة العبارات",
+          "content": "القراءة نافعة فاحافظوا على كتبكم",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "تعديل العنوان شكلياً لا يكشف أخطاء العبارات.",
-          "position": 2
+          "distractor_rationale": "إضافة ألف بعد الفاء تغيّر رسم «فحافظوا» الصحيح."
         },
         {
-          "content": "استبدال الخط وإبقاء الأخطاء الكتابية نفسها",
+          "content": "القراءة نافعة، فا حافظوا على كتبكم",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "استبدال الخط لا يعد مراجعة إملائية للكلمات الخاطئة.",
-          "position": 3
+          "distractor_rationale": "وضع فاصلة فقط لا يصلح الفصل الخاطئ للفاء عن الفعل."
         },
         {
-          "content": "ضمان خلو العبارات من الأخطاء الإملائية",
-          "is_correct": true,
-          "position": 4
+          "content": "القراءة نافعة، فحافظوا على كتبكم",
+          "position": 4,
+          "is_correct": true
         }
       ],
-      "explanation": "المراجعة النهائية تشمل رسم الهمزة الصحيحة للكلمات."
+      "explanation": "تلتصق فاء الربط بفعل الأمر «حافظوا» من غير ألف زائدة، وتساعد الفاصلة على الفصل بين المعنيين."
     },
     {
       "question_code": "SYAR-G5-20261012-E12",
@@ -2208,33 +2208,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "عند مراجعة مطويّة مكافحة الهدر الغذائي وجد الفريق أن العنوان يقول «لا ترمِ الطعام» بينما الصور تحتفي برميه. ما الخلل؟",
+      "prompt": "كتب الفريق على غلاف مطويّة جمع الورق «موعد الجمع الخميس» وفي تعليماتها «أحضروا الورق الجمعة». ما أول إصلاح مطلوب؟",
       "options": [
         {
-          "content": "الصورة أصغر من مساحة الورقة",
+          "content": "زيادة صور صناديق جمع الورق",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "حجم الصورة وحده لا يفسر مخالفتها مضمون العنوان.",
-          "position": 1
+          "distractor_rationale": "الصور لا تصلح تعارض الموعدين."
         },
         {
-          "content": "تعارض الصورة مع رسالة العنوان",
-          "is_correct": true,
-          "position": 2
+          "content": "التحقق من يوم الجمع الصحيح ثم توحيد المعلومة في الوجهين",
+          "position": 2,
+          "is_correct": true
         },
         {
-          "content": "العنوان مختصر أكثر من اللازم",
+          "content": "تغيير لون الحروف مع إبقاء الموعدين",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "اختصار العنوان ليس العيب، بل تناقض محتواه مع الصورة.",
-          "position": 3
+          "distractor_rationale": "اللون لا يعالج خطأ زمنياً في المعلومة."
         },
         {
-          "content": "غياب أسماء أعضاء الفريق من نهاية النص",
+          "content": "حذف العنوان فقط وترك الموعدين",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "غياب أسماء أعضاء الفريق لا يفسر الرسالة المرئية المتعارضة.",
-          "position": 4
+          "distractor_rationale": "حذف العنوان لا يؤكد اليوم الصحيح."
         }
       ],
-      "explanation": "الرسوم ينبغي ألا تناقض الدعوة المكتوبة."
+      "explanation": "تعارض اليومين مشكلة في دقة البيانات، فيجب التأكد من الموعد الصحيح ثم إصلاح الصيغتين."
     },
     {
       "question_code": "SYAR-G5-20261012-E14",
@@ -2245,33 +2245,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "ألقى تلميذ إعلاناً عن تنظيف الحي بصوت منخفض جداً ومن دون ذكر فائدة العمل؛ كيف يُحسّن الإقناع؟",
+      "prompt": "بعد عرض مطويّة عن إطفاء الأنوار، قالت مستمعة: «لم أسمع آخر خطوة، وكان كلامك سريعاً». ما التصرف الأنسب عند إعادة العرض؟",
       "options": [
         {
-          "content": "أن يمدح جمال الرسوم بصوت مرتفع فقط",
+          "content": "مدح زخرفة المطويّة بدلاً من شرح الخطوة",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "مدح الرسوم بصوت مرتفع لا يذكر منفعة تنظيف الحي ولا خطواته.",
-          "position": 1
+          "distractor_rationale": "تجميل الشكل لا يعيد الجزء الذي لم تسمعه المستمعة."
         },
         {
-          "content": "أن يطلب المشاركة دون شرح فائدة النشاط",
+          "content": "زيادة سرعة القراءة حتى ينتهي العرض",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "الطلب من دون بيان الفائدة لا يعطي سبباً مقنعاً للمشاركة.",
-          "position": 2
+          "distractor_rationale": "السرعة الزائدة تجعل متابعة الكلام أصعب."
         },
         {
-          "content": "يشرح الفائدة بصوت مسموع ويذكر طريقة المشاركة",
-          "is_correct": true,
-          "position": 3
+          "content": "إعادة الخطوة الأخيرة بصوت مسموع وببطء مناسب",
+          "position": 3,
+          "is_correct": true
         },
         {
-          "content": "أن يقرأ موعد التنظيف بصوت منخفض ويخفي الهدف",
+          "content": "حذف التعليمات التفصيلية حتى لا يضطر لقراءتها",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "قراءة الموعد همساً مع إخفاء الهدف يضعف الفهم بدلاً من تقويته.",
-          "position": 4
+          "distractor_rationale": "حذف التعليمات يمنع إيصال الفائدة المطلوبة."
         }
       ],
-      "explanation": "العرض الشفوي المؤثر يوضح الهدف ويشجع السكان على المشاركة."
+      "explanation": "تعديل مستوى الصوت والسرعة يساعد المستمعة على سماع الخطوة الأخيرة وفهمها."
     },
     {
       "question_code": "SYAR-G5-20261012-E15",
@@ -2282,33 +2282,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "بعد توزيع مطويّة «وفّر الكهرباء» وصلت أسئلة كثيرة عن كيفية التنفيذ. أي إضافة تصحح القصور مباشرة؟",
+      "prompt": "في تجربة قراءة مطويّة حفظ الطعام لم تنتبه القارئات إلى الإرشاد المهم؛ لأنه وُضع بخط صغير أسفل الصفحة تحت صور ضخمة. ما التعديل الأكثر فاعلية؟",
       "options": [
         {
-          "content": "إعادة كتابة العنوان بحروف أكبر دون تقديم إرشادات",
+          "content": "إطالة مقدمة المطويّة مع إبقاء الإرشاد أسفل الصور",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "تكبير العنوان يزيد لفت النظر ولا يوضح كيف نوفر الكهرباء.",
-          "position": 1
+          "distractor_rationale": "المقدمة الطويلة لا تعالج عدم انتباه القارئات إلى الإرشاد."
         },
         {
-          "content": "إضافة صور أجهزة كهربائية كثيرة من غير تعليمات",
+          "content": "إضافة صور كبيرة أخرى فوق النص",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "الصور وحدها لا تكفي لتعليم سلوكين قابلين للتطبيق.",
-          "position": 2
+          "distractor_rationale": "زيادة الصور تكرر سبب إخفاء المعلومة المهمة."
         },
         {
-          "content": "الحديث عن أهمية الكهرباء مرة أخرى دون سلوك محدد",
+          "content": "نقل الإرشاد إلى هامش صغير في الخلف",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "تكرار أهمية الكهرباء لا يجيب عن سؤال السكان: ماذا نفعل؟",
-          "position": 3
+          "distractor_rationale": "الهامش الصغير يزيد احتمال تجاهل القارئ للخطوة."
         },
         {
-          "content": "قائمة قصيرة بسلوكين واضحين لتقليل الاستهلاك",
-          "is_correct": true,
-          "position": 4
+          "content": "إبراز الإرشاد الأساسي بحجم مقروء وموقع واضح مع تقليل تزاحم الصور",
+          "position": 4,
+          "is_correct": true
         }
       ],
-      "explanation": "التعليمات العملية تحول الرسالة العامة إلى أفعال."
+      "explanation": "المشكلة في وضوح الإرشاد ومكانه، لذلك تُبرز الخطوة الأساسية بدلاً من دفنها أسفل الزينة."
     },
     {
       "question_code": "SYAR-G5-20261012-E16",
@@ -2319,33 +2319,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في الإعلان «الحديقةُ جميلةٌ»، ما نوع الجملة وفق القاعدة؟",
+      "prompt": "تريد محررة مطويّة تحويل «التلاميذُ يحافظون على النظافة» من جملة اسمية إلى فعلية دون تغيير الفكرة. ما الصياغة المطلوبة؟",
       "options": [
         {
-          "content": "اسمية لأنها بدأت باسم",
-          "is_correct": true,
-          "position": 1
+          "content": "يحافظُ التلاميذُ على النظافة",
+          "position": 1,
+          "is_correct": true
         },
         {
-          "content": "فعلية لأن الوصف خبرها",
+          "content": "التلاميذُ يهتمّون بالنظافة",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "وجود وصف في الخبر لا يجعل الجملة فعلية إذا بدأت باسم.",
-          "position": 2
+          "distractor_rationale": "البديل يبدأ بالاسم «التلاميذ» ويبقى اسمياً."
         },
         {
-          "content": "اسمية لأنها تتحدث عن حديقة",
+          "content": "النظافةُ يحافظ عليها التلاميذُ",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "موضوع الحديث عن حديقة لا يكفي للحكم على نوع الجملة.",
-          "position": 3
+          "distractor_rationale": "البديل يبدأ بالاسم «النظافة» رغم وجود فعل بعده."
         },
         {
-          "content": "فعلية لأن الكلمة الأخيرة فيها صفة",
+          "content": "التلاميذُ يحافظون على الحديقة",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الصفة في نهاية العبارة ليست فعلاً ولا تحدد تصنيف بدايتها.",
-          "position": 4
+          "distractor_rationale": "البديل يبقى اسمياً ويغيّر موضوع المحافظة إلى الحديقة."
         }
       ],
-      "explanation": "بداية الجملة باسم هي العلامة المميزة للجملة الاسمية."
+      "explanation": "الصياغة تبدأ بالفعل «يحافظ» وتُبقي الفاعلين وموضوع المحافظة على النظافة."
     },
     {
       "question_code": "SYAR-G5-20261012-E17",
@@ -2356,33 +2356,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "اقرئي: «تتعاونُ الأسرُ لتنظيف الحي». ما دليل أنها جملة فعلية؟",
+      "prompt": "قال تلميذ إن «تتفتّحُ الأزهارُ في الربيع» جملة اسمية لأن فيها كلمة «الأزهار». لماذا لا يصح هذا التعليل؟",
       "options": [
         {
-          "content": "اسمية لأن الأسر اسم في وسطها",
+          "content": "لأن وجود أي اسم في الجملة يجعلها اسمية بالفعل",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "وقوع «الأسر» بعد الكلمة الأولى لا يجعل البداية اسمية.",
-          "position": 1
+          "distractor_rationale": "وجود اسم في أي موضع لا يحدد نوع بداية الجملة."
         },
         {
-          "content": "افتتحت بفعل مضارع",
-          "is_correct": true,
-          "position": 2
+          "content": "لأن الجملة بدأت بالفعل «تتفتّح» لا بالاسم «الأزهار»",
+          "position": 2,
+          "is_correct": true
         },
         {
-          "content": "فعلية لأن فيها حرف الجر لتنظيف",
+          "content": "لأن كلمة الربيع تحدد نوع كل جملة",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "وجود حرف جر في بقية الجملة لا يجعلها فعلية؛ المعيار أول كلمة.",
-          "position": 3
+          "distractor_rationale": "«الربيع» ليس الكلمة الأولى ولا يغيّر نوع البداية."
         },
         {
-          "content": "اسمية لأنها تتحدث عن التعاون",
+          "content": "لأن الجمل الطويلة وحدها تكون اسمية",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "موضوع التعاون معنى دلالي لا يحدد نوع التركيب النحوي.",
-          "position": 4
+          "distractor_rationale": "طول الجملة لا يحدد أهي اسمية أم فعلية."
         }
       ],
-      "explanation": "العبرة بأول كلمة في تحديد النوع هنا."
+      "explanation": "وجود اسم بعد الفعل لا يغيّر البداية الفعلية للجملة."
     },
     {
       "question_code": "SYAR-G5-20261012-E18",
@@ -2393,33 +2393,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "عند كتابة المطويّة استُعملت عبارتان: «الساحةُ نظيفةٌ» و«نظفتْ سلمى الساحةَ». أي وصف دقيق؟",
+      "prompt": "حكمت مريم على «العمالُ يزرعون الأشجار» بأنها جملة فعلية لوجود «يزرعون». أي تقويم لحكمها صحيح؟",
       "options": [
         {
-          "content": "الأولى فعلية والثانية اسمية",
+          "content": "حكمها صحيح لأن كل جملة بها فعل تكون فعلية",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "الخيار يعكس النوعين لأن العبارة الأولى تبدأ باسم والثانية بفعل.",
-          "position": 1
+          "distractor_rationale": "وجود فعل بعد الاسم لا يغيّر الكلمة التي بدأت بها الجملة."
         },
         {
-          "content": "كلتاهما فعلية لوجود معنى التنظيف",
+          "content": "حكمها صحيح لأن العمال جمع",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "وجود معنى التنظيف لا يعني بدء المثالين بفعل.",
-          "position": 2
+          "distractor_rationale": "المفرد والجمع لا يحددان نوع الجملة."
         },
         {
-          "content": "الأولى اسمية والثانية فعلية",
-          "is_correct": true,
-          "position": 3
+          "content": "حكمها غير صحيح؛ إنها اسمية لأنها بدأت باسم «العمال»",
+          "position": 3,
+          "is_correct": true
         },
         {
-          "content": "كلتاهما اسمية لوجود كلمة الساحة",
+          "content": "حكمها غير صحيح؛ إنها فعلية لأنها بدأت باسم",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "تكرار «الساحة» داخل المثالين لا يعني بدء كل منهما باسم.",
-          "position": 4
+          "distractor_rationale": "الاختيار متناقض لأنه يصف بداية اسمية بأنها جملة فعلية."
         }
       ],
-      "explanation": "تبدأ الأولى باسم وتبدأ الثانية بفعل ماضٍ."
+      "explanation": "الجملة اسمية لأن أول كلمة فيها «العمال»، ولا يجعل الفعل اللاحق بدايتها فعلية."
     },
     {
       "question_code": "SYAR-G5-20261012-E19",
@@ -2430,33 +2430,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "كتبت تلميذة: «إِزرعْ شجرةً قرب البيت». كيف تُكتب صيغة الأمر الصحيحة من الفعل «زرع»؟",
+      "prompt": "ورد في مطويّة المدرسة «أَحسَنَ الجارُ» و«استمعَ الطالبُ». ما نوع الهمزة الأولى في كل فعل بالترتيب؟",
       "options": [
         {
-          "content": "«أَزرعْ» بهمزة قطع",
+          "content": "كلتاهما وصل لأنهما فعلان",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "همزة القطع فوق الألف لا تناسب صيغة الأمر الثلاثي «ازرع».",
-          "position": 1
+          "distractor_rationale": "ليس كل فعل ماضٍ بهمزة وصل؛ الرباعي «أحسن» قطع."
         },
         {
-          "content": "«إِزرعْ» بهمزة تحت الألف",
+          "content": "الأولى وصل والثانية قطع",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "كسر الهمزة أسفل الألف لا يكتب به فعل الأمر المبدوء بهمزة وصل.",
-          "position": 2
+          "distractor_rationale": "هذا يعكس حال الهمزتين الصحيح."
         },
         {
-          "content": "«زرعْ» بحذف ألف بداية فعل الأمر",
+          "content": "كلتاهما قطع لأنهما في الماضي",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "حذف ألف الوصل من الرسم الخطي يترك صيغة الأمر ناقصة.",
-          "position": 3
+          "distractor_rationale": "همزة الفعل الخماسي ليست كهمزة الفعل الرباعي."
         },
         {
-          "content": "«ازرعْ» بهمزة وصل",
-          "is_correct": true,
-          "position": 4
+          "content": "الأولى قطع والثانية وصل",
+          "position": 4,
+          "is_correct": true
         }
       ],
-      "explanation": "أمر الثلاثي «زرع» على وزن «افعل» يبدأ بهمزة وصل."
+      "explanation": "تُكتب همزة «أحسن» قطعاً، وهمزة «استمع» وصلاً، لا بحسب كونهما فعلين في الماضي فقط."
     },
     {
       "question_code": "SYAR-G5-20261012-E20",
@@ -2467,33 +2467,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في العبارة «وانظرْ إلى اللافتة»، ما حال همزة الوصل في «انظر» عند النطق المتصل بالواو؟",
+      "prompt": "قارني نطق أول «اسم» في «اسمُ المدرسة جميل» بنطقه بعد الواو في «واسمُ المدرسة جميل». أي حكم صحيح؟",
       "options": [
         {
-          "content": "لا يُنطق صوتها مستقلاً في الوصل",
-          "is_correct": true,
-          "position": 1
+          "content": "تُنطق همزة الوصل عند الابتداء ولا ينطق صوتها مستقلاً بعد الواو عند الوصل",
+          "position": 1,
+          "is_correct": true
         },
         {
-          "content": "تثبت في الوصل كما تثبت همزة القطع",
+          "content": "تُحذف الألف من الكتابة في الموضعين",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "بقاء صوت الهمزة في الوصل يصف همزة القطع لا الوصل.",
-          "position": 2
+          "distractor_rationale": "بقاء الألف في الرسم لا يعني ثبوت صوت الهمزة في الوصل."
         },
         {
-          "content": "تتحول إلى همزة قطع بسبب الواو",
+          "content": "يجب نطق الهمزة في الحالين لأنها همزة قطع",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "دخول الواو لا يحول الهمزة المكتوبة إلى قطع.",
-          "position": 3
+          "distractor_rationale": "«اسم» يبدأ بهمزة وصل، لا قطع."
         },
         {
-          "content": "لا يمكن وصل الواو بفعل الأمر",
+          "content": "تصبح همزة قطع بعد إضافة الواو",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "يمكن وصل واو العطف بفعل الأمر، فلا مانع نحوي هنا.",
-          "position": 4
+          "distractor_rationale": "إضافة الواو لا تغيّر نوع الهمزة إلى قطع."
         }
       ],
-      "explanation": "همزة الوصل تثبت في بدء النطق وتسقط في الوصل."
+      "explanation": "همزة «اسم» وصل؛ تُنطق في بدء الكلام وتسقط من النطق عند وصلها بما قبلها."
     }
   ],
   "video_candidate": null,
@@ -2511,8 +2511,8 @@
     "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "40 prompt/answer pairs and 80 hints source-reviewed against PDF p7–9; misconceptions rewritten option by option; grammar hints directly classify the first word; every prompt is self-contained. MCQ baseline does not itself demonstrate a pupil can create a brochure or deliver a presentation.",
-    "warning_disposition": "Automated validator universally requests a semantic review; semantic review performed on this exact revision, including individual reasons for every wrong option and contextual hint progression. Follow up separately with a physical/written and oral brochure performance exercise.",
+    "review_findings": "A specific re-review addressed Codex review findings on Learning/Exam reasoning-form mirrors: 13 Exam tasks now use diagnosis of conflicting information, targeted revision, error analysis, synthesis, syntactic conversion and comparison rather than replaying corresponding Learning tasks; E07 blueprint signature describes sequencing. Source-grounded PDF p7–9, four-level Learning hints unchanged. Performance-based creation/oral-presentation follow-up remains separate.",
+    "warning_disposition": "Deterministic validator always requests semantic review; newly rewritten Exam items have distinct authored prompts, options, answer rationales and tracked reasoning signatures; exact candidate and embedded SQL answers are checked by the unit test. No student-result publication implied.",
     "approval_scope": "Anonymized curriculum-aligned baseline package; content QA passed; production and optional video remain distinct unverified delivery gates.",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
