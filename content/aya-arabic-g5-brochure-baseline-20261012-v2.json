@@ -1,0 +1,2510 @@
+{
+  "package_id": "AYA-AR5-20261012-BROCHURE-BASELINE-V2",
+  "status": "ACADEMIC_SEMANTIC_REVIEW_PENDING",
+  "academic_context": {
+    "student_ref": "Aya",
+    "grade": "5",
+    "curriculum": "Syria - Arabic language Grade 5",
+    "subject": "Arabic Language",
+    "book_code": "AR-LUGATI-G5-T1",
+    "confirmed_scope": "Syrian curriculum Unit 1 through PDF page 9; live October 6 Learning and Exam completed; PDF page 7 brochure not assessed",
+    "learner_state_ref": "https://docs.google.com/document/d/1ToTMbs9B1TM1T1vXoo_4aRY1bv1wksQ327cSs1vgkfw/edit",
+    "next_target": "PDF page 7 brochure design and oral presentation — baseline on four authored design stages; limited sentence and hamza retrieval",
+    "evidence_refs": [
+      "Verified live 2026-10-06 Learning 20/20 and Exam 19/20, Arabic G5",
+      "Supabase concept mastery: initial hamza 88.46%, sentence types 93.75%, reading 100%",
+      "Project Source AR-LUGATI-G5-T1 p7 brochure sequence; brochure has no evidence"
+    ],
+    "concept_targets": [
+      {
+        "concept_code": "arabic-g5-u1-brochure",
+        "state": "UNKNOWN_BASELINE",
+        "target_difficulty": 2,
+        "evidence_refs": [
+          "No submitted learner attempt specifically validating brochure design steps or applied oral persuasion in available history"
+        ]
+      },
+      {
+        "concept_code": "arabic-g5-u1-sentence-types",
+        "state": "MASTERED",
+        "target_difficulty": 4,
+        "evidence_refs": [
+          "Supabase learner_concept_mastery 93.75% on 2026-10-06; spaced review and transfer only"
+        ]
+      },
+      {
+        "concept_code": "arabic-g5-u1-initial-hamza",
+        "state": "DEVELOPING",
+        "target_difficulty": 3,
+        "evidence_refs": [
+          "Supabase learner_concept_mastery 88.46%; single error in Exam 2026-10-06 on hamza attached to waw; brief review"
+        ]
+      }
+    ],
+    "coverage_plan": {
+      "ordered_scope_ref": "AR-LUGATI-G5-T1 PDF pages 5 golden fish, 7 brochure/oral presentation, 8 nominal/verbal sentence, 9 initial hamza",
+      "coverage_cursor": "PDF p7 — brochure skill is earliest unassessed target",
+      "cursor_order": 2,
+      "next_sequential_target": "PDF p7 — brochure design, content planning, art direction, proofing and oral invitation baseline",
+      "next_target_order": 2,
+      "decision": "BASELINE",
+      "primary_target_concepts": [
+        "arabic-g5-u1-brochure"
+      ],
+      "evidence_refs": [
+        "Live mastery 2026-10-06 supports restricting previously practiced language concepts to retrieval; no verified brochure performance"
+      ]
+    }
+  },
+  "runtime_external_dependencies": [],
+  "blueprint": [
+    {
+      "question_code": "AYA-AR5-20261012-L01",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "اختيار موضوع مشروع ذي غاية محددة | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L02",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "صياغة عنوان مرتبط بغاية اجتماعية | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L03",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "سياق جديد: تريد ريم إعداد مطويّة ترشد زميلاتها إلى ترشيد استهلاك الماء. بعد أن حددت الموضوع، ماذا عليها أن تجمع قبل اختيار الصور والخطوط؟",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L04",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تمييز معلومة عملية من مشتتات | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L05",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "استنتاج الجمهور من الخطاب | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L06",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تمييز الملاءمة قبل التزيين | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L07",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "سياق جديد: تصمّم مريم مطويّة عن عبور الطريق بأمان قرب المدرسة. أي صورة تخدم رسالة المطويّة مباشرة؟",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L08",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "مواءمة الخط مع جمهور محدد | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L09",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تقييم بيانات المشاركة اللازمة | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L10",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تمييز دعوة للفعل ضمن النص | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L11",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "مراجعة خطأ لغوي في نسخة نهائية | learning",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L12",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تحسين تسلسل المحتوى | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L13",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "فحص اتساق عناصر التصميم | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L14",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "مقارنة عرض شفوي بناء على الأثر | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L15",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تشخيص نقص الدعوة للفعل وإصلاحه | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L16",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "مراجعة نوع الجملة وفق أول كلمة | learning",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L17",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "تفسير تصنيف جملة جديدة | learning",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L18",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 5,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "نقل معيار النوع بين صياغتين | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L19",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "reasoning_signature": "مراجعة الرسم دون افتراض وجوب همزة | learning",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L20",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "reasoning_signature": "تثبيت نطق قطع عند الوصل | learning",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E01",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تحديد الموضوع في مشروع بيئي مختلف | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E02",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "إبداع عنوان لخدمة عامة | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E03",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "سياق جديد: قررت سارة إعداد مطويّة عن السلامة أثناء اللعب في ساحة المدرسة. ما المعلومات التي يجب جمعها قبل تصميم الرسوم واختيار الخط؟",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E04",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "اختيار توجيه قابل للتنفيذ | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E05",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تحديد الجمهور من عبارة ندائية | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E06",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تقييم جودة الدليل التوعوي | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E07",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "سياق جديد: تعد مجموعة مطويّة عن عبور الطريق بأمان أمام المدرسة. أي رسم أكثر ملاءمة للهدف؟",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E08",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "فحص التباين البصري دون الاعتماد على لون محدد | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E09",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تحديد نقص معلومة تشغيلية | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E10",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تمييز التعليمات من الوصف | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E11",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تصحيح همزة ضمن الضبط النهائي | exam",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E12",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "حل تعارض صورة ونص أثناء الإخراج | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E13",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "كشف تناقض بين عناصر الرسالة | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E14",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تقويم إلقاء الإعلان الشفوي | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E15",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "reasoning_signature": "تطوير المطويّة بناء على استجابة جمهورها | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E16",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "مراجعة تصنيف بتركيب جديد | exam",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E17",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "تمييز فعلية مع مفردات سياقية | exam",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E18",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 5,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "reasoning_signature": "تحليل عبارتين مختلفتين في السياق | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E19",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "reasoning_signature": "تصحيح همزة الوصل في صيغة أمر | exam",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E20",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "reasoning_signature": "تطبيق سقوط همزة الوصل وسط الكلام | exam",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+    }
+  ],
+  "questions": [
+    {
+      "question_code": "AYA-AR5-20261012-L01",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تريد مجموعة من التلميذات إعداد مطويّة تشجّع سكان الحي على تنظيف الحديقة العامة. ما الموضوع الأنسب لهنّ؟",
+      "options": [
+        {
+          "content": "المحافظة على نظافة الحديقة",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "تزيين الحديقة بالورود من غير المشاركة في تنظيفها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تزيين الحديقة بالورود من غير المشاركة في تنظيفها» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "نشر صور الحديقة فقط من دون دعوة إلى نشاط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نشر صور الحديقة فقط من دون دعوة إلى نشاط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "التعريف بتاريخ الحديقة بدلاً من تنظيم حملة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «التعريف بتاريخ الحديقة بدلاً من تنظيم حملة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "موضوع المطويّة يتبع الفعالية المقصودة وجمهورها.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: تنظيف حديقة الحي. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تحديد موضوع مطويّة يخدم نشاطاً واحداً. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: علاقة الموضوع بالفعل المطلوب من السكان. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من تنظيف حديقة الحي. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: جمال الحديث عن الحديقة لا يكفي لتنظيم تنظيفها. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: علاقة الموضوع بالفعل المطلوب من السكان. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: اسألي إن كان القارئ سيعرف النشاط المقصود من عنوان الموضوع وحده. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: علاقة الموضوع بالفعل المطلوب من السكان. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L02",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "كتبت آية عنواناً لمطويّة تريد توزيعها على أهل الحي لجمع الكتب المستعملة لمكتبة صغيرة. أي عنوان يخدم الهدف أكثر؟",
+      "options": [
+        {
+          "content": "المكتبة أجمل مكان للقراءة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «المكتبة أجمل مكان للقراءة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "كتابك القديم معرفة جديدة لغيرك",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "الكتب الجديدة في الأسواق",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الكتب الجديدة في الأسواق» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "قائمة بمواعيد زيارة المكتبة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «قائمة بمواعيد زيارة المكتبة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "يخبر العنوان القارئ بقضية المطوية ويشجعه على المشاركة.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: التبرع بكتب مستعملة لإنشاء مكتبة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي صياغة عنوان يجمع الغرض والفائدة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: كيف يفهم المتبرع قيمة كتاب لم يعد يحتاجه. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من التبرع بكتب مستعملة لإنشاء مكتبة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: العنوان العام عن القراءة لا يوضح لماذا يحتاج أهل الحي إلى التبرع. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: كيف يفهم المتبرع قيمة كتاب لم يعد يحتاجه. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: قيسي قدرة العنوان على تحويل كتاب مهمل إلى فرصة لغير صاحبه. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: كيف يفهم المتبرع قيمة كتاب لم يعد يحتاجه. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L03",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تريد ريم إعداد مطويّة ترشد زميلاتها إلى ترشيد استهلاك الماء. بعد أن حددت الموضوع، ماذا عليها أن تجمع قبل اختيار الصور والخطوط؟",
+      "options": [
+        {
+          "content": "صور جميلة عن الأنهار قبل التأكد من المعلومات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «صور جميلة عن الأنهار قبل التأكد من المعلومات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "ألوان هادئة للغلاف قبل جمع الحقائق",
+          "is_correct": false,
+          "distractor_rationale": "البديل «ألوان هادئة للغلاف قبل جمع الحقائق» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "معلومات موثوقة ومرتبطة بطرق ترشيد الماء",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "خط كبير للعناوين دون إعداد الإرشادات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «خط كبير للعناوين دون إعداد الإرشادات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "بعد تحديد الموضوع تجمع ريم معلومات موثوقة عن طرق ترشيد الماء، ثم تنتقل إلى الإعداد الفني.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: توفير الماء بين التلميذات. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي الانتقال من تحديد الموضوع إلى جمع المعلومات. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: الفرق بين حقائق الإرشاد وعناصر الشكل الفني. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من توفير الماء بين التلميذات. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: البدء بالرسوم قبل معرفة الإرشادات يضع الزينة قبل المحتوى. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: الفرق بين حقائق الإرشاد وعناصر الشكل الفني. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: راجعي أي خطوة تعطي الطالبة مادة صحيحة لتضعها لاحقاً داخل المطويّة. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: الفرق بين حقائق الإرشاد وعناصر الشكل الفني. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L04",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تُعدّ هدى مطويّة لتوجيه الجيران إلى فرز النفايات. أي معلومة تصلح لقسم الإرشادات؟",
+      "options": [
+        {
+          "content": "اخلط الزجاج والورق لتقليل عدد الحاويات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اخلط الزجاج والورق لتقليل عدد الحاويات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "ضع بقايا الطعام فوق الأوراق المستخدمة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «ضع بقايا الطعام فوق الأوراق المستخدمة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "غيّر لون سلة النفايات ولا تغيّر طريقة الفرز",
+          "is_correct": false,
+          "distractor_rationale": "البديل «غيّر لون سلة النفايات ولا تغيّر طريقة الفرز» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "افصل الورق عن بقايا الطعام في وعاء مستقل",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "إرشاد الفرز ينبغي أن يكون واضحاً وقابلاً للتطبيق.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: فرز النفايات داخل الحي. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي اختيار إرشاد عملي قابل للتنفيذ. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: ما التصرف الذي يساعد القارئ على فصل نوعين من المخلفات. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من فرز النفايات داخل الحي. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: الخلط بين المواد أو تغيير شكل السلة لا يشرح فعل الفرز نفسه. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: ما التصرف الذي يساعد القارئ على فصل نوعين من المخلفات. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: اختبري التعليمات كما لو أنك تقفين أمام حاويتين وتريدين اتخاذ قرار. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: ما التصرف الذي يساعد القارئ على فصل نوعين من المخلفات. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L05",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "اقرئي هذا المقطع المرشح للمطويّة: «شاركونا صباح الجمعة في تنظيف الساحة، وأحضروا قفازاتكم». من الجمهور المقصود مباشرة؟",
+      "options": [
+        {
+          "content": "أهالي الحي الراغبون بالمشاركة",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "المشرفون على الحديقة فقط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «المشرفون على الحديقة فقط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "الأصدقاء المقيمون في مدينة أخرى",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الأصدقاء المقيمون في مدينة أخرى» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "كل من يقرأ أخبار الحي ولو لن يحضر",
+          "is_correct": false,
+          "distractor_rationale": "البديل «كل من يقرأ أخبار الحي ولو لن يحضر» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الخطاب يدعو سكان المنطقة إلى فعالية محددة ويطلب تجهيزاً للمشاركة.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: دعوة لتنظيف الساحة صباح الجمعة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي استنتاج جمهور الرسالة من ألفاظ الدعوة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: الحضور والمشاركة مع إحضار الأدوات المذكورة في الدعوة. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من دعوة لتنظيف الساحة صباح الجمعة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: لا يعني وجود رسالة منشورة أن جميع سكان المدن البعيدة مدعوون للعمل. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: الحضور والمشاركة مع إحضار الأدوات المذكورة في الدعوة. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: قارني الفئات بحسب صلتها بالمكان وقدرتها على الاستجابة للطلب. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: الحضور والمشاركة مع إحضار الأدوات المذكورة في الدعوة. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L06",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "لدى زينب ثلاث حقائق موثوقة عن زراعة الأشجار وصورة جذابة لكنها لا تتعلق بالموضوع. ما أول قرار مناسب أثناء إعداد المحتوى؟",
+      "options": [
+        {
+          "content": "تحتفظ بالصورة الجميلة وتحذف معلومات غرس الأشجار",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تحتفظ بالصورة الجميلة وتحذف معلومات غرس الأشجار» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "تختار الحقائق المرتبطة بهدف المطويّة",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "تعرض الحقائق الثلاث والصورة غير المرتبطة باعتبارها دليلاً",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تعرض الحقائق الثلاث والصورة غير المرتبطة باعتبارها دليلاً» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "تبدأ بالإخراج الفني قبل التثبت من صلة الحقائق",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تبدأ بالإخراج الفني قبل التثبت من صلة الحقائق» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "المعلومات ذات الصلة تحافظ على وضوح رسالة المطويّة؛ الزينة لا تعوضها.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: حقائق عن زراعة الأشجار مع صورة غير مرتبطة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تنقية محتوى المطويّة قبل تصميمها. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: صلة المعلومة الموثوقة بالهدف المقصود. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من حقائق عن زراعة الأشجار مع صورة غير مرتبطة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: الصورة الجميلة لا تعوّض وجود معلومات تخدم مهمة التوعية. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: صلة المعلومة الموثوقة بالهدف المقصود. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تخيلي حذف الصورة: هل تبقى لدى الفريق مادة مناسبة يتعلم منها القارئ. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: صلة المعلومة الموثوقة بالهدف المقصود. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L07",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تصمّم مريم مطويّة عن عبور الطريق بأمان قرب المدرسة. أي صورة تخدم رسالة المطويّة مباشرة؟",
+      "options": [
+        {
+          "content": "تلاميذ يعبرون الشارع بين السيارات الواقفة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تلاميذ يعبرون الشارع بين السيارات الواقفة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "سيارة تسرع أمام المدرسة دون ممر للمشاة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «سيارة تسرع أمام المدرسة دون ممر للمشاة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "تلاميذ يعبرون عند ممر المشاة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "تلاميذ يلعبون بالكرة بجوار الطريق",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تلاميذ يلعبون بالكرة بجوار الطريق» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الصورة التي تعرض عبور المشاة مرتبطة مباشرة برسالة السلامة المرورية التي تقدمها المطويّة.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: إرشاد العبور الآمن قرب المدرسة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي اختيار الرسم الذي يوضح السلوك المرغوب. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: ما الذي سيفعله الطفل بعد تقليد الرسم. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من إرشاد العبور الآمن قرب المدرسة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: رسم موقف خطير قد يجذب النظر لكنه يلقّن تصرفاً غير آمن. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: ما الذي سيفعله الطفل بعد تقليد الرسم. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: اختبري كل رسم: هل يصلح نموذجاً لطفل يريد العبور بأمان. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: ما الذي سيفعله الطفل بعد تقليد الرسم. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L08",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "أرادت مجموعة توزيع مطويّة على كبار السن في الحي، فاختارت خطاً صغيراً جداً وكلمات مزدحمة. ما المشكلة الأهم؟",
+      "options": [
+        {
+          "content": "يصبح الغلاف أقل جاذبية وإن ظل مقروءاً",
+          "is_correct": false,
+          "distractor_rationale": "البديل «يصبح الغلاف أقل جاذبية وإن ظل مقروءاً» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "لا يكون العنوان قصيراً بما يكفي",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لا يكون العنوان قصيراً بما يكفي» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "يصبح عدد صفحات المطويّة أكبر من المطلوب",
+          "is_correct": false,
+          "distractor_rationale": "البديل «يصبح عدد صفحات المطويّة أكبر من المطلوب» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "يصعب على الجمهور قراءة الرسالة",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "الإعداد الفني الجيد يراعي قابلية القراءة وحاجات الجمهور.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: مطويّة لكبار السن بخط دقيق ومزدحم. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي ملاءمة الخط لحاجات القراء. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: التمييز بين جمال التصميم وسهولة قراءة النص. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من مطويّة لكبار السن بخط دقيق ومزدحم. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: الأشكال والألوان لا تفيد إذا تعذر على الجمهور تمييز الكلمات. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: التمييز بين جمال التصميم وسهولة قراءة النص. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: افترضي أن القارئ يحمل المطوية بعيداً قليلاً عن عينيه؛ ماذا يواجه. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: التمييز بين جمال التصميم وسهولة قراءة النص. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L09",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "كتبت تلميذة في إعلان: «زورونا يوم الخميس الساعة الرابعة في مركز الحي». ما سبب أهمية تحديد المكان والموعد؟",
+      "options": [
+        {
+          "content": "حتى يعرف القارئ متى وأين يشارك",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "لأن تحديد الموعد يجعل الرسم أكثر جاذبية",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأن تحديد الموعد يجعل الرسم أكثر جاذبية» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "لأن مكان النشاط يُغني عن توضيح الهدف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأن مكان النشاط يُغني عن توضيح الهدف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "لأن الوقت وحده يكفي من دون عنوان للدعوة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأن الوقت وحده يكفي من دون عنوان للدعوة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "التفاصيل العملية تجعل الدعوة قابلة للتنفيذ.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: زيارة مركز الحي يوم الخميس. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي اكتمال بيانات الدعوة إلى فعالية. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: الفرق بين إعجاب الزائر بالدعوة وقدرته على الوصول. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من زيارة مركز الحي يوم الخميس. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: تغيير الزخارف لا يساعد شخصاً يجهل أين أو متى يحدث اللقاء. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: الفرق بين إعجاب الزائر بالدعوة وقدرته على الوصول. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تصوري قارئاً يقرر الذهاب الآن، واسألي عن المعلومات العملية التي يحتاجها. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: الفرق بين إعجاب الزائر بالدعوة وقدرته على الوصول. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L10",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "اقرئي العبارة: «لنحافظ على نظافة شاطئنا، شاركونا بحملة السبت». ما الوظيفة الأساسية لعبارة «شاركونا»؟",
+      "options": [
+        {
+          "content": "بيان وقت الحملة من دون مطالبة القارئ بشيء",
+          "is_correct": false,
+          "distractor_rationale": "البديل «بيان وقت الحملة من دون مطالبة القارئ بشيء» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "دعوة الجمهور إلى عمل واضح",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "وصف نظافة الشاطئ بعد انتهاء النشاط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «وصف نظافة الشاطئ بعد انتهاء النشاط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "مدح جمال الشاطئ من غير توجيه دعوة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «مدح جمال الشاطئ من غير توجيه دعوة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "عبارات الدعوة تشجع الجمهور على المساهمة في النشاط المقترح.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: حملة لتنظيف الشاطئ يوم السبت. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تمييز عبارة الحث على المشاركة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: تحديد اللفظ الذي يطلب فعلاً من المخاطَب. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من حملة لتنظيف الشاطئ يوم السبت. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: وصف المكان أو التاريخ لا يساوي دعوة الشخص إلى المشاركة. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: تحديد اللفظ الذي يطلب فعلاً من المخاطَب. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: راجعي الأفعال في الجملة: أيها يغير دور المتلقي من مشاهد إلى مشارك. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: تحديد اللفظ الذي يطلب فعلاً من المخاطَب. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L11",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "لماذا يُنفَّذ الضبط اللغوي قبل اعتماد الإخراج النهائي للمطويّة؟",
+      "options": [
+        {
+          "content": "التأكد من أن الألوان زاهية قبل فحص النص",
+          "is_correct": false,
+          "distractor_rationale": "البديل «التأكد من أن الألوان زاهية قبل فحص النص» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "إعادة ترتيب الصور من دون تدقيق الكلمات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إعادة ترتيب الصور من دون تدقيق الكلمات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "إزالة الأخطاء الإملائية لضمان وضوح الرسالة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "اختيار خط جديد ولو بقيت الأخطاء اللغوية",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اختيار خط جديد ولو بقيت الأخطاء اللغوية» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الضبط اللغوي جزء من الإخراج النهائي ولا يكفي جمال المظهر.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: تدقيق نص مطويّة قبل توزيعها. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي التحقق اللغوي في مرحلة الإخراج النهائي. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: أثر الإملاء الصحيح في فهم القارئ. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من تدقيق نص مطويّة قبل توزيعها. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: تحسين لون الغلاف لا يصلح عبارة مكتوبة بصورة غير صحيحة. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: أثر الإملاء الصحيح في فهم القارئ. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تخيلي وجود خطأ يغيّر معنى تعليمات الحملة؛ ما المراجعة التي تمنعه. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: أثر الإملاء الصحيح في فهم القارئ. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L12",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "لديك مطويّة عن زيارة المكتبة فيها عنوان جيد ومعلومات صحيحة، لكن ترتيب الفقرات مبعثر. ماذا تحسّنين في الإخراج النهائي؟",
+      "options": [
+        {
+          "content": "تكبير العنوان مع إبقاء الفقرات مبعثرة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تكبير العنوان مع إبقاء الفقرات مبعثرة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "إضافة تفاصيل جديدة قبل تنظيم الأفكار الموجودة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إضافة تفاصيل جديدة قبل تنظيم الأفكار الموجودة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "نقل الفقرات إلى الغلاف من دون ترتيب",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نقل الفقرات إلى الغلاف من دون ترتيب» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "تنظيم الفقرات بحيث يتبع القارئ الفكرة بسهولة",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "الشكل النهائي ينبغي أن يخدم الفهم لا أن يربك القارئ.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: مطويّة عن المكتبة بفقرات مبعثرة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تنظيم المعلومات داخل الإخراج النهائي. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: تسلسل الفقرات من المقدمة إلى الإرشاد. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من مطويّة عن المكتبة بفقرات مبعثرة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: كثرة الصور لا تجعل الفقرات المتناثرة أكثر ترابطاً. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: تسلسل الفقرات من المقدمة إلى الإرشاد. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تتبعي قراءة شخص جديد من أعلى المطوية حتى آخرها؛ أين يتعطل الفهم. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: تسلسل الفقرات من المقدمة إلى الإرشاد. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L13",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "قبل توزيع مطويّة عن حملة تشجير، طلب المعلم من المجموعة مقارنة الصورة والعنوان والنص. ما السؤال الأكثر فائدة؟",
+      "options": [
+        {
+          "content": "هل تساعد العناصر الثلاثة على فهم الهدف نفسه؟",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "هل العنوان وحده جذاب ولو خالفته الصور؟",
+          "is_correct": false,
+          "distractor_rationale": "البديل «هل العنوان وحده جذاب ولو خالفته الصور؟» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "هل الصور كثيرة ولو شتتت انتباه القارئ؟",
+          "is_correct": false,
+          "distractor_rationale": "البديل «هل الصور كثيرة ولو شتتت انتباه القارئ؟» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "هل الخط مميز ولو لم يفهم القارئ النص؟",
+          "is_correct": false,
+          "distractor_rationale": "البديل «هل الخط مميز ولو لم يفهم القارئ النص؟» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "المواءمة بين النص والرسم والعنوان جزء من مناسبة الشكل العام لموضوع المطويّة.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: مقارنة عنوان وصورة ونص مطوية تشجير. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي فحص اتساق عناصر التصميم مع الرسالة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: هل تعطي العناصر المختلفة فكرة واحدة أو أفكاراً متعارضة. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من مقارنة عنوان وصورة ونص مطوية تشجير. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: جمال عنصر واحد لا يكفي عندما يدفع عنصر آخر إلى فهم مخالف. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: هل تعطي العناصر المختلفة فكرة واحدة أو أفكاراً متعارضة. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: اكتبي الفكرة التي فهمتها من كل عنصر ثم قارنيها بهدف المطوية. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: هل تعطي العناصر المختلفة فكرة واحدة أو أفكاراً متعارضة. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L14",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تقول هيا عند تقديم مطوية التشجير: «هذا الإعلان جميل فقط». وتقول ميس: «شجرة واحدة تظلل الطريق؛ شاركونا السبت في الغرس». لماذا العرض الثاني أقوى؟",
+      "options": [
+        {
+          "content": "لأنه أطول زمناً ولو خلا من دليل",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأنه أطول زمناً ولو خلا من دليل» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "يربط فائدة النشاط بدعوة واضحة للمشاركة",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "لأنه يجعل المتحدث أهم من هدف الحملة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأنه يجعل المتحدث أهم من هدف الحملة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "لأنه يركز على جمال الورقة دون أثر النشاط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لأنه يركز على جمال الورقة دون أثر النشاط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الإقناع يحتاج فائدة محددة ودعوة مناسبة، كما يطلب نشاط الكتاب الشفوي.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: تقديم شفوي لحملة غرس الأشجار. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي بناء خطاب إقناعي يربط فائدة بدعوة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: تمييز الوصف الشكلي عن سبب يقنع الناس بالفعل. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من تقديم شفوي لحملة غرس الأشجار. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: مدح الورقة وحدها لا يبين للمستمع أثر المشاركة في الحي. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: تمييز الوصف الشكلي عن سبب يقنع الناس بالفعل. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تخيلي مستمعاً يسأل: لماذا أشارك؟ وما الفعل المطلوب مني؟. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: تمييز الوصف الشكلي عن سبب يقنع الناس بالفعل. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L15",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "وصلت مطويّة الحملة إلى سكان الحي، لكنهم يسألون كيف يساعدون. أي تعديل يحقق الهدف دون تغيير موضوعها؟",
+      "options": [
+        {
+          "content": "إعادة كتابة العنوان بخط أكثر زخرفة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إعادة كتابة العنوان بخط أكثر زخرفة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "إضافة صور لفرق متطوعة من دون طريقة تواصل",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إضافة صور لفرق متطوعة من دون طريقة تواصل» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "إضافة طريقة مشاركة محددة ووسيلة تواصل ملائمة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "تكرار أهمية الحملة من دون بيان خطوات المساعدة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تكرار أهمية الحملة من دون بيان خطوات المساعدة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "توضيح كيفية المشاركة يربط المطوية بالسلوك الذي يراد تشجيعه.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: مطوية حثّت سكان الحي دون بيان كيفية المساعدة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي إصلاح نقص في تعليمات المشاركة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: ربط الرغبة في المساعدة بخطوة واضحة للتنفيذ. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من مطوية حثّت سكان الحي دون بيان كيفية المساعدة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: المزيد من صور المتطوعين قد يرفع الحماس دون إزالة الحيرة. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: ربط الرغبة في المساعدة بخطوة واضحة للتنفيذ. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: تخيلي قارئاً اقتنع بالفكرة لكن لا يعرف أول خطوة؛ عالجي هذا الفراغ. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: ربط الرغبة في المساعدة بخطوة واضحة للتنفيذ. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L16",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في جملة المطويّة «التعاونُ قوةٌ»، ما نوع الجملة بالنظر إلى بدايتها؟",
+      "options": [
+        {
+          "content": "فعلية لأن فيها معنى التعاون",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن فيها معنى التعاون» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "فعلية لأن الخبر كلمة واحدة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن الخبر كلمة واحدة» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "اسمية لأن آخر كلمة فيها اسم",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأن آخر كلمة فيها اسم» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "اسمية لأنها تبدأ باسم",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "الجملة التي تبدأ باسم تسمى جملة اسمية.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: التعاونُ قوةٌ. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تمييز الجملة الاسمية من أول كلمة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: التعرف إلى الاسم في صدر الجملة قبل النظر إلى الخبر. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من التعاونُ قوةٌ. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: وجود معنى الحدث أو وجود اسم في آخر العبارة لا يحدد نوعها. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: التعرف إلى الاسم في صدر الجملة قبل النظر إلى الخبر. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: أخفي آخر الجملة للحظة وحاولي تصنيف الكلمة التي بدأت بها. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: التعرف إلى الاسم في صدر الجملة قبل النظر إلى الخبر. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L17",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "أمامك «ينظفُ الأطفالُ الساحةَ». لماذا هي جملة فعلية؟",
+      "options": [
+        {
+          "content": "لأن أول كلمة فيها فعل",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "اسمية لأن الأطفال اسم ظاهر في الوسط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأن الأطفال اسم ظاهر في الوسط» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "فعلية لأن فيها أكثر من كلمتين",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن فيها أكثر من كلمتين» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "اسمية لأنها تتحدث عن التلاميذ",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأنها تتحدث عن التلاميذ» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "تحديد الجملة الفعلية يكون من بداية التركيب بالفعل.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: ينظفُ الأطفالُ الساحةَ. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تمييز الجملة الفعلية من أول كلمة. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: اختبار ما إذا كانت البداية تدل على حدث وزمن. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من ينظفُ الأطفالُ الساحةَ. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: وجود كلمة الأطفال بعد البداية لا يحوّل الجملة إلى اسمية. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: اختبار ما إذا كانت البداية تدل على حدث وزمن. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: اعزلي الكلمة الأولى ثم قارنيها بفعل مثل يكتبُ واسم مثل الطفلُ. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: اختبار ما إذا كانت البداية تدل على حدث وزمن. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L18",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 5,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "قارني عبارتين لإعلان الحملة: «العملُ ينفعُ الجميع» و«ينفعُ العملُ الجميع». ما نوع الأولى ثم الثانية؟",
+      "options": [
+        {
+          "content": "فعلية ثم اسمية",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية ثم اسمية» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "اسمية ثم فعلية",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "اسميتان لأن العمل اسم ورد في الجملتين",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسميتان لأن العمل اسم ورد في الجملتين» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "فعليتان لأن الفعل ينفع ورد في كلتيهما",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعليتان لأن الفعل ينفع ورد في كلتيهما» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الأولى تبدأ باسم والثانية تبدأ بفعل، رغم تقارب المعنى.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: العملُ ينفعُ الجميع / ينفعُ العملُ الجميع. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي المقارنة بين جملتين متقاربتَي المعنى. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: تغيير الترتيب يؤثر في نوع الجملة رغم تشابه كلماتها. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من العملُ ينفعُ الجميع / ينفعُ العملُ الجميع. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: لا تصنّفي الجملتين بالنظر إلى وجود الفعل في كليهما فقط. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: تغيير الترتيب يؤثر في نوع الجملة رغم تشابه كلماتها. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: دوّني نوع الكلمة الأولى في كل جملة بالترتيب قبل قراءة الخيارات. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: تغيير الترتيب يؤثر في نوع الجملة رغم تشابه كلماتها. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L19",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "كتبت تلميذة: «إشاركوا في الحملة». أي تعديل صحيح لأول كلمة؟",
+      "options": [
+        {
+          "content": "«أشاركوا» لأن الأفعال تحتاج همزة قطع",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««أشاركوا» لأن الأفعال تحتاج همزة قطع» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "«إِشاركوا» لأن الأمر يبدأ بهمزة تحت الألف",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««إِشاركوا» لأن الأمر يبدأ بهمزة تحت الألف» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "«شاركوا» دون إضافة همزة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "«اشاركوا» بإضافة ألف في أول الفعل",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««اشاركوا» بإضافة ألف في أول الفعل» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "صيغة الأمر من «شارك» هي «شاركوا» من غير ألف أولية.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: إشاركوا في الحملة. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي تصحيح فعل أمر من شارك. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: تمييز صيغة الأمر التي تبدأ بحرف أصلي عن ألف زائدة. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من إشاركوا في الحملة. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: ليس صحيحاً أن كل أمر يبدأ بألف وهمزة؛ ابدئي من بنية الفعل. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: تمييز صيغة الأمر التي تبدأ بحرف أصلي عن ألف زائدة. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: قارني صيغة الأمر بصيغة شاركَ، وراقبي هل أضيف حرف جديد في البداية. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: تمييز صيغة الأمر التي تبدأ بحرف أصلي عن ألف زائدة. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-L20",
+      "delivery_surface": "learning",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في الدعوة «وأكرمْ ضيفك»، ما الذي يحدث لهمزة «أكرم» عند وصلها بالواو؟",
+      "options": [
+        {
+          "content": "تسقط لأنها جاءت بعد حرف الواو",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تسقط لأنها جاءت بعد حرف الواو» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "تنطق عند البدء فقط وتسقط في الوصل",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تنطق عند البدء فقط وتسقط في الوصل» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "تتحول تلقائياً إلى همزة وصل لوجود الواو",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تتحول تلقائياً إلى همزة وصل لوجود الواو» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "تبقى همزة القطع منطوقة",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "همزة القطع تثبت نطقاً في أول الكلام ووسطه.",
+      "decomposable": false,
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "content": "• انتبهي إلى الموقف: وأكرمْ ضيفك. من المخاطَب بهذه العبارة؟ وما المهمة أو المشكلة الأساسية التي يريد السؤال حلها؟\n• المهارة المطلوبة هنا هي اختبار نطق همزة القطع بعد حرف الواو. حددي المطلوب بدقة قبل مقارنة البدائل، ولا تبدئي بما يبدو جميلاً أو مألوفاً.\n• أخفي البدائل لحظة، واكتبي في ذهنك كلمتين تصفان الفكرة الأساسية. ثم عودي إلى السؤال لالتقاط دليلك الأول."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "content": "• تذكري القاعدة: التمييز بين ثبات الصوت في القطع وسقوطه في الوصل. قارنيها بالموقف ولا تضيفي شروطاً لم يذكرها السؤال.\n• تخيلي موقفاً صغيراً من وأكرمْ ضيفك. ما الخطوة التي تساعد الشخص على الفهم أو العمل بطريقة سليمة؟\n• ابحثي في كل بديل عن علامة تقرّبه من هدف السؤال. قد يكون البديل صحيحاً عموماً لكنه غير مناسب هنا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "content": "• تجنبي الالتباس الآتي: وجود الواو قبل الهمزة لا يغير طبيعتها من تلقاء نفسه. ما النقص في الاختيار الذي يبدو مقنعاً؟\n• قارني خيارين متشابهين باستعمال هذا المعيار: التمييز بين ثبات الصوت في القطع وسقوطه في الوصل. عللي الاستبعاد بعبارة من السؤال لا بتخمين شخصي.\n• إن بقي خيار محير، اسألي: هل يضيف شيئاً خارج الموضوع، أم يفقد شرطاً ضرورياً لفهم الجواب؟ راجعي الاحتمالات مجدداً."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "content": "• اختبري استنتاجك: انطقي اللفظ في بدء الكلام ثم موصولاً بحرف قبلَه مع التركيز على الصوت. اربطيه بدليل من السؤال.\n• قارني أقرب خيارين بحسب: التمييز بين ثبات الصوت في القطع وسقوطه في الوصل. أيهما يتفق مع المعطيات جميعها؟\n• قولي لنفسك سبب الاختيار بكلماتك، ثم تأكدي أن الخيار الآخر لا يحقّق الشرط نفسه. الآن اختاري دون مساعدة إضافية."
+        }
+      ]
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E01",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في مجلس الحي يخطط التلاميذ لإعلان توعوي يدعو السكان إلى تقليل استخدام الأكياس البلاستيكية. أي موضوع يلتزم بالمطلوب؟",
+      "options": [
+        {
+          "content": "عرض فوائد البلاستيك دون اقتراح بدائل",
+          "is_correct": false,
+          "distractor_rationale": "البديل «عرض فوائد البلاستيك دون اقتراح بدائل» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "استعمال الحقائب القابلة لإعادة الاستخدام",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "ذكر ألوان الحقائب البلاستيكية الجديدة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «ذكر ألوان الحقائب البلاستيكية الجديدة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "نشر صور الأكياس في الأسواق من غير تقليل استخدامها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نشر صور الأكياس في الأسواق من غير تقليل استخدامها» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الموضوع المحدد يوافق المشكلة التي تعالجها الحملة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E02",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تحتاج مجموعة إلى عنوان لمطويّة تشرح احترام الدور أمام مكتب الخدمات. ما الأنسب؟",
+      "options": [
+        {
+          "content": "أسرع طرق الوصول إلى مكتب الخدمات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أسرع طرق الوصول إلى مكتب الخدمات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "انتظر قليلاً ثم تجاوز الصف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «انتظر قليلاً ثم تجاوز الصف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "دورك يحفظ حق الجميع",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "كيف تختار مكتب خدمة قريباً",
+          "is_correct": false,
+          "distractor_rationale": "البديل «كيف تختار مكتب خدمة قريباً» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "العنوان الجيد موجز ويعكس الرسالة الاجتماعية الواضحة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E03",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "قررت سارة إعداد مطويّة عن السلامة أثناء اللعب في ساحة المدرسة. ما المعلومات التي يجب جمعها قبل تصميم الرسوم واختيار الخط؟",
+      "options": [
+        {
+          "content": "صور لألعاب متنوعة قبل اختيار قواعد السلامة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «صور لألعاب متنوعة قبل اختيار قواعد السلامة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "أسماء المسابقات الرياضية غير المتعلقة بالأمان",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أسماء المسابقات الرياضية غير المتعلقة بالأمان» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "ألوان اللافتات وأحجام الخطوط فقط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «ألوان اللافتات وأحجام الخطوط فقط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "إرشادات موثوقة عن اللعب الآمن في الساحة",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "مرحلة جمع المعلومات تسبق التصميم، ومادتها هنا إرشادات اللعب الآمن ذات الصلة بموضوع المطويّة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E04",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "توزع المدرسة مطويّة للتشجيع على القراءة في البيت. أي محتوى يقدم نصيحة قابلة للتنفيذ؟",
+      "options": [
+        {
+          "content": "خصّص عشر دقائق للقراءة كل مساء",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "اقرأ ساعة واحدة في يوم واحد ثم توقف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اقرأ ساعة واحدة في يوم واحد ثم توقف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "اقتَنِ كتباً كثيرة ولو لم تقرأها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اقتَنِ كتباً كثيرة ولو لم تقرأها» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "غيّر مكان الكتب يومياً من دون تخصيص وقت للقراءة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «غيّر مكان الكتب يومياً من دون تخصيص وقت للقراءة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "تنجح المطويّة حين تتضمن إجراءً واضحاً يمكن للقارئ القيام به."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E05",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "اقرئي: «يا سكان الشارع، نلتقي الأحد لطلاء المقاعد العامة». ما الجمهور الأول لهذا الإعلان؟",
+      "options": [
+        {
+          "content": "الطلاب الذين يدرسون في مدرسة أخرى حصراً",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الطلاب الذين يدرسون في مدرسة أخرى حصراً» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "سكان الشارع المعني",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "سكان الأحياء البعيدة من غير وصول إلى الشارع",
+          "is_correct": false,
+          "distractor_rationale": "البديل «سكان الأحياء البعيدة من غير وصول إلى الشارع» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "المسؤولون عن صيانة مقاعد المدينة كلها فقط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «المسؤولون عن صيانة مقاعد المدينة كلها فقط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الجمهور يظهر من صيغة النداء والغرض المكاني للدعوة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E06",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "جمع فريق أربع حقائق لحملة حماية الأشجار. ما معيار إبقاء حقيقة ضمن النص؟",
+      "options": [
+        {
+          "content": "أن تبدو المعلومة مدهشة ولو لم تكن موثوقة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن تبدو المعلومة مدهشة ولو لم تكن موثوقة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "أن تحتوي أرقاماً كبيرة حتى دون مصدر",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن تحتوي أرقاماً كبيرة حتى دون مصدر» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "أن تكون صحيحة ومفيدة لهدف الحملة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "أن تكون أطول من المعلومات الأخرى ولو كانت بعيدة عن الهدف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن تكون أطول من المعلومات الأخرى ولو كانت بعيدة عن الهدف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الاختيار يعتمد على الصلة والدقة لا الطول أو الطرافة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E07",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تعد مجموعة مطويّة عن عبور الطريق بأمان أمام المدرسة. أي رسم أكثر ملاءمة للهدف؟",
+      "options": [
+        {
+          "content": "رسم مشهد مروري مزدحم يخلو من ممر المشاة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «رسم مشهد مروري مزدحم يخلو من ممر المشاة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "رسم طفل يلعب الكرة على الرصيف قرب السيارات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «رسم طفل يلعب الكرة على الرصيف قرب السيارات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "رسم سيارات مصطفة لا يوضح سلوك المشاة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «رسم سيارات مصطفة لا يوضح سلوك المشاة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "رسم طفل ينتظر الإشارة الخضراء عند ممر مشاة",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "الرسم الذي يعرض سلوك العبور الآمن يساعد القارئ على فهم الإرشاد المرتبط بموضوع المطويّة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E08",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "اختار فريق كتابة صفراء خافتة على خلفية بيضاء لمطويّة توزع صباحاً، مع أن الكلمات صحيحة وواضحة الحجم. ما المشكلة الأساسية في هذا الاختيار؟",
+      "options": [
+        {
+          "content": "ضعف التباين يجعل القراءة صعبة",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "الخط صغير للغاية لكنه يناسب مساحة الورق",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الخط صغير للغاية لكنه يناسب مساحة الورق» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "الصور كثيرة بحيث يبقى النص في زاوية ضيقة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الصور كثيرة بحيث يبقى النص في زاوية ضيقة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "العناوين واضحة لكن شرح النشاط محجوب بزخارف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «العناوين واضحة لكن شرح النشاط محجوب بزخارف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "وضوح القراءة من أسس الإعداد الفني للمطوية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E09",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "تدعو مطويّة إلى مسابقة للقراءة وتذكر الجائزة فقط، ولا تتضمن موعداً. ماذا يجب إضافة أولاً؟",
+      "options": [
+        {
+          "content": "نوع الجوائز المقدمة من دون موعد",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نوع الجوائز المقدمة من دون موعد» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "موعد المسابقة وكيفية الاشتراك",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "فكرة جديدة للغلاف بعد اختيار الألوان",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فكرة جديدة للغلاف بعد اختيار الألوان» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "نبذة عن تاريخ المسابقات من دون معلومات المشاركة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نبذة عن تاريخ المسابقات من دون معلومات المشاركة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "غياب الموعد يمنع الجمهور من اتخاذ قرار المشاركة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E10",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في مطويّة عن الحفاظ على الماء، أي عبارة تطلب من القارئ تصرفاً محدداً؟",
+      "options": [
+        {
+          "content": "الماء من أهم الموارد الطبيعية",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الماء من أهم الموارد الطبيعية» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "توجد مصادر عديدة للمياه",
+          "is_correct": false,
+          "distractor_rationale": "البديل «توجد مصادر عديدة للمياه» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "أغلق الصنبور أثناء تنظيف أسنانك",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "من الجميل أن نتحدث عن المحافظة على الموارد",
+          "is_correct": false,
+          "distractor_rationale": "البديل «من الجميل أن نتحدث عن المحافظة على الموارد» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الدعوة المؤثرة تتضمن سلوكاً عملياً قابلاً للتنفيذ."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E11",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "ما الهدف من التدقيق اللغوي الذي يسبق توزيع المطويّة؟",
+      "options": [
+        {
+          "content": "فحص الصور فقط لأن الكلمات لا تؤثر في المعنى",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فحص الصور فقط لأن الكلمات لا تؤثر في المعنى» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "تغيير حجم العنوان بدلاً من مراجعة العبارات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تغيير حجم العنوان بدلاً من مراجعة العبارات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "استبدال الخط وإبقاء الأخطاء الكتابية نفسها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «استبدال الخط وإبقاء الأخطاء الكتابية نفسها» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "ضمان خلو العبارات من الأخطاء الإملائية",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "المراجعة النهائية تشمل رسم الهمزة الصحيحة للكلمات."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E12",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "معلومات مطويّة عن التبرع بالكتب سليمة، لكن صورة الغلاف تغطي النص الرئيس. أي تعديل يحسن النسخة؟",
+      "options": [
+        {
+          "content": "تصغير الصورة وإظهار النص بوضوح",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "إضافة صورة أخرى فوق النص لتحسين الشكل",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إضافة صورة أخرى فوق النص لتحسين الشكل» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "إبقاء الصورة على حالها وحذف شروط التبرع",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إبقاء الصورة على حالها وحذف شروط التبرع» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "نقل النص إلى خلف الورقة من دون توضيح مكان قراءته",
+          "is_correct": false,
+          "distractor_rationale": "البديل «نقل النص إلى خلف الورقة من دون توضيح مكان قراءته» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "يجب أن يخدم الإخراج النهائي المعلومات لا أن يحجبها."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E13",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "عند مراجعة مطويّة مكافحة الهدر الغذائي وجد الفريق أن العنوان يقول «لا ترمِ الطعام» بينما الصور تحتفي برميه. ما الخلل؟",
+      "options": [
+        {
+          "content": "الصورة أصغر من مساحة الورقة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الصورة أصغر من مساحة الورقة» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "تعارض الصورة مع رسالة العنوان",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "العنوان مختصر أكثر من اللازم",
+          "is_correct": false,
+          "distractor_rationale": "البديل «العنوان مختصر أكثر من اللازم» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "غياب أسماء أعضاء الفريق من نهاية النص",
+          "is_correct": false,
+          "distractor_rationale": "البديل «غياب أسماء أعضاء الفريق من نهاية النص» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "الرسوم ينبغي ألا تناقض الدعوة المكتوبة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E14",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "ألقى تلميذ إعلاناً عن تنظيف الحي بصوت منخفض جداً ومن دون ذكر فائدة العمل؛ كيف يُحسّن الإقناع؟",
+      "options": [
+        {
+          "content": "أن يمدح جمال الرسوم بصوت مرتفع فقط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن يمدح جمال الرسوم بصوت مرتفع فقط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "أن يطلب المشاركة دون شرح فائدة النشاط",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن يطلب المشاركة دون شرح فائدة النشاط» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "يشرح الفائدة بصوت مسموع ويذكر طريقة المشاركة",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "أن يقرأ موعد التنظيف بصوت منخفض ويخفي الهدف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «أن يقرأ موعد التنظيف بصوت منخفض ويخفي الهدف» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "العرض الشفوي المؤثر يوضح الهدف ويشجع السكان على المشاركة."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E15",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-brochure",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "بعد توزيع مطويّة «وفّر الكهرباء» وصلت أسئلة كثيرة عن كيفية التنفيذ. أي إضافة تصحح القصور مباشرة؟",
+      "options": [
+        {
+          "content": "إعادة كتابة العنوان بحروف أكبر دون تقديم إرشادات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إعادة كتابة العنوان بحروف أكبر دون تقديم إرشادات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "إضافة صور أجهزة كهربائية كثيرة من غير تعليمات",
+          "is_correct": false,
+          "distractor_rationale": "البديل «إضافة صور أجهزة كهربائية كثيرة من غير تعليمات» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "الحديث عن أهمية الكهرباء مرة أخرى دون سلوك محدد",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الحديث عن أهمية الكهرباء مرة أخرى دون سلوك محدد» يختبر التباساً في جمهور أو غرض أو مرحلة أو تأثير الرسالة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "قائمة قصيرة بسلوكين واضحين لتقليل الاستهلاك",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "التعليمات العملية تحول الرسالة العامة إلى أفعال."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E16",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في الإعلان «الحديقةُ جميلةٌ»، ما نوع الجملة وفق القاعدة؟",
+      "options": [
+        {
+          "content": "اسمية لأنها بدأت باسم",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "فعلية لأن الوصف خبرها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن الوصف خبرها» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "اسمية لأنها تتحدث عن حديقة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأنها تتحدث عن حديقة» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "فعلية لأن الكلمة الأخيرة فيها صفة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن الكلمة الأخيرة فيها صفة» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "بداية الجملة باسم هي العلامة المميزة للجملة الاسمية."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E17",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "اقرئي: «تتعاونُ الأسرُ لتنظيف الحي». ما دليل أنها جملة فعلية؟",
+      "options": [
+        {
+          "content": "اسمية لأن الأسر اسم في وسطها",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأن الأسر اسم في وسطها» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "افتتحت بفعل مضارع",
+          "is_correct": true,
+          "position": 2
+        },
+        {
+          "content": "فعلية لأن فيها حرف الجر لتنظيف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «فعلية لأن فيها حرف الجر لتنظيف» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "اسمية لأنها تتحدث عن التعاون",
+          "is_correct": false,
+          "distractor_rationale": "البديل «اسمية لأنها تتحدث عن التعاون» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "العبرة بأول كلمة في تحديد النوع هنا."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E18",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-sentence-types",
+      "difficulty_level": 5,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "عند كتابة المطويّة استُعملت عبارتان: «الساحةُ نظيفةٌ» و«نظفتْ سلمى الساحةَ». أي وصف دقيق؟",
+      "options": [
+        {
+          "content": "الأولى فعلية والثانية اسمية",
+          "is_correct": false,
+          "distractor_rationale": "البديل «الأولى فعلية والثانية اسمية» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "كلتاهما فعلية لوجود معنى التنظيف",
+          "is_correct": false,
+          "distractor_rationale": "البديل «كلتاهما فعلية لوجود معنى التنظيف» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "الأولى اسمية والثانية فعلية",
+          "is_correct": true,
+          "position": 3
+        },
+        {
+          "content": "كلتاهما اسمية لوجود كلمة الساحة",
+          "is_correct": false,
+          "distractor_rationale": "البديل «كلتاهما اسمية لوجود كلمة الساحة» يختبر التباساً في الكلمة الأولى في الجملة ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "تبدأ الأولى باسم وتبدأ الثانية بفعل ماضٍ."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E19",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "كتبت آية: «إِزرعْ شجرةً قرب البيت». كيف تُكتب صيغة الأمر الصحيحة من الفعل «زرع»؟",
+      "options": [
+        {
+          "content": "«أَزرعْ» بهمزة قطع",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««أَزرعْ» بهمزة قطع» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 1
+        },
+        {
+          "content": "«إِزرعْ» بهمزة تحت الألف",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««إِزرعْ» بهمزة تحت الألف» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "«زرعْ» بحذف ألف بداية فعل الأمر",
+          "is_correct": false,
+          "distractor_rationale": "البديل ««زرعْ» بحذف ألف بداية فعل الأمر» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "«ازرعْ» بهمزة وصل",
+          "is_correct": true,
+          "position": 4
+        }
+      ],
+      "explanation": "أمر الثلاثي «زرع» على وزن «افعل» يبدأ بهمزة وصل."
+    },
+    {
+      "question_code": "AYA-AR5-20261012-E20",
+      "delivery_surface": "exam",
+      "concept_code": "arabic-g5-u1-initial-hamza",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
+      "prompt_language": "ar",
+      "question_type": "single_choice",
+      "prompt": "في العبارة «وانظرْ إلى اللافتة»، ما حال همزة الوصل في «انظر» عند النطق المتصل بالواو؟",
+      "options": [
+        {
+          "content": "لا يُنطق صوتها مستقلاً في الوصل",
+          "is_correct": true,
+          "position": 1
+        },
+        {
+          "content": "تثبت في الوصل كما تثبت همزة القطع",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تثبت في الوصل كما تثبت همزة القطع» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 2
+        },
+        {
+          "content": "تتحول إلى همزة قطع بسبب الواو",
+          "is_correct": false,
+          "distractor_rationale": "البديل «تتحول إلى همزة قطع بسبب الواو» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 3
+        },
+        {
+          "content": "لا يمكن وصل الواو بفعل الأمر",
+          "is_correct": false,
+          "distractor_rationale": "البديل «لا يمكن وصل الواو بفعل الأمر» يختبر التباساً في صيغة الفعل وقاعدة نطق الهمزة وكتابتها ويخالف القيد الوارد في السؤال أو القاعدة المستخدمة.",
+          "position": 4
+        }
+      ],
+      "explanation": "همزة الوصل تثبت في بدء النطق وتسقط في الوصل."
+    }
+  ],
+  "video_candidate": null,
+  "publication_gates": {
+    "academic_semantic_review": "PENDING",
+    "canonical_validator": "PENDING",
+    "publication": "NOT_STARTED",
+    "video": "NOT_STARTED",
+    "testing_qa": "NOT_STARTED",
+    "learner_email": "NOT_SENT"
+  },
+  "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure."
+}
