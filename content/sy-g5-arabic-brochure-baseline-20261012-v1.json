@@ -376,7 +376,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تقييم جودة الدليل التوعوي | exam",
+      "reasoning_signature": "نقل سجل بيانات محدد إلى جملة تقريرية دون تحريف العدد أو اليوم أو فئة المستفيدين",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -513,7 +513,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "تقويم تعليل نحوي خاطئ يتجاهل موقع الاسم في الجملة",
+      "reasoning_signature": "تمييز اكتمال المعنى بين جملة تامة وتراكيب غير مكتملة دون الاعتماد على وجود اسم بعد الفعل",
       "context_type": "direct"
     },
     {
@@ -524,7 +524,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "حل حالة حدّية: اسم يبدأ الجملة يليه فعل ضمن الخبر",
+      "reasoning_signature": "تأليف رسالة من جملتين تؤديان وظيفتين متتابعتين: وصف الحالة بالاسمية ثم سرد إجراء بالفعليّة",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -1949,33 +1949,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "جمع فريق أربع حقائق لحملة حماية الأشجار. ما معيار إبقاء حقيقة ضمن النص؟",
+      "prompt": "تحتوي بطاقة معلومات لحملة المطويّات على هذه البيانات: «وزّع الفريق 12 مطويّة يوم الثلاثاء؛ خمس مطويّات على الصف الخامس وسبع على الصف السادس». أي عبارة تنقل هذه البيانات بدقّة إلى مطويّة المدرسة؟",
       "options": [
         {
-          "content": "أن تبدو المعلومة مدهشة ولو لم تكن موثوقة",
+          "content": "وزّع الفريق 12 مطويّة على الصف الخامس وحده يوم الثلاثاء.",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "المعلومة الملفتة قد تكون مضللة إن لم تتحقق صحتها.",
-          "position": 1
+          "distractor_rationale": "تخصيص جميع المطويّات للصف الخامس يُسقط الصف السادس المصرّح به."
         },
         {
-          "content": "أن تحتوي أرقاماً كبيرة حتى دون مصدر",
+          "content": "وزّع الفريق 17 مطويّة على الصفين يوم الثلاثاء.",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "الأرقام الكبيرة لا تعد دليلاً إن افتقرت إلى مصدر موثوق.",
-          "position": 2
+          "distractor_rationale": "جمع خمس وسبع يعطي اثنتي عشرة لا سبع عشرة مطويّة."
         },
         {
-          "content": "أن تكون صحيحة ومفيدة لهدف الحملة",
-          "is_correct": true,
-          "position": 3
+          "content": "وزّع الفريق 12 مطويّة يوم الثلاثاء: خمساً على الصف الخامس وسبعاً على الصف السادس.",
+          "position": 3,
+          "is_correct": true
         },
         {
-          "content": "أن تكون أطول من المعلومات الأخرى ولو كانت بعيدة عن الهدف",
+          "content": "وزّع الفريق 12 مطويّة يوم الخميس: خمساً على الصف الخامس وسبعاً على الصف السادس.",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الطول لا يبرر إدخال معلومات لا تخدم موضوع حماية الأشجار.",
-          "position": 4
+          "distractor_rationale": "تبديل الثلاثاء بالخميس يغيّر موعد التوزيع المثبت في بطاقة المعلومات."
         }
       ],
-      "explanation": "الاختيار يعتمد على الصلة والدقة لا الطول أو الطرافة."
+      "explanation": "تجمع العبارة الدقيقة العدد الإجمالي 12 والتوزيع خمساً وسبعاً واليوم الثلاثاء كما ورد في بطاقة البيانات دون تحريف."
     },
     {
       "question_code": "SYAR-G5-20261012-E07",
@@ -2356,33 +2356,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "قال تلميذ إن «تتفتّحُ الأزهارُ في الربيع» جملة اسمية لأن فيها كلمة «الأزهار». لماذا لا يصح هذا التعليل؟",
+      "prompt": "تطلب معلّمة اللغة عبارةً واحدةً تامة المعنى لوضعها في مطويّة المدرسة. أي عبارة من الآتي جملةٌ تامّة تفيد معنىً مكتملًا؟",
       "options": [
         {
-          "content": "لأن وجود أي اسم في الجملة يجعلها اسمية بالفعل",
+          "content": "في أثناء حملة تنظيف الحديقة",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "وجود اسم في أي موضع لا يحدد نوع بداية الجملة."
+          "distractor_rationale": "شبه الجملة «في أثناء حملة...» يحدد الزمن ولا يذكر ما حدث."
         },
         {
-          "content": "لأن الجملة بدأت بالفعل «تتفتّح» لا بالاسم «الأزهار»",
+          "content": "يزرعُ التلاميذُ الأشجارَ في ساحة المدرسة.",
           "position": 2,
           "is_correct": true
         },
         {
-          "content": "لأن كلمة الربيع تحدد نوع كل جملة",
+          "content": "الطلابُ الذين شاركوا في الحملة",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "«الربيع» ليس الكلمة الأولى ولا يغيّر نوع البداية."
+          "distractor_rationale": "الوصف «الطلاب الذين شاركوا...» يحتاج خبراً يبيّن ما فعلوه أو ما حصل لهم."
         },
         {
-          "content": "لأن الجمل الطويلة وحدها تكون اسمية",
+          "content": "حين انتهتِ الحملةُ في الحديقة",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "طول الجملة لا يحدد أهي اسمية أم فعلية."
+          "distractor_rationale": "«حين انتهت الحملة...» يذكر ظرفاً زمنياً ويترك السامع منتظراً ما وقع بعده."
         }
       ],
-      "explanation": "وجود اسم بعد الفعل لا يغيّر البداية الفعلية للجملة."
+      "explanation": "العبارة «يزرع التلاميذ الأشجار في ساحة المدرسة» تخبر عن عمل واضح وتفيد معنى تامًّا، بينما بقية العبارات تفتقر إلى جزء يُتمّ الفكرة."
     },
     {
       "question_code": "SYAR-G5-20261012-E18",
@@ -2393,33 +2393,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "حكمت مريم على «العمالُ يزرعون الأشجار» بأنها جملة فعلية لوجود «يزرعون». أي تقويم لحكمها صحيح؟",
+      "prompt": "تريد مريم أن تبدأ إعلاناً عن الحديقة بجملة اسمية تصف حالها، ثم تكتب جملة فعلية تخبر عما يفعله التلاميذ. أي زوج من الجمل يحقق الوظيفتين بالترتيب؟",
       "options": [
         {
-          "content": "حكمها صحيح لأن كل جملة بها فعل تكون فعلية",
+          "content": "يزرعُ الأطفالُ الأشجارَ؛ الحديقةُ واسعةٌ.",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "وجود فعل بعد الاسم لا يغيّر الكلمة التي بدأت بها الجملة."
+          "distractor_rationale": "هذا الزوج يبدأ بجملة فعلية ثم اسمية؛ وهو عكس الترتيب المطلوب."
         },
         {
-          "content": "حكمها صحيح لأن العمال جمع",
+          "content": "الحديقةُ جميلةٌ؛ الأشجارُ خضراءُ.",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "المفرد والجمع لا يحددان نوع الجملة."
+          "distractor_rationale": "الجملتان اسميتان تصفان الحالة ولا تذكر الثانية عمل التلاميذ."
         },
         {
-          "content": "حكمها غير صحيح؛ إنها اسمية لأنها بدأت باسم «العمال»",
+          "content": "الحديقةُ بحاجةٍ إلى العناية؛ يزرعُ التلاميذُ أشجاراً فيها.",
           "position": 3,
           "is_correct": true
         },
         {
-          "content": "حكمها غير صحيح؛ إنها فعلية لأنها بدأت باسم",
+          "content": "شاركَ التلاميذُ في الحملة؛ يحافظون على النظافة.",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الاختيار متناقض لأنه يصف بداية اسمية بأنها جملة فعلية."
+          "distractor_rationale": "الجملتان فعليتان، فلا تتضمن البداية الاسمية التي تصف حال الحديقة."
         }
       ],
-      "explanation": "الجملة اسمية لأن أول كلمة فيها «العمال»، ولا يجعل الفعل اللاحق بدايتها فعلية."
+      "explanation": "الجملة الأولى «الحديقة بحاجة إلى العناية» اسمية وتصف حال الحديقة، والثانية «يزرع التلاميذ أشجاراً فيها» فعلية وتخبر عن عمل محدد."
     },
     {
       "question_code": "SYAR-G5-20261012-E19",
@@ -2511,11 +2511,181 @@
     "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Re-reviewed 40 source-grounded items p7–9 including all 20 Exam reasoning tasks after Codex findings. Rewrote E01, E02 and E04 as coherence diagnosis, title-effect explanation, and multi-sentence function classification; E13 now measures adaptation of technical language for a younger audience instead of duplicating E09's contradictory dates. Earlier independent Exam rewrites and 80 Learning hints retained. Physical brochure/oral performance follow-up is a separate assessment.",
-    "warning_disposition": "Deterministic validator always requests semantic review; newly rewritten Exam items have distinct authored prompts, options, answer rationales and tracked reasoning signatures; exact candidate and embedded SQL answers are checked by the unit test. No student-result publication implied.",
+    "review_findings": "Exam E06 transfers original numeric/time/distribution evidence faithfully; E17 distinguishes full semantic sentences from dependent fragments; E18 composes a nominal-state then verbal-action brochure announcement. Independent whole-package audit covers 400 Learning–Exam and 190 Exam–Exam semantic comparisons; a recorded matrix describes nearest Learning item, evidence, operation and decision rule for each Exam question. Recheck by independent reviewers before publication; real physical brochure/oral performance is separate.",
+    "warning_disposition": "The deterministic validator cannot prove reasoning independence. Exact-candidate static gate plus explicit 20-row evidence/operation/decision matrix and human/Codex semantic review are required; no learner publication until final reviewer disposition.",
     "approval_scope": "Anonymized curriculum-aligned baseline package; content QA passed; production and optional video remain distinct unverified delivery gates.",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED"
+  },
+  "assessment_independence_audit": {
+    "spec_id": "FLH-FEAT-2026-029",
+    "spec_version": "1.0",
+    "cross_mode_pairs_reviewed": 400,
+    "within_exam_pairs_reviewed": 190,
+    "method": "For each Exam item compare question stem, given evidence, actual decision criterion, and cognitive action against every Learning item and within Exam. Each row documents the nearest Learning item. Deterministic QA checks audit completeness and metadata integrity, while source-grounded holistic semantic review decides whether changes truly require novel reasoning.",
+    "status": "SEMANTIC_REVIEW_READY",
+    "rows": [
+      {
+        "exam_code": "SYAR-G5-20261012-E01",
+        "closest_learning_code": "SYAR-G5-20261012-L01",
+        "input_evidence": "شذرات من مقدمة ومحتوى مناقض",
+        "cognitive_action": "تشخيص خلل في الاتساق",
+        "deciding_criterion": "تعارض فقرات المسودة مع الهدف المعلن",
+        "independence_rationale": "التعلم يختار موضوعاً مناسباً؛ الامتحان يشخّص خللاً داخل نص أُعدّ بالفعل"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E02",
+        "closest_learning_code": "SYAR-G5-20261012-L02",
+        "input_evidence": "غلاف مصوّر بلا عنوان",
+        "cognitive_action": "استنتاج أثر النقص التحريري",
+        "deciding_criterion": "العنوان يختصر موضوع المطويّة قبل فتحها",
+        "independence_rationale": "التعلم يختار عنواناً؛ الامتحان يستنتج أثر حذفه على القارئ"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E03",
+        "closest_learning_code": "SYAR-G5-20261012-L03",
+        "input_evidence": "مجموعة بيانات جُمعت لكنها لا تغطي الأخطار",
+        "cognitive_action": "تشخيص فجوة في البيانات",
+        "deciding_criterion": "المعلومات تغطي ما يلزم لتوجيه السلامة",
+        "independence_rationale": "التعلم يجمع المحتوى المناسب من الصفر؛ الامتحان يحلل نقص محتوى موجود"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E04",
+        "closest_learning_code": "SYAR-G5-20261012-L04",
+        "input_evidence": "ثلاث جمل ذات وظائف تواصلية مختلفة",
+        "cognitive_action": "تحليل وظيفة كل جملة بالترتيب",
+        "deciding_criterion": "تمييز الخبر والإرشاد العملي وموعد النشاط",
+        "independence_rationale": "التعلم يختار إرشاد فرز صحيحاً؛ الامتحان يصنف ثلاث وظائف ضمن مطويّة واحدة"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E05",
+        "closest_learning_code": "SYAR-G5-20261012-L05",
+        "input_evidence": "نداء عام غير مناسب لنشاط محلي",
+        "cognitive_action": "تحرير مخاطبة الجمهور",
+        "deciding_criterion": "ضبط المخاطبة مع نطاق المشاركة",
+        "independence_rationale": "التعلم يستخرج الجمهور من نص؛ الامتحان يعالج mismatch بين النداء والمكان"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E06",
+        "closest_learning_code": "SYAR-G5-20261012-L06",
+        "input_evidence": "بطاقة توزيع تتضمن العدد واليوم وصفّين",
+        "cognitive_action": "إعادة صياغة بيانات موثقة بأمانة",
+        "deciding_criterion": "الحفاظ على العدد الكلي والتوزيع والزمن دون تغيير",
+        "independence_rationale": "التعلم يفاضل بين معلومات مرتبطة بالهدف؛ الامتحان ينقل ثلاث معطيات محددة بدقة"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E07",
+        "closest_learning_code": "SYAR-G5-20261012-L07",
+        "input_evidence": "مراحل تصميم أربع وخيارات ترتيب متنافسة",
+        "cognitive_action": "ترتيب سلسلة خطوات عملية",
+        "deciding_criterion": "الموضوع ثم المعلومات ثم الفن ثم الإخراج النهائي",
+        "independence_rationale": "التعلم يختار صورة نموذجية؛ الامتحان يعيد ترتيب العمليات عبر دورة الإنتاج"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E08",
+        "closest_learning_code": "SYAR-G5-20261012-L08",
+        "input_evidence": "كتابة فاتحة على أرضية فاتحة",
+        "cognitive_action": "تشخيص ضعف تباين لوني",
+        "deciding_criterion": "التباين بين النص والخلفية لا حجم الخط",
+        "independence_rationale": "التعلم يعالج ازدحام خط صغير لكبار السن؛ الامتحان يشخّص ضعف التباين رغم كفاية الحجم"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E09",
+        "closest_learning_code": "SYAR-G5-20261012-L09",
+        "input_evidence": "تاريخان مختلفان للحدث نفسه",
+        "cognitive_action": "مراجعة تناقض والتحقق من مصدر واحد",
+        "deciding_criterion": "دقة الموعد في جميع مواضع النشر",
+        "independence_rationale": "التعلم يستنتج أهمية بيانات المشاركة؛ الامتحان يوحّد تاريخين متناقضين"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E10",
+        "closest_learning_code": "SYAR-G5-20261012-L10",
+        "input_evidence": "تعليمات عملية متعددة عن الماء",
+        "cognitive_action": "صياغة خلاصة أمينة من فعلين",
+        "deciding_criterion": "الحفاظ على سلوكين محددين في خلاصة واحدة",
+        "independence_rationale": "التعلم يميّز صيغة دعوة؛ الامتحان يركّب توجيهاً مركباً من مطلبين"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E11",
+        "closest_learning_code": "SYAR-G5-20261012-L11",
+        "input_evidence": "جملة تتضمن خطأ وصل فاء بفعل الأمر",
+        "cognitive_action": "تصحيح صياغة مكتوبة",
+        "deciding_criterion": "الربط الصحيح للفاء مع الفعل وعلامة الترقيم",
+        "independence_rationale": "التعلم يعلل أهمية المراجعة؛ الامتحان ينفذ تصحيحاً دقيقاً"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E12",
+        "closest_learning_code": "SYAR-G5-20261012-L12",
+        "input_evidence": "صورة تغطي نص إرشاد رئيسياً",
+        "cognitive_action": "تعديل أولويات توزيع المساحة",
+        "deciding_criterion": "عدم حجب المعلومة بواسطة الصورة",
+        "independence_rationale": "التعلم يرتب فقرات مبعثرة؛ الامتحان يحل مشكلة طمس النص بعنصر مرئي"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E13",
+        "closest_learning_code": "SYAR-G5-20261012-L13",
+        "input_evidence": "جملة تقنية موجهة إلى أطفال صف ثان",
+        "cognitive_action": "إعادة صياغة لغوية حسب عمر الجمهور",
+        "deciding_criterion": "تبسيط العبارة مع الحفاظ على مقصد التشجير",
+        "independence_rationale": "التعلم يراجع توافق الصورة والعنوان؛ الامتحان يكيف مستوى اللغة للمتلقي"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E14",
+        "closest_learning_code": "SYAR-G5-20261012-L14",
+        "input_evidence": "تعليق قارئة على سرعة وضعف صوت العرض",
+        "cognitive_action": "تعديل أداء شفهي بناء على شكوى",
+        "deciding_criterion": "إبطاء الكلام ورفع وضوح الصوت عند الإعادة",
+        "independence_rationale": "التعلم يقارن عرضين من حيث الإقناع؛ الامتحان يعالج ملاحظة محددة من المستمع"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E15",
+        "closest_learning_code": "SYAR-G5-20261012-L15",
+        "input_evidence": "تجربة قارئات لم يلاحظن إرشاداً أسفل الصور",
+        "cognitive_action": "إعادة توزيع أولويات إخراج بعد تجربة",
+        "deciding_criterion": "إبراز النص العملي في موضع مقروء",
+        "independence_rationale": "التعلم يضيف إرشادات مفقودة؛ الامتحان يحسن إبراز إرشادات موجودة"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E16",
+        "closest_learning_code": "SYAR-G5-20261012-L16",
+        "input_evidence": "صياغة اسمية يراد تحويلها",
+        "cognitive_action": "تحويل تركيب اسمية إلى فعلية دون تغيير المعنى",
+        "deciding_criterion": "بدء الصياغة الجديدة بالفعل مع ثبات الفاعل والمعنى",
+        "independence_rationale": "التعلم يصنف جملة وفق البدء؛ الامتحان ينتج صياغة بديلة بنوع آخر"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E17",
+        "closest_learning_code": "SYAR-G5-20261012-L17",
+        "input_evidence": "أربع عبارات إحداها تامة المعنى",
+        "cognitive_action": "تمييز الجملة المكتملة عن شذرات ناقصة",
+        "deciding_criterion": "لا تكفي أسماء أو ظروف بلا إسناد تام",
+        "independence_rationale": "التعلم يصنف جملة فعلية؛ الامتحان يحكم باكتمال معنى تركيب"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E18",
+        "closest_learning_code": "SYAR-G5-20261012-L18",
+        "input_evidence": "مطلب تحريري مزدوج للوصف ثم العمل",
+        "cognitive_action": "بناء زوج جمل بوظيفتين في ترتيب مقصود",
+        "deciding_criterion": "الأولى اسمية لوصف الواقع والثانية فعلية للإجراء",
+        "independence_rationale": "التعلم يصنف نوع زوج قائم؛ الامتحان يؤلف زوجاً يلائم هدف الإعلان وتسلسله"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E19",
+        "closest_learning_code": "SYAR-G5-20261012-L19",
+        "input_evidence": "فعلان ماضيان رباعي وخماسي",
+        "cognitive_action": "مقارنة نوع همزتين أوليتين",
+        "deciding_criterion": "القطع في الرباعي والوصل في الخماسي",
+        "independence_rationale": "التعلم يصلح همزة الأمر؛ الامتحان يقارن صياغة فعلين ماضيين مختلفين"
+      },
+      {
+        "exam_code": "SYAR-G5-20261012-E20",
+        "closest_learning_code": "SYAR-G5-20261012-L20",
+        "input_evidence": "الكلمة نفسها في بداية الكلام وبعد واو",
+        "cognitive_action": "الموازنة بين حالتي النطق",
+        "deciding_criterion": "همزة الوصل تظهر في الابتداء وتسقط عند الاتصال",
+        "independence_rationale": "التعلم يختبر قطعاً لا يسقط؛ الامتحان يفسر وصلاً يتغير بالنطق"
+      }
+    ]
   }
 }
