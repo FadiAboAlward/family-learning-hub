@@ -524,7 +524,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "مراجعة اتساق جملتين مع وظيفتي الوصف ثم الفعل المتعاقبتين",
+      "reasoning_signature": "تفسير الترابط السببي بين وصف حاجة في جملة اسمية وفعل يستجيب لها في جملة فعلية",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -2393,33 +2393,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تطلب المدرسة فقرة من سطرين: يبدأ الأول بوصف حاجة الحديقة إلى العناية، ويعرض الثاني عملاً يقوم به الطلاب. أي تعديل ينتج تسلسلاً من الوصف إلى الاستجابة؟",
+      "prompt": "اقرئي سطرَي المطويّة: «الحديقةُ بحاجةٍ إلى عناية. يزرعُ التلاميذُ أشجاراً فيها». تريد المعلّمة شرح كيف تتصل الفكرة في الجملة الثانية بالفكرة في الأولى، لا مجرد تسمية نوعهما. أي تفسير أدقّ؟",
       "options": [
         {
-          "content": "«يغرس الطلاب الأشجار. الحديقة بحاجة إلى عناية.»",
+          "content": "الجملتان لا علاقة بينهما؛ فالأولى تتكلم عن مكان والثانية عن أناس",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "هذا يعكس الترتيب المطلوب فيبدأ بالإجراء قبل الحالة."
+          "distractor_rationale": "الفعل الموصوف في الجملة الثانية يقع في الحديقة ويعالج حاجتها المذكورة في الأولى."
         },
         {
-          "content": "«الحديقة بحاجة إلى عناية. الأشجار خضراء.»",
+          "content": "الجملة الثانية تعيد وصف حاجة الحديقة بالكلمات نفسها دون ذكر عمل",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "الجملة الثانية تصف الأشجار ولا تخبر عن عمل الطلاب."
+          "distractor_rationale": "الجملة الثانية تذكر عملاً محدداً يقوم به التلاميذ ولا تكرر وصف الحاجة."
         },
         {
-          "content": "«الحديقة بحاجة إلى عناية. يغرس الطلاب أشجاراً فيها.»",
+          "content": "الجملة الأولى تبيّن حاجة الحديقة، والثانية تعرض عملاً يستجيب لهذه الحاجة",
           "position": 3,
           "is_correct": true
         },
         {
-          "content": "«تحتاج الحديقة إلى عناية. يزرع الطلاب أشجاراً فيها.»",
+          "content": "الجملة الأولى تخبر أن الأشجار زُرعت بالفعل، والثانية تطلب وقف الزراعة",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الجملة الأولى فعلية فلا تبدأ الفقرة بوصف اسمي."
+          "distractor_rationale": "الجملة الأولى لا تذكر زراعة الأشجار، والثانية تذكر فعلاً إيجابياً لا طلباً لوقفه."
         }
       ],
-      "explanation": "الجملة الاسمية الأولى تصف حال الحديقة، والجملة الفعلية الثانية تخبر عن إجراء الطلاب الذي يستجيب لهذه الحاجة."
+      "explanation": "وصفت الجملة الاسمية الأولى حاجة الحديقة إلى العناية، ثم جاءت الجملة الفعلية الثانية لتخبر عن عمل يقوم به التلاميذ استجابة لتلك الحاجة؛ الترابط هنا في المعنى والغاية، لا في ترتيب أسماء الأنواع وحده."
     },
     {
       "question_code": "SYAR-G5-20261012-E19",
@@ -2511,7 +2511,7 @@
     "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "All 20 Exam items have newly authored evidence/decision paths grounded in book PDF pp7–9 after previous QUALITY_BLOCKED. Learning and its 80 hints remain unchanged. Independent Codex/semantic review required before approval; include actual pair comparison, not reasoning-signature labels.",
+    "review_findings": "All 20 Exam questions rewritten; additional change E18 now evaluates semantic coherence between a need described in a nominal sentence and a response stated in a verbal sentence, not selecting nominal-verbal order taught in L18. Await independent semantic review before approval.",
     "warning_disposition": "Holistic semantic comparison documented but still requires independent reviewer; exact candidate validator is deterministic, not a semantic PASS.",
     "approval_scope": "AUTHORING_CANDIDATE — NOT PUBLISHED",
     "video": "NOT_VERIFIED",
@@ -2665,10 +2665,10 @@
       {
         "exam_code": "SYAR-G5-20261012-E18",
         "closest_learning_code": "SYAR-G5-20261012-L18",
-        "input_evidence": "طلب سياقي يجمع وصف مشكلة وإجراءً استجابة لها",
-        "cognitive_action": "مراجعة اتساق جملتين مع وظيفتي الوصف ثم الفعل المتعاقبتين",
-        "deciding_criterion": "البداية الاسمية تصف الحالة والثانية الفعلية تنقل عمل الطلاب",
-        "independence_rationale": "التعلم يصنف نوع جملتين معكوستين؛ الامتحان يختبر تسلسل وصف حالة واستجابة مع اتساق الغرض."
+        "input_evidence": "جملتان كاملتان تصف إحداهما الحاجة وتخبر الأخرى بعمل استجابة لها",
+        "cognitive_action": "تفسير العلاقة المعنوية بين الحاجة والاستجابة ضمن فقرة ذات نوعين من الجمل",
+        "deciding_criterion": "العمل المذكور في الجملة الثانية يعالج المشكلة الواردة في الأولى",
+        "independence_rationale": "التعلم يسأل فقط عن تصنيف البداية الاسمية والفعلية؛ الامتحان يطلب تفسير علاقة الفكرة والسبب والاستجابة بين نصّي الجملتين ولا تكفي معرفة النوع وحده."
       },
       {
         "exam_code": "SYAR-G5-20261012-E19",
