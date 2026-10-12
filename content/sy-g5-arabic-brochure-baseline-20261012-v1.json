@@ -1,6 +1,6 @@
 {
   "package_id": "SY-G5-ARABIC-U1-BROCHURE-BASELINE-20261012-V1",
-  "status": "ACADEMIC_SEMANTIC_REVIEW_PASSED_NOT_PUBLISHED",
+  "status": "QUALITY_BLOCKED",
   "academic_context": {
     "student_ref": "Syrian G5 learner — anonymized curriculum baseline",
     "grade": "5",
@@ -2498,9 +2498,9 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PASS",
+    "academic_semantic_review": "BLOCKED",
     "canonical_validator": "PASS",
-    "publication": "NOT_STARTED",
+    "publication": "BLOCKED",
     "video": "NOT_STARTED",
     "testing_qa": "NOT_STARTED",
     "learner_email": "NOT_SENT"
@@ -2511,9 +2511,9 @@
     "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Exam E06 transfers original numeric/time/distribution evidence faithfully; E17 distinguishes full semantic sentences from dependent fragments; E18 composes a nominal-state then verbal-action brochure announcement. Independent whole-package audit covers 400 Learning–Exam and 190 Exam–Exam semantic comparisons; a recorded matrix describes nearest Learning item, evidence, operation and decision rule for each Exam question. Recheck by independent reviewers before publication; real physical brochure/oral performance is separate.",
-    "warning_disposition": "The deterministic validator cannot prove reasoning independence. Exact-candidate static gate plus explicit 20-row evidence/operation/decision matrix and human/Codex semantic review are required; no learner publication until final reviewer disposition.",
-    "approval_scope": "Anonymized curriculum-aligned baseline package; content QA passed; production and optional video remain distinct unverified delivery gates.",
+    "review_findings": "QUALITY_BLOCKED: An independent review of current full bank found E15 mirrors L08 readability criterion and E18 still tests L18 classification despite being described as composition; 20-row nearest-pair metadata was not sufficient. E06/E17/E18 first targeted changes and automatic structural validation are insufficient to claim Exam uniqueness.",
+    "warning_disposition": "The package must NOT publish. Audit and deterministic checks verify structure, not reasoning novelty. Re-author entire Exam bank against Learning hints and 190 internal Exam pairs under FLH-FEAT-2026-029. Re-run the exact-candidate semantic review before changing this state.",
+    "approval_scope": "QUALITY_BLOCKED — not academically publishable; no live deployment",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED"
@@ -2524,7 +2524,7 @@
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
     "method": "For each Exam item compare question stem, given evidence, actual decision criterion, and cognitive action against every Learning item and within Exam. Each row documents the nearest Learning item. Deterministic QA checks audit completeness and metadata integrity, while source-grounded holistic semantic review decides whether changes truly require novel reasoning.",
-    "status": "SEMANTIC_REVIEW_READY",
+    "status": "QUALITY_BLOCKED",
     "rows": [
       {
         "exam_code": "SYAR-G5-20261012-E01",
@@ -2686,6 +2686,11 @@
         "deciding_criterion": "همزة الوصل تظهر في الابتداء وتسقط عند الاتصال",
         "independence_rationale": "التعلم يختبر قطعاً لا يسقط؛ الامتحان يفسر وصلاً يتغير بالنطق"
       }
+    ],
+    "blockers": [
+      "E15/L08: Both exercise the coached readability correction even though nearest-pair audit incorrectly chose L15; complete cross-mode comparison missing.",
+      "E18/L18: Recognizing the nominal-then-verbal pair in a four-option MCQ is not composing original sentences; repeated classification criterion.",
+      "Stop more piecemeal rephrases and rebuild full Exam bank using actual new evidence operations; require holistic independent review before any PASS."
     ]
   }
 }
