@@ -118,6 +118,10 @@ assert.ok(
 for (const [language, prompt] of [
   ['ar', 'في مفردات درس «عَلَمُ بلادي»، ما معنى كلمة «مُسبِغ»؟'],
   ['tr', 'Derste geçen “özveri” sözcüğü ne anlama gelir?'],
+  ['tr', 'Şiirde geçen kelime ne anlama gelir?'],
+  ['tr', 'Bu şiirde kullanılan kelime ne anlama gelir?'],
+  ['tr', 'Şiirin sözlüğünde kelime ne anlama gelir?'],
+  ['tr', 'Şiire göre kelime ne anlama gelir?'],
   ['en', 'As mentioned in the lesson, what does “generous” mean?']
 ]) {
   const softSourcePrompt = read('valid-package.json');
@@ -793,9 +797,12 @@ assert.ok(unicodeExponentLeakResult.errors.some(x => x.code === 'HINT_ANSWER_LEA
 
 const cliDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flh academic qa '));
 try {
-  const cliScript = path.join(cliDir, 'academic content quality.mjs');
+  fs.mkdirSync(path.join(cliDir, 'scripts'));
+  fs.mkdirSync(path.join(cliDir, 'supabase/functions/_shared'), { recursive: true });
+  const cliScript = path.join(cliDir, 'scripts', 'academic content quality.mjs');
   const invalidPackage = path.join(cliDir, 'invalid package.json');
   fs.copyFileSync(new URL('../scripts/academic-content-quality.mjs', import.meta.url), cliScript);
+  fs.copyFileSync(new URL('../supabase/functions/_shared/academic-content-quality.mjs', import.meta.url), path.join(cliDir, 'supabase/functions/_shared/academic-content-quality.mjs'));
   fs.writeFileSync(invalidPackage, '{}\n', 'utf8');
   const cliRun = spawnSync(process.execPath, [cliScript, invalidPackage], { encoding: 'utf8' });
   assert.equal(cliRun.status, 1, 'CLI must execute validation and fail invalid packages even when its path contains spaces');

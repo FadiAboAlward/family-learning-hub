@@ -116,3 +116,26 @@ begin
 end;
 $fixture$;
 commit;
+
+-- FLH027 prospective authoring target: empty, wholly synthetic and learner-hidden.
+-- Its candidate is sent through the real authenticated API by the Runner test.
+begin;
+do $held_fixture$
+declare w uuid:='55f9224c-8ba7-4cbc-9f88-713e6a6b41df'; l uuid; subject bigint; code text;
+begin
+ select id into strict l from public.learners where workspace_id=w and slug='test' and metadata->>'is_test'='true';
+ insert into public.curricula(id,code,name_ar) values('02720000-0000-4000-8000-000000000004','qa-assessment-authenticated','Synthetic assessment curriculum');
+ insert into public.subjects(code,name_ar) values('qa-assessment-authenticated','Synthetic assessment subject') returning id into subject;
+ insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level,metadata)
+ values('02720000-0000-4000-8000-000000000003',w,'qa-assessment-authenticated','Testing held publication','active','02720000-0000-4000-8000-000000000004',7,'{"technical_qa":true}');
+ insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values(w,l,'02720000-0000-4000-8000-000000000003','active');
+ insert into public.quizzes(id,workspace_id,subject_id,curriculum_id,slug,title,status)
+ values('02720000-0000-4000-8000-000000000001',w,subject,'02720000-0000-4000-8000-000000000004','qa-assessment-authenticated','Synthetic held assessment','draft');
+ insert into public.quiz_versions(id,workspace_id,quiz_id,version_no,state,settings)
+ values('02720000-0000-4000-8000-000000000002',w,'02720000-0000-4000-8000-000000000001',1,'draft','{"technical_qa":true}');
+ insert into public.program_quizzes(workspace_id,program_id,quiz_id,availability) values(w,'02720000-0000-4000-8000-000000000003','02720000-0000-4000-8000-000000000001','available');
+ foreach code in array array['tr-g7-rational-integer-relation','tr-g7-rational-definition-sign','tr-g7-rational-number-line'] loop
+  insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values(w,subject,'02720000-0000-4000-8000-000000000004',7,code,'Testing concept');
+ end loop;
+end; $held_fixture$;
+commit;

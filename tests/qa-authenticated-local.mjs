@@ -316,6 +316,13 @@ async function main() {
   } finally {
     try {
       if (runtime && parentId) {
+        // Only the owned local held fixture can reference this synthetic Auth user.
+        // No hosted transport: sql() attests the disposable container first.
+        await sql(config, `do $cleanup$ begin
+          if exists(select 1 from public.assessment_publications where quiz_version_id='02720000-0000-4000-8000-000000000002' and created_by<>'${parentId}') then raise exception 'QA_LOCAL_ASSESSMENT_OWNER_MISMATCH'; end if;
+          delete from public.assessment_publications where quiz_version_id='02720000-0000-4000-8000-000000000002' and created_by='${parentId}';
+          delete from public.quizzes where id='02720000-0000-4000-8000-000000000001' and workspace_id='55f9224c-8ba7-4cbc-9f88-713e6a6b41df' and slug='qa-assessment-authenticated';
+        end; $cleanup$;`);
         const removed = await fetchRunnerLocalAuth(runtime, `/auth/v1/admin/users/${parentId}`, { method: 'DELETE', headers: { apikey: runtime.serviceRoleKey, authorization: `Bearer ${runtime.serviceRoleKey}` } });
         if (!removed.ok) throw new Error('QA_LOCAL_PARENT_DELETE_FAILED');
       }

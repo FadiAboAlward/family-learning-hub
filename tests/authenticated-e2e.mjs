@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { fetchQaBackend, fetchQaOidc, installQaBrowserIsolation, qaBrowserLaunchOptions, readQaTestingConfig, verifyQaTestingBackend } from './qa-isolation.mjs';
 import { AUTHENTICATED_QA_STAGES, fetchRunnerLocalAuth, safeAuthenticatedFailure } from './qa-runner-local.mjs';
+import { verifyHeldAssessmentApi } from './assessment-authenticated.mjs';
 
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
 const QA_QUIZ_SLUG = 'qa-automation-core';
@@ -450,6 +451,7 @@ async function main() {
         if (config.mode === 'runner-local') await runAuthenticatedStage('PARENT_AUTH', () => assertQaParent(
           config, process.env.FLH_QA_PARENT_EMAIL, process.env.FLH_QA_PARENT_PASSWORD, fetch,
           async parentToken => {
+            await runAuthenticatedStage('ASSESSMENT_PUBLICATION', () => verifyHeldAssessmentApi(config,parentToken,prepared.session));
             const parentContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
             let parentNetwork;
             try {
