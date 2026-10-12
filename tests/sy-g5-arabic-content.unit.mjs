@@ -41,6 +41,21 @@ const serialized = JSON.stringify(pkg);
 assert.doesNotMatch(serialized, /Aya|آية|AYA-|88\.46|93\.75|20\/20|19\/20/u);
 assert.equal(pkg.publication_gates.academic_semantic_review, 'PASS');
 assert.equal(pkg.questions.length, 40);
+// Answer key placement preflight: prevent a learner from inferring later correct
+// options from a cycle such as 1-2-3-4-1-2-3-4, without changing item semantics.
+for (const [surface, items] of [['Learning', learning], ['Exam', exam]]) {
+  const keys = items.map(q => q.options.find(o => o.is_correct)?.position);
+  assert.equal(keys.length, 20, surface + ' answer count');
+  assert.deepEqual([1,2,3,4].map(k => keys.filter(v => v === k).length),
+    [5,5,5,5], surface + ' key locations should be balanced');
+  for (let period = 1; period <= 4; period++) {
+    for (let start = 0; start <= keys.length - 12; start++) {
+      assert.equal(keys.slice(start, start + 12).every((v, i) =>
+        v === keys[start + (i % period)]), false,
+        surface + ' answer key must not contain a predictable 12-item cycle');
+    }
+  }
+}
 for (const q of pkg.questions) {
   const incorrect = q.options.filter(o => !o.is_correct);
   assert.equal(incorrect.length, 3);
