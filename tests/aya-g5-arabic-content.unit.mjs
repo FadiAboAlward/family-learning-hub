@@ -25,7 +25,7 @@ const concepts = new Map();
 for (const q of pkg.questions) {
   concepts.set(q.concept_code, (concepts.get(q.concept_code) ?? 0) + 1);
   assert.equal(q.options.filter(o => o.is_correct === true).length, 1, q.question_code);
-  if (q.delivery_surface === 'exam') assert.equal(q.hints.length, 0, q.question_code);
+  if (q.delivery_surface === 'exam') assert.equal(q.hints?.length ?? 0, 0, q.question_code);
   else for (const h of q.hints) {
     assert.equal(h.content.split('\n').filter(Boolean).length, 3, q.question_code);
     assert.ok(h.content.split(/\s+/u).filter(Boolean).length >= 30, q.question_code);
