@@ -39,7 +39,6 @@ assert.equal(concepts.get('arabic-g5-u1-initial-hamza'), 4);
 // Ensure the public repository package has no copied personal academic scores or identities.
 const serialized = JSON.stringify(pkg);
 assert.doesNotMatch(serialized, /Aya|آية|AYA-|88\.46|93\.75|20\/20|19\/20/u);
-assert.equal(pkg.publication_gates.academic_semantic_review, 'PASS');
 assert.equal(pkg.questions.length, 40);
 // Answer key placement preflight: prevent a learner from inferring later correct
 // options from a cycle such as 1-2-3-4-1-2-3-4, without changing item semantics.
@@ -118,4 +117,9 @@ for (const suffix of ['E06','E17','E18']) {
   assert.ok(bp.reasoning_signature !== audit.rows.find(r => r.exam_code === q.question_code)?.independence_rationale, suffix);
 }
 
+// Run all mechanical, answer-pattern and exact SQL checks before the release gate.
+// PENDING_REVIEW must still fail this branch, but should not hide earlier QA evidence.
+console.log('Academic authoring mechanical QA, answer positions and exact migration fidelity: PASS');
+assert.equal(pkg.publication_gates.academic_semantic_review, 'PASS',
+  'Independent semantic review is required before merge and publication');
 console.log('Syrian G5 Arabic public-private separation, canonical CLI, 40/80 content and embedded publication integrity: PASS');
