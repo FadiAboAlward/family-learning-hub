@@ -313,7 +313,7 @@
       "difficulty_role": "support",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تحديد الموضوع في مشروع بيئي مختلف | exam",
+      "reasoning_signature": "تشخيص ضعف وحدة الموضوع في مسودة ذات هدف معلن ومحتوى منحرف",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -326,7 +326,7 @@
       "difficulty_role": "support",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "إبداع عنوان لخدمة عامة | exam",
+      "reasoning_signature": "تفسير وظيفة العنوان في واجهة مطويّة لا تتضمن عنواناً",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -350,7 +350,7 @@
       "difficulty_role": "support",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "اختيار توجيه قابل للتنفيذ | exam",
+      "reasoning_signature": "تصنيف وظائف ثلاث جمل: معلومة وإرشاد وموعد لا اختيار نصيحة",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -463,7 +463,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "مراجعة تناقض بين معلومتين مكتوبتين والتحقق من حقيقتهما",
+      "reasoning_signature": "تبسيط لغة المطويّة لجمهور صغير مع إبقاء الرسالة البيئية",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -1764,33 +1764,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في مجلس الحي يخطط التلاميذ لإعلان توعوي يدعو السكان إلى تقليل استخدام الأكياس البلاستيكية. أي موضوع يلتزم بالمطلوب؟",
+      "prompt": "كتبت مجموعة في مقدمة مطويّة: «هدفنا التقليل من الأكياس البلاستيكية»، لكن فقرات المطويّة تتحدث عن ألعاب إلكترونية لا علاقة لها بذلك. لماذا يجب إعادة تنظيم المحتوى؟",
       "options": [
         {
-          "content": "عرض فوائد البلاستيك دون اقتراح بدائل",
+          "content": "لأن المقدمة قصيرة، حتى لو كانت الفقرات منسجمة مع الهدف",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "الاكتفاء بمزايا البلاستيك يبتعد عن هدف تقليل الأكياس.",
-          "position": 1
+          "distractor_rationale": "طول المقدمة ليس سبب التناقض بين الهدف والفقرات."
         },
         {
-          "content": "استعمال الحقائب القابلة لإعادة الاستخدام",
-          "is_correct": true,
-          "position": 2
+          "content": "لأن الفقرات لا تخدم الهدف المعلن، فيضيع موضوع المطويّة",
+          "position": 2,
+          "is_correct": true
         },
         {
-          "content": "ذكر ألوان الحقائب البلاستيكية الجديدة",
+          "content": "لأن وجود هدف واحد في المطويّة خطأ يستلزم إضافة أهداف غير مرتبطة",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "ألوان الأكياس مسألة شكلية وليست خطوة لتقليل الاستهلاك.",
-          "position": 3
+          "distractor_rationale": "المطويّة قد تنجح بهدف واحد واضح ولا تحتاج أهدافاً مشتتة."
         },
         {
-          "content": "نشر صور الأكياس في الأسواق من غير تقليل استخدامها",
+          "content": "لأن أي حديث عن ألعاب إلكترونية ممنوع في جميع المطويّات",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "صور الأسواق لا تعلّم السكان كيف يستبدلون الأكياس البلاستيكية.",
-          "position": 4
+          "distractor_rationale": "موضوع الألعاب ليس خطأ في ذاته؛ الخطأ هنا عدم صلته بهدف المطويّة."
         }
       ],
-      "explanation": "الموضوع المحدد يوافق المشكلة التي تعالجها الحملة."
+      "explanation": "المقدمة تعلن غاية واضحة، بينما الفقرات تبتعد عنها؛ لذا ينبغي إعادة تنظيم المعلومات لتخدم رسالة واحدة."
     },
     {
       "question_code": "SYAR-G5-20261012-E02",
@@ -1801,33 +1801,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تحتاج مجموعة إلى عنوان لمطويّة تشرح احترام الدور أمام مكتب الخدمات. ما الأنسب؟",
+      "prompt": "اطّلعت هبة على غلاف مطويّة عن احترام الدور؛ فيه رسم أشخاص ينتظرون، لكن لا يوجد عنوان. ما الأثر المحتمل لغياب العنوان؟",
       "options": [
         {
-          "content": "أسرع طرق الوصول إلى مكتب الخدمات",
+          "content": "لن يتمكن أحد من قراءة التعليمات الموجودة في الداخل أبداً",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "سهولة الوصول إلى المكتب لا تشرح أهمية احترام ترتيب الانتظار.",
-          "position": 1
+          "distractor_rationale": "غياب العنوان قد يصعّب تحديد الموضوع لكنه لا يمنع قراءة الصفحات الداخلية."
         },
         {
-          "content": "انتظر قليلاً ثم تجاوز الصف",
+          "content": "تتحول كل جملة مكتوبة في الداخل إلى جملة فعلية",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "السماح بتجاوز الصف يناقض الإنصاف الذي تستهدفه المطوية.",
-          "position": 2
+          "distractor_rationale": "وجود عنوان أو غيابه لا يغيّر القاعدة النحوية للجمل."
         },
         {
-          "content": "دورك يحفظ حق الجميع",
-          "is_correct": true,
-          "position": 3
+          "content": "قد لا يدرك القارئ موضوع المطويّة بسرعة قبل فتحها",
+          "position": 3,
+          "is_correct": true
         },
         {
-          "content": "كيف تختار مكتب خدمة قريباً",
+          "content": "تصبح الرسوم غير قابلة للطباعة مهما كان حجمها",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "اختيار مكتب قريب موضوع آخر غير حفظ حقوق المنتظرين.",
-          "position": 4
+          "distractor_rationale": "طباعة الرسم تعتمد على إعداد التصميم لا على وجود عنوان."
         }
       ],
-      "explanation": "العنوان الجيد موجز ويعكس الرسالة الاجتماعية الواضحة."
+      "explanation": "يساعد عنوان الغلاف القارئ على معرفة موضوع المطويّة من النظرة الأولى، بينما قد لا يكفي الرسم وحده لتحديد الرسالة."
     },
     {
       "question_code": "SYAR-G5-20261012-E03",
@@ -1875,33 +1875,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "توزع المدرسة مطويّة للتشجيع على القراءة في البيت. أي محتوى يقدم نصيحة قابلة للتنفيذ؟",
+      "prompt": "تتضمن مطويّة القراءة هذه العبارات: «القراءة توسّع المعرفة»، «اقرأ عشر دقائق كل مساء»، «يبدأ لقاء القراءة يوم الخميس». ما وظيفة العبارات الثلاث بالترتيب؟",
       "options": [
         {
-          "content": "خصّص عشر دقائق للقراءة كل مساء",
-          "is_correct": true,
-          "position": 1
+          "content": "معلومة توعوية، ثم إرشاد عملي، ثم موعد نشاط",
+          "position": 1,
+          "is_correct": true
         },
         {
-          "content": "اقرأ ساعة واحدة في يوم واحد ثم توقف",
+          "content": "موعد نشاط، ثم وصف صورة، ثم عنوان المطويّة",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "القراءة المتقطعة مرة واحدة لا تعطي عادة منزلية يمكن الاستمرار عليها.",
-          "position": 2
+          "distractor_rationale": "ترتيب الوظائف هنا لا يطابق أيّاً من الجمل الثلاث."
         },
         {
-          "content": "اقتَنِ كتباً كثيرة ولو لم تقرأها",
+          "content": "إرشاد عملي، ثم موعد نشاط، ثم معلومة توعوية",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "اقتناء الكتب دون قراءتها لا يحقق ممارسة القراءة المستهدفة.",
-          "position": 3
+          "distractor_rationale": "إسناد الإرشاد إلى الجملة الأولى يتجاهل أنها تخبر بفائدة لا تأمر بفعل."
         },
         {
-          "content": "غيّر مكان الكتب يومياً من دون تخصيص وقت للقراءة",
+          "content": "ثلاثة عناوين لأقسام لا تتضمن أي معلومات",
+          "position": 4,
           "is_correct": false,
-          "distractor_rationale": "نقل الكتب في البيت دون وقت للقراءة لا يعالج المطلوب.",
-          "position": 4
+          "distractor_rationale": "العبارات تتضمن معلومات وإرشاداً وموعداً، وليست عناوين فقط."
         }
       ],
-      "explanation": "تنجح المطويّة حين تتضمن إجراءً واضحاً يمكن للقارئ القيام به."
+      "explanation": "العبارة الأولى تقدم فائدة عامة، والثانية تطلب سلوكاً محدداً، والثالثة تعلن موعد فعالية."
     },
     {
       "question_code": "SYAR-G5-20261012-E05",
@@ -2208,33 +2208,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "كتب الفريق على غلاف مطويّة جمع الورق «موعد الجمع الخميس» وفي تعليماتها «أحضروا الورق الجمعة». ما أول إصلاح مطلوب؟",
+      "prompt": "تُوزَّع مطويّة تشجير على أطفال الصف الثاني، وفيها عبارة «ترسيخ الاستدامة البيئية عبر تنمية الغطاء النباتي». أي تعديل لغوي يُقرّب معناها للأطفال دون تغيير هدفها؟",
       "options": [
         {
-          "content": "زيادة صور صناديق جمع الورق",
+          "content": "استبدال العبارة بقائمة أسماء الأشجار الأجنبية بلا شرح",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "الصور لا تصلح تعارض الموعدين."
+          "distractor_rationale": "الأسماء الأجنبية غير المفسّرة لا تجعل المعنى واضحاً للأطفال."
         },
         {
-          "content": "التحقق من يوم الجمع الصحيح ثم توحيد المعلومة في الوجهين",
+          "content": "ازرع شجرة واعتنِ بها لتحافظ على خضرة الحي",
           "position": 2,
           "is_correct": true
         },
         {
-          "content": "تغيير لون الحروف مع إبقاء الموعدين",
+          "content": "زيادة المصطلحات العلمية الصعبة لتبدو المطويّة رسمية",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "اللون لا يعالج خطأ زمنياً في المعلومة."
+          "distractor_rationale": "تكديس المصطلحات الصعبة يزيد صعوبة فهم الجمهور الصغير."
         },
         {
-          "content": "حذف العنوان فقط وترك الموعدين",
+          "content": "حذف النص كله وترك الغلاف بلا إرشاد",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "حذف العنوان لا يؤكد اليوم الصحيح."
+          "distractor_rationale": "ترك الغلاف بلا إرشاد يفقد المطويّة رسالتها التربوية."
         }
       ],
-      "explanation": "تعارض اليومين مشكلة في دقة البيانات، فيجب التأكد من الموعد الصحيح ثم إصلاح الصيغتين."
+      "explanation": "الجملة المبسطة توضّح للأطفال فعلاً مفهوماً يقود إلى المحافظة على الأشجار والمساحات الخضراء."
     },
     {
       "question_code": "SYAR-G5-20261012-E14",
@@ -2511,7 +2511,7 @@
     "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "A specific re-review addressed Codex review findings on Learning/Exam reasoning-form mirrors: 13 Exam tasks now use diagnosis of conflicting information, targeted revision, error analysis, synthesis, syntactic conversion and comparison rather than replaying corresponding Learning tasks; E07 blueprint signature describes sequencing. Source-grounded PDF p7–9, four-level Learning hints unchanged. Performance-based creation/oral-presentation follow-up remains separate.",
+    "review_findings": "Re-reviewed 40 source-grounded items p7–9 including all 20 Exam reasoning tasks after Codex findings. Rewrote E01, E02 and E04 as coherence diagnosis, title-effect explanation, and multi-sentence function classification; E13 now measures adaptation of technical language for a younger audience instead of duplicating E09's contradictory dates. Earlier independent Exam rewrites and 80 Learning hints retained. Physical brochure/oral performance follow-up is a separate assessment.",
     "warning_disposition": "Deterministic validator always requests semantic review; newly rewritten Exam items have distinct authored prompts, options, answer rationales and tracked reasoning signatures; exact candidate and embedded SQL answers are checked by the unit test. No student-result publication implied.",
     "approval_scope": "Anonymized curriculum-aligned baseline package; content QA passed; production and optional video remain distinct unverified delivery gates.",
     "video": "NOT_VERIFIED",
