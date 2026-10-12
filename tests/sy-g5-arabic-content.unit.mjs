@@ -69,4 +69,37 @@ for (const [i, q] of pkg.questions.entries()) {
   assert.deepEqual(row.hints, q.hints ?? []);
   assert.deepEqual(row.distractor_rationales, q.options.map(o => o.distractor_rationale ?? null));
 }
+// Explicit authoring-phase cognitive independence audit (FLH-FEAT-2026-029).
+// This tests completeness/correspondence, NOT truth of semantic distinctness:
+// reviewers must compare the actual prompts/options/hints on each pair.
+const audit = pkg.assessment_independence_audit;
+assert.equal(audit?.spec_id, 'FLH-FEAT-2026-029');
+assert.equal(audit.spec_version, '1.0');
+assert.equal(audit.cross_mode_pairs_reviewed, learning.length * exam.length);
+assert.equal(audit.within_exam_pairs_reviewed, exam.length * (exam.length - 1) / 2);
+assert.equal(audit.rows?.length, exam.length);
+const byExam = new Map(audit.rows.map(row => [row.exam_code, row]));
+assert.equal(byExam.size, exam.length);
+const learningCodes = new Set(learning.map(q => q.question_code));
+for (const q of exam) {
+  const row = byExam.get(q.question_code);
+  assert.ok(row, 'Missing cognitive review: ' + q.question_code);
+  assert.ok(learningCodes.has(row.closest_learning_code), 'Bad comparison reference: ' + q.question_code);
+  for (const field of ['input_evidence','cognitive_action','deciding_criterion','independence_rationale']) {
+    assert.ok(typeof row[field] === 'string' && row[field].trim().length >= 15,
+      'Incomplete reasoning independence evidence ' + q.question_code + ':' + field);
+  }
+}
+assert.equal(new Set(audit.rows.map(r => r.cognitive_action)).size, exam.length,
+  'Duplicate Exam cognitive-action labels: inspect actual semantic overlap');
+assert.equal(new Set(audit.rows.map(r => r.deciding_criterion)).size, exam.length,
+  'Duplicate Exam deciding-criterion labels: inspect actual semantic overlap');
+// Regression of the three previously repeated paths must remain source-grounded.
+for (const suffix of ['E06','E17','E18']) {
+  const q = exam.find(q => q.question_code.endsWith(suffix));
+  const bp = pkg.blueprint.find(b => b.question_code === q?.question_code);
+  assert.ok(q && bp && bp.reasoning_signature.length >= 30, suffix);
+  assert.ok(bp.reasoning_signature !== audit.rows.find(r => r.exam_code === q.question_code)?.independence_rationale, suffix);
+}
+
 console.log('Syrian G5 Arabic public-private separation, canonical CLI, 40/80 content and embedded publication integrity: PASS');
