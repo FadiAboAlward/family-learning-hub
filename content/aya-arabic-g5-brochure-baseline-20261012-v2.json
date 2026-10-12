@@ -1,6 +1,6 @@
 {
   "package_id": "AYA-AR5-20261012-BROCHURE-BASELINE-V2",
-  "status": "ACADEMIC_SEMANTIC_REVIEW_PENDING",
+  "status": "ACADEMIC_SEMANTIC_REVIEW_PASSED_NOT_PUBLISHED",
   "academic_context": {
     "student_ref": "Aya",
     "grade": "5",
@@ -2499,12 +2499,24 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PENDING",
-    "canonical_validator": "PENDING",
+    "academic_semantic_review": "PASS",
+    "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
     "testing_qa": "NOT_STARTED",
     "learner_email": "NOT_SENT"
   },
-  "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure."
+  "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure.",
+  "academic_semantic_review": {
+    "review_date": "2026-10-12",
+    "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
+    "reviewed_items": 40,
+    "reviewed_learning_hint_levels": 80,
+    "review_findings": "No missing source context, duplicate prompt, early Exam key/hint, off-topic primary concept, or ambiguous answer found after revisions. Questions measure identification and judgement about brochure design; not independent evidence of physical brochure production or presentation.",
+    "warning_disposition": "ASSESSMENT_SEMANTIC_REVIEW_REQUIRED is a universal manual-review reminder, not an unreviewed defect. Answer and hint semantic review performed; standalone creative production remains a separate recommended follow-up.",
+    "approval_scope": "Academic content suitable for baseline assessment after CI + reviewer/deployment controls. This approval is not a production publishing assertion.",
+    "video": "NOT_VERIFIED",
+    "testing": "NOT_RUN",
+    "publication": "NOT_STARTED"
+  }
 }
