@@ -88,6 +88,8 @@ jobs:
           npx --yes supabase@2.117.0 db reset --local --no-seed
       - name: Verify reconstructed schema and fixtures
         run: npx --yes supabase@2.117.0 db query --local --file tests/fresh-database-rebuild.sql
+      - name: Verify Aya G5 Arabic content registration contract
+        run: npx --yes supabase@2.117.0 db query --local --file tests/aya-g5-arabic-publication.contract.sql
       - name: Verify learner content assignment RLS contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/learner-content-assignments-rls.contract.sql
       - name: Verify authenticated authorization and session privacy
