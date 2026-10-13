@@ -50,3 +50,10 @@ assert.equal(context.approvalOutcome({already_reviewed:true,submission:{...pendi
 assert.equal(context.approvalOutcome({submission:{...pending,learner_id:'sibling',status:'approved',total_points:8}},pending).state,'failed','Wrong learner response cannot count as an approval');
 assert.equal(context.approvalOutcome({submission:{...pending,status:'rejected',total_points:0}},pending).state,'failed');
 console.log('Family rewards UI unit QA passed: captured/legacy estimates, exact-occurrence summaries, real usage order, stable timestamps and actual approval outcomes.');
+
+const daily = {...rule, cadence:'day', max_awards:1};
+const late={...pending,occurred_at:'2026-10-08T20:59:59Z'},nextDay={...pending,id:'next',occurred_at:'2026-10-08T21:00:00Z'};
+assert.equal(context.pendingSummary([daily],[late,nextDay]).total,16,'Istanbul midnight separates ordinary daily allowance estimates');
+assert.equal(context.pendingSummary([daily],[pending,{...pending,id:'later',occurred_at:'2026-10-08T15:00:00Z'}]).total,8,'different clocks share max1 daily forecast');
+assert.equal(context.pendingSummary([{...daily,max_awards:2}],[pending,{...pending,id:'later',occurred_at:'2026-10-08T15:00:00Z'}]).total,16,'max2 retains distinct allowed occurrences');
+assert.equal(context.pendingProjection([daily],{...pending,approval_blocker:'CADENCE_LIMIT'}).forecast,0,'known daily cap does not promise points');

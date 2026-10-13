@@ -76,25 +76,29 @@ begin
   qa_category := (qa_result->'category'->>'id')::uuid;
   qa_result := public.flh_family_rewards_command(workspace,parent_id,null,'rule_save',
     jsonb_build_object('title','QA Isolated Family Task','category_id',qa_category,'base_points',3,
-      'initiative_bonus_points',0,'cadence','unlimited','max_awards',null,
+      'initiative_bonus_points',0,'cadence','day','max_awards',1,
       'self_report_allowed',true,'parent_approval_required',true,
       'learner_scope','selected','learner_ids',jsonb_build_array(reward_learner,sibling_learner)));
   if qa_result->>'ok' <> 'true' then raise exception 'QA_LOCAL_REWARDS_RULE_FAILED'; end if;
   qa_rule := (qa_result->'rule'->>'id')::uuid;
   for position in 1..2 loop
     qa_result := public.flh_family_rewards_command(workspace,null,reward_learner,'behavior_submit',
-      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 3-position),
+      jsonb_build_object('rule_id',qa_rule,'occurred_at','2020-10-03T12:00:00+03:00'::timestamptz+make_interval(days => position-1),
         'idempotency_key','qa-parent-pending-'||position));
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_REWARDS_PENDING_FAILED'; end if;
   end loop;
   -- Two distinct synthetic sibling claims: one will be rejected, one approved.
   for position in 1..2 loop
     qa_result := public.flh_family_rewards_command(workspace,null,sibling_learner,'behavior_submit',
-      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 5+position),
+      jsonb_build_object('rule_id',qa_rule,'occurred_at','2020-10-03T12:00:00+03:00'::timestamptz+make_interval(days => position-1),
         'idempotency_key','qa-sibling-pending-'||position));
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_SIBLING_PENDING_FAILED'; end if;
   end loop;
-  if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 2
+  -- One pre-fix legacy duplicate; the new writer must not recreate it.
+  insert into public.behavior_submissions(id,workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot,requested_at)
+    select '02610000-0000-4000-8000-000000000301',workspace,reward_learner,qa_rule,'2020-10-03T15:00:00+03:00','learner','qa028-legacy-pending',snapshot,'2020-10-05T09:00:00+03:00'
+    from public.behavior_submissions where learner_id=reward_learner order by occurred_at limit 1;
+  if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 3
     or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 2
     or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) is distinct from 0
     or (select reward_points from public.learner_gamification_state where learner_id=sibling_learner) is distinct from 0

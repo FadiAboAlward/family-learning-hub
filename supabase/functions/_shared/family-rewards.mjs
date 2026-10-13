@@ -5,7 +5,7 @@ const parentActions = new Map([
   ['parent_behavior_report', 'parent_report'],
   ['return_events_list', 'return_events_list'],
   ...['category_save', 'rule_save', 'reward_save', 'behavior_record', 'behavior_review',
-    'reward_review', 'reward_redeem', 'points_adjust', 'return_event_create'].map(action => [action, action]),
+    'reward_review', 'reward_redeem', 'points_adjust', 'return_event_create', 'behavior_review_many'].map(action => [action, action]),
 ]);
 const learnerActions = new Map([
   ['student_rewards_dashboard', 'student_catalog'],
@@ -69,14 +69,45 @@ export async function executeFamilyRewardsAction(action, body, dependencies) {
     const identity = await dependencies.parentIdentity();
     if (!canManageRewardsRole(identity.member?.role)) throw new Error('NOT_REWARDS_ADMIN');
     actorId = identity.user.id;
-    if (['behavior_record', 'points_adjust', 'parent_ledger', 'parent_report'].includes(command) && body.learner_id != null) {
+    if (['behavior_record', 'points_adjust', 'parent_ledger', 'parent_report', 'behavior_review_many'].includes(command) && body.learner_id != null) {
       if (typeof body.learner_id !== 'string' || !uuid.test(body.learner_id)) throw new Error('INVALID_LEARNER_ID');
-      learnerId = body.learner_id;
+      learnerId = body.learner_id.toLowerCase();
     }
-    if (['behavior_record', 'points_adjust', 'parent_report'].includes(command) && !learnerId) throw new Error('INVALID_LEARNER_ID');
+    if (['behavior_record', 'points_adjust', 'parent_report', 'behavior_review_many'].includes(command) && !learnerId) throw new Error('INVALID_LEARNER_ID');
   } else {
     const identity = await dependencies.learnerIdentity();
     learnerId = identity.learner_id;
+  }
+  if (command === 'behavior_review_many') {
+    const items = body.items;
+    if (!Array.isArray(items) || items.length < 1 || items.length > 50
+      || items.some(item => !item || typeof item.submission_id !== 'string' || !uuid.test(item.submission_id))
+      || new Set(items.map(item => item.submission_id.toLowerCase())).size !== items.length
+      || (body.reason != null && (typeof body.reason !== 'string' || body.reason.length > 1000))) throw new Error('INVALID_INPUT');
+    const results = [];
+    // Existing RPC transactions isolate each item: a failed item cannot roll back earlier grants.
+    // Sequential service dispatch avoids racing the same learner lock or adding a second financial engine.
+    for (const item of items) {
+      try {
+        const { data, error } = await dependencies.rpc('flh_family_rewards_command', {
+          p_workspace_id: dependencies.workspaceId, p_actor_id: actorId, p_learner_id: learnerId,
+          p_action: 'behavior_review', p_payload: {
+            submission_id: item.submission_id, decision: 'approved', reason: body.reason || '',
+            ...(Object.hasOwn(item, 'return_event_id') ? { return_event_id: item.return_event_id } : {}),
+          },
+        });
+        if (error || data?.error) throw new Error(publicRewardsError(error || { message: data.error }));
+        const row = data?.submission;
+        if (row?.id?.toLowerCase() !== item.submission_id.toLowerCase() || row.learner_id !== learnerId
+          || row.status !== 'approved' || !Number.isSafeInteger(row.total_points) || row.total_points < 0) throw new Error('REWARDS_SERVER_ERROR');
+        results.push({ submission_id: item.submission_id, state: data.already_reviewed ? 'already_reviewed' : 'approved',
+          points: data.already_reviewed ? 0 : row.total_points });
+      } catch (error) {
+        const code = publicRewardsError(error);
+        results.push({ submission_id: item.submission_id, state: ['CADENCE_LIMIT', 'DUPLICATE_OCCURRENCE'].includes(code) ? 'blocked' : 'error', error: code, points: 0 });
+      }
+    }
+    return { ok: true, results };
   }
   // No client workspace, actor, reviewer, learner identity or calculated point totals cross this boundary.
   const payload = Object.fromEntries(fields[command].filter(key => Object.hasOwn(body, key)).map(key => [key, body[key]]));
