@@ -95,8 +95,8 @@ begin
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_SIBLING_PENDING_FAILED'; end if;
   end loop;
   -- One pre-fix legacy duplicate; the new writer must not recreate it.
-  insert into public.behavior_submissions(id,workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot)
-    select '02610000-0000-4000-8000-000000000301',workspace,reward_learner,qa_rule,'2020-10-03T15:00:00+03:00','learner','qa028-legacy-pending',snapshot
+  insert into public.behavior_submissions(id,workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot,requested_at)
+    select '02610000-0000-4000-8000-000000000301',workspace,reward_learner,qa_rule,'2020-10-03T15:00:00+03:00','learner','qa028-legacy-pending',snapshot,'2020-10-05T09:00:00+03:00'
     from public.behavior_submissions where learner_id=reward_learner order by occurred_at limit 1;
   if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 3
     or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 2

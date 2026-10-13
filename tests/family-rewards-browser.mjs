@@ -876,8 +876,12 @@ async function runBrowserSuite() {
     assert.equal(server.catalog.ledger.length,beforeStaleLedger,'already-reviewed result cannot be counted or granted twice');
 
     // FLH-028: a lost whole-batch response must not claim zero grants or re-award.
-    await server.handle({action:'behavior_submit',rule_id:reportRuleId,occurred_at:'2020-10-07T12:00:00Z',idempotency_key:'qa028-lost-batch'});
+    const networkRuleId='02800000-0000-4000-8000-000000000900';
+    server.catalog.rules.push({...server.catalog.rules.find(rule=>rule.id===reportRuleId),id:networkRuleId,title:'اختبار اتصال الموافقات'});
+    await server.handle({action:'behavior_submit',rule_id:networkRuleId,occurred_at:'2020-10-07T12:00:00Z',idempotency_key:'qa028-lost-batch'});
     await open(page,'parent');
+    const lostRefresh=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await lostRefresh;
     const beforeLost=server.state.reward_points;
     server.failAfter('behavior_review_many');
     page.once('dialog',dialog=>dialog.accept());
@@ -885,8 +889,10 @@ async function runBrowserSuite() {
     await page.getByRole('status').filter({hasText:'لم يصل تأكيد نتيجة الموافقة'}).waitFor({state:'visible'});
     assert.equal(server.state.reward_points,beforeLost+3,'lost response may have saved the grant');
     assert.equal(await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).isVisible(),false,'authoritative refresh removes the saved item despite lost response');
-    await server.handle({action:'behavior_submit',rule_id:reportRuleId,occurred_at:'2020-10-08T12:00:00Z',idempotency_key:'qa028-retryable-batch'});
+    await server.handle({action:'behavior_submit',rule_id:networkRuleId,occurred_at:'2020-10-08T12:00:00Z',idempotency_key:'qa028-retryable-batch'});
     await open(page,'parent');
+    const retryRefresh=responseFor(page,'parent_rewards_dashboard');
+    await page.locator('[data-fr-refresh]').click();await retryRefresh;
     const beforeFailure=server.state.reward_points;
     server.failBefore('behavior_review_many','SERVER_ERROR',500);
     page.once('dialog',dialog=>dialog.accept());
