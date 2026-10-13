@@ -692,6 +692,9 @@ begin
     insert into public.behavior_submissions(workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot)
       values(w,l,daily,'2020-03-03T12:00:00+03:00','learner','qa028-legacy',captured) returning id into legacy;
     select to_jsonb(s) into audit_before from public.behavior_submissions s where id=legacy;
+    -- Test a different active learner; the initial active-learner guard otherwise
+    -- returns LEARNER_NOT_FOUND before the review's sibling-ID check is reached.
+    update public.learners set is_active=true where workspace_id=w and id=inactive_l;
     result:=public.flh_family_rewards_command(w,owner_id,inactive_l,'behavior_review',jsonb_build_object('submission_id',boundary_a,'decision','approved'));
     perform pg_temp.family_assert(result->>'error'='SUBMISSION_NOT_FOUND' and (select status from public.behavior_submissions where id=boundary_a)='pending','scoped bulk cannot review sibling ID');
     result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_review',jsonb_build_object('submission_id',boundary_a,'decision','approved','occurred_at','2020-03-20'));
