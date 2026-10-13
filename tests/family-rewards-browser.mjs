@@ -1157,7 +1157,7 @@ async function runBrowserSuite() {
     assert.deepEqual(errors, [], `${device.name}: no uncaught errors`);
     await context.close();
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-025', spec_version: '1.1', governing_versions: ['010-v1.4','010-v1.5','010-v1.7'], compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report','learner-entry','captured-preview','approval-inbox','return-choice','return-results'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
+  fs.writeFileSync(`${OUTPUT_DIR}/family-rewards-manifest.json`, JSON.stringify({ feature_id: 'FLH-FEAT-2026-028', spec_version: '1.0', drive_revision_id: '3', governing_versions: ['025-v1.1','010-v1.4','010-v1.5','010-v1.7'], compatible_feature_id: 'FLH-FEAT-2026-017', source: 'isolated mocked Testing-learner browser regression', head_sha: (process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA) || null, run_id: process.env.GITHUB_RUN_ID || null, retention_days: 7, files: ['mobile', 'desktop'].flatMap(device => ['parent', 'student', 'rule-form', 'reward-form', 'pending', 'report','learner-entry','captured-preview','approval-inbox','exceptions','return-choice','return-results'].map(state => `family-rewards-${device}-${state}.png`)) }, null, 2));
   console.log('Family rewards browser regression passed for mobile and desktop using isolated Testing-learner fixtures.');
   } finally {
     await browser.close();

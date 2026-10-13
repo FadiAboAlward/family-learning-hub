@@ -48,6 +48,7 @@ declare
   v_matrix_claim uuid;
   v_missing_badge text := 'qa-family-required-badge';
   v_occurred_at timestamptz := now()-interval '1 hour';
+  v_same_day_at timestamptz;
 begin
   execute $assert_definition$create or replace function pg_temp.family_assert(p_ok boolean,p_message text) returns void
     language plpgsql as $assert_body$begin if p_ok is distinct from true then raise exception 'Family rewards contract: %',p_message; end if; end$assert_body$$assert_definition$;
@@ -213,6 +214,10 @@ begin
     'base, initiative and all linked prayer bonuses award separately in one event'
   );
   sid := (result->'submission'->>'id')::uuid;
+  -- A distinct earlier instant in the stored award's actual local day, even near midnight.
+  select (date_trunc('day',occurred_at at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul')
+    + case when (occurred_at at time zone 'Europe/Istanbul')::time='00:00:00' then interval '1 microsecond' else interval '0' end
+    into strict v_same_day_at from public.behavior_submissions where id=sid and workspace_id=w and learner_id=l;
   second := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(second->>'already_recorded'='true' and second->'submission'->>'id'=sid::text,'duplicate parent prayer record is idempotent');
   result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',false,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
@@ -226,13 +231,13 @@ begin
   result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent request key is bound to the original verified actor');
   perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=30 and (select reason from public.behavior_submissions where id=sid)='QA direct behavior','conflicting parent reuse changes no balance or audit reason');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',now()-interval '1 minute','idempotency_key','qa-family-farm'));
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',v_same_day_at,'idempotency_key','qa-family-farm'));
   perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','another clock on the same Istanbul day cannot exceed the cap');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',rule_id,'idempotency_key','qa-family-daily-pending'));
   perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','awarded daily bucket rejects new redundant pending');
   -- Historical backlog remains reviewable individually, without relying on the fixed writer to recreate it.
   insert into public.behavior_submissions(workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key)
-    values(w,l,rule_id,now()-interval '1 minute','learner','qa-family-legacy-day') returning id into sid;
+    values(w,l,rule_id,v_same_day_at,'learner','qa-family-legacy-day') returning id into sid;
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
   perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','legacy pending approval still enforces daily limit');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA rejected'));
