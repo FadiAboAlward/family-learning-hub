@@ -149,7 +149,9 @@ export async function assertQaDeviceLayout(page, expectedWidth) {
 }
 
 /** Assert the actual authenticated parent approval UI remains accessible on both devices. */
-export async function assertQaParentApprovalAccessibility(page, expectedColumns, expectedCards = [2,2]) {
+export async function assertQaParentApprovalAccessibility(page, expectedColumns, expectedCards = {
+  [QA_PARENT_VISIBLE_LEARNER]:2, [QA_SIBLING_VISIBLE_LEARNER]:2,
+}) {
   const snapshot = await page.locator('[data-fr-approvals]').evaluate(section => {
     const visible = element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
     const groups = [...section.querySelectorAll('[data-fr-approval-learner]')];
@@ -157,6 +159,7 @@ export async function assertQaParentApprovalAccessibility(page, expectedColumns,
       const grid = group.querySelector('.fr-card-grid');
       const cards = [...grid.querySelectorAll(':scope > [data-fr-submission]')];
       return {
+        learnerId: group.getAttribute('data-fr-approval-learner'),
         columns: getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length,
         cards: cards.length,
         collapsed: cards.every(card => !card.querySelector('.fr-submission-details')?.open),
@@ -173,7 +176,7 @@ export async function assertQaParentApprovalAccessibility(page, expectedColumns,
     };
   });
   if (snapshot.direction !== 'rtl' || snapshot.grids.length !== 2
-      || snapshot.grids.some((grid,index) => grid.columns !== expectedColumns || grid.cards !== expectedCards[index] || !grid.collapsed)
+      || snapshot.grids.some(grid => grid.columns !== expectedColumns || grid.cards !== expectedCards[grid.learnerId] || !grid.collapsed)
       || snapshot.unlabeledFields || snapshot.unnamedButtons || snapshot.shortActions) {
     throw new Error('QA_LOCAL_PARENT_APPROVAL_ACCESSIBILITY_INVALID');
   }
@@ -477,7 +480,7 @@ async function main() {
                   return root && !root.querySelector('.loading-card');
                 }, null, { timeout: 15000 });
                 await assertQaDeviceLayout(parentPage, 390);
-                await assertQaParentApprovalAccessibility(parentPage, 1, [3,2]);
+                await assertQaParentApprovalAccessibility(parentPage, 1, {[QA_PARENT_VISIBLE_LEARNER]:3,[QA_SIBLING_VISIBLE_LEARNER]:2});
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 await group.waitFor({ state: 'visible', timeout: 15000 });
                 const sibling = parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"]`);
@@ -496,7 +499,7 @@ async function main() {
               await runAuthenticatedStage('PARENT_REWARDS_DESKTOP', async () => {
                 await parentPage.setViewportSize({ width: 1280, height: 900 });
                 await assertQaDeviceLayout(parentPage, 1280);
-                await assertQaParentApprovalAccessibility(parentPage, 2, [3,2]);
+                await assertQaParentApprovalAccessibility(parentPage, 2, {[QA_PARENT_VISIBLE_LEARNER]:3,[QA_SIBLING_VISIBLE_LEARNER]:2});
                 const group = parentPage.locator(`[data-fr-approval-learner="${QA_PARENT_VISIBLE_LEARNER}"]`);
                 if (await group.locator('[data-fr-submission]').count() !== 3 ||
                     await parentPage.locator(`[data-fr-approval-learner="${QA_SIBLING_VISIBLE_LEARNER}"] [data-fr-submission]`).count() !== 2)
