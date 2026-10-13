@@ -875,6 +875,30 @@ async function runBrowserSuite() {
     }
     assert.equal(server.catalog.ledger.length,beforeStaleLedger,'already-reviewed result cannot be counted or granted twice');
 
+    // FLH-028: a lost whole-batch response must not claim zero grants or re-award.
+    await server.handle({action:'behavior_submit',rule_id:reportRuleId,occurred_at:'2020-10-07T12:00:00Z',idempotency_key:'qa028-lost-batch'});
+    await open(page,'parent');
+    const beforeLost=server.state.reward_points;
+    server.failAfter('behavior_review_many');
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).click();
+    await page.getByRole('status').filter({hasText:'لم يصل تأكيد نتيجة الموافقة'}).waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeLost+3,'lost response may have saved the grant');
+    assert.equal(await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).isVisible(),false,'authoritative refresh removes the saved item despite lost response');
+    await server.handle({action:'behavior_submit',rule_id:reportRuleId,occurred_at:'2020-10-08T12:00:00Z',idempotency_key:'qa028-retryable-batch'});
+    await open(page,'parent');
+    const beforeFailure=server.state.reward_points;
+    server.failBefore('behavior_review_many','SERVER_ERROR',500);
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).click();
+    await page.getByRole('status').filter({hasText:'لم يصل تأكيد نتيجة الموافقة'}).waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeFailure);
+    assert.equal(await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).isEnabled(),true,'unknown error remains retryable rather than classified as ineligible');
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).click();
+    await page.getByRole('status').filter({hasText:'أُضيفت 3 نقطة بالفعل'}).waitFor({state:'visible'});
+    assert.equal(server.state.reward_points,beforeFailure+3);
+
     await page.locator('#frReportLearner').selectOption(LEARNER_ID);
     await page.locator('#frReportCategory').selectOption(categoryId);
     assert.equal(await page.locator(`#frReportRule option[value="${reportRuleId}"]`).count(), 1, 'a moved rule stays selectable with its historical category filter');

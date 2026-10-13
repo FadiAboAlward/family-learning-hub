@@ -117,10 +117,10 @@ const sameOccurrence = '2020-03-01T09:00:00Z';
 const pendingResults=await race(
   command('behavior_submit',{rule_id:ruleId,occurred_at:sameOccurrence,idempotency_key:'qa-family-pending-one'},null,learnerId),
   command('behavior_submit',{rule_id:ruleId,occurred_at:'2020-03-01T10:00:00Z',idempotency_key:'qa-family-pending-two'},null,learnerId),97000105);
-assert.ok(pendingResults.every(result=>result.ok),'concurrent exact self-reports both return a safe result');
+assert.ok(pendingResults.every(result=>result.ok),'concurrent same-day self-reports both return a safe result');
 assert.equal(pendingResults[0].submission.id,pendingResults[1].submission.id,'concurrent exact self-reports converge on one pending submission');
 assert.equal(pendingResults.filter(result=>result.duplicate_pending===true).length,1,'the waiter explicitly reports pending occurrence reuse');
-assert.equal(Number(await psql(`select count(*) from public.behavior_submissions where learner_id='${learnerId}' and rule_id='${ruleId}' and status='pending' and occurred_at='${sameOccurrence}'::timestamptz`)),1,'concurrent exact self-reports persist one pending row');
+assert.equal(Number(await psql(`select count(*) from public.behavior_submissions where learner_id='${learnerId}' and rule_id='${ruleId}' and status='pending' and (occurred_at at time zone 'Europe/Istanbul')::date='2020-03-01'`)),1,'concurrent exact self-reports persist one pending row');
 
 const cadenceResults=await race(
   command('behavior_record',{rule_id:secondRuleId,idempotency_key:'qa-family-cadence-one'},actorId,learnerId),
