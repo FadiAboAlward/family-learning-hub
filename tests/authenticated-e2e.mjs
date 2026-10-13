@@ -137,15 +137,15 @@ export function qaEvidenceDirectory(mode) {
 }
 
 /** Read-only device layout evidence; independent of provider fixtures and browser dimensions. */
-export async function assertQaDeviceLayout(page, expectedWidth) {
+export async function assertQaDeviceLayout(page, expectedWidth, expectedRewardErrors = []) {
   const dimensions = await page.evaluate(() => ({
     viewport: window.innerWidth,
     document: document.documentElement.scrollWidth,
     body: document.body.scrollWidth,
-    hasError: !!document.querySelector('[data-family-rewards] .error'),
+    errors: [...document.querySelectorAll('[data-family-rewards] .error')].map(node=>node.textContent.trim()),
   }));
   if (dimensions.viewport !== expectedWidth || dimensions.document > expectedWidth + 2
-      || dimensions.body > expectedWidth + 2 || dimensions.hasError) throw new Error('QA_LOCAL_DEVICE_LAYOUT_INVALID');
+      || dimensions.body > expectedWidth + 2 || dimensions.errors.some(text=>!expectedRewardErrors.includes(text))) throw new Error('QA_LOCAL_DEVICE_LAYOUT_INVALID');
 }
 
 /** Assert the actual authenticated parent approval UI remains accessible on both devices. */
@@ -529,10 +529,16 @@ async function main() {
                   }, null, { timeout: 20000 });
                   const exceptions=group.locator('[data-fr-approval-exceptions]');
                   if(await group.locator('[data-fr-approve-all]').isVisible() || await exceptions.locator('[data-fr-submission]').count()!==1)throw new Error('QA_LOCAL_PARENT_EXCEPTION_INVALID');
+                  const expectedPartialErrors=[
+                    'تم اعتماد 2 من 3. أُضيفت 6 نقطة بالفعل. تمت مراجعة 0 سابقًا. تحتاج مراجعة: 1. أخطاء قابلة للمحاولة: 0.',
+                    'بلغ هذا السلوك حد التكرار المسموح لهذه الفترة.',
+                  ];
+                  if((await exceptions.locator('.fr-item-error').textContent()).trim()!==expectedPartialErrors[1])throw new Error('QA_LOCAL_PARENT_EXCEPTION_INVALID');
                   await parentPage.setViewportSize({width:390,height:844});
-                  await assertQaDeviceLayout(parentPage,390);
+                  await assertQaDeviceLayout(parentPage,390,expectedPartialErrors);
                   await parentPage.screenshot({path:'qa-authenticated-evidence/parent-rewards-mobile.png',fullPage:true});
                   await parentPage.setViewportSize({width:1280,height:900});
+                  await assertQaDeviceLayout(parentPage,1280,expectedPartialErrors);
                   await parentPage.screenshot({path:'qa-authenticated-evidence/parent-rewards-desktop.png',fullPage:true});
                   await exceptions.locator('[data-fr-behavior-reject]').click();
                   await parentPage.waitForFunction(()=>!document.querySelector('[data-fr-approval-learner="02610000-0000-4000-8000-000000000101"]'),null,{timeout:20000});
