@@ -226,12 +226,15 @@ begin
   result := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'initiative',true,'adhkar_completed',true,'congregation_completed',true,'mosque_completed',true,'sunnah_completed',true,'reason','QA direct behavior','idempotency_key','qa-family-direct'));
   perform pg_temp.family_assert(result->>'error'='IDEMPOTENCY_CONFLICT','parent request key is bound to the original verified actor');
   perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=30 and (select reason from public.behavior_submissions where id=sid)='QA direct behavior','conflicting parent reuse changes no balance or audit reason');
-  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',now()-interval '1 day','idempotency_key','qa-family-farm'));
-  perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','past occurred_at cannot farm daily award');
+  result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',rule_id,'occurred_at',now()-interval '1 minute','idempotency_key','qa-family-farm'));
+  perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','another clock on the same Istanbul day cannot exceed the cap');
   result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',rule_id,'idempotency_key','qa-family-daily-pending'));
-  sid := (result->'submission'->>'id')::uuid;
+  perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','awarded daily bucket rejects new redundant pending');
+  -- Historical backlog remains reviewable individually, without relying on the fixed writer to recreate it.
+  insert into public.behavior_submissions(workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key)
+    values(w,l,rule_id,now()-interval '1 minute','learner','qa-family-legacy-day') returning id into sid;
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
-  perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','learner pending approval enforces daily limit');
+  perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','legacy pending approval still enforces daily limit');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','rejected','reason','QA rejected'));
   perform pg_temp.family_assert(result->'submission'->>'status'='rejected','parent rejects pending behavior');
   result := public.flh_family_rewards_command(w,owner_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
@@ -667,6 +670,57 @@ begin
   reset role;
   perform pg_temp.family_assert(not exists(select 1 from public.workspaces where id=other_w) and not exists(select 1 from public.learners where workspace_id=other_w) and not exists(select 1 from public.gamification_events where workspace_id=other_w),'existing privileged workspace deletion cascades all family ledger source types');
   perform pg_temp.family_assert(not exists(select 1 from public.behavior_categories where workspace_id=other_w) and not exists(select 1 from public.behavior_rules where workspace_id=other_w) and not exists(select 1 from public.behavior_rule_learners where workspace_id=other_w) and not exists(select 1 from public.behavior_submissions where workspace_id=other_w) and not exists(select 1 from public.gamification_rewards where workspace_id=other_w) and not exists(select 1 from public.reward_learner_scopes where workspace_id=other_w) and not exists(select 1 from public.reward_claims where workspace_id=other_w),'workspace cascade removes the complete scoped family behavior/reward fixture');
+  -- FLH-028: exact candidate, disposable Testing rows inside the existing rollback boundary.
+  declare
+    daily uuid; multi uuid; boundary_a uuid; boundary_b uuid; legacy uuid; claim_time timestamptz; request_time timestamptz;
+    captured jsonb; audit_before jsonb; local_points integer;
+  begin
+    insert into public.behavior_rules(workspace_id,category_id,title,base_points,learner_scope,cadence,max_awards,self_report_allowed)
+      values(w,category_id,'QA028 daily',7,'selected','day',1,true) returning id into daily;
+    insert into public.behavior_rule_learners(workspace_id,rule_id,learner_id) values(w,daily,l);
+    select reward_points into local_points from public.learner_gamification_state where learner_id=l;
+    result:=public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',daily,'occurred_at','2020-03-03T23:59:59+03:00','idempotency_key','qa028-boundary-a'));
+    boundary_a:=(result->'submission'->>'id')::uuid;
+    perform pg_temp.family_assert(result->>'ok'='true','daily submission A');
+    second:=public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',daily,'occurred_at','2020-03-03T10:00:00+03:00','idempotency_key','qa028-different-clock'));
+    perform pg_temp.family_assert(second->>'duplicate_pending'='true' and (second->'submission'->>'id')::uuid=boundary_a,'same local day different time/key reuses pending');
+    result:=public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',daily,'occurred_at','2020-03-04T00:00:00+03:00','idempotency_key','qa028-boundary-b'));
+    boundary_b:=(result->'submission'->>'id')::uuid;
+    perform pg_temp.family_assert(result->>'ok'='true' and boundary_b<>boundary_a,'local midnight permits another pending day');
+    select occurred_at,requested_at,snapshot into claim_time,request_time,captured from public.behavior_submissions where id=boundary_a;
+    -- Synthesize a pre-fix duplicate rather than making the new writer recreate historical corruption.
+    insert into public.behavior_submissions(workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot)
+      values(w,l,daily,'2020-03-03T12:00:00+03:00','learner','qa028-legacy',captured) returning id into legacy;
+    select to_jsonb(s) into audit_before from public.behavior_submissions s where id=legacy;
+    result:=public.flh_family_rewards_command(w,owner_id,inactive_l,'behavior_review',jsonb_build_object('submission_id',boundary_a,'decision','approved'));
+    perform pg_temp.family_assert(result->>'error'='SUBMISSION_NOT_FOUND' and (select status from public.behavior_submissions where id=boundary_a)='pending','scoped bulk cannot review sibling ID');
+    result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_review',jsonb_build_object('submission_id',boundary_a,'decision','approved','occurred_at','2020-03-20'));
+    perform pg_temp.family_assert(result->>'ok'='true' and result->'submission'->>'total_points'='7','first historical day earns captured amount');
+    perform pg_temp.family_assert((select occurred_at=claim_time and requested_at=request_time and snapshot->>'captured_at'=captured->>'captured_at' from public.behavior_submissions where id=boundary_a),'review cannot tamper occurrence/request/captured time');
+    result:=public.flh_family_rewards_command(w,admin_id,l,'behavior_review',jsonb_build_object('submission_id',boundary_b,'decision','approved'));
+    perform pg_temp.family_assert(result->>'ok'='true','different historic Istanbul days both approve today');
+    result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_review',jsonb_build_object('submission_id',legacy,'decision','approved'));
+    perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT' and (select to_jsonb(s) from public.behavior_submissions s where id=legacy)=audit_before,'capped legacy row remains byte-for-byte unchanged');
+    result:=public.flh_family_rewards_command(w,owner_id,l,'parent_catalog','{"test_only":true}');
+    perform pg_temp.family_assert(exists(select 1 from jsonb_array_elements(result->'submissions') x where x->>'id'=legacy::text and x->>'approval_blocker'='CADENCE_LIMIT'),'catalog classifies full-history day cap without mutation');
+    result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_review',jsonb_build_object('submission_id',boundary_a,'decision','approved'));
+    perform pg_temp.family_assert(result->>'already_reviewed'='true','lost-response retry grants zero new points');
+    result:=public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',daily,'occurred_at','2020-03-03T18:00:00+03:00','idempotency_key','qa028-awarded-day'));
+    perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT','awarded max1 date cannot create redundant pending');
+    result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',daily,'occurred_at','2020-03-03T19:00:00+03:00','idempotency_key','qa028-direct-capped'));
+    perform pg_temp.family_assert(result->>'error'='CADENCE_LIMIT' and not exists(select 1 from public.behavior_submissions where idempotency_key='qa028-direct-capped'),'failed direct grant leaves no inserted pending');
+    result:=public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',daily,'occurred_at',now()+interval '1 day','idempotency_key','qa028-future'));
+    perform pg_temp.family_assert(result->>'error'='INVALID_OCCURRED_AT','future occurrence rejected');
+    perform pg_temp.family_assert((select reward_points from public.learner_gamification_state where learner_id=l)=local_points+14
+      and (select count(*) from public.gamification_events where learner_id=l and source_id in (boundary_a::text,boundary_b::text) and xp_delta=0 and reward_points_delta=7)=2,'one ledger per grant reconciles actual wallet and XP');
+    insert into public.behavior_rules(workspace_id,category_id,title,base_points,learner_scope,cadence,max_awards,self_report_allowed)
+      values(w,category_id,'QA028 max2',2,'selected','day',2,true) returning id into multi;
+    insert into public.behavior_rule_learners(workspace_id,rule_id,learner_id) values(w,multi,l);
+    for n in 1..3 loop
+      result:=public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',multi,'occurred_at',('2020-03-05T08:00:00+03:00'::timestamptz+n*interval '1 hour'),'idempotency_key','qa028-multi-'||n));
+      perform pg_temp.family_assert(case when n<3 then result->>'ok'='true' else result->>'error'='CADENCE_LIMIT' end,'ordinary max2 allows two distinct clocks then caps');
+    end loop;
+  end;
   raise exception 'Family rewards contract passed; rollback disposable fixtures' using errcode='ZX001';
   exception when sqlstate 'ZX001' then null;
   end;

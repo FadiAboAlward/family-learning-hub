@@ -1,5 +1,6 @@
 import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
+import {executeFamilyRewardsAction} from '../supabase/functions/_shared/family-rewards.mjs';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -158,7 +159,7 @@ export function createRewardsFixture() {
     }
     if (action === 'behavior_review') {
       const row = find(catalog.submissions, body.submission_id);
-      assert.ok(row, 'review references a pending submission');
+      if(!row || (body.learner_id && row.learner_id!==body.learner_id))return {error:'SUBMISSION_NOT_FOUND'};
       if(row.status===body.decision)return{submission:clone(row),already_reviewed:true};
       if (row.status === 'pending') {
         if(body.decision==='approved'){const failure=greetingError({...row,return_event_id:body.return_event_id},row.learner_id);if(failure)return failure;}
@@ -218,6 +219,15 @@ export function createRewardsFixture() {
       const action = body.action;
       if (action === delayAction) await delayPromise;
       if (action === failBefore?.action) { const failure = failBefore; if (!failure.persistent) failBefore = null; return respond({ error: failure.error }, failure.status); }
+      if (action === 'behavior_review_many') {
+        const result=await executeFamilyRewardsAction(action,body,{
+          workspaceId:'40000000-0000-4000-8000-000000000001',
+          parentIdentity:async()=>({user:{id:'qa-parent'},member:{role:'owner'}}),
+          rpc:async(name,args)=>({data:mutate({action:args.p_action,...args.p_payload,learner_id:args.p_learner_id})}),
+        });
+        if(action===failAfter){failAfter='';return respond({error:'INTERNAL_ERROR'},500);}
+        return respond(result);
+      }
       if (action === 'student_profile') return respond({ learner, gamification: { ...state, badges: [], rewards: catalog.rewards } });
       if (action === 'parent_dashboard') return respond({ parent: { id: 'qa-parent', relation: 'father', role: 'owner' }, learners: [learner], states: [state], attempts: [], reward_claims: catalog.claims });
       if (action === 'learner_choices') return respond({ learners: [learner] });
@@ -819,12 +829,22 @@ async function runBrowserSuite() {
     assert.equal(columns,device.name==='mobile'?1:2,'pending cards retain the approved desktop/mobile grid');
     await screenshot(page,`family-rewards-${device.name}-approval-inbox`,page.locator('[data-fr-approvals]'));
     assert.match(await group.locator(`[data-fr-submission="${legacyA.id}"] .fr-preview-source`).innerText(),/القاعدة الحالية/,'legacy pending rows are explicit current-rule estimates');
-    const beforeCancel=server.count('behavior_review');
+    const beforeCancel=server.count('behavior_review_many');
     page.once('dialog',async dialog=>{assert.ok(dialog.message().includes('طالب الاختبار'));assert.ok(dialog.message().includes(countBefore));await dialog.dismiss();});
-    await bulkButton.click();assert.equal(server.count('behavior_review'),beforeCancel,'cancel sends no approval command');
+    await bulkButton.click();assert.equal(server.count('behavior_review_many'),beforeCancel,'cancel sends no approval command');
     page.once('dialog',async dialog=>{assert.ok(dialog.message().includes(countBefore));assert.ok(dialog.message().includes(estimateBefore.split(' ')[0]));await dialog.accept();});
+    server.delay('behavior_review_many');
     await bulkButton.click();
-    await page.getByRole('alert').filter({ hasText: 'تعذر اعتماد 1' }).waitFor({ state: 'visible' });
+    await bulkButton.waitFor({state:'visible'});
+    assert.equal(await bulkButton.isDisabled(),true);
+    assert.equal(await bulkButton.getAttribute('aria-busy'),'true');
+    assert.match(await bulkButton.innerText(),/جارٍ مراجعة 3/);
+    await bulkButton.dispatchEvent('click');
+    assert.equal(server.count('behavior_review_many'),beforeCancel+1,'latency and repeated click never create per-item browser calls');
+    server.release();
+    await page.getByRole('alert').filter({ hasText: 'تحتاج مراجعة: 1' }).waitFor({ state: 'visible' });
+    assert.equal(server.count('behavior_review_many'),beforeCancel+1,'one browser-to-service request processes the complete selected set');
+    assert.equal(server.last('behavior_review_many').items.length,3);
     assert.equal(server.catalog.submissions.find(row => row.id === secondLearnerPending.id).status, 'pending', 'learner-level approve all never crosses into another learner');
     assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'approved').length, 1, 'bulk approval awards one of two exact duplicate occurrences');
     assert.equal(server.catalog.submissions.filter(row => [legacyA.id, legacyB.id].includes(row.id) && row.status === 'pending').length, 1, 'the conflicting duplicate remains pending for an explicit parent decision');
@@ -834,6 +854,9 @@ async function runBrowserSuite() {
     assert.equal(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] [data-fr-submission="${remainingLegacyDuplicate.id}"] .fr-item-error`).count(),1,'item-level duplicate failure survives the dashboard refresh');
     assert.match(await page.locator(`[data-fr-approval-learner="${LEARNER_ID}"] [data-fr-submission="${remainingLegacyDuplicate.id}"] .fr-estimate`).innerText(),/0/,'known approved duplicate does not promise another reward');
     await page.getByRole('status').filter({hasText:/أُضيفت 17 نقطة بالفعل/}).waitFor({state:'visible'});
+    assert.equal(await group.locator('[data-fr-approve-all]').isVisible(),false,'only ineligible leftovers hide bulk control');
+    assert.equal(await group.locator('[data-fr-approval-exceptions] [data-fr-behavior-reject]').count(),1,'exception retains deliberate individual reject');
+    await screenshot(page,`family-rewards-${device.name}-exceptions`,page.locator('[data-fr-approvals]'));
     // Another authorized reviewer can finish a visible item before this parent's batch begins.
     await server.handle({action:'behavior_submit',rule_id:ruleId,occurred_at:'2026-10-06T10:00:00Z',reason:'حالة اختبار للمراجعة المتزامنة',idempotency_key:'stale-visible-testing-item'});
     const staleId=server.catalog.submissions[0].id;
@@ -846,7 +869,7 @@ async function runBrowserSuite() {
     page.once('dialog',dialog=>dialog.accept());
     await page.locator(`[data-fr-approve-all="${LEARNER_ID}"]`).click();
     try {
-      await page.getByRole('status').filter({hasText:/أُضيفت 0 نقطة بالفعل.*تمت مراجعتها سابقًا/}).waitFor({state:'visible'});
+      await page.getByRole('status').filter({hasText:/أُضيفت 0 نقطة بالفعل.*تمت مراجعة 1 سابقًا/}).waitFor({state:'visible'});
     } catch (error) {
       throw new Error(`${error.message}\nMocked review feedback: ${JSON.stringify(await page.locator('[data-family-rewards] [role="status"],[data-family-rewards] [role="alert"]').allTextContents())}; calls: ${JSON.stringify(server.calls.slice(-8).map(row=>({action:row.action,submission_id:row.submission_id})))}`, {cause:error});
     }
@@ -993,7 +1016,8 @@ async function runBrowserSuite() {
     const ordinaryExpected=ordinaryPending.snapshot.total_points;
     page.once('dialog',dialog=>dialog.accept());
     await group.locator('[data-fr-approve-all]').click();
-    await duplicateCard.locator('.fr-item-error').waitFor({state:'visible'});
+    await page.getByRole('status').filter({hasText:new RegExp('أُضيفت '+ordinaryExpected+' نقطة بالفعل')}).waitFor({state:'visible'});
+    assert.ok(!server.last('behavior_review_many').items.some(item=>item.submission_id===duplicateId),'known selected awarded return is excluded from automatic retry');
     assert.equal(server.state.reward_points,beforeBulk+ordinaryExpected,'partial bulk sums only fresh actual ordinary award');
     assert.equal(server.catalog.submissions.find(row=>row.id===duplicateId).status,'pending');
     // Direct entry also chooses a canonical event. An unbound record cannot bypass it.
