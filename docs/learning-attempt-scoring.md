@@ -14,7 +14,7 @@ This applies to **Learning Mode** and every grade, subject and supported answer 
 | Fourth or later (where question permits) | 0% |
 | Not correct by final attempt | 0% |
 
-A correct third/fourth try still finalizes as **correct** and can show feedback and remediation. Zero credit **must not be silently changed to a wrong answer**, and does not establish mastery. The four progressive hint levels and retries remain instructional, not a reason to remove practice opportunities. Independently show first-try correctness/hints alongside the learning score to parents.
+A correct third/fourth try still finalizes as **correct** and can show feedback and remediation. Zero credit **must not be silently changed to a wrong answer**, and does not establish mastery. The four progressive hint levels and retries remain instructional, not a reason to remove practice opportunities. Parent-facing first-try and hint indicators are a separate product requirement, not a new parent UI behavior delivered by this scoring-only PR.
 
 ## Stable scoring and old attempts
 
