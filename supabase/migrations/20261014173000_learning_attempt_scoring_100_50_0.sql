@@ -4,6 +4,9 @@
 -- attempts without a score-policy snapshot preserve existing scoring.
 -- No data backfill. Existing quiz-version settings remain immutable.
 -- These function bodies follow the exact latest main migration definitions.
+alter table public.quiz_attempt_question_queue
+  add column if not exists score_policy_snapshot jsonb;
+
 create or replace function public.flh_learning_start(
   p_workspace_id uuid,
   p_learner_id uuid,
@@ -226,7 +229,8 @@ begin
         concept_id,
         difficulty_level,
         status,
-        selection_reason
+        selection_reason,
+        score_policy_snapshot
       )
       select
         p_workspace_id,
@@ -237,7 +241,8 @@ begin
         qc.concept_id,
         q.difficulty_level,
         case when row_number() over (order by q.position) = 1 then 'active' else 'pending' end,
-        'published_core_question'
+        'published_core_question',
+        '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb
       from public.quiz_questions q
       left join public.quiz_question_concepts qc
         on qc.workspace_id = q.workspace_id
@@ -427,6 +432,7 @@ declare
   v_used_hint_level integer := 0;
   v_hints_used integer := 0;
   v_attempt_scores jsonb;
+  v_authoritative_score_snapshot jsonb;
   v_score_percent numeric := 0;
   v_score_fraction numeric := 0;
   v_feedback_text text;
@@ -761,6 +767,22 @@ begin
     end if;
   end if;
 
+  -- Grading is bound to the immutable server-owned first core queue row.
+  -- Authenticated managers cannot INSERT/UPDATE this queue, whereas attempt
+  -- metadata is mutable and must never select an effective scoring policy.
+  select core.score_policy_snapshot into v_authoritative_score_snapshot
+  from public.quiz_attempt_question_queue core
+  where core.workspace_id = p_workspace_id
+    and core.quiz_attempt_id = p_attempt_id
+    and core.source_role = 'core'
+  order by core.sequence_no
+  limit 1;
+  if v_authoritative_score_snapshot is not null
+     and v_authoritative_score_snapshot is distinct from
+         '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb then
+    return jsonb_build_object('error', 'LEARNING_SCORE_POLICY_INVALID');
+  end if;
+
   select v.settings->'attempt_scores'
   into v_attempt_scores
   from public.quiz_versions v
@@ -774,16 +796,9 @@ begin
   end if;
 
 
-  -- FLH-030: prefer the server-snapshotted policy for newly started attempts.
-  -- Existing/resumed attempts without a snapshot retain their immutable
-  -- quiz-version policy or the historical 100/75/50/25 fallback.
-  if coalesce(v_attempt.metadata ? 'scoring_policy_version', false)
-     or coalesce(v_attempt.metadata ? 'scoring_attempt_scores', false) then
-    if (v_attempt.metadata->>'scoring_policy_version') is distinct from 'learning-100-50-0-0-v1'
-       or (v_attempt.metadata->'scoring_attempt_scores') is distinct from '[100,50,0,0]'::jsonb then
-      return jsonb_build_object('error', 'LEARNING_SCORE_POLICY_INVALID');
-    end if;
-    v_attempt_scores := v_attempt.metadata->'scoring_attempt_scores';
+  -- Authentic pre-release attempts still use immutable per-version scoring.
+  if v_authoritative_score_snapshot is not null then
+    v_attempt_scores := v_authoritative_score_snapshot->'attempt_scores';
   end if;
 
   if v_is_correct then
@@ -1206,6 +1221,7 @@ declare
   v_hint_level integer := null;
   v_hint jsonb := null;
   v_attempt_scores jsonb;
+  v_authoritative_score_snapshot jsonb;
   v_score_percent numeric := 0;
   v_score_fraction numeric := 0;
   v_is_correct boolean := false;
@@ -1294,6 +1310,22 @@ begin
 
   if not found or v_question.question_type not in ('numeric','short_answer') then
     return jsonb_build_object('error','UNSUPPORTED_QUESTION_TYPE');
+  end if;
+
+  -- Grading is bound to the immutable server-owned first core queue row.
+  -- Authenticated managers cannot INSERT/UPDATE this queue, whereas attempt
+  -- metadata is mutable and must never select an effective scoring policy.
+  select core.score_policy_snapshot into v_authoritative_score_snapshot
+  from public.quiz_attempt_question_queue core
+  where core.workspace_id = p_workspace_id
+    and core.quiz_attempt_id = p_attempt_id
+    and core.source_role = 'core'
+  order by core.sequence_no
+  limit 1;
+  if v_authoritative_score_snapshot is not null
+     and v_authoritative_score_snapshot is distinct from
+         '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb then
+    return jsonb_build_object('error', 'LEARNING_SCORE_POLICY_INVALID');
   end if;
 
   v_ungraded:=coalesce(v_question.source_metadata->>'grading_mode','')='ungraded';
@@ -1428,16 +1460,9 @@ begin
   end if;
 
 
-  -- FLH-030: prefer the server-snapshotted policy for newly started attempts.
-  -- Existing/resumed attempts without a snapshot retain their immutable
-  -- quiz-version policy or the historical 100/75/50/25 fallback.
-  if coalesce(v_attempt.metadata ? 'scoring_policy_version', false)
-     or coalesce(v_attempt.metadata ? 'scoring_attempt_scores', false) then
-    if (v_attempt.metadata->>'scoring_policy_version') is distinct from 'learning-100-50-0-0-v1'
-       or (v_attempt.metadata->'scoring_attempt_scores') is distinct from '[100,50,0,0]'::jsonb then
-      return jsonb_build_object('error', 'LEARNING_SCORE_POLICY_INVALID');
-    end if;
-    v_attempt_scores := v_attempt.metadata->'scoring_attempt_scores';
+  -- Authentic pre-release attempts still use immutable per-version scoring.
+  if v_authoritative_score_snapshot is not null then
+    v_attempt_scores := v_authoritative_score_snapshot->'attempt_scores';
   end if;
 
   if v_is_correct then
