@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-030 v1.0 — server-owned Learning attempt scoring.
+-- FLH-FEAT-2026-030 v1.1 — server-owned Learning attempt scoring.
 -- Spec: https://docs.google.com/document/d/1XK62CabAaXW7YJP8k_amvQNImUi9Rw4sGVSB2AxU_BY/edit
 -- Only new Learning attempts capture 100/50/0/0. In-progress and historical
 -- attempts without a score-policy snapshot preserve existing scoring.
