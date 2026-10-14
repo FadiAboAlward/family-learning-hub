@@ -2498,7 +2498,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PENDING_REVIEW",
+    "academic_semantic_review": "PASS",
     "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2507,16 +2507,17 @@
   },
   "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure.",
   "academic_semantic_review": {
-    "review_date": "2026-10-12",
-    "review_basis": "AI semantic review against supplied Project Markdown AR-LUGATI-G5-T1 PDF pages 7, 8, 9; separate deterministic canonical validator.",
+    "review_date": "2026-10-15",
+    "review_basis": "Independent second-pass semantic review of exact candidate: all 40 question stems, correct options, 20 Exam cognitive-action/decision traces and cross-mode / within-Exam separation; original Syrian G5 AR-LUGATI-G5-T1 PDF pages 7–9 as curriculum scope. Academic pass only; no production/release approval.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "All 20 Exam questions rewritten; additional change E18 now evaluates semantic coherence between a need described in a nominal sentence and a response stated in a verbal sentence, not selecting nominal-verbal order taught in L18. Await independent semantic review before approval.",
-    "warning_disposition": "Holistic semantic comparison documented but still requires independent reviewer; exact candidate validator is deterministic, not a semantic PASS.",
-    "approval_scope": "AUTHORING_CANDIDATE — NOT PUBLISHED",
+    "review_findings": "Reviewed all 20 exam reasoning operations against distinct 20 learning operations and within-exam scope. E06 evidence-integrity transfer vs L06 relevance; E17 complete sentence vs L17 sentence type; E18 semantic cohesion vs L18 structural classification; E20 within-word initial/connected wasl comparison vs L20 connected qat' retention. E17 prompt clarified to avoid confusing grammatical khabar with a complete statement. No remaining direct same-evidence-path mirrored item identified in reviewed candidate.",
+    "warning_disposition": "Semantic review of candidate PASS. External independent Codex and CodeRabbit final SHA reviews, GitHub Actions, video verification, authenticated Testing QA, and learner delivery remain mandatory.",
+    "approval_scope": "ACADEMIC_SEMANTIC_PASS_ONLY — NOT PUBLISHED",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
-    "publication": "NOT_STARTED"
+    "publication": "NOT_STARTED",
+    "independent_semantic_review": "PASS"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
