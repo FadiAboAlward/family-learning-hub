@@ -49,6 +49,10 @@ declare
   v_result jsonb;
   v_retry jsonb;
   v_keys text[];
+  v_policy_trial integer;
+  v_wrong_iteration integer;
+  v_policy_attempt uuid;
+  v_expected_points numeric;
 begin
   select l.id into strict v_learner
   from public.learners l
@@ -240,6 +244,11 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status, draft_option_position
   ) values (v_workspace, v_attempt_b, 1, v_q_one, v_concept_one, 3, 'active', 1);
+  -- An administrator can forge attempt metadata, but this pre-release
+  -- attempt has NULL in the server-owned queue snapshot: old scoring wins.
+  update public.quiz_attempts
+  set metadata='{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
+  where id=v_attempt_b;
 
   set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
@@ -827,6 +836,88 @@ begin
     raise exception 'LEARNING_RPC_MAX_ATTEMPT_GUARD_INVALID';
   end if;
 
+  -- FLH-030: new server-snapshotted Learning scores; these fixtures are
+  -- isolated Testing-only. The v_attempt_a/v_attempt_b legacy assertions above
+  -- prove original attempts still use their historical version score policy.
+  for v_policy_trial in 1..4 loop
+    v_policy_attempt := ('20000000-0000-4000-8000-' || lpad((15 + v_policy_trial)::text, 12, '0'))::uuid;
+    v_expected_points := case
+      when v_policy_trial = 1 then 2
+      when v_policy_trial = 2 then 1
+      else 0
+    end;
+
+    insert into public.quiz_attempts(
+      id, workspace_id, learner_id, quiz_version_id, status, delivery_mode, metadata
+    ) values (
+      v_policy_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning',
+      '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
+    );
+    insert into public.quiz_attempt_question_queue(
+      workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status, score_policy_snapshot
+    ) values (
+      v_workspace, v_policy_attempt, 1, v_q_one, v_concept_one, 3, 'active',
+      '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb
+    );
+    -- Malicious or mistaken rewrites of editable attempt metadata cannot
+    -- change the effective immutable server-only queue scoring policy.
+    update public.quiz_attempts
+      set metadata=case when v_policy_trial % 2=0 then '{}'::jsonb else
+        '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,75,50,25]}'::jsonb end
+    where id=v_policy_attempt;
+
+    set local role service_role;
+    for v_wrong_iteration in 1..(v_policy_trial - 1) loop
+      v_result := public.flh_learning_answer(v_workspace, v_learner, v_policy_attempt, v_q_one, 1);
+      if v_result->>'is_correct' is distinct from 'false'
+         or v_result->>'finalized' is distinct from 'false' then
+        raise exception 'FLH030_WRONG_RETRY_FAILED:%,%', v_policy_trial, v_result;
+      end if;
+    end loop;
+    v_result := public.flh_learning_answer(v_workspace, v_learner, v_policy_attempt, v_q_one, 2);
+    v_retry := public.flh_learning_answer(v_workspace, v_learner, v_policy_attempt, v_q_one, 2);
+    reset role;
+    if v_result->>'is_correct' is distinct from 'true'
+       or v_result->>'finalized' is distinct from 'true'
+       or v_result->>'attempt_no' is distinct from v_policy_trial::text
+       or v_retry <> v_result
+       or not exists(
+         select 1 from public.quiz_attempt_answers
+         where attempt_id=v_policy_attempt and question_id=v_q_one
+           and is_correct and points_awarded=v_expected_points
+           and attempts_used=v_policy_trial
+           and first_try_correct=(v_policy_trial=1)
+           and mastery_result=case when v_policy_trial=1 then 'mastered' else 'needs_practice' end
+       )
+       or (select count(*) from public.quiz_answer_attempts
+           where quiz_attempt_id=v_policy_attempt and question_id=v_q_one) <> v_policy_trial then
+      raise exception 'FLH030_SINGLE_CHOICE_SCORING_FAILED:%,%', v_policy_trial, v_result;
+    end if;
+  end loop;
+
+  -- Fail closed for malformed server-only snapshot, even though the mutable
+  -- attempt metadata is apparently well-formed.
+  v_policy_attempt := '20000000-0000-4000-8000-000000000020'::uuid;
+  insert into public.quiz_attempts(
+    id, workspace_id, learner_id, quiz_version_id, status, delivery_mode, metadata
+  ) values (
+    v_policy_attempt, v_workspace, v_learner, v_version, 'in_progress', 'learning',
+    '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,75,50,25]}'::jsonb
+  );
+  insert into public.quiz_attempt_question_queue(
+    workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
+  ) values (v_workspace, v_policy_attempt, 1, v_q_one, v_concept_one, 3, 'active');
+  update public.quiz_attempt_question_queue
+  set score_policy_snapshot='{"version":"learning-100-50-0-0-v1","attempt_scores":[100,75,50,25]}'::jsonb
+  where quiz_attempt_id=v_policy_attempt and question_id=v_q_one;
+  set local role service_role;
+  v_result := public.flh_learning_answer(v_workspace, v_learner, v_policy_attempt, v_q_one, 2);
+  reset role;
+  if v_result->>'error' is distinct from 'LEARNING_SCORE_POLICY_INVALID'
+     or exists(select 1 from public.quiz_answer_attempts where quiz_attempt_id=v_policy_attempt) then
+    raise exception 'FLH030_MALFORMED_SCORE_SNAPSHOT_NOT_REJECTED:%',v_result;
+  end if;
+
   if has_function_privilege('anon', 'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)', 'execute')
      or has_function_privilege('authenticated', 'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)', 'execute')
      or not has_function_privilege('service_role', 'public.flh_learning_answer(uuid,uuid,uuid,uuid,integer)', 'execute') then
@@ -846,7 +937,12 @@ begin
   ) then raise exception 'LEARNING_RPC_SECURITY_CONFIGURATION_INVALID'; end if;
 
   delete from public.quiz_attempts
-  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j, v_attempt_k, v_attempt_l, v_attempt_m, v_attempt_n, v_attempt_o);
+  where id in (v_attempt_a, v_attempt_b, v_attempt_c, v_attempt_d, v_attempt_e, v_attempt_f, v_attempt_g, v_attempt_h, v_attempt_i, v_attempt_j, v_attempt_k, v_attempt_l, v_attempt_m, v_attempt_n, v_attempt_o,
+    '20000000-0000-4000-8000-000000000016'::uuid,
+    '20000000-0000-4000-8000-000000000017'::uuid,
+    '20000000-0000-4000-8000-000000000018'::uuid,
+    '20000000-0000-4000-8000-000000000019'::uuid,
+    '20000000-0000-4000-8000-000000000020'::uuid);
   delete from public.quiz_assignments where id = v_assignment;
   delete from public.learner_program_enrollments where id = v_enrollment;
   delete from public.learning_programs where id = v_program;

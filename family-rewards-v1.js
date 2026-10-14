@@ -234,7 +234,7 @@
   const PARENT_RETURN_RULE='a315e8af-9d9b-473b-95ac-c5425ad7de5b';
   function pendingProjection(rules,row,event=null){
     const snapshot=row.snapshot;
-    const duplicate=row.possible_duplicate===true||!!event?.awarded_learner_ids?.includes(row.learner_id);
+    const duplicate=!!row.approval_blocker||row.possible_duplicate===true||!!event?.awarded_learner_ids?.includes(row.learner_id);
     const projection=value=>({...value,forecast:duplicate?0:value.total,duplicate,conditional:row.rule_id===PARENT_RETURN_RULE&&!event});
     if(snapshot&&Object.keys(snapshot).length){
       const valid=snapshot.policy_version==='flh-010-v1.5'&&snapshot.status==='pending'&&snapshot.rule_id===row.rule_id&&PREVIEW_COMPONENTS.every(([key])=>typeof snapshot[key]==='number'&&Number.isInteger(snapshot[key])&&snapshot[key]>=0&&snapshot[key]<=100000)&&typeof snapshot.total_points==='number'&&snapshot.total_points===PREVIEW_COMPONENTS.reduce((sum,[key])=>sum+snapshot[key],0);
@@ -250,7 +250,9 @@
     rows=rows.filter(row=>row.status==='pending');
     const unique=new Map();
     for(const row of rows){
-      const event=eventFor(row),key=row.rule_id===PARENT_RETURN_RULE?(event?.id?row.learner_id+'|'+row.rule_id+'|'+event.id:row.id):exactOccurrenceKey(row)||row.id,preview=pendingProjection(rules,row,event);
+      const rule=rules.find(rule=>rule.id===row.rule_id);
+      const dayKey=rule?.cadence==='day'&&rule.max_awards===1&&row.occurred_at?row.learner_id+'|'+row.rule_id+'|'+zonedYmd(row.occurred_at):null;
+      const event=eventFor(row),key=row.rule_id===PARENT_RETURN_RULE?(event?.id?row.learner_id+'|'+row.rule_id+'|'+event.id:row.id):dayKey||exactOccurrenceKey(row)||row.id,preview=pendingProjection(rules,row,event);
       if(!unique.has(key))unique.set(key,preview.forecast);
       else if(unique.get(key)!==preview.forecast)unique.set(key,null);
     }
@@ -267,7 +269,7 @@
     return{return_event_id:view.returnSelections.get(row.id)||row.return_event_id||null};
   }
   function clearReturnChoiceError(view,key,host){
-    const bindingErrors=['RETURN_EVENT_REQUIRED','RETURN_EVENT_NOT_FOUND','INVALID_RETURN_EVENT'];
+    const bindingErrors=['RETURN_EVENT_REQUIRED','RETURN_EVENT_NOT_FOUND','INVALID_RETURN_EVENT','CADENCE_LIMIT','DUPLICATE_OCCURRENCE'];
     if(bindingErrors.includes(view.approvalErrors.get(key))){
       view.approvalErrors.delete(key);host.closest('[data-fr-submission]')?.querySelector('.fr-item-error')?.remove();
     }
@@ -312,7 +314,10 @@
     for(const group of view.root.querySelectorAll('[data-fr-approval-learner]')){
       const ids=new Set([...group.querySelectorAll('[data-fr-submission]')].map(card=>card.dataset.frSubmission));
       const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===group.dataset.frApprovalLearner&&ids.has(row.id));
-      const summary=pendingSummary(view.data.rules||[],rows,row=>selectedReturnEvent(view,row));
+      const actionable=rows.filter(row=>!approvalBlocker(view,row));
+      const summary=pendingSummary(view.data.rules||[],actionable.slice(0,50),row=>selectedReturnEvent(view,row));
+      const button=group.querySelector('[data-fr-approve-all]');
+      if(button){button.hidden=!actionable.length;button.textContent='موافقة على الكل'+(actionable.length>50?' (حتى 50 طلبًا)':'');}
       group.querySelector('[data-fr-pending-total]').innerHTML=summary.total===null?'غير متاح':`${isolated(summary.total)} نقطة`;
     }
   }
@@ -408,10 +413,10 @@
   function submissionCard(view, row, showReturnChoice=false) {
     const rule = view.data.rules?.find(rule => rule.id === row.rule_id), title = row.rule_title || rule?.title || row.reason || 'سلوك عائلي';
     if(row.status==='pending'){
-      const preview=pendingProjection(view.data.rules||[],row,selectedReturnEvent(view,row)),error=view.approvalErrors?.get(row.id);
+      const preview=pendingProjection(view.data.rules||[],row,selectedReturnEvent(view,row)),error=view.approvalErrors?.get(row.id)||row.approval_blocker;
       const source=preview.conditional?'نقطتان مشروطتان باختيار مناسبة حقيقية والتحقق من الحد اليومي':preview.source==='captured'?'تقدير مسجّل مع الطلب':preview.source==='current'?'تقدير بحسب القاعدة الحالية؛ هذا الطلب القديم بلا تقدير مسجّل':'التقدير غير متاح';
       const conditions=[row.initiative&&preview.parts?.initiative_bonus_points>0?'تم دون تذكير':'',row.congregation_completed?'صلاة جماعة':'',row.mosque_completed?'في المسجد':'',row.sunnah_completed?'سنة الصلاة':'',row.adhkar_completed?'أذكار ما بعد الصلاة':''].filter(Boolean);
-      return `<article data-fr-submission="${safe(row.id)}" class="fr-item fr-pending-card"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id)?'<span class="fr-status fr-duplicate">مكرر محتمل</span>':''}</span></div><div class="muted fr-occurrence-meta">${view.role==='parent'?`${safe(name(view,row.learner_id))} · `:''}${row.rule_id===PARENT_RETURN_RULE?'وقت البلاغ: ':''}${isolated(date(row.occurred_at||row.requested_at))}</div><div class="fr-estimate">${preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`}</div><div class="muted fr-preview-source">${safe(source)}</div>${preview.duplicate?'<div class="muted">تم منح نقاط لهذه الواقعة سابقًا؛ لا يتوقع منح نقاط جديدة لهذا الطلب.</div>':''}${conditions.length?`<div class="fr-captured-status">${conditions.map(safe).join(' · ')}</div>`:''}${error?`<div class="error fr-item-error" role="alert">${safe(errorMessages[error]||'تعذر اعتماد هذا الطلب. حدّث العرض أو أعد المحاولة.')}</div>`:''}${view.role==='parent'&&showReturnChoice&&row.rule_id===PARENT_RETURN_RULE?returnEventControl(view,row.id,row.occurred_at):''}${view.role==='parent'?`<div class="actions fr-card-actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>`:''}<details class="fr-submission-details"><summary>التفاصيل</summary>${projectionDetails(preview)}<div class="muted">${safe(categoryName(view,row))}</div>${row.reason?`<p>${safe(row.reason)}</p>`:''}${row.requested_at?`<div class="muted">وقت إرسال الطلب: ${isolated(date(row.requested_at))}</div>`:''}<div class="muted fr-duplicate-explanation" ${view.duplicateSubmissionIds?.has(row.id)?'':'hidden'}>قد يمثل هذا الطلب واقعة مسجّلة سابقًا؛ يتحقق الخادم قبل منح النقاط.</div></details></article>`;
+      return `<article data-fr-submission="${safe(row.id)}" class="fr-item fr-pending-card"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id)?'<span class="fr-status fr-duplicate">مكرر محتمل</span>':''}</span></div><div class="muted fr-occurrence-meta">${view.role==='parent'?`${safe(name(view,row.learner_id))} · `:''}${row.rule_id===PARENT_RETURN_RULE?'وقت البلاغ: ':'وقت حدوث السلوك: '}${isolated(date(row.occurred_at||row.requested_at))}</div><div class="fr-estimate">${preview.forecast===null?'التقدير غير متاح':`${isolated(preview.forecast)} نقطة متوقعة`}</div><div class="muted fr-preview-source">${safe(source)}</div>${preview.duplicate?'<div class="muted">تم منح نقاط لهذه الواقعة سابقًا؛ لا يتوقع منح نقاط جديدة لهذا الطلب.</div>':''}${conditions.length?`<div class="fr-captured-status">${conditions.map(safe).join(' · ')}</div>`:''}${error?`<div class="error fr-item-error" role="alert">${safe(errorMessages[error]||'تعذر اعتماد هذا الطلب. حدّث العرض أو أعد المحاولة.')}</div>`:''}${view.role==='parent'&&showReturnChoice&&row.rule_id===PARENT_RETURN_RULE?returnEventControl(view,row.id,row.occurred_at):''}${view.role==='parent'?`<div class="actions fr-card-actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>`:''}<details class="fr-submission-details"><summary>التفاصيل</summary>${projectionDetails(preview)}<div class="muted">${safe(categoryName(view,row))}</div>${row.reason?`<p>${safe(row.reason)}</p>`:''}${row.requested_at?`<div class="muted">وقت إرسال الطلب: ${isolated(date(row.requested_at))}</div>`:''}<div class="muted fr-duplicate-explanation" ${view.duplicateSubmissionIds?.has(row.id)?'':'hidden'}>قد يمثل هذا الطلب واقعة مسجّلة سابقًا؛ يتحقق الخادم قبل منح النقاط.</div></details></article>`;
     }
     return `<article data-fr-submission="${safe(row.id)}" class="fr-item"><div class="topline"><b>${safe(title)}</b><span class="fr-status-stack">${statusBadge(row.status)}${view.duplicateSubmissionIds?.has(row.id) ? '<span class="fr-status fr-duplicate">مكرر محتمل</span>' : ''}</span></div><div class="muted">${view.role === 'parent' ? `${safe(name(view, row.learner_id))} · ` : ''}${safe(categoryName(view, {...row,category_id:row.category_id || rule?.category_id}))} · ${isolated(date(row.occurred_at || row.created_at || row.requested_at))}</div>${row.status === 'pending' && rule ? `<div class="muted">النقاط المتوقعة بحسب القاعدة الحالية عند الاعتماد:</div>${pointParts({base_points:rule.base_points,initiative_bonus_points:row.initiative?rule.initiative_bonus_points:0,adhkar_bonus_points:row.adhkar_completed?rule.adhkar_bonus_points:0,congregation_bonus_points:row.congregation_completed?rule.congregation_bonus_points:0,mosque_bonus_points:row.mosque_completed?rule.mosque_bonus_points:0,sunnah_bonus_points:row.sunnah_completed?rule.sunnah_bonus_points:0})}` : pointParts(row)}${row.initiative ? '<div class="muted">تم دون تذكير</div>' : ''}${row.congregation_completed ? '<div class="muted">تمت الصلاة جماعة</div>' : ''}${row.mosque_completed ? '<div class="muted">تمت الصلاة في المسجد</div>' : ''}${row.sunnah_completed ? '<div class="muted">تمت سنة الصلاة</div>' : ''}${row.adhkar_completed ? '<div class="muted">تمت أذكار ما بعد الصلاة</div>' : ''}${row.reason ? `<p>${safe(row.reason)}</p>` : ''}${row.review_reason ? `<p>ملاحظة الأهل: ${safe(row.review_reason)}</p>` : ''}${row.status === 'pending' ? '<div class="muted">لا تُضاف نقاط قبل موافقة الأهل.</div>' : ''}${view.role === 'parent' && row.status === 'pending' ? `<div class="actions"><button class="btn btn-primary" data-fr-behavior-approve="${safe(row.id)}">اعتماد السلوك</button><button class="btn btn-soft" data-fr-behavior-reject="${safe(row.id)}">رفض</button></div>` : ''}</article>`;
   }
@@ -458,13 +463,20 @@
     const breakdown = allBreakdown.filter(row=>!view.selectedLearner || row.learner_id===view.selectedLearner);
     return `<section class="panel fr-summary"><h2>${view.role === 'parent' ? 'النقاط القابلة للاستبدال' : 'تقدّمك وجوائزك'}</h2>${view.role === 'parent' ? field('frLearnerFilter','عرض نقاط الطالب',`<select id="frLearnerFilter"><option value="">كل الطلاب الحقيقيين</option>${learners(view).map(learner=>`<option value="${safe(learner.id)}" ${learner.id===view.selectedLearner?'selected':''}>${safe(learner.display_name)}</option>`).join('')}</select>`) : ''}<div class="fr-balance"><span>🪙 نقاط الجوائز</span><strong data-fr-balance>${isolated(balance)}</strong></div><div class="muted">⭐ XP أكاديمي: <b data-fr-xp>${isolated(xp)}</b></div><p class="muted">XP للتعلّم الأكاديمي. نقاط الجوائز تجمع التعلّم والسلوك العائلي المعتمد ويمكن استبدالها.</p>${view.role === 'parent' && !view.selectedLearner ? `<div class="fr-card-grid">${learners(view).map(learner=>`<button class="fr-breakdown" data-fr-select-learner="${safe(learner.id)}"><b>${safe(learner.display_name)}</b><span>${isolated(states.find(row=>row.learner_id===learner.id)?.reward_points || 0)} نقطة</span></button>`).join('')}</div>` : ''}${breakdown.length ? `<h3>توزيع النقاط حسب الفئة والمصدر</h3><div class="fr-card-grid">${breakdown.map(row=>`<button class="fr-breakdown" data-fr-breakdown-category="${safe(row.category_id || '')}" data-fr-breakdown-source="${safe(row.source_type || '')}" data-fr-breakdown-learner="${safe(row.learner_id || '')}"><span>${safe(categoryName(view,row))}${row.source_type ? ` · ${safe(sourceText(row.source_type))}` : ''}</span><b>${isolated(row.points ?? row.total_points ?? row.reward_points_delta ?? row.total ?? 0)} نقطة</b></button>`).join('')}</div>` : '<div class="empty">سيظهر توزيع النقاط بعد أول حركة مسجّلة.</div>'}</section>`;
   }
+  function approvalBlocker(view,row) {
+    const error=view.approvalErrors?.get(row.id);
+    return row.approval_blocker||(['CADENCE_LIMIT','DUPLICATE_OCCURRENCE'].includes(error)?error:null)
+      ||(pendingProjection(view.data.rules||[],row,selectedReturnEvent(view,row)).duplicate?'DUPLICATE_OCCURRENCE':null);
+  }
   function pendingApprovalGroups(view, rows) {
     if(!rows.length)return '<div class="empty">لا توجد سلوكيات بانتظار المراجعة.</div>';
     const ids=[...new Set(rows.map(row=>row.learner_id))];
     return ids.map(learnerId=>{
       const learnerRows=rows.filter(row=>row.learner_id===learnerId);
-      const summary=pendingSummary(view.data.rules||[],learnerRows,row=>selectedReturnEvent(view,row));
-      return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head fr-pending-summary"><h3>${safe(name(view,learnerId))}</h3><div><span>بانتظار المراجعة</span><b data-fr-pending-count>${isolated(summary.count)}</b></div><div><span>تقدير غير مضاف للرصيد</span><b data-fr-pending-total>${summary.total===null?'غير متاح':`${isolated(summary.total)} نقطة`}</b></div></div>${summary.uniqueCount<summary.count?'<div class="muted">يُحتسب تقدير كل واقعة مرة واحدة؛ توجد طلبات قد تكون مكررة.</div>':''}<div class="fr-group-actions"><button class="btn btn-primary" data-fr-approve-all="${safe(learnerId)}">موافقة على الكل</button></div><div class="fr-card-grid">${learnerRows.map(row=>submissionCard(view,row,true)).join('')}</div></section>`;
+      const actionable=learnerRows.filter(row=>!approvalBlocker(view,row)),exceptions=learnerRows.filter(row=>approvalBlocker(view,row));
+      const summary=pendingSummary(view.data.rules||[],actionable.slice(0,50),row=>selectedReturnEvent(view,row));
+      return `<section class="fr-approval-group" data-fr-approval-learner="${safe(learnerId)}"><div class="fr-group-head fr-pending-summary"><h3>${safe(name(view,learnerId))}</h3><div><span>بانتظار المراجعة</span><b data-fr-pending-count>${isolated(learnerRows.length)}</b></div><div><span>تقدير مشروط للطلبات القابلة للاعتماد</span><b data-fr-pending-total>${summary.total===null?'غير متاح':`${isolated(summary.total)} نقطة`}</b></div></div><div class="fr-group-actions"><button class="btn btn-primary" ${actionable.length?'':'hidden'} data-fr-approve-all="${safe(learnerId)}">موافقة على الكل${actionable.length>50?' (حتى 50 طلبًا)':''}</button></div>${actionable.length?`<div class="fr-card-grid">${actionable.map(row=>submissionCard(view,row,true)).join('')}</div>`:''}${exceptions.length?`<h4>تحتاج مراجعة (${exceptions.length})</h4><p class="muted">لا تُعاد هذه الطلبات تلقائيًا؛ راجعها واختر الرفض مع ملاحظة عند الحاجة.</p><div class="fr-card-grid" data-fr-approval-exceptions>${exceptions.map(row=>submissionCard(view,row,true)).join('')}</div>`:''}</section>`;
+
     }).join('');
   }
   function reportDimensionRows(primary, historical) {
@@ -541,32 +553,43 @@
     if(!current(view)||view.refreshRequired||view.approvalBusyLearners.has(learnerId))return;
     const group=[...view.root.querySelectorAll('[data-fr-approval-learner]')].find(element=>element.dataset.frApprovalLearner===learnerId);
     const visibleIds=new Set([...(group?.querySelectorAll('[data-fr-submission]')||[])].map(element=>element.dataset.frSubmission));
-    const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===learnerId&&visibleIds.has(row.id));
+    const rows=(view.data.submissions||[]).filter(row=>row.status==='pending'&&row.learner_id===learnerId&&visibleIds.has(row.id)&&!approvalBlocker(view,row)).slice(0,50);
     if(!rows.length)return;
     const estimate=pendingSummary(view.data.rules||[],rows,row=>selectedReturnEvent(view,row));
-    const selectedBindings=new Map(rows.map(row=>[row.id,returnApprovalPayload(view,row)]));
-    if(!window.confirm(`اعتماد طلبات ${name(view,learnerId)}؟\nعدد الطلبات: ${rows.length}\n${estimateText(estimate.total)} (تقدير غير مضاف للرصيد؛ يتحقق الخادم من حدود التكرار).`))return;
+    const items=rows.map(row=>({submission_id:row.id,...returnApprovalPayload(view,row)}));
+    if(!window.confirm(`اعتماد طلبات ${name(view,learnerId)}؟\nعدد الطلبات: ${rows.length}\n${estimateText(estimate.total)} (تقدير مشروط؛ يتحقق الخادم من حدود التكرار).`))return;
     view.approvalBusyLearners.add(learnerId);approvalControls(view,learnerId).forEach(control=>control.disabled=true);
-    button.dataset.frBusy='1';button.setAttribute('aria-busy','true');
+    button.dataset.frBusy='1';button.setAttribute('aria-busy','true');button.textContent=`جارٍ مراجعة ${rows.length} طلبًا…`;
+    if(group)group.setAttribute('aria-busy','true');
     const reason=view.root.querySelector('#frReviewReason')?.value.trim()||'';
-    let approved=0,skipped=0,granted=0;const failures=[];
+    let approved=0,skipped=0,blocked=0,errors=0,granted=0,uncertain=false;
     try{
-      for(const row of rows){
+      try{
+        const result=await call(view,'behavior_review_many',{learner_id:learnerId,items,reason});
         if(!current(view))return;
-        try{
-          const result=await call(view,'behavior_review',{submission_id:row.id,decision:'approved',reason,...selectedBindings.get(row.id)}),outcome=approvalOutcome(result,row);
-          if(outcome.state==='failed')throw new Error('SERVER_ERROR');
-          view.approvalErrors.delete(row.id);
-          if(outcome.state==='approved'){approved++;granted+=outcome.points;}else skipped++;
-        }catch(error){const code=String(error?.message||'SERVER_ERROR');failures.push({id:row.id,error:code});view.approvalErrors.set(row.id,code);}
+        const outcomes=result?.results;
+        if(!Array.isArray(outcomes)||outcomes.length!==rows.length||new Set(outcomes.map(item=>item.submission_id)).size!==rows.length
+          ||outcomes.some(item=>!visibleIds.has(item.submission_id)||!rows.some(row=>row.id===item.submission_id)
+            ||!['approved','already_reviewed','blocked','error'].includes(item.state)||!Number.isSafeInteger(item.points)||item.points<0
+            ||(item.state!=='approved'&&item.points!==0)))throw new Error('REWARDS_SERVER_ERROR');
+        for(const item of outcomes){
+          view.approvalErrors.delete(item.submission_id);
+          if(item.state==='approved'){approved++;granted+=item.points;}
+          else if(item.state==='already_reviewed')skipped++;
+          else{if(item.state==='blocked')blocked++;else errors++;view.approvalErrors.set(item.submission_id,item.error||'REWARDS_SERVER_ERROR');}
+        }
+      }catch(error){
+        if(!current(view))return;
+        errors=rows.length;uncertain=true;
+        rows.forEach(row=>view.approvalErrors.set(row.id,String(error?.message||'REWARDS_SERVER_ERROR')));
       }
       if(!current(view))return;
-      const statusText=`تم اعتماد ${approved} من ${rows.length}. أُضيفت ${granted} نقطة بالفعل.${skipped?` ${skipped} طلب/طلبات تمت مراجعتها سابقًا دون نقاط جديدة.`:''}${failures.length?` تعذر اعتماد ${failures.length}؛ راجع العناصر المتبقية.`:''}`;
-      view.approvalMessage=failures.length?{type:'error',text:statusText}:null;view.savedMessage=statusText;
+      const statusText=uncertain?'لم يصل تأكيد نتيجة الموافقة. قد تكون بعض الطلبات حُفظت؛ حدّث السجل للتحقق قبل إعادة المحاولة.':`تم اعتماد ${approved} من ${rows.length}. أُضيفت ${granted} نقطة بالفعل. تمت مراجعة ${skipped} سابقًا. تحتاج مراجعة: ${blocked}. أخطاء قابلة للمحاولة: ${errors}.`;
+      view.approvalMessage=blocked||errors?{type:'error',text:statusText}:null;view.savedMessage=statusText;
       try{await refresh(view,statusText);}catch{if(current(view))savedRefreshNotice(view,view.root.querySelector('[data-fr-approvals] .fr-message'));}
     }finally{
       view.approvalBusyLearners.delete(learnerId);
-      if(current(view)){approvalControls(view,learnerId).forEach(control=>control.disabled=!!view.refreshRequired);button.dataset.frBusy='0';button.removeAttribute('aria-busy');}
+      if(current(view)){approvalControls(view,learnerId).forEach(control=>control.disabled=!!view.refreshRequired);button.dataset.frBusy='0';button.removeAttribute('aria-busy');group?.removeAttribute('aria-busy');}
     }
   }
   function paint(view, success = '') {
