@@ -1,6 +1,6 @@
-# FLH-FEAT-2026-030 — Learning attempt scoring (v1.0)
+# FLH-FEAT-2026-030 — Learning attempt scoring (v1.1)
 
-Canonical product requirement: [Drive Spec](https://docs.google.com/document/d/1XK62CabAaXW7YJP8k_amvQNImUi9Rw4sGVSB2AxU_BY/edit) revision **2**. GitHub tracking: [Issue #159](https://github.com/FadiAboAlward/family-learning-hub/issues/159).
+Canonical product requirement: [Drive Spec](https://docs.google.com/document/d/1XK62CabAaXW7YJP8k_amvQNImUi9Rw4sGVSB2AxU_BY/edit) revision **3**. GitHub tracking: [Issue #159](https://github.com/FadiAboAlward/family-learning-hub/issues/159).
 
 ## Points policy
 
@@ -18,15 +18,17 @@ A correct third/fourth try still finalizes as **correct** and can show feedback 
 
 ## Stable scoring and old attempts
 
-The server-side `flh_learning_start` RPC atomically snapshots the new policy in `quiz_attempts.metadata` for **new** Learning attempts:
+The server-side `flh_learning_start` RPC atomically stores the new score policy on each newly created **core** question queue row in `public.quiz_attempt_question_queue.score_policy_snapshot` (nullable JSONB, server/service-role-only writes):
 
 ```json
-{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}
+{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}
 ```
 
-Both `flh_learning_answer` and `flh_learning_answer_response` prefer this validated exact policy snapshot over old `quiz_versions.settings.attempt_scores`. If either snapshot field is present but inconsistent, the RPC returns `LEARNING_SCORE_POLICY_INVALID` before adding answer or mastery evidence.
+This is the authoritative source of the score policy. The `quiz_attempts.metadata` table remains editable by some authenticated parents/managers and is **not trusted for scoring**, whether its policy keys are present, missing, forged or overwritten. The queue is tied to the existing owned attempt and its first `source_role='core'` row (ordered by `sequence_no`). It has SELECT-only access for authenticated users and no client INSERT/UPDATE rights.
 
-Older already-started attempts do not have this snapshot. They continue using the published per-version `attempt_scores`, or the original `[100,75,50,25]` fallback. In particular, a resumption after deployment must **not** convert an existing attempt halfway through a quiz. No historical backfill or regrading occurs. Exam/Paper scoring remains unchanged.
+Both `flh_learning_answer` and `flh_learning_answer_response` select that exact server-owned first core policy and reject a non-null malformed/unrecognized policy before saving any answer or advancing its queue. This includes ungraded typed/reflection questions with an early return. A valid snapshot overrides legacy `quiz_versions.settings.attempt_scores`.
+
+Older already-started attempts have NULL in the dedicated queue snapshot, even if their editable attempt metadata is changed. They continue using the published per-version `attempt_scores`, or the original `[100,75,50,25]` fallback. In particular, a resumption after deployment must **not** convert an existing attempt halfway through a quiz. No historical backfill or regrading occurs. Exam/Paper scoring remains unchanged.
 
 ## QA
 
@@ -40,4 +42,4 @@ Run the complete isolated fresh-database migration rebuild and GitHub Actions St
 
 ## Deployment/rollback boundary
 
-The migration is forward-only and replaces three existing authorized functions without changing RLS or privileges. No Production migration, backend deployment, merge, or changes to any live student's stored attempt have been made by merely creating this branch. If rollback becomes necessary, use a **new** forward-only corrective migration restoring the previous function versions; never edit migration history. After a separately approved Production release, verify actual new/legacy Learning attempts and Exam immutability.
+The migration is forward-only, adds a nullable server-owned column on the existing queue and replaces three authorized functions without changing existing RLS or privileges. No Production migration, backend deployment, merge, or changes to any live student's stored attempt have been made by merely creating this branch. If rollback becomes necessary, use a **new** forward-only corrective migration restoring the previous function versions; never edit migration history. After a separately approved Production release, verify actual new/legacy Learning attempts and Exam immutability.
