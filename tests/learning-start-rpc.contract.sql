@@ -143,6 +143,21 @@ begin
       and status = 'in_progress' and delivery_mode = 'learning'
       and metadata @> '{"engine":"learning-api-v2","quiz_slug":"qa-learning-start-program","server_state":true,"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
   ) then raise exception 'LEARNING_START_PROGRAM_ATTEMPT_INVALID'; end if;
+  if (
+    select count(*)
+    from public.quiz_attempt_question_queue
+    where quiz_attempt_id=v_attempt and source_role='core'
+      and score_policy_snapshot =
+        '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb
+  ) <> 2 then
+    raise exception 'FLH030_NEW_ATTEMPT_SCORE_POLICY_NOT_FROZEN';
+  end if;
+  if has_table_privilege('authenticated','public.quiz_attempt_question_queue','INSERT')
+     or has_table_privilege('authenticated','public.quiz_attempt_question_queue','UPDATE')
+     or has_table_privilege('anon','public.quiz_attempt_question_queue','INSERT')
+     or has_table_privilege('anon','public.quiz_attempt_question_queue','UPDATE') then
+    raise exception 'FLH030_QUEUE_SCORE_POLICY_NOT_SERVER_OWNED';
+  end if;
 
   -- Restore persisted active/draft/hint state and a remediation queue row.
   update public.quiz_attempt_question_queue
