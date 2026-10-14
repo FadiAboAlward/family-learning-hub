@@ -141,7 +141,7 @@ begin
     where id = v_attempt and workspace_id = v_workspace and learner_id = v_learner
       and quiz_version_id = v_version_program and assignment_id is null
       and status = 'in_progress' and delivery_mode = 'learning'
-      and metadata @> '{"engine":"learning-api-v2","quiz_slug":"qa-learning-start-program","server_state":true}'::jsonb
+      and metadata @> '{"engine":"learning-api-v2","quiz_slug":"qa-learning-start-program","server_state":true,"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
   ) then raise exception 'LEARNING_START_PROGRAM_ATTEMPT_INVALID'; end if;
 
   -- Restore persisted active/draft/hint state and a remediation queue row.
