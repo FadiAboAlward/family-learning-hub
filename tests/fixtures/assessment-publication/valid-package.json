@@ -1,0 +1,2521 @@
+{
+  "academic_context": {
+    "student_ref": "testing-learner",
+    "grade": "7",
+    "curriculum": "Türkiye MEB",
+    "subject": "Mathematics",
+    "book_code": "TR-MATH-G7-2026-2027-K1",
+    "confirmed_scope": "K1 PDF original pages 25–34: rational foundations and integer relation; no Mutlak Değer",
+    "learner_state_ref": "synthetic:flh-027-testing-baseline",
+    "evidence_refs": [
+      "synthetic:testing-baseline"
+    ],
+    "next_target": "Remediate rational/integer membership and sign/decimal equivalence before advancing",
+    "concept_targets": [
+      {
+        "concept_code": "tr-g7-rational-integer-relation",
+        "state": "NEEDS_REINFORCEMENT",
+        "target_difficulty": 2,
+        "evidence_refs": [
+          "synthetic:testing-baseline"
+        ]
+      },
+      {
+        "concept_code": "tr-g7-rational-definition-sign",
+        "state": "DEVELOPING",
+        "target_difficulty": 3,
+        "evidence_refs": [
+          "synthetic:testing-baseline"
+        ]
+      },
+      {
+        "concept_code": "tr-g7-rational-number-line",
+        "state": "MASTERED",
+        "target_difficulty": 4,
+        "evidence_refs": [
+          "synthetic:testing-baseline"
+        ]
+      }
+    ],
+    "coverage_plan": {
+      "ordered_scope_ref": "TR-MATH-G7-2026-2027-K1:PDF-pages-25-34",
+      "coverage_cursor": "Rasyonel Sayılar: definition/sign + integer membership",
+      "cursor_order": 3,
+      "next_sequential_target": "Remediate rational-integer relation and sign",
+      "next_target_order": 3,
+      "decision": "REMEDIATE",
+      "primary_target_concepts": [
+        "tr-g7-rational-integer-relation",
+        "tr-g7-rational-definition-sign"
+      ],
+      "evidence_refs": [
+        "synthetic:testing-baseline"
+      ]
+    },
+    "context_ratio_justifications": {
+      "learning": "Synthetic Testing remediation of foundational rational-number definition, sign and set inclusion uses additional direct notation checks to isolate membership errors without superfluous stories. Meaningful contexts remain only where quantities or claims affect the reasoning.",
+      "exam": "This focused follow-up Exam checks denominators, signs and equivalence via direct notation to isolate misconceptions; contextual items are retained where the situation supplies required operations or ratios rather than decorative settings."
+    }
+  },
+  "runtime_external_dependencies": [],
+  "blueprint": [
+    {
+      "question_code": "Q-27000000001",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "depth-to-signed-quotient",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "Sea-level depth determines the sign and representation instead of an otherwise unsigned fraction."
+    },
+    {
+      "question_code": "Q-27000000002",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "zero-numerator-validity-and-class",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000003",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "zero-denominator-identify-invalid",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000004",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "double-negative-divide-and-type",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000005",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-improper-fraction-class",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000006",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-sign-transposition-equivalence",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000007",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "milk-decimal-to-reduced-fraction",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000008",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "positive-improper-numberline",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000009",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "signed-points-equal-distribution",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000010",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 3,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "disprove-universal-fraction-claim",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "The peer's universal claim is the premise that must be disproved by one counterexample."
+    },
+    {
+      "question_code": "Q-27000000011",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-decimal-class",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000012",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "part-whole-simplification",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "The six equal pieces and three colored pieces supply the part-to-whole relationship."
+    },
+    {
+      "question_code": "Q-27000000013",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-proper-numberline",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000014",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "integer-over-one-set-inclusion",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000015",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "unary-minus-parenthesized-rational",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000016",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "distance-mixed-decimal-fraction",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000017",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "detect-negative-quotient-choice",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000018",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "noninteger-after-reduction-identification",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000019",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "three-place-decimal-equivalence",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000020",
+      "delivery_surface": "learning",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "contrast-zero-zero-divisions",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000021",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "bank-balance-two-step-quotient",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "Starting debit and further withdrawal supply a two-step signed balance change."
+    },
+    {
+      "question_code": "Q-27000000022",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "invalid-denominator-and-cause",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000023",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "double-negative-noninteger-classification",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000024",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "signed-height-decimal-to-fraction",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000025",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "equal-division-positive-integer-relation",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000026",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-denominator-reduction",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000027",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 2,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "unit-fraction-to-decimal",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000028",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 4,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "negative-improper-numberline",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000029",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "refute-zero-numerator-sign-claim",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "The pupil's incorrect claim must be evaluated and explained using zero-numerator reasoning."
+    },
+    {
+      "question_code": "Q-27000000030",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "choose-rational-noninteger",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000031",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "denominator-sign-flip",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000032",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "capacity-ratio-unit-conversion",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "The glass capacity and filled milliliters determine the normalized part-to-whole ratio."
+    },
+    {
+      "question_code": "Q-27000000033",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "equivalent-fractions-numberline",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000034",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "refute-negative-negative-sign-misconception",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000035",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "signed-temperature-ratio-conversion",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000036",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "decimal-integer-set-inclusion",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000037",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "difficulty_role": "support",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "numberline-distance-parkure",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "The track length and distance ridden establish the milestone position inside the given interval."
+    },
+    {
+      "question_code": "Q-27000000038",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "same-whole-fraction-comparison",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "Equal-sized cakes and individual fractions are necessary to compare the portions fairly."
+    },
+    {
+      "question_code": "Q-27000000039",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "difficulty_role": "transfer",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "refute-two-minus-quotient-claim",
+      "context_type": "direct"
+    },
+    {
+      "question_code": "Q-27000000040",
+      "delivery_surface": "exam",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "difficulty_role": "target",
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "reasoning_signature": "identify-noninteger-rational-card",
+      "context_type": "direct"
+    }
+  ],
+  "questions": [
+    {
+      "question_code": "Q-27000000001",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir dalgıç deniz seviyesinin 3 metre altındadır. Aynı değeri gösteren kesir hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-12/4",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "12/4",
+          "is_correct": false,
+          "distractor_rationale": "Deniz seviyesinin altındaki eksi yönü yok sayıp pozitif üç bulur."
+        },
+        {
+          "position": 3,
+          "content": "-3/4",
+          "is_correct": false,
+          "distractor_rationale": "Eksi yönü korur fakat üç metreyi üç bölü dört metreyle karıştırır."
+        },
+        {
+          "position": 4,
+          "content": "-12/0",
+          "is_correct": false,
+          "distractor_rationale": "Sıfıra bölmeyi geçerli sanır; sıfır payda olamaz."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في قصة الغواص، انتبه إلى أن أسفل مستوى البحر يعبّر عن اتجاه مختلف عن أعلى البحر.\n• افحص قيمة العدد قبل الحكم عليه من شكل الكسر؛ فالكتابة تختلف أحيانًا من دون تغيير الكمية.\n• انتبه إلى الإشارة المرتبطة بالموقف أو بالعدد الأصلي، فهي جزء أساسي من المعنى ولا يجوز إسقاطها."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• اكتب ارتفاع الغواص أولًا بعدد صحيح ذي إشارة، ثم ابحث عن كسر يحافظ على القيمة.\n• يمكن كتابة كل عدد صحيح بصورة كسر مقامه واحد، ثم البحث عن تمثيلات مكافئة بالقسمة أو الضرب.\n• احسب البسط مقسومًا على المقام، وتأكد أن الناتج يحافظ على إشارة العدد وقيمته في السؤال."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• يمكنك تمثيل عدد صحيح سالب بكسر ذي بسط سالب ومقام موجب؛ جرّب تكوين تمثيل مشابه.\n• جرّب مثالًا مختلفًا: العدد السالب سبعة يمكن التعبير عنه بالكسر سالب أربعة عشر على اثنين.\n• اسأل نفسك الآن: هل التعبير الناتج عدد صحيح؟ وإذا كان كذلك فهو ينتمي أيضًا إلى الأعداد النسبية."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• استخدم معنى العمق لتحديد الإشارة، ثم اختبر الكسور الأربعة بالقسمة قبل أن تختار.\n• اعمل بالتسلسل: فسّر المعطى، كوّن قيمته العددية، احسب كل كسر معروض، ثم طابق القيمة والإشارة.\n• لا تكتف بتشابه البسط أو المقام مع المعطى؛ الصحيح هو التمثيل المكافئ بعد إجراء القسمة كاملة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000002",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir su deposundaki miktar sıfırdır. 0/12 kesrinin değeri ve türü nedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır payı, yasak olan sıfır paydayla karıştırır."
+        },
+        {
+          "position": 2,
+          "content": "Sıfırdır; tam sayı ve rasyonel sayıdır",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "Negatif rasyonel sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfırın negatif bir sayı olduğunu zanneder."
+        },
+        {
+          "position": 4,
+          "content": "Tam sayı değildir",
+          "is_correct": false,
+          "distractor_rationale": "Sıfırın aynı zamanda bir tam sayı olduğunu gözden kaçırır."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في مسألة الخزان، المقام اثنا عشر والبسط صفر؛ فكر هل العملية ممكنة قبل التصنيف.\n• لا يكفي أن يبدو العدد مثل كسر أو عشري لكي تعرف تصنيفه؛ المطلوب معرفة قيمته بالفعل.\n• اقرأ جميع الصفات المطلوبة في السؤال، لأن العدد قد يكون صحيحًا ونسبيًا في الوقت نفسه."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• لا تجعل وجود البسط صفرًا يختلط عليك مع منع المقام الصفر؛ افصل موضعي العدد.\n• إذا كان المقام غير صفر، احسب القسمة أو بسّط الكسر؛ النتيجة الصحيحة تبقى عددًا صحيحًا ونسبيًا.\n• إذا بقي جزء كسري غير صفري بعد التبسيط، فالعدد نسبي لكنه ليس عددًا صحيحًا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• طبق قاعدة القسمة على مقدار صفر موزع على مجموعات غير صفرية في مثال جديد.\n• مثال منفصل: ثلاثة أنصاف عدد نسبي لكنه ليس صحيحًا، بينما ستة أنصاف يعطينا عددًا صحيحًا.\n• استعمل المثال للمقارنة، ثم حل التعبير المعروض لك وحده قبل قراءة الاختيارات مرة أخرى."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• تحقق من قيمة التعبير، ثم اسأل هل هذه القيمة يمكن أن تكون عددًا صحيحًا ونسبيًا معًا.\n• تحقق أولًا من صلاحية المقام، ثم بسّط العدد وحدد هل توجد أجزاء كسرية متبقية بعد القسمة.\n• طابق النتيجة مع العبارة التي تصف نوع العدد وإشارته معًا، وليس مع نصف العبارة فقط."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000003",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Hangisi paydası sıfır olduğu için rasyonel sayı belirtmez?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "0/7",
+          "is_correct": false,
+          "distractor_rationale": "Payı sıfır olunca kesrin tanımsız olduğunu sanır; burada payda yedidir."
+        },
+        {
+          "position": 2,
+          "content": "-8/1",
+          "is_correct": false,
+          "distractor_rationale": "Negatif payın rasyonel sayıyı geçersiz kıldığını sanır."
+        },
+        {
+          "position": 3,
+          "content": "5/0",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "3/(-4)",
+          "is_correct": false,
+          "distractor_rationale": "Negatif paydayı sıfır paydayla karıştırır; eksi dört sıfır değildir."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• راقب في كل اختيار موقع الصفر، ولا تعتبر مجرد وجوده سببًا كافيًا للاستبعاد.\n• لاحظ موضع الصفر جيدًا: الصفر في البسط يختلف رياضيًا عن الصفر الذي يظهر في المقام.\n• لا تقرر صلاحية الكسر قبل النظر إلى المقام؛ إنه العدد الذي نقسم عليه البسط."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• ابدأ من المقام في كل كسر؛ شرط هذا الدرس يتعلق بالعدد المقسوم عليه.\n• القسمة تكون معرفة عندما لا يكون المقام صفرًا، مهما كانت إشارة البسط أو قيمة العدد.\n• بسط يساوي صفرًا مع مقام غير صفري يعطي قيمة معروفة؛ افصل الحالتين عند المراجعة."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• قارن بين مثالين منفصلين: صفر على ثلاثة وثلاثة على صفر، ثم طبق الفرق على الخيارات.\n• قارن مثالين مختلفين: صفر على خمسة مسألة صالحة، أما خمسة على صفر فلا تعطي قيمة عددية.\n• ابحث في المسألة عن مكان العدد صفر، ثم صنف التعبير قبل أن تختار العبارة الصحيحة."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• استبعد الكسر الذي لا تمثل كتابته عملية قسمة معرفة، واحتفظ بالكسر الذي قيمته ممكنة.\n• مرّ على كل كسر وحدد المقام أولًا، واستبعد القسمة غير المعرفة قبل مقارنة بقية القيم.\n• لا تفترض أن ظهور صفرين يجعل الحالتين متماثلتين؛ موقع الصفر هو الذي يحسم المعنى."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000004",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "(-6)/(-2) kesrinin sonucu nasıl bir sayıdır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif tam sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "İki negatif sayının bölümünün negatif kalacağını varsayar."
+        },
+        {
+          "position": 2,
+          "content": "Sıfırdır",
+          "is_correct": false,
+          "distractor_rationale": "Altı bölü iki işlemini sıfıra eşitler."
+        },
+        {
+          "position": 3,
+          "content": "Tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Eksi iki paydayı sıfır payda sanarak tanımsız der."
+        },
+        {
+          "position": 4,
+          "content": "Pozitif bir tam sayıdır",
+          "is_correct": true
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في الكسر المعطى توجد إشارة سالبة في كل من البسط والمقام؛ افحص تأثيرهما معًا.\n• حدد أماكن إشارات السالب داخل البسط والمقام وخارج الأقواس، ولا تتعامل معها بوصفها زخرفة.\n• فكّر في إشارة النتيجة قبل حساب مقدارها، ثم تحقق من نوع العدد إذا طلب السؤال ذلك."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• قبل حساب قيمة ستة على اثنين، طبق قاعدة تساوي الإشارتين في القسمة.\n• قسمة عددين لهما الإشارة نفسها تعطي قيمة موجبة؛ وإذا اختلفت الإشارتان فالنتيجة سالبة.\n• وجود سالب خارج قوس يغيّر إشارة القيمة الموجودة داخله؛ طبّق العمليات بالترتيب."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• جرّب نظيرًا أصغر مثل سالب أربعة على سالب اثنين، مع فصل الإشارة عن الناتج العددي.\n• في مثال مستقل، قسمة سالب عشرة على موجب اثنين تعطي قيمة سالبة صحيحة؛ عكس إشارة أحدهما يغيّر النتيجة.\n• عد إلى إشارات مسألتك ثم افحص إن كانت القسمة تعطي عددًا صحيحًا أو جزءًا كسريًا."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• بعد تطبيق قاعدة الإشارة، احسب القسمة ثم حدد هل الناتج صحيح أم غير صحيح.\n• حدد أولًا الإشارة النهائية بعد القسمة أو إزالة الأقواس، ثم احسب القيمة إن احتجت إلى تصنيفها.\n• قارن كل خيار بشرط الإشارة ونوع العدد معًا؛ لا تختار بناء على وجود رمز السالب وحده."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000005",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "-7/4 sıcaklık değişimi hangi sayı türündedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Rasyoneldir ama tam sayı değildir",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "Negatif bir tam sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "Kesrin tam bölünmediğini gözden kaçırıp tam sayı sayar."
+        },
+        {
+          "position": 3,
+          "content": "Negatif bir doğal sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "Negatif bir kesrin doğal sayı olabileceğini sanır."
+        },
+        {
+          "position": 4,
+          "content": "Tanımsız bir kesir gösterimidir",
+          "is_correct": false,
+          "distractor_rationale": "Payda dört sıfır olmadığı halde ifadeyi tanımsız sayar."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• افحص إشارة الكسر المعروض وقيمة القسمة، ثم ميّز بين العدد الصحيح والنسبي غير الصحيح.\n• لا يكفي أن يبدو العدد مثل كسر أو عشري لكي تعرف تصنيفه؛ المطلوب معرفة قيمته بالفعل.\n• اقرأ جميع الصفات المطلوبة في السؤال، لأن العدد قد يكون صحيحًا ونسبيًا في الوقت نفسه."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• افحص إشارة الكسر المعروض وقيمة القسمة، ثم ميّز بين العدد الصحيح والنسبي غير الصحيح.\n• إذا كان المقام غير صفر، احسب القسمة أو بسّط الكسر؛ النتيجة الصحيحة تبقى عددًا صحيحًا ونسبيًا.\n• إذا بقي جزء كسري غير صفري بعد التبسيط، فالعدد نسبي لكنه ليس عددًا صحيحًا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• افحص إشارة الكسر المعروض وقيمة القسمة، ثم ميّز بين العدد الصحيح والنسبي غير الصحيح.\n• مثال منفصل: ثلاثة أنصاف عدد نسبي لكنه ليس صحيحًا، بينما ستة أنصاف يعطينا عددًا صحيحًا.\n• استعمل المثال للمقارنة، ثم حل التعبير المعروض لك وحده قبل قراءة الاختيارات مرة أخرى."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• افحص إشارة الكسر المعروض وقيمة القسمة، ثم ميّز بين العدد الصحيح والنسبي غير الصحيح.\n• تحقق أولًا من صلاحية المقام، ثم بسّط العدد وحدد هل توجد أجزاء كسرية متبقية بعد القسمة.\n• طابق النتيجة مع العبارة التي تصف نوع العدد وإشارته معًا، وليس مع نصف العبارة فقط."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000006",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "-4/9 ile hangi kesir eş değerdedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "4/9",
+          "is_correct": false,
+          "distractor_rationale": "Eksi işaretini kaldırıp pozitif dört bölü dokuz elde eder."
+        },
+        {
+          "position": 2,
+          "content": "4/(-9)",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "(-4)/(-9)",
+          "is_correct": false,
+          "distractor_rationale": "Hem paya hem paydaya eksi koyarak işareti pozitife çevirir."
+        },
+        {
+          "position": 4,
+          "content": "9/(-4)",
+          "is_correct": false,
+          "distractor_rationale": "Pay ve paydayı ters çevirerek kesrin büyüklüğünü değiştirir."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• ابحث عن الاختيار الذي يضع الإشارة السالبة بحيث لا تتغير قيمة الكسر الأصلي.\n• حدد أماكن إشارات السالب داخل البسط والمقام وخارج الأقواس، ولا تتعامل معها بوصفها زخرفة.\n• فكّر في إشارة النتيجة قبل حساب مقدارها، ثم تحقق من نوع العدد إذا طلب السؤال ذلك."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• نقل السالب من البسط إلى المقام يحافظ على الإشارة النهائية؛ وضع سالبين يغيرها.\n• قسمة عددين لهما الإشارة نفسها تعطي قيمة موجبة؛ وإذا اختلفت الإشارتان فالنتيجة سالبة.\n• وجود سالب خارج قوس يغيّر إشارة القيمة الموجودة داخله؛ طبّق العمليات بالترتيب."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• قارن مثالًا آخر: سالب اثنين على خمسة مع اثنين على سالب خمسة، ثم افحص نفس العلاقة.\n• في مثال مستقل، قسمة سالب عشرة على موجب اثنين تعطي قيمة سالبة صحيحة؛ عكس إشارة أحدهما يغيّر النتيجة.\n• عد إلى إشارات مسألتك ثم افحص إن كانت القسمة تعطي عددًا صحيحًا أو جزءًا كسريًا."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• افحص كل خيار من حيث قيمة القسمة وإشارتها، وليس الشكل البصري لمكان الرمز فقط.\n• حدد أولًا الإشارة النهائية بعد القسمة أو إزالة الأقواس، ثم احسب القيمة إن احتجت إلى تصنيفها.\n• قارن كل خيار بشرط الإشارة ونوع العدد معًا؛ لا تختار بناء على وجود رمز السالب وحده."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000007",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir tarifte 0,4 litre süt kullanılıyor. Bu miktarın sade kesri hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "4/100",
+          "is_correct": false,
+          "distractor_rationale": "Bir ondalık basamağı iki basamak gibi yorumlayıp yüzde dört yazar."
+        },
+        {
+          "position": 2,
+          "content": "4/5",
+          "is_correct": false,
+          "distractor_rationale": "Dört bölü onu iki bölü beş yerine dört bölü beş sanır."
+        },
+        {
+          "position": 3,
+          "content": "2/5",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "5/2",
+          "is_correct": false,
+          "distractor_rationale": "Kesri ters çevirip iki buçuk gibi daha büyük bir değer bulur."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في كمية الحليب، يوجد رقم واحد بعد الفاصلة؛ راقب منزلة هذا الرقم قبل الحل.\n• ركز على عدد الأرقام بعد الفاصلة العشرية، فهو يساعدك على تحديد مقام الكسر الأولي.\n• حافظ على قيمة العدد كما هي، ولا تحرك الفاصلة لمجرد أن أرقام الخيارات تبدو متشابهة."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• عند كتابة الصيغة الأولية، فكّر في عدد الأجزاء من عشرة بدل التعامل مع أربع وحدها.\n• المنزلة الأولى بعد الفاصلة تعني أعشارًا، والثانية أجزاء من مئة، والثالثة أجزاء من ألف.\n• اكتب العدد على هيئة كسر بالمقام المناسب ثم اختصر البسط والمقام بالقاسم المشترك."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• مثال مشابه: 0,6 يعبر عن ستة أعشار قبل التبسيط؛ كرر الطريقة على كمية الحليب.\n• مثال مستقل: الصيغة العشرية 0,75 يمكن كتابتها خمسة وسبعين على مئة، ثم تبسيطها بالقسمة.\n• ابدأ بعد المنازل في رقم سؤالك، ثم نفذ الخطوة نفسها من دون نسخ أرقام المثال."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• حوّل كمية الحليب إلى كسر أعشاري ثم اختصر البسط والمقام، وافحص الكسر النهائي في البدائل.\n• كوّن الكسر المكافئ للعدد المعروض، اختصره إن أمكن، ثم افحص الاختيارات بحساب قيمها العشرية.\n• اختبر المعنى في الاتجاهين: من العشري إلى الكسر، ثم من الكسر إلى العشري للتحقق النهائي."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000008",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "5/2 sayısı sayı doğrusunda hangi ardışık tam sayılar arasındadır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "1 ve 2",
+          "is_correct": false,
+          "distractor_rationale": "Beş bölü ikinin iki tamdan büyük olduğunu atlar."
+        },
+        {
+          "position": 2,
+          "content": "3 ve 4",
+          "is_correct": false,
+          "distractor_rationale": "İkinin yanındaki sonraki aralığı seçip tam kısmı bir artırır."
+        },
+        {
+          "position": 3,
+          "content": "-3 ve -2",
+          "is_correct": false,
+          "distractor_rationale": "Pozitif kesri yanlışlıkla negatif aralıkta konumlandırır."
+        },
+        {
+          "position": 4,
+          "content": "2 ve 3",
+          "is_correct": true
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في الكسر خمسة على اثنين، حاول تصور تقسيم خمسة إلى مجموعات مقدار كل منها اثنان.\n• فكّر في موقع الصفر أولًا، ثم قرر هل العدد يقع يمينه أم يساره بحسب الإشارة.\n• مطلوب عددان صحيحان متجاوران يحيطان بالقيمة، وليس أقرب عدد صحيح منفرد إلى القيمة."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• يمكنك إجراء القسمة لتحديد العدد الصحيح الذي يسبق القيمة والعدد الذي يليها مباشرة.\n• حوّل الكسر إلى قيمة تقريبية بالقسمة، ثم قارنها بأقرب عددين صحيحين على مستقيم الأعداد.\n• في الجهة السالبة، تذكر أن العدد ذي المقدار الأكبر يقع أبعد إلى يسار الصفر."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• في مثال مختلف، تسعة على أربعة يقع بين عددين صحيحين؛ اتبع التقسيم نفسه هنا.\n• مثال مستقل: سبعة أنصاف تساوي ثلاثة ونصفًا، فهي تقع بين صحيحين متجاورين على المستقيم.\n• طبّق التقسيم نفسه على البسط والمقام الظاهرين في المسألة ولا تستعمل قيم المثال نفسها."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• حدد قيمة الكسر على المستقيم ثم اختر زوج الصحيحين اللذين يقع بينهما دون تخمين.\n• حدد الإشارة، ثم احسب الجزء الصحيح أو القيمة التقريبية للكسر، وبعدها اختر الحدين الصحيحين المتجاورين.\n• تأكد أخيرًا أن القيمة أكبر من الحد الأيسر وأصغر من الحد الأيمن، خصوصًا للأعداد السالبة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000009",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir oyunda -12 puan üç eşit bölüme ayrılır. -12/3 sonucunun türü nedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif tam sayı ve rasyonel sayı",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "Pozitif doğal sayı",
+          "is_correct": false,
+          "distractor_rationale": "Negatif puanların eşit bölüşülmesinde kayıp işaretini yok sayar."
+        },
+        {
+          "position": 3,
+          "content": "Tam sayı olmayan rasyonel sayı",
+          "is_correct": false,
+          "distractor_rationale": "Eksi on iki üçe kalansız bölündüğü halde sonucu kesirli sayar."
+        },
+        {
+          "position": 4,
+          "content": "Tanımsız sayı",
+          "is_correct": false,
+          "distractor_rationale": "Payda üç olduğu halde işlemi sıfıra bölme sanır."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في قصة النقاط السالبة، الإشارة مرتبطة بالخسارة ويجب حفظها عند تقسيم النقاط.\n• افحص قيمة العدد قبل الحكم عليه من شكل الكسر؛ فالكتابة تختلف أحيانًا من دون تغيير الكمية.\n• انتبه إلى الإشارة المرتبطة بالموقف أو بالعدد الأصلي، فهي جزء أساسي من المعنى ولا يجوز إسقاطها."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• قسّم مقدار النقاط بالتساوي أولًا مع تطبيق قاعدة إشارة القسمة، ثم صنف الناتج.\n• يمكن كتابة كل عدد صحيح بصورة كسر مقامه واحد، ثم البحث عن تمثيلات مكافئة بالقسمة أو الضرب.\n• احسب البسط مقسومًا على المقام، وتأكد أن الناتج يحافظ على إشارة العدد وقيمته في السؤال."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• جرّب خسارة ثماني نقاط موزعة على مجموعتين لتعرف العلاقة بين القسمة والتصنيف.\n• جرّب مثالًا مختلفًا: العدد السالب سبعة يمكن التعبير عنه بالكسر سالب أربعة عشر على اثنين.\n• اسأل نفسك الآن: هل التعبير الناتج عدد صحيح؟ وإذا كان كذلك فهو ينتمي أيضًا إلى الأعداد النسبية."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• احسب قيمة كل جزء ثم تأكد هل الناتج صحيح، وهل يمكن كتابته على هيئة كسر.\n• اعمل بالتسلسل: فسّر المعطى، كوّن قيمته العددية، احسب كل كسر معروض، ثم طابق القيمة والإشارة.\n• لا تكتف بتشابه البسط أو المقام مع المعطى؛ الصحيح هو التمثيل المكافئ بعد إجراء القسمة كاملة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000010",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir arkadaşın 'Kesir şeklinde görünen hiçbir sayı tam sayı değildir.' diyor. Hangi örnek bu iddiayı çürütür?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "2/3",
+          "is_correct": false,
+          "distractor_rationale": "İki bölü üç tam sayı olmadığı için genel iddiaya karşı örnek değildir."
+        },
+        {
+          "position": 2,
+          "content": "21/7",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "4/5",
+          "is_correct": false,
+          "distractor_rationale": "Dört bölü beş tam sayı değildir ve iddiayı çürütemez."
+        },
+        {
+          "position": 4,
+          "content": "-5/2",
+          "is_correct": false,
+          "distractor_rationale": "Eksi beş bölü iki tam sayı vermediğinden karşı örnek olamaz."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• ادعاء الصديق يتعلق بكل كسر، لذلك يكفي مثال واحد صحيح لنقض هذا التعميم.\n• افحص قيمة العدد قبل الحكم عليه من شكل الكسر؛ فالكتابة تختلف أحيانًا من دون تغيير الكمية.\n• انتبه إلى الإشارة المرتبطة بالموقف أو بالعدد الأصلي، فهي جزء أساسي من المعنى ولا يجوز إسقاطها."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• ابحث عن اختيار يقبل بسطه القسمة على مقامه دون باقٍ، حتى لو كُتب ككسر.\n• يمكن كتابة كل عدد صحيح بصورة كسر مقامه واحد، ثم البحث عن تمثيلات مكافئة بالقسمة أو الضرب.\n• احسب البسط مقسومًا على المقام، وتأكد أن الناتج يحافظ على إشارة العدد وقيمته في السؤال."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• مثال منفصل: عشرة على خمسة يعطينا عددًا صحيحًا، مع أن شكله الظاهر كسر.\n• جرّب مثالًا مختلفًا: العدد السالب سبعة يمكن التعبير عنه بالكسر سالب أربعة عشر على اثنين.\n• اسأل نفسك الآن: هل التعبير الناتج عدد صحيح؟ وإذا كان كذلك فهو ينتمي أيضًا إلى الأعداد النسبية."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• احسب قيم الخيارات المختلفة وحدد الكسر الذي يعطي عددًا صحيحًا ليكون مثالًا مضادًا.\n• اعمل بالتسلسل: فسّر المعطى، كوّن قيمته العددية، احسب كل كسر معروض، ثم طابق القيمة والإشارة.\n• لا تكتف بتشابه البسط أو المقام مع المعطى؛ الصحيح هو التمثيل المكافئ بعد إجراء القسمة كاملة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000011",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Sabah sıcaklığı -1,5 °C ölçülmüştür. Bu değer hangi sayı türündedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Sıcaklık doğal sayı olarak sınıflanır",
+          "is_correct": false,
+          "distractor_rationale": "Ölçülen sıcaklığı sayının işaretinden bağımsız doğal sayı sanır."
+        },
+        {
+          "position": 2,
+          "content": "Sıcaklık negatif bir tam sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "Ondalık kısmı görmezden gelerek eksi bir buçuğu tam sayı sayar."
+        },
+        {
+          "position": 3,
+          "content": "Tam sayı olmayan negatif rasyonel sayı",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "Negatif ondalık sayılar rasyonel değildir",
+          "is_correct": false,
+          "distractor_rationale": "Sonlu ondalık sayıların kesir olarak yazılabildiğini unutmuştur."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• درجة الحرارة المكتوبة بفاصلة سالبة؛ لاحظ الإشارة والجزء الواقع بعد الفاصلة.\n• لا يكفي أن يبدو العدد مثل كسر أو عشري لكي تعرف تصنيفه؛ المطلوب معرفة قيمته بالفعل.\n• اقرأ جميع الصفات المطلوبة في السؤال، لأن العدد قد يكون صحيحًا ونسبيًا في الوقت نفسه."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• اسأل هل تمثل القيمة عددًا كاملًا بلا جزء كسري، وهل يمكن تحويلها إلى كسر.\n• إذا كان المقام غير صفر، احسب القسمة أو بسّط الكسر؛ النتيجة الصحيحة تبقى عددًا صحيحًا ونسبيًا.\n• إذا بقي جزء كسري غير صفري بعد التبسيط، فالعدد نسبي لكنه ليس عددًا صحيحًا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• درجة حرارة مختلفة مثل سالب اثنين ونصف توضح كيف يكون العدد العشري نسبيًا.\n• مثال منفصل: ثلاثة أنصاف عدد نسبي لكنه ليس صحيحًا، بينما ستة أنصاف يعطينا عددًا صحيحًا.\n• استعمل المثال للمقارنة، ثم حل التعبير المعروض لك وحده قبل قراءة الاختيارات مرة أخرى."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• افحص الجزء الكسري والإشارة، ثم اختر التصنيف الذي يشملهما دون افتراض أنها قيمة غير معرفة.\n• تحقق أولًا من صلاحية المقام، ثم بسّط العدد وحدد هل توجد أجزاء كسرية متبقية بعد القسمة.\n• طابق النتيجة مع العبارة التي تصف نوع العدد وإشارته معًا، وليس مع نصف العبارة فقط."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000012",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir bütün altı eş dilime ayrılmış, üç dilim boyanmıştır. Boyalı bölümün en sade kesri hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "3/6",
+          "is_correct": false,
+          "distractor_rationale": "Üç bölü altı doğru başlangıç kesridir ama istenen en sade gösterim değildir."
+        },
+        {
+          "position": 2,
+          "content": "3/3",
+          "is_correct": false,
+          "distractor_rationale": "Boyanan üç dilimi bütünün üç dilimiyle karıştırıp bütünü boyanmış sayar."
+        },
+        {
+          "position": 3,
+          "content": "6/3",
+          "is_correct": false,
+          "distractor_rationale": "Bütün bölü parça yazıp üç bölü altıyı tersine çevirir."
+        },
+        {
+          "position": 4,
+          "content": "1/2",
+          "is_correct": true
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في المسألة ستة أجزاء متساوية وثلاثة ملونة؛ ركز على المقارنة بين الجزء والكل.\n• تأمل عدد الأجزاء الملونة وعدد الأجزاء الكلية، لأن المقارنة يجب أن تعتمد على النسبة بينهما.\n• اختلاف الأرقام لا يعني بالضرورة اختلاف الكمية؛ قد تمثل كسور مختلفة الجزء نفسه."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• اكتب عدد الأجزاء الملونة على العدد الكلي أولًا، ثم ابحث عن القاسم المشترك.\n• اختصر البسط والمقام بالقاسم المشترك نفسه، أو وسع الكسر بضرب الطرفين في العدد نفسه.\n• لا يجوز تغيير البسط وحده أو المقام وحده عند البحث عن كسور متكافئة."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• جرّب مثالًا مختلفًا: مربعان ملونان من أربعة يعطيان كسرًا يمكن تبسيطه.\n• جرّب مثالًا مستقلًا: جزآن من ثمانية يساويان جزءًا من أربعة بعد تبسيط الكسر.\n• اتبع طريقة الاختصار مع العدد المعروض في السؤال ثم قارنه بما توضحه الصورة الوصفية."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• بسّط نسبة الأجزاء الملونة إلى الكل، ثم طابق التمثيل الأبسط دون تغيير النسبة.\n• اكتب كسر الأجزاء المذكورة، وبسطه من خلال القسمة على قاسم مشترك، ثم قارن النتيجة بالاختيارات.\n• راجع أن عدد الأجزاء المأخوذة والكلية ينتسبان إلى الكل نفسه قبل تثبيت إجابتك."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000013",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "-3/4 sayısı hangi iki ardışık tam sayı arasındadır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-1 ile 0",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "0 ile 1",
+          "is_correct": false,
+          "distractor_rationale": "Eksi işaretini atlayarak kesri sıfırın sağında konumlandırır."
+        },
+        {
+          "position": 3,
+          "content": "-2 ile -1",
+          "is_correct": false,
+          "distractor_rationale": "Mutlak değeri birden küçük kesri iki birim sola taşır."
+        },
+        {
+          "position": 4,
+          "content": "-4 ile -3",
+          "is_correct": false,
+          "distractor_rationale": "Üç bölü dördün büyüklüğünü üç ile dört arasında sanır."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• الكسر سالب ثلاثة أرباع يقع على جانب معين من الصفر؛ ابدأ بمعرفة هذا الجانب.\n• فكّر في موقع الصفر أولًا، ثم قرر هل العدد يقع يمينه أم يساره بحسب الإشارة.\n• مطلوب عددان صحيحان متجاوران يحيطان بالقيمة، وليس أقرب عدد صحيح منفرد إلى القيمة."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• احسب مقدار ثلاثة أرباع كوحدة أقل من واحد، ثم أضف إليه الاتجاه السالب.\n• حوّل الكسر إلى قيمة تقريبية بالقسمة، ثم قارنها بأقرب عددين صحيحين على مستقيم الأعداد.\n• في الجهة السالبة، تذكر أن العدد ذي المقدار الأكبر يقع أبعد إلى يسار الصفر."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• قارن مثالًا آخر: سالب نصف يقع بين صفر والعدد الصحيح السالب المجاور له.\n• مثال مستقل: سبعة أنصاف تساوي ثلاثة ونصفًا، فهي تقع بين صحيحين متجاورين على المستقيم.\n• طبّق التقسيم نفسه على البسط والمقام الظاهرين في المسألة ولا تستعمل قيم المثال نفسها."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• حدد الإشارة والمقدار معًا، وبعدها اختر حدين صحيحين متجاورين يحتويان هذه القيمة.\n• حدد الإشارة، ثم احسب الجزء الصحيح أو القيمة التقريبية للكسر، وبعدها اختر الحدين الصحيحين المتجاورين.\n• تأكد أخيرًا أن القيمة أكبر من الحد الأيسر وأصغر من الحد الأيمن، خصوصًا للأعداد السالبة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000014",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "11 sayısı 11/1 olarak yazılınca hangi ilişki gösterilir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "11 artık tam sayı değildir",
+          "is_correct": false,
+          "distractor_rationale": "On bir bölü bir yazımının sayıyı tam sayı kümesinden çıkardığını sanır."
+        },
+        {
+          "position": 2,
+          "content": "Tam sayılar rasyonel sayı olarak da yazılabilir",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "Bütün kesirler doğal sayıdır",
+          "is_correct": false,
+          "distractor_rationale": "Tek bir tam sayı örneğinden bütün kesirleri doğal sayı sayar."
+        },
+        {
+          "position": 4,
+          "content": "Payda sıfırdır",
+          "is_correct": false,
+          "distractor_rationale": "On bir bölü bir ifadesinde paydanın bir olduğunu kaçırır."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• حلّل معنى كتابة العدد أحد عشر في صورة كسر؛ هل تغيرت قيمته أم طريقة تمثيله فقط؟\n• افحص قيمة العدد قبل الحكم عليه من شكل الكسر؛ فالكتابة تختلف أحيانًا من دون تغيير الكمية.\n• انتبه إلى الإشارة المرتبطة بالموقف أو بالعدد الأصلي، فهي جزء أساسي من المعنى ولا يجوز إسقاطها."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• حلّل معنى كتابة العدد أحد عشر في صورة كسر؛ هل تغيرت قيمته أم طريقة تمثيله فقط؟\n• يمكن كتابة كل عدد صحيح بصورة كسر مقامه واحد، ثم البحث عن تمثيلات مكافئة بالقسمة أو الضرب.\n• احسب البسط مقسومًا على المقام، وتأكد أن الناتج يحافظ على إشارة العدد وقيمته في السؤال."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• حلّل معنى كتابة العدد أحد عشر في صورة كسر؛ هل تغيرت قيمته أم طريقة تمثيله فقط؟\n• جرّب مثالًا مختلفًا: العدد السالب سبعة يمكن التعبير عنه بالكسر سالب أربعة عشر على اثنين.\n• اسأل نفسك الآن: هل التعبير الناتج عدد صحيح؟ وإذا كان كذلك فهو ينتمي أيضًا إلى الأعداد النسبية."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• حلّل معنى كتابة العدد أحد عشر في صورة كسر؛ هل تغيرت قيمته أم طريقة تمثيله فقط؟\n• اعمل بالتسلسل: فسّر المعطى، كوّن قيمته العددية، احسب كل كسر معروض، ثم طابق القيمة والإشارة.\n• لا تكتف بتشابه البسط أو المقام مع المعطى؛ الصحيح هو التمثيل المكافئ بعد إجراء القسمة كاملة."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000015",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "-(-2/5) ifadesinin işareti nedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif",
+          "is_correct": false,
+          "distractor_rationale": "Parantez dışındaki eksi işaretinin içerideki eksiyi tersine çevirdiğini atlar."
+        },
+        {
+          "position": 2,
+          "content": "Sıfır",
+          "is_correct": false,
+          "distractor_rationale": "İki eksi işaretinin işlemi sıfıra götürdüğünü varsayar."
+        },
+        {
+          "position": 3,
+          "content": "Pozitif",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "Tanımsız",
+          "is_correct": false,
+          "distractor_rationale": "Payda beş sıfır olmadığı halde ifadeyi geçersiz zanneder."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• التعبير فيه سالب خارج قوس يحتوي كسرًا سالبًا؛ انتبه إلى موضعي الإشارة.\n• حدد أماكن إشارات السالب داخل البسط والمقام وخارج الأقواس، ولا تتعامل معها بوصفها زخرفة.\n• فكّر في إشارة النتيجة قبل حساب مقدارها، ثم تحقق من نوع العدد إذا طلب السؤال ذلك."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• فكر في أثر ضرب قيمة سالبة في سالب واحد عند إزالة السالب الخارجي.\n• قسمة عددين لهما الإشارة نفسها تعطي قيمة موجبة؛ وإذا اختلفت الإشارتان فالنتيجة سالبة.\n• وجود سالب خارج قوس يغيّر إشارة القيمة الموجودة داخله؛ طبّق العمليات بالترتيب."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• جرّب مثالًا آخر مثل سالب قوس سالب ثلاثة، ثم عد إلى كسر المسألة.\n• في مثال مستقل، قسمة سالب عشرة على موجب اثنين تعطي قيمة سالبة صحيحة؛ عكس إشارة أحدهما يغيّر النتيجة.\n• عد إلى إشارات مسألتك ثم افحص إن كانت القسمة تعطي عددًا صحيحًا أو جزءًا كسريًا."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• افصل إزالة إشارة القوس عن طبيعة العدد الكسري، ثم حدد الإشارة الناتجة دون إهمال أي سالب.\n• حدد أولًا الإشارة النهائية بعد القسمة أو إزالة الأقواس، ثم احسب القيمة إن احتجت إلى تصنيفها.\n• قارن كل خيار بشرط الإشارة ونوع العدد معًا؛ لا تختار بناء على وجود رمز السالب وحده."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000016",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Bir yürüyüş yolu 2,25 km'dir. Hangi kesir aynı uzunluğu gösterir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "25/2",
+          "is_correct": false,
+          "distractor_rationale": "İki tam ve çeyreği on iki buçuk gibi yorumlayarak ondalığı yanlış dönüştürür."
+        },
+        {
+          "position": 2,
+          "content": "2/25",
+          "is_correct": false,
+          "distractor_rationale": "Tam kısmı ve virgülden sonraki rakamları karıştırıp kesri ters okur."
+        },
+        {
+          "position": 3,
+          "content": "225/10",
+          "is_correct": false,
+          "distractor_rationale": "İki ondalık basamağın paydasını on alarak değeri on kat büyütür."
+        },
+        {
+          "position": 4,
+          "content": "9/4",
+          "is_correct": true
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• لاحظ أن طول الطريق فيه منزِلَتان بعد الفاصلة، وهو عدد عشري أكبر من عدد صحيح.\n• ركز على عدد الأرقام بعد الفاصلة العشرية، فهو يساعدك على تحديد مقام الكسر الأولي.\n• حافظ على قيمة العدد كما هي، ولا تحرك الفاصلة لمجرد أن أرقام الخيارات تبدو متشابهة."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• لاحظ أن طول الطريق فيه منزِلَتان بعد الفاصلة، وهو عدد عشري أكبر من عدد صحيح.\n• المنزلة الأولى بعد الفاصلة تعني أعشارًا، والثانية أجزاء من مئة، والثالثة أجزاء من ألف.\n• اكتب العدد على هيئة كسر بالمقام المناسب ثم اختصر البسط والمقام بالقاسم المشترك."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• لاحظ أن طول الطريق فيه منزِلَتان بعد الفاصلة، وهو عدد عشري أكبر من عدد صحيح.\n• مثال مستقل: الصيغة العشرية 0,75 يمكن كتابتها خمسة وسبعين على مئة، ثم تبسيطها بالقسمة.\n• ابدأ بعد المنازل في رقم سؤالك، ثم نفذ الخطوة نفسها من دون نسخ أرقام المثال."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• لاحظ أن طول الطريق فيه منزِلَتان بعد الفاصلة، وهو عدد عشري أكبر من عدد صحيح.\n• كوّن الكسر المكافئ للعدد المعروض، اختصره إن أمكن، ثم افحص الاختيارات بحساب قيمها العشرية.\n• اختبر المعنى في الاتجاهين: من العشري إلى الكسر، ثم من الكسر إلى العشري للتحقق النهائي."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000017",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Hangi kesir sıfırdan küçük bir sayı belirtir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "3/(-8)",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "-2/(-7)",
+          "is_correct": false,
+          "distractor_rationale": "İki negatif sayının bölümünün pozitif olduğunu gözden kaçırır."
+        },
+        {
+          "position": 3,
+          "content": "0/9",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü dokuzun negatif değil sıfır olduğunu unutur."
+        },
+        {
+          "position": 4,
+          "content": "5/2",
+          "is_correct": false,
+          "distractor_rationale": "Pozitif beş bölü iki ifadesini negatif sanır."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في قائمة الكسور، ابحث عن إشارة سالبة واحدة لا عن عدد الإشارات بشكل عشوائي.\n• حدد أماكن إشارات السالب داخل البسط والمقام وخارج الأقواس، ولا تتعامل معها بوصفها زخرفة.\n• فكّر في إشارة النتيجة قبل حساب مقدارها، ثم تحقق من نوع العدد إذا طلب السؤال ذلك."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• افحص كل بسط ومقام: اختلاف الإشارتين يعطي قيمة سالبة، وتطابقهما يعطي موجبة.\n• قسمة عددين لهما الإشارة نفسها تعطي قيمة موجبة؛ وإذا اختلفت الإشارتان فالنتيجة سالبة.\n• وجود سالب خارج قوس يغيّر إشارة القيمة الموجودة داخله؛ طبّق العمليات بالترتيب."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• مثال منفصل: اثنان على سالب ثلاثة قيمة سالبة، أما سالب اثنين على سالب ثلاثة فموجبة.\n• في مثال مستقل، قسمة سالب عشرة على موجب اثنين تعطي قيمة سالبة صحيحة؛ عكس إشارة أحدهما يغيّر النتيجة.\n• عد إلى إشارات مسألتك ثم افحص إن كانت القسمة تعطي عددًا صحيحًا أو جزءًا كسريًا."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• طبق قاعدة إشارات القسمة على جميع الخيارات، ثم استبعد القيمة الصفرية والموجبة.\n• حدد أولًا الإشارة النهائية بعد القسمة أو إزالة الأقواس، ثم احسب القيمة إن احتجت إلى تصنيفها.\n• قارن كل خيار بشرط الإشارة ونوع العدد معًا؛ لا تختار بناء على وجود رمز السالب وحده."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000018",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "Hangi kesir sadeleşince tam sayı olmayan rasyonel sayı olarak kalır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-8/2",
+          "is_correct": false,
+          "distractor_rationale": "Eksi sekiz bölü iki tam sayı verdiği halde kesirli değer sayar."
+        },
+        {
+          "position": 2,
+          "content": "-8/6",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "16/4",
+          "is_correct": false,
+          "distractor_rationale": "On altı bölü dört tam sayı verdiği halde kesirli sayar."
+        },
+        {
+          "position": 4,
+          "content": "0/3",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü üç tam sayı olan sıfıra eşittir."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• المطلوب كسر يبقى غير عدد صحيح بعد التبسيط، لا مجرد كسر يبدو مختلفًا عن العدد الصحيح.\n• لا يكفي أن يبدو العدد مثل كسر أو عشري لكي تعرف تصنيفه؛ المطلوب معرفة قيمته بالفعل.\n• اقرأ جميع الصفات المطلوبة في السؤال، لأن العدد قد يكون صحيحًا ونسبيًا في الوقت نفسه."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• احسب القسمة في كل اختيار؛ النتيجة التي يبقى لها جزء كسري تحقق نوعًا مختلفًا.\n• إذا كان المقام غير صفر، احسب القسمة أو بسّط الكسر؛ النتيجة الصحيحة تبقى عددًا صحيحًا ونسبيًا.\n• إذا بقي جزء كسري غير صفري بعد التبسيط، فالعدد نسبي لكنه ليس عددًا صحيحًا."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• مثال مستقل: ستة على أربعة يبقى كسرًا بعد تبسيطه، بينما ثمانية على أربعة يصبح صحيحًا.\n• مثال منفصل: ثلاثة أنصاف عدد نسبي لكنه ليس صحيحًا، بينما ستة أنصاف يعطينا عددًا صحيحًا.\n• استعمل المثال للمقارنة، ثم حل التعبير المعروض لك وحده قبل قراءة الاختيارات مرة أخرى."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• أبقِ فقط الاختيار ذا المقام غير الصفري والناتج غير الصحيح بعد القسمة أو الاختصار.\n• تحقق أولًا من صلاحية المقام، ثم بسّط العدد وحدد هل توجد أجزاء كسرية متبقية بعد القسمة.\n• طابق النتيجة مع العبارة التي تصف نوع العدد وإشارته معًا، وليس مع نصف العبارة فقط."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000019",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "0,125 sayısına eşit kesir hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "1/4",
+          "is_correct": false,
+          "distractor_rationale": "Yüz yirmi beş binde bir yerine dörtte biri seçerek değeri iki katına çıkarır."
+        },
+        {
+          "position": 2,
+          "content": "1/5",
+          "is_correct": false,
+          "distractor_rationale": "Bir bölü beşi 0,125 sanır; gerçekte 0,2 eder."
+        },
+        {
+          "position": 3,
+          "content": "1/8",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "1/2",
+          "is_correct": false,
+          "distractor_rationale": "Bir bölü iki 0,5 eder; verilen ondalıkla uyuşmaz."
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في القيمة 0,125 توجد ثلاث منازل بعد الفاصلة؛ عدّها قبل النظر إلى الاختيارات.\n• ركز على عدد الأرقام بعد الفاصلة العشرية، فهو يساعدك على تحديد مقام الكسر الأولي.\n• حافظ على قيمة العدد كما هي، ولا تحرك الفاصلة لمجرد أن أرقام الخيارات تبدو متشابهة."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• اكتب الصيغة الأولية بكسر مقامه ألف، ثم اختصره باستخدام قاسم مشترك.\n• المنزلة الأولى بعد الفاصلة تعني أعشارًا، والثانية أجزاء من مئة، والثالثة أجزاء من ألف.\n• اكتب العدد على هيئة كسر بالمقام المناسب ثم اختصر البسط والمقام بالقاسم المشترك."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• في مثال مختلف، 0,250 يساوي مئتين وخمسين من ألف ويمكن اختصار الكسر.\n• مثال مستقل: الصيغة العشرية 0,75 يمكن كتابتها خمسة وسبعين على مئة، ثم تبسيطها بالقسمة.\n• ابدأ بعد المنازل في رقم سؤالك، ثم نفذ الخطوة نفسها من دون نسخ أرقام المثال."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• حوّل العدد إلى كسر ثم اختبر قيمة الخيارات العشرية بدل اختيار مقام يبدو مألوفًا.\n• كوّن الكسر المكافئ للعدد المعروض، اختصره إن أمكن، ثم افحص الاختيارات بحساب قيمها العشرية.\n• اختبر المعنى في الاتجاهين: من العشري إلى الكسر، ثم من الكسر إلى العشري للتحقق النهائي."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000020",
+      "delivery_surface": "learning",
+      "question_type": "single_choice",
+      "decomposable": false,
+      "prompt": "0/0 ile 0/3 ifadeleri karşılaştırılıyor. Hangisi doğrudur?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "İkisi de sıfırdır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü sıfırı sıfır bölü üç gibi tanımlı sanır."
+        },
+        {
+          "position": 2,
+          "content": "İkisi de negatiftir",
+          "is_correct": false,
+          "distractor_rationale": "İki farklı ifadeyi negatif sayıp sıfırın işaretini yanlış yorumlar."
+        },
+        {
+          "position": 3,
+          "content": "İkisi de tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü üçün tanımlı olduğunu atlar."
+        },
+        {
+          "position": 4,
+          "content": "0/0 tanımsızdır, 0/3 ise sıfırdır",
+          "is_correct": true
+        }
+      ],
+      "hints": [
+        {
+          "level": 1,
+          "role": "nudge",
+          "decomposable": false,
+          "content": "• في المقارنة يظهر الصفر في مكانين مختلفين، لذا لا تعامل التعبيرين بالطريقة نفسها.\n• لاحظ موضع الصفر جيدًا: الصفر في البسط يختلف رياضيًا عن الصفر الذي يظهر في المقام.\n• لا تقرر صلاحية الكسر قبل النظر إلى المقام؛ إنه العدد الذي نقسم عليه البسط."
+        },
+        {
+          "level": 2,
+          "role": "guide",
+          "decomposable": false,
+          "content": "• افحص مقام كل تعبير على حدة قبل محاولة حساب قيمته أو تصنيفه.\n• القسمة تكون معرفة عندما لا يكون المقام صفرًا، مهما كانت إشارة البسط أو قيمة العدد.\n• بسط يساوي صفرًا مع مقام غير صفري يعطي قيمة معروفة؛ افصل الحالتين عند المراجعة."
+        },
+        {
+          "level": 3,
+          "role": "strong_guide",
+          "decomposable": false,
+          "content": "• قارن مثالًا منفصلًا: صفر على اثنين واثنان على صفر، ثم اسأل أي العمليات صالحة.\n• قارن مثالين مختلفين: صفر على خمسة مسألة صالحة، أما خمسة على صفر فلا تعطي قيمة عددية.\n• ابحث في المسألة عن مكان العدد صفر، ثم صنف التعبير قبل أن تختار العبارة الصحيحة."
+        },
+        {
+          "level": 4,
+          "role": "near_solution",
+          "decomposable": false,
+          "content": "• طبّق شرط المقام على التعبيرين، وبعدها اختر العبارة التي تفرق بينهما دون خلط.\n• مرّ على كل كسر وحدد المقام أولًا، واستبعد القسمة غير المعرفة قبل مقارنة بقية القيم.\n• لا تفترض أن ظهور صفرين يجعل الحالتين متماثلتين؛ موقع الصفر هو الذي يحسم المعنى."
+        }
+      ]
+    },
+    {
+      "question_code": "Q-27000000021",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir banka hesabının bakiyesi önce -4 TL idi. Hesaptan 5 TL daha çıkınca oluşan yeni bakiyeyi hangi kesir gösterir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-27/3",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "27/3",
+          "is_correct": false,
+          "distractor_rationale": "Hesaptan beş lira daha çıkmasına rağmen yeni bakiyeyi pozitif sayar."
+        },
+        {
+          "position": 3,
+          "content": "-9/0",
+          "is_correct": false,
+          "distractor_rationale": "Eksi dokuzu sıfıra bölerek geçersiz bir kesir oluşturur."
+        },
+        {
+          "position": 4,
+          "content": "-3/9",
+          "is_correct": false,
+          "distractor_rationale": "Eksi dokuz yerine eksi üç bölü dokuz gibi farklı bir değer hesaplar."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000022",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "0/4, 4/0, -3/5, 8/2 sayılarından biri rasyonel sayı belirtmez. Hangisi ve neden?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "0/4, pay sıfır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır payın sorun çıkardığını sanır; dört paydası geçerlidir."
+        },
+        {
+          "position": 2,
+          "content": "-3/5, negatif",
+          "is_correct": false,
+          "distractor_rationale": "Negatif kesrin rasyonel sayı olamayacağını sanır."
+        },
+        {
+          "position": 3,
+          "content": "4/0, payda sıfır",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "8/2, tam sayı",
+          "is_correct": false,
+          "distractor_rationale": "Tam sayı değerinin rasyonel sayıları dışında olduğunu sanır."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000023",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "(-2)/(-3) sayısının işareti ve tam sayı olup olmaması hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif tam sayı",
+          "is_correct": false,
+          "distractor_rationale": "İki eksi işaretini negatif sonuç sanır ve üçte ikiyi tam sayı sayar."
+        },
+        {
+          "position": 2,
+          "content": "Pozitif doğal sayı",
+          "is_correct": false,
+          "distractor_rationale": "Üçte ikinin pozitif olması onu doğal sayı yapmaz."
+        },
+        {
+          "position": 3,
+          "content": "Tanımsız",
+          "is_correct": false,
+          "distractor_rationale": "Eksi üç geçerli payda olduğu halde ifadeyi tanımsız sayar."
+        },
+        {
+          "position": 4,
+          "content": "Pozitif, tam sayı olmayan rasyonel sayı",
+          "is_correct": true
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000024",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir yükseklik farkı -1,75 metredir. Hangi kesir aynı farkı belirtir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-7/4",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "-7/5",
+          "is_correct": false,
+          "distractor_rationale": "Eksi bir virgül yetmiş beşi eksi bir virgül dörtle karıştırır."
+        },
+        {
+          "position": 3,
+          "content": "7/4",
+          "is_correct": false,
+          "distractor_rationale": "Yükseklik farkındaki eksi işaretini kaldırıp pozitif sonuç bulur."
+        },
+        {
+          "position": 4,
+          "content": "-4/7",
+          "is_correct": false,
+          "distractor_rationale": "Yedi bölü dört yerine dört bölü yedi yaparak oranı ters çevirir."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000025",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "15 kişi beş eşit gruba ayrılır. 15/5 sonucunun en doğru sınıflaması hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 1,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Yalnızca tam sayı olmayan rasyonel",
+          "is_correct": false,
+          "distractor_rationale": "On beş bölü beşin tam sayı olduğunu gözden kaçırır."
+        },
+        {
+          "position": 2,
+          "content": "Pozitif tam sayı ve rasyonel sayı",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "Negatif rasyonel",
+          "is_correct": false,
+          "distractor_rationale": "Pozitif grup sayısını negatif sayıyla karıştırır."
+        },
+        {
+          "position": 4,
+          "content": "Tanımsız",
+          "is_correct": false,
+          "distractor_rationale": "Beş sıfır olmadığı halde bölmeyi tanımsız sayar."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000026",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "9/(-12) kesrinin en sade eş değer gösterimi hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "3/4",
+          "is_correct": false,
+          "distractor_rationale": "Paydadaki eksi işaretini kaldırıp sonucu pozitife dönüştürür."
+        },
+        {
+          "position": 2,
+          "content": "-4/3",
+          "is_correct": false,
+          "distractor_rationale": "Kesrin işaretini korurken pay ve paydayı yanlış ters çevirir."
+        },
+        {
+          "position": 3,
+          "content": "-3/4",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "9/12",
+          "is_correct": false,
+          "distractor_rationale": "Sadeleştirirken paydadaki eksi işaretini kaybeder."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000027",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir ölçüm 1/5 metredir. Ondalık gösterimi hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "0,5",
+          "is_correct": false,
+          "distractor_rationale": "Beşte biri yarım ile karıştırarak 0,5 der."
+        },
+        {
+          "position": 2,
+          "content": "0,05",
+          "is_correct": false,
+          "distractor_rationale": "Beşte biri yüzde beş sanıp ondalık basamağı bir kaydırır."
+        },
+        {
+          "position": 3,
+          "content": "1,5",
+          "is_correct": false,
+          "distractor_rationale": "Bir bölü beşte paydaki biri tam kısma taşır."
+        },
+        {
+          "position": 4,
+          "content": "0,2",
+          "is_correct": true
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000028",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "-7/3 sayısı sayı doğrusunda hangi iki tam sayı arasındadır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-3 ve -2",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "-2 ve -1",
+          "is_correct": false,
+          "distractor_rationale": "Eksi yedi bölü üçün eksi ikiden biraz küçük olduğunu fark etmez."
+        },
+        {
+          "position": 3,
+          "content": "2 ve 3",
+          "is_correct": false,
+          "distractor_rationale": "Eksi kesri pozitif tam sayı aralığına koyar."
+        },
+        {
+          "position": 4,
+          "content": "-4 ve -3",
+          "is_correct": false,
+          "distractor_rationale": "Mutlak değer iki ile üç arasında iken bir tam sola fazla gider."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000029",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir öğrenci 0/(-8) ifadesinin negatif olduğunu söylüyor. Doğru açıklama hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Payda negatif olduğu için sonuç negatiftir",
+          "is_correct": false,
+          "distractor_rationale": "Payda eksi sekiz diye sıfıra negatif işaret atfeder."
+        },
+        {
+          "position": 2,
+          "content": "Sıfırın sıfır olmayan sayıya bölümü sıfırdır",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "Pay sıfırsa ifade her zaman tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır payı geçersiz sayarak sıfır payda yasağıyla karıştırır."
+        },
+        {
+          "position": 4,
+          "content": "Bu değer tam sayı olamaz",
+          "is_correct": false,
+          "distractor_rationale": "Sıfırın tam sayı olduğunu kabul etmez."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000030",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Panoya tam sayı olmayan ama geçerli rasyonel sayı asılacak. Hangisi uygundur?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "8/4",
+          "is_correct": false,
+          "distractor_rationale": "Sekiz bölü dört iki tam sayısına eşittir."
+        },
+        {
+          "position": 2,
+          "content": "-6/3",
+          "is_correct": false,
+          "distractor_rationale": "Eksi altı bölü üç eksi iki tam sayısıdır."
+        },
+        {
+          "position": 3,
+          "content": "2/7",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "0/5",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü beş tam sayı olan sıfırdır."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000031",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Payı -4, paydası 11 olan bir kesrin yalnızca paydasının işareti değiştirilirse yeni kesrin işareti ne olur?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif",
+          "is_correct": false,
+          "distractor_rationale": "Yalnızca payın eksi olduğunu düşünür; payda da eksiye döner."
+        },
+        {
+          "position": 2,
+          "content": "Sıfır",
+          "is_correct": false,
+          "distractor_rationale": "İşaret değiştirmenin kesrin değerini sıfıra çevirdiğini sanır."
+        },
+        {
+          "position": 3,
+          "content": "Tanımsız",
+          "is_correct": false,
+          "distractor_rationale": "Payda eksi on bir sıfır olmadığı halde tanımsız sanır."
+        },
+        {
+          "position": 4,
+          "content": "Pozitif",
+          "is_correct": true
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000032",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir su bardağının kapasitesi 1 litredir ve içinde 625 mililitre su vardır. Bardağın dolu kısmını gösteren en sade kesir hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "5/8",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "5/6",
+          "is_correct": false,
+          "distractor_rationale": "Altı yüz yirmi beş binde beş yerine altıda beş gibi yaklaşık değer seçer."
+        },
+        {
+          "position": 3,
+          "content": "3/8",
+          "is_correct": false,
+          "distractor_rationale": "Bardağın dolu kısmını dolu olmayan oranla karıştırır."
+        },
+        {
+          "position": 4,
+          "content": "8/5",
+          "is_correct": false,
+          "distractor_rationale": "Sıvı miktarını kapasiteden büyük gösteren ters kesri seçer."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000033",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Hangi iki kesir sayı doğrusunda aynı noktayı gösterir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "3/4 ve 3/8",
+          "is_correct": false,
+          "distractor_rationale": "Üç bölü sekiz, üç bölü dördün yarısıdır."
+        },
+        {
+          "position": 2,
+          "content": "3/4 ve 6/8",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "3/4 ve 4/3",
+          "is_correct": false,
+          "distractor_rationale": "Pay ve paydayı ters çeviren dört bölü üç farklı değerdir."
+        },
+        {
+          "position": 4,
+          "content": "3/4 ve -6/8",
+          "is_correct": false,
+          "distractor_rationale": "Eksi altı bölü sekiz, üç bölü dördün negatifidir."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000034",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir öğrenci, (-24)/(-6) kesrinin iki eksi bulunduğu için negatif olduğunu ileri sürüyor. Onun iddiasını düzelten doğru sınıflandırma hangisidir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif tam sayı",
+          "is_correct": false,
+          "distractor_rationale": "İki eksi işaretinin pozitif sonuç verdiğini gözden kaçırır."
+        },
+        {
+          "position": 2,
+          "content": "Pozitif ama tam sayı değil",
+          "is_correct": false,
+          "distractor_rationale": "Eksi yirmi dört bölü eksi altı tam dört olduğu halde kesirli sanır."
+        },
+        {
+          "position": 3,
+          "content": "Pozitif tam sayı ve rasyonel sayı",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "Tanımsız",
+          "is_correct": false,
+          "distractor_rationale": "Payda eksi altı sıfır olmadığı halde işlemi geçersiz sayar."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000035",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Sıcaklık değişimi -0,4 °C ise hangi kesir bu değişimi gösterir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "4/10",
+          "is_correct": false,
+          "distractor_rationale": "Verilen negatif değişimin eksi işaretini yok sayar."
+        },
+        {
+          "position": 2,
+          "content": "-4/100",
+          "is_correct": false,
+          "distractor_rationale": "Dört onda yerine dört yüzde yazarak büyüklüğü küçültür."
+        },
+        {
+          "position": 3,
+          "content": "4/(-100)",
+          "is_correct": false,
+          "distractor_rationale": "Eksi işaretini paydaya taşısa da paydayı on yerine yüz yazar."
+        },
+        {
+          "position": 4,
+          "content": "-2/5",
+          "is_correct": true
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000036",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "'2,0' ile '2' eşit sayılardır. Bu gözlemden hangi sonuç çıkar?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "2,0 hem tam sayı hem rasyonel sayıdır",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "2,0 tam sayı değildir",
+          "is_correct": false,
+          "distractor_rationale": "Ondalık gösteriminde virgül bulundu diye değerin tam sayı olamayacağını sanır."
+        },
+        {
+          "position": 3,
+          "content": "2 rasyonel değildir",
+          "is_correct": false,
+          "distractor_rationale": "İki tam sayısının iki bölü bir şeklinde yazılabileceğini unutmuştur."
+        },
+        {
+          "position": 4,
+          "content": "2,0 tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Ondalık sonundaki sıfırın sayıyı tanımsız kıldığını varsayar."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000037",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Bir bisikletli 4 kilometrelik bir parkurda 11/4 kilometre ilerledi. Parkurun ilk yarısını geçtiğine göre hangi iki ardışık kilometre tabelası arasındadır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-number-line",
+      "difficulty_level": 3,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "1 ve 2",
+          "is_correct": false,
+          "distractor_rationale": "On bir bölü dört ikiden büyük olduğundan bir ile iki arasında olamaz."
+        },
+        {
+          "position": 2,
+          "content": "2 ve 3",
+          "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "3 ve 4",
+          "is_correct": false,
+          "distractor_rationale": "On bir bölü dört üç tamdan küçük olduğu halde üçü aşmış sanır."
+        },
+        {
+          "position": 4,
+          "content": "0 ve 1",
+          "is_correct": false,
+          "distractor_rationale": "Pozitif mesafeyi ilk kilometre aralığında konumlandırır."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000038",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Aynı büyüklükte iki pastadan Ali 3/6'sını, Ece 1/2'sini alıyor. Hangisi doğrudur?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Ali daha fazla alır",
+          "is_correct": false,
+          "distractor_rationale": "Üç bölü altının yarımdan daha büyük olduğunu sanır."
+        },
+        {
+          "position": 2,
+          "content": "Ece daha fazla alır",
+          "is_correct": false,
+          "distractor_rationale": "Bir bölü ikinin üç bölü altıdan büyük olduğunu sanır."
+        },
+        {
+          "position": 3,
+          "content": "İkisi eşit miktar alır",
+          "is_correct": true
+        },
+        {
+          "position": 4,
+          "content": "Kesirler karşılaştırılamaz",
+          "is_correct": false,
+          "distractor_rationale": "Paydalar farklı diye eş değer kesirleri karşılaştırmayı reddeder."
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000039",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "(-10)/(-5) işleminin sonucu hangi sayı türündedir?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-definition-sign",
+      "difficulty_level": 4,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "Negatif rasyonel, tam sayı değil",
+          "is_correct": false,
+          "distractor_rationale": "Eksi ona eksi beş bölünürken iki eksi işaretinin pozitif yaptığını atlar."
+        },
+        {
+          "position": 2,
+          "content": "Sonuç sıfırdır; hem tam hem rasyoneldir",
+          "is_correct": false,
+          "distractor_rationale": "Eksi on bölü eksi beş işlemini yanlış hesaplayarak sıfır çıktığını sanır."
+        },
+        {
+          "position": 3,
+          "content": "Sıfıra bölündüğü için tanımsızdır",
+          "is_correct": false,
+          "distractor_rationale": "Eksi beş paydasını sıfır sayarak geçerli işlemi tanımsız sanır."
+        },
+        {
+          "position": 4,
+          "content": "Pozitif tam sayı ve rasyonel sayı",
+          "is_correct": true
+        }
+      ],
+      "hints": []
+    },
+    {
+      "question_code": "Q-27000000040",
+      "delivery_surface": "exam",
+      "question_type": "single_choice",
+      "prompt": "Hangi kartta tam sayı olmayan rasyonel bir değer vardır?",
+      "prompt_language": "tr",
+      "concept_code": "tr-g7-rational-integer-relation",
+      "difficulty_level": 2,
+      "origin": "GENERATED_SIMILAR",
+      "source_ref": "TR-MATH-G7-2026-2027-K1-P025-P034",
+      "options": [
+        {
+          "position": 1,
+          "content": "-6/4",
+          "is_correct": true
+        },
+        {
+          "position": 2,
+          "content": "-4/4",
+          "is_correct": false,
+          "distractor_rationale": "Eksi dört bölü dört eksi bir tam sayısıdır."
+        },
+        {
+          "position": 3,
+          "content": "12/6",
+          "is_correct": false,
+          "distractor_rationale": "On iki bölü altının sonucu iki tam sayı iken onu kesirli bir değer sayar."
+        },
+        {
+          "position": 4,
+          "content": "0/8",
+          "is_correct": false,
+          "distractor_rationale": "Sıfır bölü sekiz sıfır tam sayısına eşittir."
+        }
+      ],
+      "hints": []
+    }
+  ]
+}

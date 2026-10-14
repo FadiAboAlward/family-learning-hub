@@ -1,0 +1,23 @@
+# FLH-FEAT-2026-027 approved v1.2 delivery clarification
+
+Status: APPROVED on 13 October 2026 for implementation and isolated QA only. Canonical specification: [v1.2, Google Drive revision 3](https://docs.google.com/document/d/1g1Zv-G4qpqd1wlui7MFNktP-fSfX7Ua7-CtK3Ai4Mk0/edit). Preserve v1.0 revision 2 and v1.1 revision 4 unchanged. All v1.1 academic, integrity, authorization, hold/release, video and audit gates remain binding. No merge, Production migration/deployment, new provider or real learner changes are authorized. A QA email requires separate approval of its exact recipient, subject and complete message before sending.
+
+The user identified Gmail through connected ChatGPT as the approved operational channel in Academic Assessment SOP v1.13, and authorized scoped outbox/receipt infrastructure on 12 October 2026. There is no approved integrated server sender or provider-reconciliation transport in the repository. The implemented infrastructure is deliberately separate from a claim that automated delivery is complete.
+
+Approved clarification: AC-04 notification completion accepts an explicitly authorized connected Gmail handoff followed by an operator-reviewed full SENT readback matching the frozen envelope and a persisted version-scoped receipt. Automated sending and independent backend Gmail reconciliation are outside this feature's required scope. Uncertain delivery blocks resending. Publication release alone never completes delivery; this contract does not claim a provider-level exactly-once guarantee.
+
+The simpler alternative is the existing manual SOP with an unstructured delivery note. It lacks transactional version-scoped claim and unknown-send protection. The scoped outbox on the existing publication receipt adds those protections with no sender service, dependency or provider credential. An integrated automatic Gmail sender would require a separate authenticated transport, credential ownership and reconciliation contract; it is outside this proposal.
+
+Required acceptance gates:
+
+1. Immutable exact released workspace/quiz/version/learner/program/candidate identity; reviewed recipient and verified Learning/Exam links before preparing the envelope.
+2. One frozen envelope and one transactional handoff claim per version; simultaneous and repeated claims must not create another handoff.
+3. After an uncertain send, block new claims indefinitely until the exact SENT record is reconciled. No expiry or automatic resend.
+4. Operator verifies the actual connected Gmail readback. Store immutable message ID, exact content hash, source, observation time and authenticated reviewer. SENT label, intended recipient, subject, complete body/links/marker must match. Never accept a bare `verified:true`, a draft ID, a snippet or an unverified message ID.
+5. Server confirmation represents an operator-reviewed witness. It does not cryptographically prove the provenance of externally supplied JSON. Independent server provider verification must remain explicitly unavailable.
+6. QA uses isolated synthetic Testing fixtures, with no real student records. Positive/negative identity, content, authorization, uncertain status, concurrency, duplicate-ID and cleanup tests remain required. Prepare one frozen plain-text envelope for an owner-controlled test mailbox; STOP before sending for exact recipient, subject and complete body approval. After approval, send once, read the full SENT message, persist its exact scoped receipt and retry claim/reconciliation without sending again. Synthetic receipts do not prove Gmail interoperability.
+7. Preserve authentication, RLS, tenant isolation, published history and the v1.1 hold/release contract. No new provider or broad learner access.
+
+Implementation boundary: preserve the existing passing implementation, tests and two prospective forward migrations. Update pins and operator documentation only. If actual Gmail readback requires field mapping, make only a minimal tested, lossless adjustment while retaining exact-content and authorization checks. No new provider, queue, worker, reconciliation service or refactor. Historical migrations remain unchanged.
+
+AC-04 remains BLOCKED until actual official YouTube verification through authenticated `learning-api`, safe hold/release and verified learner links, and an explicitly approved Gmail send/full SENT receipt are evidenced. GitHub Support ticket [#4850658](https://help.github.com/ticket/personal/0/4850658) has been submitted and remains a separate privacy track. No further history rewrite or repeated security scan is required without new evidence or a Support request.

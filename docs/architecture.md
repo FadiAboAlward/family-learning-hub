@@ -16,6 +16,14 @@ Workspace
 
 Reusable learning catalog data and learner-specific delivery/progress are deliberately separated.
 
+## Prospective assessment publication
+
+[FLH-FEAT-2026-027 v1.1 revision 4](https://docs.google.com/document/d/16MBgcz7TX1fpHeA0XNzJrX0WWC8Bi_LwgLseiu1TtHg/edit) authorizes implementation and isolated QA of a two-phase workflow for a fresh empty draft quiz. The existing parent-authenticated `learning-api` runs the shared official academic validator and requires exact candidate, source and semantic-review evidence. A service-only transaction imports the complete native question graph and binds its immutable hash to the intended workspace, version, learner and serving program. Same-candidate retries converge; identity changes, partial content and graph drift fail closed.
+
+Publishing that managed version leaves its quiz draft and inaccessible. A separate parent-authoring predicate permits the existing officially provider-verified video attachment while the learner runtime predicate remains unchanged. Atomic release rechecks the graph and exact video/context relationships, records the video receipt, activates the quiz and creates one intended assignment. Private guards prevent raw activation, premature attempts/assignments and published-content mutation. Explicit journey progress also rejects held versions. This prospective migration does not backfill historical assessments or hide active quizzes; active-successor publication is outside this contract.
+
+The user identified the existing operational Gmail/ChatGPT integration on 12 October and authorized outbox/receipt infrastructure. It extends the same private publication receipt, reuses the parent API and locks, and permits one explicit Gmail handoff for a released version with reviewed recipient and links. Uncertain delivery blocks a new handoff. Reconciliation validates the operator-supplied full Gmail SENT readback against the exact immutable envelope and stores minimal parent-reviewed evidence. The backend does not independently query Gmail, send mail, or prove the provenance of that supplied readback. Approved v1.2 revision 3 accepts this explicitly authorized operational witness as notification completion; automated sending and independent backend reconciliation are outside FLH-027 scope. Actual official-provider and full Gmail SENT interoperability remain unproven. Publication release does not prove email delivery. See [the publication runbook](assessment-publication-runbook.md). Production migration/deployment, merge and real mail require separate authorization.
+
 ## Catalog layer
 
 Reusable content lives in structures such as:

@@ -134,6 +134,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/optional-learning-video-outcomes.contract.sql
       - name: Verify paper unanswered Exam contract
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
+      - name: Verify assessment transactional staging and held publication
+        run: node tests/assessment-publication.contract.mjs
       - name: Verify support-workbook paper ingestion
         run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-paper-ingestion.contract.sql
       - name: Verify support paper/digital Learning mutual exclusion
