@@ -244,6 +244,11 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status, draft_option_position
   ) values (v_workspace, v_attempt_b, 1, v_q_one, v_concept_one, 3, 'active', 1);
+  -- An administrator can forge attempt metadata, but this pre-release
+  -- attempt has NULL in the server-owned queue snapshot: old scoring wins.
+  update public.quiz_attempts
+  set metadata='{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
+  where id=v_attempt_b;
 
   set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_attempt_b, v_q_one, 1);
@@ -849,8 +854,17 @@ begin
       '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
     );
     insert into public.quiz_attempt_question_queue(
-      workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
-    ) values (v_workspace, v_policy_attempt, 1, v_q_one, v_concept_one, 3, 'active');
+      workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status, score_policy_snapshot
+    ) values (
+      v_workspace, v_policy_attempt, 1, v_q_one, v_concept_one, 3, 'active',
+      '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb
+    );
+    -- Malicious or mistaken rewrites of editable attempt metadata cannot
+    -- change the effective immutable server-only queue scoring policy.
+    update public.quiz_attempts
+      set metadata=case when v_policy_trial % 2=0 then '{}'::jsonb else
+        '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,75,50,25]}'::jsonb end
+    where id=v_policy_attempt;
 
     set local role service_role;
     for v_wrong_iteration in 1..(v_policy_trial - 1) loop
@@ -881,8 +895,8 @@ begin
     end if;
   end loop;
 
-  -- Never silently fall back to higher historical credit when a snapshotted
-  -- attempt has incomplete/tampered scoring metadata.
+  -- Fail closed for malformed server-only snapshot, even though the mutable
+  -- attempt metadata is apparently well-formed.
   v_policy_attempt := '20000000-0000-4000-8000-000000000020'::uuid;
   insert into public.quiz_attempts(
     id, workspace_id, learner_id, quiz_version_id, status, delivery_mode, metadata
@@ -893,6 +907,9 @@ begin
   insert into public.quiz_attempt_question_queue(
     workspace_id, quiz_attempt_id, sequence_no, question_id, concept_id, difficulty_level, status
   ) values (v_workspace, v_policy_attempt, 1, v_q_one, v_concept_one, 3, 'active');
+  update public.quiz_attempt_question_queue
+  set score_policy_snapshot='{"version":"learning-100-50-0-0-v1","attempt_scores":[100,75,50,25]}'::jsonb
+  where quiz_attempt_id=v_policy_attempt and question_id=v_q_one;
   set local role service_role;
   v_result := public.flh_learning_answer(v_workspace, v_learner, v_policy_attempt, v_q_one, 2);
   reset role;
