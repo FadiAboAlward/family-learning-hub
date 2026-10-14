@@ -76,25 +76,29 @@ begin
   qa_category := (qa_result->'category'->>'id')::uuid;
   qa_result := public.flh_family_rewards_command(workspace,parent_id,null,'rule_save',
     jsonb_build_object('title','QA Isolated Family Task','category_id',qa_category,'base_points',3,
-      'initiative_bonus_points',0,'cadence','unlimited','max_awards',null,
+      'initiative_bonus_points',0,'cadence','day','max_awards',1,
       'self_report_allowed',true,'parent_approval_required',true,
       'learner_scope','selected','learner_ids',jsonb_build_array(reward_learner,sibling_learner)));
   if qa_result->>'ok' <> 'true' then raise exception 'QA_LOCAL_REWARDS_RULE_FAILED'; end if;
   qa_rule := (qa_result->'rule'->>'id')::uuid;
   for position in 1..2 loop
     qa_result := public.flh_family_rewards_command(workspace,null,reward_learner,'behavior_submit',
-      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 3-position),
+      jsonb_build_object('rule_id',qa_rule,'occurred_at','2020-10-03T12:00:00+03:00'::timestamptz+make_interval(days => position-1),
         'idempotency_key','qa-parent-pending-'||position));
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_REWARDS_PENDING_FAILED'; end if;
   end loop;
   -- Two distinct synthetic sibling claims: one will be rejected, one approved.
   for position in 1..2 loop
     qa_result := public.flh_family_rewards_command(workspace,null,sibling_learner,'behavior_submit',
-      jsonb_build_object('rule_id',qa_rule,'occurred_at',now()-make_interval(mins => 5+position),
+      jsonb_build_object('rule_id',qa_rule,'occurred_at','2020-10-03T12:00:00+03:00'::timestamptz+make_interval(days => position-1),
         'idempotency_key','qa-sibling-pending-'||position));
     if qa_result->'submission'->>'status' <> 'pending' then raise exception 'QA_LOCAL_SIBLING_PENDING_FAILED'; end if;
   end loop;
-  if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 2
+  -- One pre-fix legacy duplicate; the new writer must not recreate it.
+  insert into public.behavior_submissions(id,workspace_id,learner_id,rule_id,occurred_at,requester_type,idempotency_key,snapshot,requested_at)
+    select '02610000-0000-4000-8000-000000000301',workspace,reward_learner,qa_rule,'2020-10-03T15:00:00+03:00','learner','qa028-legacy-pending',snapshot,'2020-10-05T09:00:00+03:00'
+    from public.behavior_submissions where learner_id=reward_learner order by occurred_at limit 1;
+  if (select count(*) from public.behavior_submissions where learner_id=reward_learner and status='pending') <> 3
     or (select count(*) from public.behavior_submissions where learner_id=sibling_learner and status='pending') <> 2
     or (select reward_points from public.learner_gamification_state where learner_id=reward_learner) is distinct from 0
     or (select reward_points from public.learner_gamification_state where learner_id=sibling_learner) is distinct from 0
@@ -115,4 +119,27 @@ begin
   then raise exception 'QA_LOCAL_PRIVILEGE_CONTRACT_INVALID'; end if;
 end;
 $fixture$;
+commit;
+
+-- FLH027 prospective authoring target: empty, wholly synthetic and learner-hidden.
+-- Its candidate is sent through the real authenticated API by the Runner test.
+begin;
+do $held_fixture$
+declare w uuid:='55f9224c-8ba7-4cbc-9f88-713e6a6b41df'; l uuid; subject bigint; code text;
+begin
+ select id into strict l from public.learners where workspace_id=w and slug='test' and metadata->>'is_test'='true';
+ insert into public.curricula(id,code,name_ar) values('02720000-0000-4000-8000-000000000004','qa-assessment-authenticated','Synthetic assessment curriculum');
+ insert into public.subjects(code,name_ar) values('qa-assessment-authenticated','Synthetic assessment subject') returning id into subject;
+ insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level,metadata)
+ values('02720000-0000-4000-8000-000000000003',w,'qa-assessment-authenticated','Testing held publication','active','02720000-0000-4000-8000-000000000004',7,'{"technical_qa":true}');
+ insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values(w,l,'02720000-0000-4000-8000-000000000003','active');
+ insert into public.quizzes(id,workspace_id,subject_id,curriculum_id,slug,title,status)
+ values('02720000-0000-4000-8000-000000000001',w,subject,'02720000-0000-4000-8000-000000000004','qa-assessment-authenticated','Synthetic held assessment','draft');
+ insert into public.quiz_versions(id,workspace_id,quiz_id,version_no,state,settings)
+ values('02720000-0000-4000-8000-000000000002',w,'02720000-0000-4000-8000-000000000001',1,'draft','{"technical_qa":true}');
+ insert into public.program_quizzes(workspace_id,program_id,quiz_id,availability) values(w,'02720000-0000-4000-8000-000000000003','02720000-0000-4000-8000-000000000001','available');
+ foreach code in array array['tr-g7-rational-integer-relation','tr-g7-rational-definition-sign','tr-g7-rational-number-line'] loop
+  insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values(w,subject,'02720000-0000-4000-8000-000000000004',7,code,'Testing concept');
+ end loop;
+end; $held_fixture$;
 commit;

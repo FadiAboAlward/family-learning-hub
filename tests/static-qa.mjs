@@ -146,7 +146,8 @@ const mathGuard=read('tests/math-rendering-guard.mjs');
 const screenshotEvidence=read('tests/screenshot-evidence.mjs');
 const library=read('student-library-v3.js');
 const academicContract=read('docs/academic-content-quality.md');
-const academicValidator=read('scripts/academic-content-quality.mjs');
+const academicValidator=read('supabase/functions/_shared/academic-content-quality.mjs');
+if(!read('scripts/academic-content-quality.mjs').includes("import { validateAcademicPackage } from '../supabase/functions/_shared/academic-content-quality.mjs'"))fail('Academic CLI must reuse the official shared validator.');
 const academicTests=read('tests/academic-content-quality.mjs');
 const agents=read('AGENTS.md');
 

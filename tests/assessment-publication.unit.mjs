@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { assessmentCandidateHash } from '../scripts/assessment-publication-preflight.mjs';
+import { academicCandidateHash, assessmentStagePayload, assessmentCommand } from '../supabase/functions/_shared/assessment-publication.mjs';
+import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
+
+const candidate=JSON.parse(fs.readFileSync(new URL('./fixtures/assessment-publication/valid-package.json',import.meta.url),'utf8'));
+const w='02700000-0000-4000-8000-000000000001',parent='02700000-0000-4000-8000-000000000002';
+const target={quiz_id:'02700000-0000-4000-8000-000000000003',quiz_version_id:'02700000-0000-4000-8000-000000000004',learner_id:'02700000-0000-4000-8000-000000000005',program_id:'02700000-0000-4000-8000-000000000006'};
+const hash=await academicCandidateHash(candidate);
+assert.equal(hash,assessmentCandidateHash(candidate),'Edge and operator must hash the identical entire manifest');
+assert.equal(hash,await academicCandidateHash(Object.fromEntries(Object.entries(candidate).reverse())));
+const report=validateAcademicPackage(candidate);
+assert.equal(report.ok,true);
+const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Testing parent explicit review',source_review_ref:'Testing synthetic source review',learner_scope_review_ref:'Testing scope review',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic gate fixture only; no real academic approval.'}))};
+const body={action:'stage_assessment',target,candidate,semantic_review:review};
+assert.equal((await assessmentStagePayload(w,parent,body)).semantic_review.reviewed_by,parent);
+const forged={...body,semantic_review:{...review,reviewed_by:'untrusted-body-parent'}};
+assert.equal((await assessmentStagePayload(w,parent,forged)).semantic_review.reviewed_by,parent,'session identity overrides caller identity');
+async function rejected(code,mutate) {
+  const b=structuredClone(body);mutate(b);
+  let calls=0;
+  await assert.rejects(()=>assessmentCommand({rpc:()=>{calls++;throw new Error('must not write');}},w,parent,b,{measure:(_n,_m,f)=>f()}),new RegExp(code));
+  assert.equal(calls,0,'failed validation must perform zero RPC writes');
+}
+await rejected('ASSESSMENT_TARGET_INVALID',b=>b.target.quiz_id='bad');
+await rejected('ASSESSMENT_TARGET_INVALID',b=>b.target.workspace_id=w);
+await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions.pop());
+await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].options.pop());
+await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].question_code='QA-invalid');
+await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].hints=[]);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[]);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[null]);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.candidate_sha256='0'.repeat(64));
+for(const key of Object.keys(target)) await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review[key]=parent);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.workspace_id=parent);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.source_review_ref='');
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>delete b.semantic_review.reviewer_ref);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions.forEach(d=>{d.disposition=d.result;delete d.result;}));
+let sent;
+const fake={rpc:async(name,args)=>{sent={name,args};return {data:{ok:true,state:'staged'},error:null};}};
+await assessmentCommand(fake,w,parent,body,{measure:(_n,_m,f)=>f()});
+assert.equal(sent.name,'flh_assessment_command');
+assert.equal(sent.args.p_parent_id,parent);
+assert.equal(sent.args.p_payload.candidate_sha256,hash);
+await assert.rejects(()=>assessmentCommand({rpc:async()=>({data:null,error:{message:'SQL private payload'}})},w,parent,{action:'publish_assessment',quiz_version_id:target.quiz_version_id,candidate_sha256:hash},{measure:(_n,_m,f)=>f()}),/ASSESSMENT_UNAVAILABLE/);
+console.log('Assessment authoring validator, exact-scope semantic review, canonical hash and zero-write failures: PASS');

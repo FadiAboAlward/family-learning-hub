@@ -29,7 +29,7 @@ const deps = {
 for (const role of ['owner', 'admin']) assert.equal(canManageRewardsRole(role), true);
 for (const role of ['teacher', 'viewer', null, undefined, 'OWNER']) assert.equal(canManageRewardsRole(role), false);
 const parentActions = ['parent_rewards_dashboard', 'parent_rewards_ledger', 'parent_behavior_report', 'category_save', 'rule_save',
-  'reward_save', 'behavior_record', 'behavior_review', 'reward_review', 'reward_redeem', 'points_adjust'];
+  'reward_save', 'behavior_record', 'behavior_review', 'behavior_review_many', 'reward_review', 'reward_redeem', 'points_adjust'];
 for (const action of parentActions) {
   const before = calls.length;
   await assert.rejects(() => executeFamilyRewardsAction(action, { learner_id: learnerId }, {
@@ -115,3 +115,42 @@ assert.equal(rewardsErrorStatus('CLAIM_ALREADY_PENDING'), 409);
 assert.equal(rewardsErrorStatus('DUPLICATE_OCCURRENCE'), 409);
 assert.equal(publicRewardsError({ message: 'INVALID_INPUT' }), 'INVALID_INPUT');
 console.log('Family rewards API identity, owner/admin authorization and safe errors: PASS');
+
+const itemIds = Array.from({length: 5}, (_, i) => `50000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
+const items = itemIds.map(submission_id => ({ submission_id, points: 999999, occurred_at: '2099-01-01', actor_id: otherId }));
+let active = 0, maximumActive = 0, rpcCount = 0;
+const bulkDeps = {...deps, rpc: async (name, args) => {
+  active++; maximumActive = Math.max(maximumActive, active); rpcCount++;
+  await new Promise(resolve => setTimeout(resolve, 5)); active--;
+  assert.equal(name, 'flh_family_rewards_command');
+  assert.equal(args.p_actor_id, parentId); assert.equal(args.p_workspace_id, workspaceId);
+  assert.equal(args.p_learner_id, learnerId); assert.equal(args.p_action, 'behavior_review');
+  assert.deepEqual(Object.keys(args.p_payload).sort(), ['decision', 'reason', 'submission_id']);
+  const index = itemIds.indexOf(args.p_payload.submission_id);
+  if (index === 2) return {data: {error: 'CADENCE_LIMIT'}};
+  if (index === 3) throw new Error('secret SQL detail');
+  if (index === 4) return {data: {error: 'RETURN_EVENT_REQUIRED'}};
+  return {data: {submission: {id: itemIds[index], learner_id: learnerId, status: 'approved', total_points: 8}, already_reviewed: index === 1}};
+}};
+const bulk = await executeFamilyRewardsAction('behavior_review_many', {learner_id: learnerId, items, workspace_id: otherId, reason: 'Testing'}, bulkDeps);
+assert.deepEqual(bulk.results.map(row => [row.state, row.points]), [['approved', 8], ['already_reviewed', 0], ['blocked', 0], ['error', 0], ['error', 0]]);
+assert.equal(bulk.results[3].error, 'REWARDS_SERVER_ERROR', 'technical details stay private');
+assert.equal(bulk.results[4].error, 'RETURN_EVENT_REQUIRED', 'unbound greeting is an item failure');
+assert.equal(maximumActive, 1, 'bounded service dispatch reuses independent existing financial transactions');
+assert.equal(rpcCount, 5);
+const beforeBulkValidation = rpcCount;
+for (const invalid of [[], Array(51).fill(items[0]), [items[0], items[0]], [{submission_id: 'invalid'}]]) {
+  await assert.rejects(() => executeFamilyRewardsAction('behavior_review_many', {learner_id: learnerId, items: invalid}, bulkDeps), /INVALID_INPUT/);
+}
+await assert.rejects(() => executeFamilyRewardsAction('behavior_review_many', {items}, bulkDeps), /INVALID_LEARNER_ID/);
+assert.equal(rpcCount, beforeBulkValidation, 'invalid list/learner causes zero financial calls');
+const wrongLearner = await executeFamilyRewardsAction('behavior_review_many', {learner_id: learnerId, items: [items[0]]}, {
+  ...deps, rpc: async () => ({data: {submission: {id: itemIds[0], learner_id: otherId, status: 'approved', total_points: 8}}}),
+});
+assert.equal(wrongLearner.results[0].state, 'error'); assert.equal(wrongLearner.results[0].points, 0);
+let binding;
+await executeFamilyRewardsAction('behavior_review_many', {learner_id: learnerId, items: [{submission_id: itemIds[0], return_event_id: otherId}]}, {
+  ...deps, rpc: async (name, args) => {binding=args.p_payload.return_event_id; return {data:{error:'RETURN_EVENT_NOT_FOUND'}};},
+});
+assert.equal(binding, otherId, 'only explicit parent binding crosses the existing review boundary');
+console.log('FLH-028 bounded authenticated dispatch, partial results, safe errors and actual deltas: PASS');

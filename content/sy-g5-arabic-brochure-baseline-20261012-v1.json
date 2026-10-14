@@ -389,8 +389,10 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "إعادة تنظيم أربع بطاقات مراحل مبعثرة في سجل إنتاج",
-      "context_type": "direct"
+      "reasoning_signature": "توزيع العنوان والإرشادات والتواصل عبر أوجه المطويّة وفق ترتيب اطلاع القارئ والغرض من كل وجه",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "ترتيب ظهور الغلاف والداخل والظهر ووظيفة العناصر الثلاثة ضروري لتحديد موضع كل عنصر، ولا تكفي معرفة مراحل تصميم المطويّة."
     },
     {
       "question_code": "SYAR-G5-20261012-E08",
@@ -426,10 +428,10 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "دمج تعليمتي سلوك في خاتمة موجزة دون ضياع أي منهما",
+      "reasoning_signature": "تطبيق إرشاد شرطي على واقعة محددة بعد التمييز بين تسرب أنبوب وصنبور مغلق",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+      "context_necessity_reason": "وجود تسرب خلف المدرسة مع صنبور مغلق يحدد أي الإرشادين ينطبق؛ من دون هذه الحالة لا يمكن ترجيح التصرف."
     },
     {
       "question_code": "SYAR-G5-20261012-E11",
@@ -1986,33 +1988,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "لصقت طالبة بطاقات مراحل إعداد مطويّة في سجل العمل بعد خلطها: «المراجعة النهائية»، «المعلومات»، «الرسوم والخطوط»، «الموضوع». أي ترتيب تصحيحي سليم؟",
+      "prompt": "تُطوى مطويّة تنظيف الساحة بحيث يرى القارئ الغلاف أولاً، ثم يفتحها ليرى الصفحة الداخلية، ويجد في ظهرها وسيلة التواصل. يريد الفريق أن يعرف القارئ موضوع الحملة أولاً، ثم ما سيقوم به، ثم كيفية السؤال عنها. أي توزيع يحقق ذلك؟",
       "options": [
         {
-          "content": "الموضوع ← الرسم ← المعلومات ← المراجعة",
+          "content": "على الغلاف رقم التواصل، وفي الداخل عنوان الحملة، وعلى الظهر خطوات المشاركة",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "الرسم قبل جمع المادة يقلب ترتيب التخطيط."
+          "distractor_rationale": "بدء المطوية برقم التواصل يجعل القارئ يجهل موضوع الحملة عند رؤيتها أولاً."
         },
         {
-          "content": "المعلومات ← الموضوع ← الرسم ← المراجعة",
+          "content": "على الغلاف خطوات المشاركة، وفي الداخل وسيلة التواصل، وعلى الظهر عنوان الحملة",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "جمع المادة قبل تحديد موضوعها لا يثبت محور البحث."
+          "distractor_rationale": "وضع العنوان على الظهر يؤخر تعريف القارئ بموضوع المطوية إلى النهاية."
         },
         {
-          "content": "الموضوع ← المعلومات ← الرسوم والخطوط ← المراجعة النهائية",
+          "content": "على الغلاف عنوان الحملة، وفي الداخل خطوات المشاركة، وعلى الظهر وسيلة التواصل",
           "position": 3,
           "is_correct": true
         },
         {
-          "content": "الموضوع ← المعلومات ← المراجعة ← الرسم",
+          "content": "على الغلاف عنوان الحملة، وفي الداخل وسيلة التواصل، وعلى الظهر خطوات المشاركة",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "المراجعة قبل إكمال الرسم تسبق النسخة النهائية."
+          "distractor_rationale": "تقديم وسيلة التواصل قبل شرح خطوات المشاركة لا يوافق تسلسل المعلومات المطلوب في السؤال."
         }
       ],
-      "explanation": "تصميم المطويّة يبدأ باختيار موضوع وجمع معلومات ثم إعداد العناصر الفنية ومراجعة الشكل واللغة أخيراً."
+      "explanation": "عندما يرى القارئ الغلاف أولاً يتعرّف عنوان الحملة، ثم يجد داخل المطويّة ما سيفعله، وفي ظهرها وسيلة التواصل مع المنظمين."
     },
     {
       "question_code": "SYAR-G5-20261012-E08",
@@ -2097,33 +2099,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في مطويّة ترشيد الماء: «أغلق الصنبور بعد الاستخدام» و«أبلغ بالغاً إذا وجدت تسرباً». أي خاتمة قصيرة تحفظ الفعلين؟",
+      "prompt": "تقرأ في مطويّة ترشيد الماء إرشادين: «أغلق الصنبور بعد استعماله» و«أخبر شخصاً بالغاً إذا رأيت تسرّباً». شاهد تلميذ ماءً يتسرّب من أنبوب خلف المدرسة، وكان الصنبور القريب مغلقاً أصلاً. أي تصرّف يطبّق الإرشاد المناسب للموقف؟",
       "options": [
         {
-          "content": "أغلق الصنبور بعد الاستخدام وأخبر بالغاً إن رأيت تسرباً",
+          "content": "يخبر شخصاً بالغاً بمكان تسرّب الماء",
           "position": 1,
           "is_correct": true
         },
         {
-          "content": "الماء مهم للجميع في حياتنا",
+          "content": "يفتح الصنبور المغلق ليرى إن كان الماء يخرج منه",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "المعلومة العامة لا تتضمن الفعلين."
+          "distractor_rationale": "فتح صنبور مغلق لا يعالج تسرّب الأنبوب ويخالف هدف ترشيد الماء."
         },
         {
-          "content": "راقب الصنبور ولا تبلغ عن التسرب",
+          "content": "يحاول إغلاق الصنبور المغلق مجدداً ويتجاهل الأنبوب",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "هذا البديل يلغي واجب الإبلاغ ويهمل الإغلاق."
+          "distractor_rationale": "الصنبور مغلق بالفعل؛ الإرشاد المتعلق بالتسرّب هو الذي ينطبق على الحالة."
         },
         {
-          "content": "لا حاجة إلى تعليمات ما دام الماء مفيداً",
+          "content": "يتجاهل التسرّب لأنه لم يحدث أثناء استعماله للصنبور",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الاستغناء عن التعليمات يحذف الإجراءات المطلوبة."
+          "distractor_rationale": "الإبلاغ عن التسرّب مطلوب عند رؤيته، ولا يشترط أن يكون التلميذ هو من استعمل الصنبور."
         }
       ],
-      "explanation": "الملخص الدقيق يحتفظ بالفعل الأول وهو الإغلاق والثاني وهو الإبلاغ عن تسرب الماء."
+      "explanation": "السؤال يعرض تسرباً مع صنبور مغلق، فينطبق إرشاد الإبلاغ عن التسرب، لا إرشاد إغلاق صنبور بعد استعماله."
     },
     {
       "question_code": "SYAR-G5-20261012-E11",
@@ -2498,7 +2500,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PENDING_REVIEW",
+    "academic_semantic_review": "PASS",
     "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2508,16 +2510,16 @@
   "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure.",
   "academic_semantic_review": {
     "review_date": "2026-10-15",
-    "review_basis": "Independent second-pass semantic review of exact candidate: all 40 question stems, correct options, 20 Exam cognitive-action/decision traces and cross-mode / within-Exam separation; original Syrian G5 AR-LUGATI-G5-T1 PDF pages 7–9 as curriculum scope. Academic pass only; no production/release approval.",
+    "review_basis": "Independent second-pass academic source-grounded review of the exact 40-item candidate, 80 Learning hint levels, all 20 Exam rationales, Exam-versus-Learning cognitive paths and within-Exam overlaps; canonical AR-LUGATI-G5-T1 source PDF pages 7–9. Publication/runtime remains separate.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Independent Codex exact-SHA review found E16 could be solved using the same first-verb rule as Learning; E16 is revised to four verb-initial options with meaning-preservation constraints. Review must be rerun on new SHA; no semantic pass claimed.",
-    "warning_disposition": "Final SHA Codex review found E16 reasoning duplication and learner-specific SQL dollar tags. Both are being remediated; repeat full semantic and external review on updated candidate.",
-    "approval_scope": "AUTHORING_CANDIDATE — NOT PUBLISHED",
+    "review_findings": "Exam E07 repeated the four production stages coached in L03/L11; replaced with a spatial information-distribution task using explicit reader-view order. E10 repeated E06's source-preservation test; replaced with situational selection of a conditional instruction. E16 now has four verb-initial alternatives with distinct meaning-preservation constraints. Exam concept retrieval E17–E20 and brochure tasks remain source bounded. Independent content QA approved subject to unchanged deterministic QA and external reviews.",
+    "warning_disposition": "ASSESSMENT_SEMANTIC_REVIEW_REQUIRED disposition: reviewed exact 40 prompts/options/keys, 80 Learning hint levels and documented independence evidence; E07/E10 reauthored to remove repeated cognitive operation; no evidence of unreconciled mirrored decision path in the reviewed bank. Content approval does not approve provider video, deployment, email or student data changes.",
+    "approval_scope": "ACADEMIC_AUTHORING_PASS_ONLY — RELEASE_AFTER_EXACT_HEAD_CI_AND_REAL_RUNTIME_CHECKS",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED",
-    "independent_semantic_review": "PENDING_REVIEW"
+    "independent_semantic_review": "PASS"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
@@ -2577,11 +2579,11 @@
       },
       {
         "exam_code": "SYAR-G5-20261012-E07",
-        "closest_learning_code": "SYAR-G5-20261012-L07",
-        "input_evidence": "أربع مراحل مكتوبة في ترتيب خاطئ",
-        "cognitive_action": "إعادة تنظيم أربع بطاقات مراحل مبعثرة في سجل إنتاج",
-        "deciding_criterion": "اختيار الموضوع ثم جمع البيانات ثم الفن ثم الضبط",
-        "independence_rationale": "التعلم يختار صورة مناسبة؛ الامتحان يرتب مراحل عمل كاملة."
+        "closest_learning_code": "SYAR-G5-20261012-L12",
+        "input_evidence": "ثلاثة أوجه تظهر للقارئ بالتتابع وثلاث وظائف معلوماتية مختلفة مطلوب توزيعها",
+        "cognitive_action": "توزيع العنوان والإرشادات والتواصل عبر أوجه المطويّة وفق ترتيب اطلاع القارئ والغرض من كل وجه",
+        "deciding_criterion": "تحقيق ترتيب اطّلاع القارئ: التعرّف على الحملة، معرفة طريقة المشاركة، ثم الاستفسار",
+        "independence_rationale": "L12 يتناول تنظيم فقرات نص واحد، أما هنا فيلزم تطبيق قيد ظهور كل وجه من مطويّة مطوية وتخصيص ثلاثة أنواع معلومات لمساحات مختلفة؛ لا يحلّه حفظ تسلسل مراحل الإنتاج من L03 وL11."
       },
       {
         "exam_code": "SYAR-G5-20261012-E08",
@@ -2602,10 +2604,10 @@
       {
         "exam_code": "SYAR-G5-20261012-E10",
         "closest_learning_code": "SYAR-G5-20261012-L10",
-        "input_evidence": "تعليمتان واضحتان عن الإغلاق والتسرب",
-        "cognitive_action": "دمج تعليمتي سلوك في خاتمة موجزة دون ضياع أي منهما",
-        "deciding_criterion": "الإبقاء على الأمرين لا استبدالهما بشعار",
-        "independence_rationale": "التعلم يتعرف فعل الدعوة؛ الامتحان يركّب جملة تلخص عمليتين."
+        "input_evidence": "نص إرشادين مختلفين وموقف فيه أنبوب يتسرّب وصنبور مغلق بالفعل",
+        "cognitive_action": "تطبيق إرشاد شرطي على واقعة محددة بعد التمييز بين تسرب أنبوب وصنبور مغلق",
+        "deciding_criterion": "مطابقة شرط الإبلاغ عن التسرب مع الحدث المشاهد واستبعاد الإغلاق غير الملائم",
+        "independence_rationale": "L10 يتعرف وظيفة كلمة دعوة عامة، بينما يتطلب الامتحان تحليل شرطين في نص إرشادي ثم اختيار عمل واحد يطابق وقائع حالة؛ ولا يعيد E06 نقل الأرقام والحقائق بأمانة أو دمج التعليمات لفظياً."
       },
       {
         "exam_code": "SYAR-G5-20261012-E11",

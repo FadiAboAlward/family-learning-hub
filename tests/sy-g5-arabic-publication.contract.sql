@@ -67,17 +67,17 @@ begin
   if (select count(*) from public.quiz_questions q
       join public.quiz_question_concepts qc on qc.question_id=q.id
       join public.learning_concepts c on c.id=qc.concept_id
-      where q.quiz_version_id=v_version and c.code='arabic-g5-u1-brochure')<>30
+      where q.quiz_version_id=v_version and qc.is_primary is true and c.code='arabic-g5-u1-brochure')<>30
   then raise exception 'SY_G5_BROCHURE_ALLOCATION'; end if;
   if (select count(*) from public.quiz_questions q
       join public.quiz_question_concepts qc on qc.question_id=q.id
       join public.learning_concepts c on c.id=qc.concept_id
-      where q.quiz_version_id=v_version and c.code='arabic-g5-u1-sentence-types')<>6
+      where q.quiz_version_id=v_version and qc.is_primary is true and c.code='arabic-g5-u1-sentence-types')<>6
   then raise exception 'SY_G5_SENTENCE_ALLOCATION'; end if;
   if (select count(*) from public.quiz_questions q
       join public.quiz_question_concepts qc on qc.question_id=q.id
       join public.learning_concepts c on c.id=qc.concept_id
-      where q.quiz_version_id=v_version and c.code='arabic-g5-u1-initial-hamza')<>4
+      where q.quiz_version_id=v_version and qc.is_primary is true and c.code='arabic-g5-u1-initial-hamza')<>4
   then raise exception 'SY_G5_HAMZA_ALLOCATION'; end if;
 
   -- Exactly one primary, curriculum-scoped concept association per question.

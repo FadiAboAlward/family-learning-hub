@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { handleQaParentBulkConfirmation, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
+import { handleQaParentBulkConfirmation, assertQaDeviceLayout, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
 import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
 
@@ -14,6 +14,13 @@ assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_RETURN_EVENT_API_AUTH'), 'Iso
 assert.ok(AUTHENTICATED_QA_STAGES.includes('PARENT_INDIVIDUAL_SIBLING_REVIEW'), 'Every real authenticated synthetic QA stage must be allowlisted before it starts');
 assert.equal(qaEvidenceDirectory('runner-local'),'qa-authenticated-evidence', 'Runner-owned screenshots stay with runner evidence');
 assert.equal(qaEvidenceDirectory('isolated-testing'),'playwright-screenshots', 'Isolated-testing screenshots stay in the browser evidence folder');
+
+const layoutPage=(errors=[],document=390)=>({evaluate:async()=>({viewport:390,document,body:390,errors})});
+await assertQaDeviceLayout(layoutPage(),390);
+await assert.rejects(()=>assertQaDeviceLayout(layoutPage(['expected partial outcome']),390),/QA_LOCAL_DEVICE_LAYOUT_INVALID/);
+await assertQaDeviceLayout(layoutPage(['expected partial outcome']),390,['expected partial outcome']);
+await assert.rejects(()=>assertQaDeviceLayout(layoutPage(['unexpected error']),390,['expected partial outcome']),/QA_LOCAL_DEVICE_LAYOUT_INVALID/);
+await assert.rejects(()=>assertQaDeviceLayout(layoutPage(['expected partial outcome'],420),390,['expected partial outcome']),/QA_LOCAL_DEVICE_LAYOUT_INVALID/);
 
 const env = { FLH_QA_ISOLATION_MODE: 'runner-local', FLH_QA_BACKEND_URL: 'http://127.0.0.1:54321', FLH_QA_PROJECT_REF: 'local', APP_URL: 'http://localhost:4173/',
   GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'FadiAboAlward/family-learning-hub', GITHUB_ACTOR_ID: '320162789',
@@ -191,6 +198,11 @@ assert.equal(poisoned.authenticated_network,undefined);
 assert.doesNotMatch(JSON.stringify(poisoned),/private|PASSWORD|sb_secret_/);
 assert.deepEqual(safeAuthenticatedFailure(Object.assign(new Error(syntheticPrivate),{name:'TimeoutError',qaHttpStatus:503,qaResponseError:syntheticPrivate})),{code:'BROWSER_TIMEOUT',http_status:503});
 assert.deepEqual(safeAuthenticatedFailure({message:syntheticPrivate,qaHttpStatus:1000,qaResponseError:syntheticPrivate}),{code:'UNCLASSIFIED'});
+for (const responseError of ['ASSESSMENT_DELIVERY_STATE_CONFLICT','ASSESSMENT_DELIVERY_INPUT_INVALID',
+  'ASSESSMENT_DELIVERY_EVIDENCE_INVALID','ASSESSMENT_DELIVERY_CONFLICT','ASSESSMENT_FORBIDDEN']) {
+  assert.deepEqual(safeAuthenticatedFailure({message:'QA_ASSESSMENT_FAILED',qaHttpStatus:409,qaResponseError:responseError}),
+    {code:'ASSESSMENT_FAILED',http_status:409,response_error:responseError},'Preserve only fixed delivery error identities');
+}
 try {
   await command(process.execPath, ['-e', `process.stdout.write(${JSON.stringify(syntheticPrivate)});process.stderr.write(${JSON.stringify('invalid config\n' + syntheticPrivate)});process.exit(23);`]);
 } catch (error) { processFailure = error; }

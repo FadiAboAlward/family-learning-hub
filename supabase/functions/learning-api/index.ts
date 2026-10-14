@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
 import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport } from "../_shared/optional-learning-videos.mjs";
+import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -112,7 +113,7 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
-    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status"]);
+    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS]);
     const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
@@ -120,7 +121,7 @@ Deno.serve(async(req:Request)=>{
     if(parentActions.has(action)){
       const parentId=await trace.measure("authentication",{},()=>videoAuthor(req));
       const providerOptions={apiKey:Deno.env.get("YOUTUBE_API_KEY")};
-      output=action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
+      output=ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
@@ -138,7 +139,7 @@ Deno.serve(async(req:Request)=>{
   }catch(e){
     const m=e instanceof Error?e.message:"SERVER_ERROR";
     const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
-    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"?409:nf.includes(m)?404:bad.includes(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
+    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"||m==="ASSESSMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"||/ASSESSMENT_(RETRY_CONFLICT|CONTENT_DRIFT|STATE_CONFLICT|FRESH_DRAFT_REQUIRED|HELD_OR_IMMUTABLE|DELIVERY_CONFLICT|DELIVERY_STATE_CONFLICT)/.test(m)?409:nf.includes(m)?404:bad.includes(m)||/^ASSESSMENT_(TARGET_INVALID|INPUT_INVALID|SEMANTIC_REVIEW_REQUIRED|ACADEMIC_REJECTED|CONTEXT_MISMATCH|VIDEO_GATE_FAILED|DELIVERY_INPUT_INVALID|DELIVERY_EVIDENCE_INVALID)$/.test(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
     const details=(e as any)?.data;
     const payload=m==="REPORT_CONFLICT"?{error:m,self_report:details?.self_report,report_revision:details?.report_revision}:{error:m};
     return performanceJsonResponse(trace,payload,status,cors(origin));

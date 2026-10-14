@@ -11,6 +11,13 @@ declare
   a1 uuid := '72000000-0000-4000-8000-000000000001';
   a2 uuid := '72000000-0000-4000-8000-000000000002';
   a3 uuid := '72000000-0000-4000-8000-000000000003';
+  a4 uuid := '72000000-0000-4000-8000-000000000004';
+  a5 uuid := '72000000-0000-4000-8000-000000000005';
+  a6 uuid := '72000000-0000-4000-8000-000000000006';
+  trial integer;
+  wrong_no integer;
+  policy_attempt uuid;
+  expected_credit numeric;
   v2 uuid;
   q_short uuid;
   v_concept_short uuid;
@@ -212,10 +219,84 @@ begin
       and evaluation='correct' and is_correct=true and points_awarded=1
   ) then raise exception 'SUPPORT_TYPED_SPACED_SHORT_ANSWER_NOT_PERSISTED'; end if;
 
+  -- FLH-030: typed/numeric Learning must honor the exact same frozen
+  -- attempt scores. a1 above deliberately retains the historical 75% retry.
+  for trial in 2..3 loop
+    policy_attempt := case when trial=2 then a4 else a5 end;
+    expected_credit := case when trial=2 then 0.5 else 0 end;
+    insert into public.quiz_attempts(
+      id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
+    ) values (
+      policy_attempt,w,l,v,'in_progress','learning',
+      '{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,50,0,0]}'::jsonb
+    );
+    insert into public.quiz_attempt_question_queue(
+      workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status,score_policy_snapshot
+    )
+    select w,policy_attempt,1,q_numeric,v_concept_id,difficulty_level,'active',
+      '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,50,0,0]}'::jsonb
+    from public.quiz_questions where id=q_numeric;
+    -- An authenticated administrator can mutate attempt metadata but not
+    -- the actual score-policy column (server-only queue).
+    update public.quiz_attempts
+    set metadata='{"scoring_policy_version":"learning-100-50-0-0-v1","scoring_attempt_scores":[100,75,50,25]}'::jsonb
+    where id=policy_attempt;
+
+    set local role service_role;
+    for wrong_no in 1..(trial-1) loop
+      r:=public.flh_learning_answer_response(w,l,policy_attempt,q_numeric,'{"value":"9,9"}'::jsonb);
+      if r->>'finalized' is distinct from 'false' then
+        raise exception 'FLH030_TYPED_EARLY_FINALIZATION:%,%',trial,r;
+      end if;
+    end loop;
+    r:=public.flh_learning_answer_response(w,l,policy_attempt,q_numeric,'{"value":"2,5"}'::jsonb);
+    retry:=public.flh_learning_answer_response(w,l,policy_attempt,q_numeric,'{"value":"2,5"}'::jsonb);
+    reset role;
+    if r->>'is_correct' is distinct from 'true'
+       or r->>'finalized' is distinct from 'true'
+       or r->>'attempt_no' is distinct from trial::text
+       or retry <> r
+       or not exists(
+         select 1 from public.quiz_attempt_answers
+         where attempt_id=policy_attempt and question_id=q_numeric
+           and is_correct and points_awarded=expected_credit
+           and attempts_used=trial and mastery_result='needs_practice'
+       )
+       or (select count(*) from public.quiz_answer_attempts
+           where quiz_attempt_id=policy_attempt and question_id=q_numeric) <> trial then
+      raise exception 'FLH030_TYPED_SCORE_INVALID:%,%',trial,r;
+    end if;
+  end loop;
+
+  -- P2 regression: even the explicitly ungraded early-return path must
+  -- validate the server-owned scoring policy before persisting any answer.
+  insert into public.quiz_attempts(
+    id,workspace_id,learner_id,quiz_version_id,status,delivery_mode,metadata
+  ) values (a6,w,l,v,'in_progress','learning','{}'::jsonb);
+  insert into public.quiz_attempt_question_queue(
+    workspace_id,quiz_attempt_id,sequence_no,question_id,concept_id,difficulty_level,status,score_policy_snapshot
+  )
+  select w,a6,1,q_reflection,v_concept_id,difficulty_level,'active',
+    '{"version":"learning-100-50-0-0-v1","attempt_scores":[100,75,50,25]}'::jsonb
+  from public.quiz_questions where id=q_reflection;
+
+  set local role service_role;
+  r:=public.flh_learning_answer_response(w,l,a6,q_reflection,'{"value":"Reflection example."}'::jsonb);
+  reset role;
+  if r->>'error' is distinct from 'LEARNING_SCORE_POLICY_INVALID'
+     or exists(select 1 from public.quiz_attempt_answers where attempt_id=a6)
+     or exists(select 1 from public.quiz_answer_attempts where quiz_attempt_id=a6)
+     or not exists(
+       select 1 from public.quiz_attempt_question_queue
+       where quiz_attempt_id=a6 and status='active'
+     ) then
+    raise exception 'FLH030_UNGRADED_INVALID_SNAPSHOT_NOT_REJECTED:%',r;
+  end if;
+
   -- A successful DO statement commits, so explicitly remove only this
   -- contract's fixtures. Any raised exception rolls the whole DO statement back.
   delete from public.quiz_attempts
-  where workspace_id=w and id in (a1,a2,a3);
+  where workspace_id=w and id in (a1,a2,a3,a4,a5,a6);
 
   delete from public.learner_concept_mastery
   where workspace_id=w

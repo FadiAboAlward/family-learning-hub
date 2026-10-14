@@ -143,16 +143,21 @@ begin
     result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',prayer_rule,'adhkar_completed',true,'idempotency_key','qa025-unsupported-bonus'));
     perform pg_temp.consolidated_assert(result->>'error'='INVALID_INPUT', 'new unsupported prayer bonus remains rejected');
 
-    -- Generic cadence stays UTC APPROVAL day/week, independent of old occurrence dates.
+    -- Ordinary daily cadence uses occurrence day; weekly approval cadence is unchanged.
     foreach current_rule in array array[day_rule,week_rule] loop
       result := public.flh_family_rewards_command(w,null,l,'behavior_submit',jsonb_build_object('rule_id',current_rule,'occurred_at',((local_day+9)+time '08:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-cadence-pending-'||current_rule));
       sid := (result->'submission'->>'id')::uuid;
       perform pg_temp.consolidated_assert(result->>'ok'='true', 'cadence fixture captures before another approval');
       result := public.flh_family_rewards_command(w,owner_id,l,'behavior_record',jsonb_build_object('rule_id',current_rule,'occurred_at',(local_day+time '08:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-cadence-first-'||current_rule));
       second := public.flh_family_rewards_command(w,admin_id,l,'behavior_record',jsonb_build_object('rule_id',current_rule,'occurred_at',((local_day+8)+time '08:00') at time zone 'Europe/Istanbul','idempotency_key','qa025-cadence-second-'||current_rule));
-      perform pg_temp.consolidated_assert(result->>'ok'='true' and second->>'error'='CADENCE_LIMIT', 'other rules retain approval-day/week cap for different occurrence days');
+      perform pg_temp.consolidated_assert(result->>'ok'='true' and
+        case when current_rule=day_rule then second->>'ok'='true' else second->>'error'='CADENCE_LIMIT' end,
+        'daily historical days are independent and weekly approval cap is preserved');
       second := public.flh_family_rewards_command(w,admin_id,null,'behavior_review',jsonb_build_object('submission_id',sid,'decision','approved'));
-      perform pg_temp.consolidated_assert(second->>'error'='CADENCE_LIMIT' and (select status='pending' and total_points=0 from public.behavior_submissions where id=sid), 'captured amount does not bypass current cadence');
+      perform pg_temp.consolidated_assert(
+        case when current_rule=day_rule then second->>'ok'='true' and (select status='approved' and total_points=1 from public.behavior_submissions where id=sid)
+        else second->>'error'='CADENCE_LIMIT' and (select status='pending' and total_points=0 from public.behavior_submissions where id=sid) end,
+        'captured amount obeys the applicable daily or weekly cadence');
     end loop;
 
     -- Both parents share two slots. Boundary pair has the SAME UTC date and DIFFERENT local dates.
