@@ -2319,7 +2319,7 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "يريد الفريق تحويل «التلاميذُ يحافظون على النظافة» إلى جملة فعلية بنفس الأشخاص والمعنى. أي إعادة ترتيب صحيحة؟",
+      "prompt": "تريد طالبة تحويل «التلاميذُ يحافظون على النظافة» إلى جملة تبدأ بفعل. أي صياغة تبقي التلاميذ أنفسهم يحافظون على النظافة، من غير تبديل الفاعلين أو موضوع المحافظة أو المعنى؟",
       "options": [
         {
           "content": "يحافظُ التلاميذُ على النظافة",
@@ -2327,25 +2327,25 @@
           "is_correct": true
         },
         {
-          "content": "التلاميذُ يهتمون بالنظافة",
+          "content": "يحافظُ المعلّمونَ على النظافة",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "تبدأ باسم التلاميذ ولا تحقق البداية الفعلية."
+          "distractor_rationale": "تبدأ بفعل لكنها تغيّر الفاعلين من التلاميذ إلى المعلّمين."
         },
         {
-          "content": "النظافةُ يحافظ عليها التلاميذ",
+          "content": "يحافظُ التلاميذُ على الحديقة",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "تبدأ باسم النظافة ولا تصبح فعلية."
+          "distractor_rationale": "تبدأ بفعل وتبقي التلاميذ، لكنها تغيّر ما يحافظون عليه من النظافة إلى الحديقة."
         },
         {
-          "content": "التلاميذُ يحافظون على الحديقة",
+          "content": "يُهملُ التلاميذُ النظافة",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "تبدأ باسم وتغير موضوع المحافظة إلى الحديقة."
+          "distractor_rationale": "تبدأ بفعل وتبقي الأشخاص والموضوع، لكنها تقلب الفعل من المحافظة إلى الإهمال."
         }
       ],
-      "explanation": "«يحافظ التلاميذ على النظافة» تبدأ بفعل ولا تغيّر مضمون المحافظة ولا الفاعل."
+      "explanation": "«يحافظُ التلاميذُ على النظافة» جملة فعلية تحافظ على الأشخاص والموضوع والعمل، بخلاف الخيارات الأخرى التي تغيّر واحداً من هذه الشروط."
     },
     {
       "question_code": "SYAR-G5-20261012-E17",
@@ -2498,7 +2498,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PASS",
+    "academic_semantic_review": "PENDING_REVIEW",
     "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2511,13 +2511,13 @@
     "review_basis": "Independent second-pass semantic review of exact candidate: all 40 question stems, correct options, 20 Exam cognitive-action/decision traces and cross-mode / within-Exam separation; original Syrian G5 AR-LUGATI-G5-T1 PDF pages 7–9 as curriculum scope. Academic pass only; no production/release approval.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Reviewed all 20 exam reasoning operations against distinct 20 learning operations and within-exam scope. E06 evidence-integrity transfer vs L06 relevance; E17 complete sentence vs L17 sentence type; E18 semantic cohesion vs L18 structural classification; E20 within-word initial/connected wasl comparison vs L20 connected qat' retention. E17 prompt clarified to avoid confusing grammatical khabar with a complete statement. No remaining direct same-evidence-path mirrored item identified in reviewed candidate.",
-    "warning_disposition": "Semantic review of candidate PASS. External independent Codex and CodeRabbit final SHA reviews, GitHub Actions, video verification, authenticated Testing QA, and learner delivery remain mandatory.",
-    "approval_scope": "ACADEMIC_SEMANTIC_PASS_ONLY — NOT PUBLISHED",
+    "review_findings": "Independent Codex exact-SHA review found E16 could be solved using the same first-verb rule as Learning; E16 is revised to four verb-initial options with meaning-preservation constraints. Review must be rerun on new SHA; no semantic pass claimed.",
+    "warning_disposition": "Final SHA Codex review found E16 reasoning duplication and learner-specific SQL dollar tags. Both are being remediated; repeat full semantic and external review on updated candidate.",
+    "approval_scope": "AUTHORING_CANDIDATE — NOT PUBLISHED",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED",
-    "independent_semantic_review": "PASS"
+    "independent_semantic_review": "PENDING_REVIEW"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
@@ -2650,10 +2650,10 @@
       {
         "exam_code": "SYAR-G5-20261012-E16",
         "closest_learning_code": "SYAR-G5-20261012-L16",
-        "input_evidence": "جملة اسمية وقيد أن يبقى فعل المحافظة والأشخاص",
-        "cognitive_action": "تحويل بناء يبدأ باسم إلى بناء يبدأ بفعل مع ثبات المعنى",
-        "deciding_criterion": "بداية فعلية مع إبقاء المعنى الأصلي",
-        "independence_rationale": "التعلم يصنّف جملة؛ الامتحان يختار تعديل تركيب مع الحفاظ على شروط."
+        "input_evidence": "نص أصلي مع ثلاثة قيود صريحة: الفاعلون والتصرف وموضوعه",
+        "cognitive_action": "التحويل إلى الجملة الفعلية مع فحص ثبات ثلاثة قيود معنوية عبر أربعة بدائل تبدأ جميعاً بأفعال",
+        "deciding_criterion": "التحقق من بداية فعلية ومن الأشخاص والسلوك والموضوع معاً، لا الاعتماد على بدايات الأفعال",
+        "independence_rationale": "بدائل الامتحان الأربعة فعلية بالفعل؛ لا يمكن اختيار الصحيح بتحديد الفعل الأول كما في التعلّم، بل يجب اختبار الأشخاص والعمل وموضوعه."
       },
       {
         "exam_code": "SYAR-G5-20261012-E17",
