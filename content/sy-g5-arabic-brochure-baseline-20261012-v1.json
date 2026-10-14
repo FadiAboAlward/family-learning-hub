@@ -339,8 +339,10 @@
       "difficulty_role": "support",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تشخيص فجوة معلومات من سؤال قارئ بعد جمع المواد",
-      "context_type": "direct"
+      "reasoning_signature": "تمييز المبالغة غير المسندة بدليل عن وصف يمكن التحقق منه في صياغة غلاف المطويّة",
+      "context_type": "contextual",
+      "context_necessary": true,
+      "context_necessity_reason": "عبارة التفوق على جميع الحدائق والمعلومات المحدودة التي شاهدتها التلميذات ضرورية لتفسير سبب مراجعة الادعاء."
     },
     {
       "question_code": "SYAR-G5-20261012-E04",
@@ -1840,33 +1842,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "في مطويّة سلامة اللعب جمعت المجموعة خريطة للألعاب وصورة للساحة وأسماء المتطوعين، لكن القارئ لا يجد جواباً عن سؤال «كيف أتجنب الإصابة؟». ما الإضافة المباشرة المطلوبة؟",
+      "prompt": "كتبت تلميذة على غلاف مطويّة عن حديقة الحي: «حديقتنا أجمل حديقة في العالم». قالت زميلتها: «ليس لدينا دليل على أنها الأجمل في العالم، لكننا رأينا أشجاراً ومقاعد فيها». أي تفسير يبيّن لماذا تحتاج العبارة الأولى إلى مراجعة قبل طباعة المطويّة؟",
       "options": [
         {
-          "content": "شرح قواعد اللعب الآمن والأخطار الواجب تجنبها",
+          "content": "لأنّ كلمة «الأجمل في العالم» حكم واسع لا تدعمه المعلومات التي جُمعت",
           "position": 1,
           "is_correct": true
         },
         {
-          "content": "زيادة صور الألعاب ذاتها",
+          "content": "لأنّ وصف الحديقة بأشجار ومقاعد يعني أنّ الحديقة غير جميلة",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "زيادة الصور لا تجيب عن سؤال الوقاية."
+          "distractor_rationale": "وجود الأشجار والمقاعد لا ينفي جمال الحديقة، وإنما يقدّم معلومات يمكن مشاهدتها."
         },
         {
-          "content": "تكبير شعار «العبوا بأمان» فقط",
+          "content": "لأنّ كلّ عبارة مشجّعة في المطويّة يجب أن تتضمّن رقماً",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "تكبير الشعار لا يضيف خطوات سلامة."
+          "distractor_rationale": "لا تشترط الكتابة المشجّعة أرقاماً؛ المهم ألا يُقدَّم حكم واسع على أنه حقيقة من دون دليل."
         },
         {
-          "content": "إضافة أسماء جميع الصفوف",
+          "content": "لأنّ الغلاف لا يجوز أن يذكر أيّ وصف للحديقة",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "أسماء الصفوف لا تشرح كيف يتجنب الطفل الأذى."
+          "distractor_rationale": "الغلاف قد يحتوي وصفاً ملائماً، لكن عبارة التفوق على جميع حدائق العالم تحتاج إلى دليل."
         }
       ],
-      "explanation": "صور الموقع والأسماء لا تعطي تعليمات تمنع الإصابة، وتحتاج المطويّة إلى إرشادات عملية عن السلوك الآمن."
+      "explanation": "قول «الأجمل في العالم» حكم مطلق لا تثبته مشاهدة أشجار ومقاعد، والأفضل أن تكون معلومات المطويّة قابلة للتحقق، مع بقاء الدعوة مشجّعة."
     },
     {
       "question_code": "SYAR-G5-20261012-E04",
@@ -2513,8 +2515,8 @@
     "review_basis": "Independent second-pass academic source-grounded review of the exact 40-item candidate, 80 Learning hint levels, all 20 Exam rationales, Exam-versus-Learning cognitive paths and within-Exam overlaps; canonical AR-LUGATI-G5-T1 source PDF pages 7–9. Publication/runtime remains separate.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Exam E07 repeated the four production stages coached in L03/L11; replaced with a spatial information-distribution task using explicit reader-view order. E10 repeated E06's source-preservation test; replaced with situational selection of a conditional instruction. E16 now has four verb-initial alternatives with distinct meaning-preservation constraints. Exam concept retrieval E17–E20 and brochure tasks remain source bounded. Independent content QA approved subject to unchanged deterministic QA and external reviews.",
-    "warning_disposition": "ASSESSMENT_SEMANTIC_REVIEW_REQUIRED disposition: reviewed exact 40 prompts/options/keys, 80 Learning hint levels and documented independence evidence; E07/E10 reauthored to remove repeated cognitive operation; no evidence of unreconciled mirrored decision path in the reviewed bank. Content approval does not approve provider video, deployment, email or student data changes.",
+    "review_findings": "Final second targeted review round: fixed E03, which replayed L15's 'add missing instructions' operation, by replacing it with a source-bounded evaluation of an unsupported superlative against observed facts. Previous distinct E07/E10 corrections retained, E16 options remain verb-initial. All other candidate questions unchanged.",
+    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval.",
     "approval_scope": "ACADEMIC_AUTHORING_PASS_ONLY — RELEASE_AFTER_EXACT_HEAD_CI_AND_REAL_RUNTIME_CHECKS",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
@@ -2548,10 +2550,10 @@
       {
         "exam_code": "SYAR-G5-20261012-E03",
         "closest_learning_code": "SYAR-G5-20261012-L03",
-        "input_evidence": "محتوى يصف المكان والأشخاص دون قواعد الوقاية",
-        "cognitive_action": "تشخيص فجوة معلومات من سؤال قارئ بعد جمع المواد",
-        "deciding_criterion": "معالجة غياب تعليمات السلامة لا تزيين المحتوى",
-        "independence_rationale": "التعلم ينتقي ماذا يجمع؛ الامتحان يفحص مواد جُمعت ويعالج نقصاً كشفت عنه تجربة قارئ."
+        "input_evidence": "صياغة غلاف تحمل حكماً مطلقاً، مقابل معلومات مشاهدة لا تثبت التفوق الشامل.",
+        "cognitive_action": "الحكم على مدى ملاءمة ادعاء مطلق لما تسنده أدلة محدودة",
+        "deciding_criterion": "الفصل بين ملاحظة قابلة للتحقق ومبالغة تتجاوز ما هو موثق",
+        "independence_rationale": "L03 يتدرّب على جمع معلومات مرتبطة بالموضوع، وL15 على إصلاح غياب تعليمات المشاركة؛ أما هنا فيقارن المتعلم نطاق الادعاء المطلق بالأدلة المحدودة ويفسّر سبب عدم صلاحية المبالغة، وليس اختيار إرشاد إضافي أو جمع معلومات جديدة."
       },
       {
         "exam_code": "SYAR-G5-20261012-E04",

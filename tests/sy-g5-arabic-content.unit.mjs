@@ -36,10 +36,16 @@ assert.equal(concepts.get('arabic-g5-u1-brochure'), 30);
 assert.equal(concepts.get('arabic-g5-u1-sentence-types'), 6);
 assert.equal(concepts.get('arabic-g5-u1-initial-hamza'), 4);
 
-// Ensure the public repository package has no copied personal academic scores or identities.
+// Ensure the public repository package contains no learner-specific data.
+// Use generic privacy patterns, never put actual student identities or scores
+// into public tests, even as forbidden-value regression examples.
 const serialized = JSON.stringify(pkg);
-assert.doesNotMatch(serialized, /Aya|آية|AYA-|88\.46|93\.75|20\/20|19\/20/u);
-assert.doesNotMatch(readFileSync(path.join(root, 'supabase/migrations/20261012093000_register_sy_g5_arabic_brochure_baseline.sql'), 'utf8'), /Aya|آية|AYA-|\$aya_|\baya_/iu, 'Public publication artifact must be learner-neutral');
+assert.doesNotMatch(serialized, /"learner_id"\s*:|"recipient"\s*:|"email"\s*:/iu);
+assert.doesNotMatch(serialized, /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u);
+assert.doesNotMatch(serialized, /https:\/\/docs\.google\.com\/document\/d\//u);
+const migrationText = readFileSync(path.join(root, 'supabase/migrations/20261012093000_register_sy_g5_arabic_brochure_baseline.sql'), 'utf8');
+assert.doesNotMatch(migrationText, /\$[a-z_]*(?:learner|student|child)[a-z_]*\$/iu,
+  'The committed publication package must use learner-neutral SQL delimiters');
 assert.equal(pkg.questions.length, 40);
 // Answer key placement preflight: prevent a learner from inferring later correct
 // options from a cycle such as 1-2-3-4-1-2-3-4, without changing item semantics.
