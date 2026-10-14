@@ -39,6 +39,7 @@ assert.equal(concepts.get('arabic-g5-u1-initial-hamza'), 4);
 // Ensure the public repository package has no copied personal academic scores or identities.
 const serialized = JSON.stringify(pkg);
 assert.doesNotMatch(serialized, /Aya|آية|AYA-|88\.46|93\.75|20\/20|19\/20/u);
+assert.doesNotMatch(readFileSync(path.join(root, 'supabase/migrations/20261012093000_register_sy_g5_arabic_brochure_baseline.sql'), 'utf8'), /Aya|آية|AYA-|\$aya_|\baya_/iu, 'Public publication artifact must be learner-neutral');
 assert.equal(pkg.questions.length, 40);
 // Answer key placement preflight: prevent a learner from inferring later correct
 // options from a cycle such as 1-2-3-4-1-2-3-4, without changing item semantics.
@@ -62,11 +63,17 @@ for (const q of pkg.questions) {
   for (const o of incorrect) assert.ok(o.distractor_rationale.length > 15, q.question_code);
 }
 
+// Regression: all Exam E16 alternatives must begin with a verb so first-word
+// classification alone cannot solve the meaning-preserving transformation.
+const e16 = exam.find(q => q.question_code.endsWith('-E16'));
+assert.ok(e16 && e16.options.every(o => /^(?:يحافظُ|يُهملُ)/u.test(o.content)));
+assert.equal(e16.options.filter(o => o.is_correct).length, 1);
+
 // Publication integrity: the embedded forward-only SQL package must be the exact
 // validator-approved question/option/answer/hint content, not an independently
 // edited answer key that could silently misgrade students.
 const migration = readFileSync(path.join(root, 'supabase/migrations/20261012093000_register_sy_g5_arabic_brochure_baseline.sql'), 'utf8');
-const embedded = migration.match(/v_items jsonb := \$aya_pkg\$([\s\S]*?)\$aya_pkg\$::jsonb;/u);
+const embedded = migration.match(/v_items jsonb := \$assessment_pkg\$([\s\S]*?)\$assessment_pkg\$::jsonb;/u);
 assert.ok(embedded, 'Migration must embed a complete auditable JSON question payload');
 const rows = JSON.parse(embedded[1]);
 assert.equal(rows.length, 40);
