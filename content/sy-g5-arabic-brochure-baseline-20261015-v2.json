@@ -1,6 +1,6 @@
 {
   "package_id": "SY-G5-ARABIC-U1-BROCHURE-BASELINE-20261015-V2",
-  "status": "PENDING_REVIEW",
+  "status": "QUALITY_BLOCKED",
   "academic_context": {
     "student_ref": "Syrian G5 learner — anonymized curriculum baseline",
     "grade": "5",
@@ -2501,7 +2501,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PENDING_REVIEW",
+    "academic_semantic_review": "QUALITY_BLOCKED",
     "canonical_validator": "PENDING",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2514,10 +2514,10 @@
     "review_basis": "Versioned fresh v2 candidate. Reviewed 40 questions against Syrian G5 Arabic source PDF pages 7–9 and 80 progressive Learning hint levels; previous v1 QUALITY_BLOCKED version preserved in separate PR #156.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope. Consolidated correction (one bounded round): L19 now detects actual initial hamza; E16 cannot be solved by the coached grammar-only path because two options match grammar but differ in source day; E18 adds full-meaning decision for an incomplete time phrase. Pending full-bank independent review. One bounded source-grounded authoring repair on 15 Oct: E10 re-scoped to p7 collecting information; E16 adds missing-predicate completeness; E18 adds communicative function of an action invitation beyond sentence-type labels; L19 hint ladder reworked to avoid decisive definition at level 1.",
-    "warning_disposition": "Exact package remains PENDING_EXTERNAL_REVIEW. Compare real item operations, E16/E17 and E18/L18 near-neighbors; any unresolved material overlap after this bounded revision requires a design/scope decision rather than an endless item rewrite.",
-    "approval_scope": "EXTERNAL_SEMANTIC_REVIEW_PENDING — DO_NOT_PUBLISH",
-    "independent_semantic_review": "PENDING_EXTERNAL_REVIEW",
+    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope. Consolidated correction (one bounded round): L19 now detects actual initial hamza; E16 cannot be solved by the coached grammar-only path because two options match grammar but differ in source day; E18 adds full-meaning decision for an incomplete time phrase. Pending full-bank independent review. One bounded source-grounded authoring repair on 15 Oct: E10 re-scoped to p7 collecting information; E16 adds missing-predicate completeness; E18 adds communicative function of an action invitation beyond sentence-type labels; L19 hint ladder reworked to avoid decisive definition at level 1. Final Codex exact-head review c626a3c on 2026-10-15 identified a P1 E10 vs L03 cross-mode mirror: both ask to collect missing brochure information before design, and E10's only information-collection choice means its place/time details do not affect the decision. Further incremental item tweaking violates bounded repair governance.",
+    "warning_disposition": "FAIL FINAL SEMANTIC REVIEW: E10 and L03 share identical evidence path and decision rule despite wording differences. Stop v2 question-by-question rewrites. The page 7 book has four brochure-production stages and oral presentation; exact source bounds (PDF pp7–9) may be too narrow for an Exam requiring 20 independent cognitive operations. A versioned curriculum-bound blueprint/scope decision, with a genuine performance-based brochure task if needed, must precede any new 40-question candidate. Keep package QUALITY_BLOCKED and historical for audit. No learner assignment, content SQL application, video attachment, merge or email.",
+    "approval_scope": "QUALITY_BLOCKED — DO_NOT_MERGE_OR_PUBLISH — NEW VERSIONED_ASSESSMENT_SCOPE_REQUIRED",
+    "independent_semantic_review": "FAIL",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED"
@@ -2528,7 +2528,7 @@
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
     "method": "Whole-bank v2 authoring audit: all 20 Exam operations compared against 20 Learning questions and four hints each, and all within-Exam contrasts checked. No evidence of exact same coached cognitive choice after redesign of E14, E16, E18; Codex external semantic review still required before release.",
-    "status": "PENDING_EXTERNAL_REVIEW",
+    "status": "QUALITY_BLOCKED",
     "rows": [
       {
         "exam_code": "SYAR-G5-20261015-E01",
