@@ -22,12 +22,14 @@ assert.equal(exam.length, 20);
 const examBlueprint=new Map(pkg.blueprint.map(b=>[b.question_code,b]));
 assert.equal(exam.filter(q=>examBlueprint.get(q.question_code)?.context_type==='contextual').length,15,
   'This package requires exactly 15 meaningful contextual Exam items');
-assert.equal(examBlueprint.get('SYAR-G5-20261015-V3-E02')?.context_type,'direct',
+assert.equal(examBlueprint.get('Q-202610150022')?.context_type,'direct',
   'E02 is a direct missing-title function question, not a contextual case');
 assert.equal(new Set(pkg.questions.map(q => q.question_code)).size, 40);
 assert.equal(new Set(pkg.questions.map(q => q.prompt)).size, 40);
 assert.equal(learning.flatMap(q => q.hints ?? []).length, 80);
 const concepts = new Map();
+// The protected parent stage RPC rejects nonnumeric question codes.
+for (const q of pkg.questions) assert.match(q.question_code, /^Q-[0-9]{6,}$/, 'FLH-027 question-code contract');
 for (const q of pkg.questions) {
   concepts.set(q.concept_code, (concepts.get(q.concept_code) ?? 0) + 1);
   assert.equal(q.options.filter(o => o.is_correct === true).length, 1, q.question_code);
@@ -72,16 +74,16 @@ for (const q of pkg.questions) {
 }
 
 // Scoped academic fidelity regression for the single material v3 change.
-const e10=exam.find(q=>q.question_code.endsWith('-E10'));
+const e10=exam.find(q=>q.question_code==='Q-202610150030');
 assert.ok(e10 && e10.prompt.includes('المجلات') && e10.prompt.includes('الصفحات'),
  'E10 must apply eligibility constraints, not repeat L03 choice of gathering information');
 assert.equal(e10.options.filter(o=>o.is_correct).length,1);
 assert.ok(e10.options.some(o=>o.content.includes('مبلل')),
  'E10 wrong option must violate a substantive acceptance criterion');
-const e16=exam.find(q=>q.question_code.endsWith('-E16'));
+const e16=exam.find(q=>q.question_code==='Q-202610150036');
 assert.ok(e16 && e16.options.some(o=>o.content.includes('التي خلفَ المدرسةِ')),
  'E16 grammar scope and sentence completeness');
-const e18=exam.find(q=>q.question_code.endsWith('-E18'));
+const e18=exam.find(q=>q.question_code==='Q-202610150038');
 assert.ok(e18 && e18.options.some(o=>o.content.includes('ينظّفُ الطلابُ')),
  'E18 verbal report vs invitation');
 // FLH-027 uses the existing official assessment stage and release contracts.
