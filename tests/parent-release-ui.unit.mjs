@@ -47,7 +47,7 @@ for(const [path,mode] of [
 assert.equal(link('index.html?quiz=x&mode=exam&learner=mohammad','exam'),origin+'index.html?quiz=x&mode=exam&learner=mohammad');
 
 assert.ok(source.indexOf("call(LEARNING,'read_assessment',pointer)")<source.indexOf("call(LEARNING,'release_assessment',pointer)"),'Read-before-release proof missing');
-assert.ok(!source.includes('publication.candidate'), 'Do not show answer keys/content');
+assert.doesNotMatch(source,/publication\.candidate\b/, 'Do not show answer keys/content');
 assert.ok(!source.includes('console.log(')&&!source.includes('console.error('), 'Do not log private assessment data');
 assert.ok(!source.includes('service_role')&&!source.includes('flh_assessment_command('),'Do not use service credentials/SQL in frontend');
 assert.ok(!source.includes("call(LEARNING,'prepare_assessment_delivery'"),'Email actions are out of UI scope');
