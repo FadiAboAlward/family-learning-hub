@@ -1,6 +1,6 @@
 {
   "package_id": "SY-G5-ARABIC-U1-BROCHURE-BASELINE-20261012-V1",
-  "status": "CANDIDATE",
+  "status": "QUALITY_BLOCKED",
   "academic_context": {
     "student_ref": "Syrian G5 learner — anonymized curriculum baseline",
     "grade": "5",
@@ -2500,7 +2500,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PASS",
+    "academic_semantic_review": "QUALITY_BLOCKED",
     "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2513,13 +2513,13 @@
     "review_basis": "Holistic authoring review of full Exam bank vs Learning + 80 hints, with all 20 individually documented closest operations and concept/content fidelity to book pages 7–9.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "E20 replayed the exact hamza pronunciation rule coached by L20; rewritten to test the position of written hamzat al-qat under fatha and kasra instead. Other Exam items were assessed at bank level and retained where their deciding operations differed. The matrix now includes 20 exam-specific cognitive contrasts.",
-    "warning_disposition": "Authoring review supports request for independent final semantic review. Formal review must check remaining semantic mirrors and exact candidate; published mastery for brochure creation requires authentic task evidence, not MCQ alone.",
-    "approval_scope": "ACADEMIC_AUTHORING_REVIEWED; EXTERNAL_SEMANTIC_REVIEW_AND_EXACT_HEAD_CI_REQUIRED",
+    "review_findings": "E20 replayed the exact hamza pronunciation rule coached by L20; rewritten to test the position of written hamzat al-qat under fatha and kasra instead. Other Exam items were assessed at bank level and retained where their deciding operations differed. The matrix now includes 20 exam-specific cognitive contrasts. Final independent Codex review on the redesigned candidate found E14 and E15 still award two Exam points for the same complaint→direct repair decision path. Both are distinct situational vocabulary but not independent cognitive operations. This invalidates any prior PASS assertion for bank-level semantic independence. The two previous bounded repair rounds and holistic audit have not yielded release-ready evidence.",
+    "warning_disposition": "UNRESOLVED P1: E14 and E15 overlap in response-to-complaint then choose direct remedy. Do NOT release, apply the authored SQL content migration, attach learner video or send learner email. Per SOP v1.13 terminate targeted patch loop and build a fresh versioned Exam blueprint/bank with disjoint decision signatures and independent external audit. Preserve current candidate only as an auditable QUALITY_BLOCKED record.",
+    "approval_scope": "QUALITY_BLOCKED — NEW EXAM BANK DESIGN REQUIRED BEFORE VALIDATOR PASS OR RELEASE",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED",
-    "independent_semantic_review": "PENDING_EXTERNAL_REVIEW"
+    "independent_semantic_review": "FAIL"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
@@ -2527,7 +2527,7 @@
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
     "method": "Holistic authoring review of all 20 Exam operations against all 20 Learning questions and 80 hint levels, with named closest trained comparator and within-Exam contrast for every item. Metadata labels are not proof; external review separately required.",
-    "status": "SEMANTIC_REVIEW_READY",
+    "status": "QUALITY_BLOCKED",
     "rows": [
       {
         "exam_code": "SYAR-G5-20261012-E01",
@@ -2820,7 +2820,7 @@
           "other_exam_for_contrast": "SYAR-G5-20261012-E19"
         }
       ],
-      "note": "E20 replaced because L20 directly coached the same pronunciation operation. Preserve valid independently distinct Exam items. Formal Codex review and CI not inferred from these labels."
+      "note": "E20 replaced because L20 directly coached the same pronunciation operation. Preserve valid independently distinct Exam items. Formal Codex review and CI not inferred from these labels. Independent Codex review on 15 October failed E14-versus-E15 within-exam semantic independence; this package must not be claimed approved."
     }
   }
 }
