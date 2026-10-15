@@ -43,7 +43,7 @@ const serialized = JSON.stringify(pkg);
 assert.doesNotMatch(serialized, /"learner_id"\s*:|"recipient"\s*:|"email"\s*:/iu);
 assert.doesNotMatch(serialized, /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u);
 assert.doesNotMatch(serialized, /https:\/\/docs\.google\.com\/document\/d\//u);
-const migrationText = readFileSync(path.join(root, 'supabase/migrations/20261015093000_register_sy_g5_arabic_brochure_baseline_v2.sql'), 'utf8');
+const migrationText = readFileSync(path.join(root, 'supabase/migrations/20261015133000_register_sy_g5_arabic_brochure_baseline_v2.sql'), 'utf8');
 assert.doesNotMatch(migrationText, /\$[a-z_]*(?:learner|student|child)[a-z_]*\$/iu,
   'The committed publication package must use learner-neutral SQL delimiters');
 assert.equal(pkg.questions.length, 40);
@@ -91,7 +91,7 @@ assert.ok(e18 && e18.prompt.includes('الجملتين فعليتان') &&
 // Publication integrity: the embedded forward-only SQL package must be the exact
 // validator-approved question/option/answer/hint content, not an independently
 // edited answer key that could silently misgrade students.
-const migration = readFileSync(path.join(root, 'supabase/migrations/20261015093000_register_sy_g5_arabic_brochure_baseline_v2.sql'), 'utf8');
+const migration = readFileSync(path.join(root, 'supabase/migrations/20261015133000_register_sy_g5_arabic_brochure_baseline_v2.sql'), 'utf8');
 const embedded = migration.match(/v_items jsonb := \$assessment_pkg\$([\s\S]*?)\$assessment_pkg\$::jsonb;/u);
 assert.ok(embedded, 'Migration must embed a complete auditable JSON question payload');
 const rows = JSON.parse(embedded[1]);
