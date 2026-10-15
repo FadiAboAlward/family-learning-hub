@@ -427,10 +427,10 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "تطبيق إرشاد شرطي على واقعة محددة بعد التمييز بين تسرب أنبوب وصنبور مغلق",
+      "reasoning_signature": "تحديد المعلومات الناقصة الواجب جمعها من منظمي الفعالية قبل إخراج المطويّة",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "وجود تسرب خلف المدرسة مع صنبور مغلق يحدد أي الإرشادين ينطبق؛ من دون هذه الحالة لا يمكن ترجيح التصرف."
+      "context_necessity_reason": "المعطيات والسياق يضيفان قيدًا ضروريًا لا تكفي معه معرفة موضوع الجملة وحده."
     },
     {
       "question_code": "SYAR-G5-20261015-E11",
@@ -503,10 +503,10 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "التحقق من ترتيب الاسمية والفعلية مع حفظ اليوم والعدد في نقل معلومة محددة",
+      "reasoning_signature": "استبعاد تركيب يبدأ باسم لكنه لا يفيد معنى تاماً قبل اختيار جملتين متكاملتين",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "تفاصيل المعطيات داخل السؤال ضرورية لتطبيق الشروط النحوية والمعلوماتية معاً."
+      "context_necessity_reason": "المعطيات والسياق يضيفان قيدًا ضروريًا لا تكفي معه معرفة موضوع الجملة وحده."
     },
     {
       "question_code": "SYAR-G5-20261015-E17",
@@ -527,10 +527,10 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "الجمع بين اختبار تمام المعنى وتصنيف الاسمية والفعلية عبر ثلاث عبارات",
+      "reasoning_signature": "اختيار فقرة من جملة اسمية تخبر بفائدة وجملة فعلية تدعو المخاطبين للمشاركة",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "تفاصيل المعطيات داخل السؤال ضرورية لتطبيق الشروط النحوية والمعلوماتية معاً."
+      "context_necessity_reason": "المعطيات والسياق يضيفان قيدًا ضروريًا لا تكفي معه معرفة موضوع الجملة وحده."
     },
     {
       "question_code": "SYAR-G5-20261015-E19",
@@ -1679,22 +1679,22 @@
         {
           "level": 1,
           "role": "nudge",
-          "content": "• اقرئي كلمات العبارة أولاً وتأملي مكان الهمزة لا معنى القصة أو زمن الأفعال الموجودة فيها.\n• الهمزة الأولية هي التي تأتي في بداية الكلمة، وهذا الشرط هو أساس السؤال الآن.\n• قد تري همزة في كلمة أخرى، لكن ظهورها بعد حروف سابقة لا يجعلها همزة أولية."
+          "content": "• اقرئي الجملة كلمة كلمة، وانظري إلى رسم الكلمات الأربع بهدوء قبل اختيار أي واحدة منها.\n• حددي ما يطلبه السؤال: ملاحظة موضع علامة إملائية، وليس معرفة من قام بالعمل أو معنى الجملة.\n• حاولي العثور على اختلاف بصري بين بدايات الكلمات ونهاياتها دون استبعاد أي بديل الآن."
         },
         {
           "level": 2,
           "role": "guide",
-          "content": "• مرّي بعينيك على الكلمة من اليمين إلى اليسار، وحددي الحرف الذي تبدأ به قبل متابعة بقيتها.\n• قارني مثالاً من خارج الخيارات: «أمل» بهمزة في الأول، و«سماء» بهمزة قرب النهاية.\n• لا تعتمدي على وجود الرسم وحده؛ حاولي ربط موضع العلامة بموضع البداية."
+          "content": "• راقبي أول حرف في كل كلمة، ثم ابحثي عما إذا كانت الهمزة تظهر في موضع لاحق داخل بعضها.\n• قارني مثالين جديدين: «أَمَل» و«سَماء»، وفكري في موضع الهمزة بالنسبة إلى بداية الكلمة في كل مثال.\n• افصلي بين وجود العلامة في أي مكان وبين موقعها الذي يسأل عنه التمرين."
         },
         {
           "level": 3,
           "role": "strong_guide",
-          "content": "• استبعدي الكلمات التي تبدأ بحروف واضحة لا تحمل همزة في بدايتها، حتى لو كانت مألوفة أو ذات معنى مناسب.\n• افحصي الكلمات التي قد تحمل علامة همزة في موضع آخر، مثل نهاية الكلمة أو وسطها.\n• تذكري أن المطلوب كلمة تبدأ بالهمزة نفسها، وليس كلمة تشمل أي نوع من الهمزات فحسب."
+          "content": "• افحصي بداية الخيارات قبل نهايتها، ولا تعتمدي على ظهور الهمزة قرب نهاية كلمة لتصنيف بدايتها.\n• جرّبي استبعاد الكلمات التي تبدأ بحروف عادية لا تظهر فوقها أو تحتها علامة الهمزة.\n• عودي إلى الكلمات الباقية وحددي موضع الهمزة حرفًا حرفًا قبل النظر إلى الإجابة."
         },
         {
           "level": 4,
           "role": "near_solution",
-          "content": "• راجعي بداية كل خيار على حدة، ثم قارني نتيجة هذا الفحص بين جميع الكلمات الأربع من جديد.\n• لا تتسرعي في اختيار كلمة بسبب همزة قرب نهايتها، ولا تبحثي عن نوع الجملة أو الفعل.\n• اختاري الكلمة التي يثبت عند قراءتها من البداية أن الهمزة هي أول ما تراه عينك."
+          "content": "• صنّفي البدائل ذهنيًا إلى كلمات تبدأ بهمزة وأخرى فيها همزة في غير البداية وأخرى لا تبدأ بالهمزة.\n• قارني موضع العلامة في كل خيار مع مثال واضح بهمزة في أول الكلمة من خارج السؤال.\n• عند إكمال المقارنة، اختاري بنفسك البديل الذي تنطبق عليه الفئة المطلوبة، دون تخمين من معنى العبارة."
         }
       ]
     },
@@ -2100,33 +2100,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تقرأ في مطويّة ترشيد الماء إرشادين: «أغلق الصنبور بعد استعماله» و«أخبر شخصاً بالغاً إذا رأيت تسرّباً». شاهد تلميذ ماءً يتسرّب من أنبوب خلف المدرسة، وكان الصنبور القريب مغلقاً أصلاً. أي تصرّف يطبّق الإرشاد المناسب للموقف؟",
+      "prompt": "تحضّر مجموعة مطويّة لدعوة جيرانها إلى زراعة شجيرات في ساحة الحي. اختارت العنوان والرسوم، لكنّها لم تجمع معلومات عن الفعالية بعد. أي عمل يجمع المعلومات التي يحتاجها القارئ للمشاركة قبل إعداد الشكل النهائي؟",
       "options": [
         {
-          "content": "يخبر شخصاً بالغاً بمكان تسرّب الماء",
+          "content": "سؤال المنظّمين عن مكان الزراعة وموعدها وكيف يستطيع الجيران المشاركة",
           "position": 1,
           "is_correct": true
         },
         {
-          "content": "يفتح الصنبور المغلق ليرى إن كان الماء يخرج منه",
+          "content": "اختيار لون الخلفية ونوع الخط وتوزيعهما على الغلاف",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "فتح صنبور مغلق لا يعالج تسرّب الأنبوب ويخالف هدف ترشيد الماء."
+          "distractor_rationale": "الألوان والخط من الإعداد الفني، ولا تجيب عما يحتاجه الجار للمشاركة في الفعالية."
         },
         {
-          "content": "يحاول إغلاق الصنبور المغلق مجدداً ويتجاهل الأنبوب",
+          "content": "كتابة وعود غير متحقّق منها بأن جميع الجيران سيحضرون",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "الصنبور مغلق بالفعل؛ الإرشاد المتعلق بالتسرّب هو الذي ينطبق على الحالة."
+          "distractor_rationale": "الوعود غير الموثقة ليست معلومات دقيقة يحتاجها القارئ، وخصوصًا قبل إقامة الفعالية."
         },
         {
-          "content": "يتجاهل التسرّب لأنه لم يحدث أثناء استعماله للصنبور",
+          "content": "طباعة النسخ ثم سؤال القرّاء عن موعد النشاط",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الإبلاغ عن التسرّب مطلوب عند رؤيته، ولا يشترط أن يكون التلميذ هو من استعمل الصنبور."
+          "distractor_rationale": "يجب جمع المعلومات اللازمة قبل طباعة المطويّة، وليس بعد توزيعها."
         }
       ],
-      "explanation": "السؤال يعرض تسرباً مع صنبور مغلق، فينطبق إرشاد الإبلاغ عن التسرب، لا إرشاد إغلاق صنبور بعد استعماله."
+      "explanation": "تسبق مرحلة جمع المعلومات الإعداد الفني النهائي؛ يحتاج سكان الحي إلى موعد النشاط ومكانه وطريقة المشاركة، وتُجمع هذه المعلومات من منظمي الفعالية."
     },
     {
       "question_code": "SYAR-G5-20261015-E11",
@@ -2322,33 +2322,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "بطاقة المعلومات تقول: «حديقة المدرسة جميلة، وسيزرع التلاميذ فيها ثلاث شجيرات يوم الخميس». تريد تلميذة سطرين: الأول جملة اسمية تصف المكان، والثاني فعلية تذكر العمل، مع الحفاظ على اليوم والعدد. أي نص يحقق جميع الشروط؟",
+      "prompt": "أثناء مراجعة مطويّة عن الاهتمام بالحديقة طُلب أن يبدأ النص بجملة اسمية تامّة تصف الحديقة، وأن يتبعها سطر يبدأ بفعل ويذكر عمل التلاميذ. أي زوج من العبارات يحقّق نوع الجملتين وتمام معنى كلٍّ منهما؟",
       "options": [
         {
-          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ فيها ثلاثَ شجيراتٍ يومَ الخميس.",
+          "content": "الحديقةُ التي خلفَ المدرسةِ. يزرعُ التلاميذُ الأشجارَ.",
           "position": 1,
+          "is_correct": false,
+          "distractor_rationale": "العبارة الأولى بدأت باسم لكنها لم تتمّ معناها؛ فالقارئ ينتظر خبرًا عن الحديقة."
+        },
+        {
+          "content": "تتفتحُ الأزهارُ. يزرعُ التلاميذُ الأشجارَ.",
+          "position": 2,
+          "is_correct": false,
+          "distractor_rationale": "الجملتان مفيدتان لكن الأولى بدأت بالفعل، وليست جملة اسمية كما طُلب."
+        },
+        {
+          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ الأشجارَ.",
+          "position": 3,
           "is_correct": true
         },
         {
-          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ فيها ثلاثَ شجيراتٍ يومَ الجمعة.",
-          "position": 2,
-          "is_correct": false,
-          "distractor_rationale": "يحافظ النص على ترتيب الاسمية والفعلية لكنه يغيّر اليوم الذي ورد في المصدر."
-        },
-        {
-          "content": "يزرعُ التلاميذُ ثلاثَ شجيراتٍ يومَ الخميس. الحديقةُ جميلةٌ.",
-          "position": 3,
-          "is_correct": false,
-          "distractor_rationale": "حافظ النص على تفاصيل الحدث لكنه عكس ترتيب الجملة الاسمية والفعلية المطلوب."
-        },
-        {
-          "content": "الحديقةُ جميلةٌ. التلاميذُ يزرعونَ فيها ثلاثَ شجيراتٍ يومَ الخميس.",
+          "content": "الحديقةُ جميلةٌ. التلاميذُ يزرعونَ الأشجارَ.",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "يبدأ السطر الثاني باسم التلاميذ بدل الفعل، فيخالف شرط نوع الجملة الثانية."
+          "distractor_rationale": "الجملتان تامّتان لكن الثانية تبدأ باسم، فلا تحقق شرط الجملة الفعلية."
         }
       ],
-      "explanation": "الأول اسمي والثاني فعلي، كما بقي العدد ثلاث شجيرات واليوم الخميس؛ فقاعدة بداية الجملة وحدها لا تكفي لحل السؤال."
+      "explanation": "«الحديقة جميلة» جملة اسمية تامة، و«يزرع التلاميذ الأشجار» جملة فعلية تامة. البديل الذي يبدأ «الحديقة التي خلف المدرسة» لا يفيد معنى تامًا رغم بدايته بالاسم."
     },
     {
       "question_code": "SYAR-G5-20261015-E17",
@@ -2396,33 +2396,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "اقرئي ثلاث عبارات في مسودة مطويّة: «الحديقةُ واسعةٌ». «يزرعُ التلاميذُ الأشجارَ». «عندَ نهايةِ الدوامِ». أي حكم صحيح يجمع بين تمام المعنى ونوع الجملة عند اكتمالها؟",
+      "prompt": "تريد تلميذة أن تعرض على سكان الحي قيمة التعاون ثم تدعوهم للمشاركة بعبارتين تامتّين. المطلوب جملة اسمية أولى تفيد معنى كاملًا، ثم جملة فعلية تدعو الناس إلى عمل واضح. أي نص يصلح للمطويّة؟",
       "options": [
         {
-          "content": "الأولى اسمية تامة، والثانية فعلية تامة، والثالثة فعلية تامة.",
+          "content": "التعاونُ قوةٌ. شاركوا في تنظيف ساحة الحيّ.",
           "position": 1,
-          "is_correct": false,
-          "distractor_rationale": "الظرف الزمني وحده لا يبين ما الذي وقع، فلا يفيد معنى جملة تامة."
-        },
-        {
-          "content": "الأولى فعلية تامة، والثانية اسمية تامة، والثالثة غير تامة.",
-          "position": 2,
-          "is_correct": false,
-          "distractor_rationale": "هذا يعكس بدايتي الجملتين الأولى والثانية، رغم أن الثالثة غير تامة بالفعل."
-        },
-        {
-          "content": "الأولى اسمية تامة، والثانية فعلية تامة، والثالثة عبارة غير تامة المعنى.",
-          "position": 3,
           "is_correct": true
         },
         {
-          "content": "الأولى والثانية ناقصتان، والثالثة جملة اسمية.",
+          "content": "التعاونُ قوةٌ. ينظّفُ الطلابُ ساحةَ المدرسة.",
+          "position": 2,
+          "is_correct": false,
+          "distractor_rationale": "الثانية فعلية تامة لكنّها تصف عملًا جارياً ولا تدعو السكان إلى مشاركتهم."
+        },
+        {
+          "content": "يساعدُ التعاونُ الجميعَ. شاركوا في تنظيف الساحة.",
+          "position": 3,
+          "is_correct": false,
+          "distractor_rationale": "العبارتان مفيدتان وتدعو الثانية للعمل، لكن الأولى بدأت بفعل لا باسم."
+        },
+        {
+          "content": "التعاونُ قوةٌ. المشاركةُ تجعلُ الحيَّ أنظفَ.",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "الأولى والثانية تفيدان معنى تاماً، بينما عبارة الزمان تحتاج إلى جملة أخرى."
+          "distractor_rationale": "الثانية اسمية وليست جملة فعلية تدعو إلى عمل."
         }
       ],
-      "explanation": "العبارة الأولى جملة اسمية، والثانية فعلية، وهما كاملتا المعنى، أما «عند نهاية الدوام» فلا تُفيد معنى تاماً وحدها."
+      "explanation": "«التعاون قوة» جملة اسمية مفيدة، و«شاركوا في تنظيف ساحة الحي» جملة فعلية تامة وتطلب مشاركة الناس، بينما الخبر عن عمل الطلاب لا يحقق الدعوة المطلوبة."
     },
     {
       "question_code": "SYAR-G5-20261015-E19",
@@ -2514,8 +2514,8 @@
     "review_basis": "Versioned fresh v2 candidate. Reviewed 40 questions against Syrian G5 Arabic source PDF pages 7–9 and 80 progressive Learning hint levels; previous v1 QUALITY_BLOCKED version preserved in separate PR #156.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope. Consolidated correction (one bounded round): L19 now detects actual initial hamza; E16 cannot be solved by the coached grammar-only path because two options match grammar but differ in source day; E18 adds full-meaning decision for an incomplete time phrase. Pending full-bank independent review.",
-    "warning_disposition": "Do NOT claim authoring metadata is external approval. Independent reviewer must inspect exact candidate again before activation.",
+    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope. Consolidated correction (one bounded round): L19 now detects actual initial hamza; E16 cannot be solved by the coached grammar-only path because two options match grammar but differ in source day; E18 adds full-meaning decision for an incomplete time phrase. Pending full-bank independent review. One bounded source-grounded authoring repair on 15 Oct: E10 re-scoped to p7 collecting information; E16 adds missing-predicate completeness; E18 adds communicative function of an action invitation beyond sentence-type labels; L19 hint ladder reworked to avoid decisive definition at level 1.",
+    "warning_disposition": "Exact package remains PENDING_EXTERNAL_REVIEW. Compare real item operations, E16/E17 and E18/L18 near-neighbors; any unresolved material overlap after this bounded revision requires a design/scope decision rather than an endless item rewrite.",
     "approval_scope": "EXTERNAL_SEMANTIC_REVIEW_PENDING — DO_NOT_PUBLISH",
     "independent_semantic_review": "PENDING_EXTERNAL_REVIEW",
     "video": "NOT_VERIFIED",
@@ -2604,11 +2604,11 @@
       },
       {
         "exam_code": "SYAR-G5-20261015-E10",
-        "closest_learning_code": "SYAR-G5-20261015-L04",
-        "input_evidence": "نص إرشادين مختلفين وموقف فيه أنبوب يتسرّب وصنبور مغلق بالفعل",
-        "cognitive_action": "تطبيق إرشاد شرطي على واقعة محددة بعد التمييز بين تسرب أنبوب وصنبور مغلق",
-        "deciding_criterion": "مطابقة شرط الإبلاغ عن التسرب مع الحدث المشاهد واستبعاد الإغلاق غير الملائم",
-        "independence_rationale": "تطبيق إحدى قاعدتين شرطيتين وفق واقعة تسرب وصنبور مغلق لا انتقاء إرشاد عام لفرز النفايات"
+        "closest_learning_code": "SYAR-G5-20261015-L06",
+        "input_evidence": "تحضّر مجموعة مطويّة لدعوة جيرانها إلى زراعة شجيرات في ساحة الحي. اختارت العنوان والرسوم، لكنّها لم تجمع معلومات عن الفعالية بعد. أي عمل يجمع المعلومات التي يحتاجها القارئ للمشاركة قبل إعداد الشكل النهائي؟",
+        "cognitive_action": "تحديد المعلومات الناقصة الواجب جمعها من منظمي الفعالية قبل إخراج المطويّة",
+        "deciding_criterion": "تسبق مرحلة جمع المعلومات الإعداد الفني النهائي؛ يحتاج سكان الحي إلى موعد النشاط ومكانه وطريقة المشاركة، وتُجمع هذه المعلومات من منظمي الفعالية.",
+        "independence_rationale": "L06 يختار بين مواد جاهزة من حيث الصلة والموثوقية؛ E10 يحدد أسئلة المشاركة الأساسية التي يجب توجيهها للمنظمين أثناء جمع المعلومات، ولا يطلب تطبيق قواعد سلامة خارج نطاق تصميم المطوية."
       },
       {
         "exam_code": "SYAR-G5-20261015-E11",
@@ -2653,10 +2653,10 @@
       {
         "exam_code": "SYAR-G5-20261015-E16",
         "closest_learning_code": "SYAR-G5-20261015-L18",
-        "input_evidence": "بطاقة المعلومات تقول: «حديقة المدرسة جميلة، وسيزرع التلاميذ فيها ثلاث شجيرات يوم الخميس». تريد تلميذة سطرين: الأول جملة اسمية تصف المكان، والثاني فعلية تذكر العمل، مع الحفاظ على اليوم والعدد. أي نص يحقق جميع الشروط؟",
-        "cognitive_action": "التحقق من ترتيب الاسمية والفعلية مع حفظ اليوم والعدد في نقل معلومة محددة",
-        "deciding_criterion": "الأول اسمي والثاني فعلي، كما بقي العدد ثلاث شجيرات واليوم الخميس؛ فقاعدة بداية الجملة وحدها لا تكفي لحل السؤال.",
-        "independence_rationale": "L18 يدرب على تحديد نوع جملتين من البداية فقط؛ هنا يوجد بديلان مستوفيان لشرط النوع، لذا يحتاج الحكم إلى فحص العدد واليوم أيضاً، كما توجد صيغة تحفظ المعلومات لكنها تعكس البنية."
+        "input_evidence": "أثناء مراجعة مطويّة عن الاهتمام بالحديقة طُلب أن يبدأ النص بجملة اسمية تامّة تصف الحديقة، وأن يتبعها سطر يبدأ بفعل ويذكر عمل التلاميذ. أي زوج من العبارات يحقّق نوع الجملتين وتمام معنى كلٍّ منهما؟",
+        "cognitive_action": "استبعاد تركيب يبدأ باسم لكنه لا يفيد معنى تاماً قبل اختيار جملتين متكاملتين",
+        "deciding_criterion": "«الحديقة جميلة» جملة اسمية تامة، و«يزرع التلاميذ الأشجار» جملة فعلية تامة. البديل الذي يبدأ «الحديقة التي خلف المدرسة» لا يفيد معنى تامًا رغم بدايته بالاسم.",
+        "independence_rationale": "L18 يصنف جملتين تامتين من بدايتهما؛ E16 يتطلب التأكد من اكتمال معنى تركيب يبدأ باسم ولكنه يفتقر إلى الخبر، وهو فرق في المعطيات يؤثر على التصحيح، ولا يتضمن إعادة نقل تاريخ E06."
       },
       {
         "exam_code": "SYAR-G5-20261015-E17",
@@ -2669,10 +2669,10 @@
       {
         "exam_code": "SYAR-G5-20261015-E18",
         "closest_learning_code": "SYAR-G5-20261015-L18",
-        "input_evidence": "اقرئي ثلاث عبارات في مسودة مطويّة: «الحديقةُ واسعةٌ». «يزرعُ التلاميذُ الأشجارَ». «عندَ نهايةِ الدوامِ». أي حكم صحيح يجمع بين تمام المعنى ونوع الجملة عند اكتمالها؟",
-        "cognitive_action": "الجمع بين اختبار تمام المعنى وتصنيف الاسمية والفعلية عبر ثلاث عبارات",
-        "deciding_criterion": "العبارة الأولى جملة اسمية، والثانية فعلية، وهما كاملتا المعنى، أما «عند نهاية الدوام» فلا تُفيد معنى تاماً وحدها.",
-        "independence_rationale": "L18 يصنف جملتين مكتملتين من بدايتهما؛ هذا السؤال يتطلب أولاً فصل عبارة ظرف غير تامة المعنى ثم تصنيف الجملتين التامتين، فلا تكفي قاعدة الكلمة الأولى دون اختبار اكتمال الإسناد."
+        "input_evidence": "تريد تلميذة أن تعرض على سكان الحي قيمة التعاون ثم تدعوهم للمشاركة بعبارتين تامتّين. المطلوب جملة اسمية أولى تفيد معنى كاملًا، ثم جملة فعلية تدعو الناس إلى عمل واضح. أي نص يصلح للمطويّة؟",
+        "cognitive_action": "اختيار فقرة من جملة اسمية تخبر بفائدة وجملة فعلية تدعو المخاطبين للمشاركة",
+        "deciding_criterion": "«التعاون قوة» جملة اسمية مفيدة، و«شاركوا في تنظيف ساحة الحي» جملة فعلية تامة وتطلب مشاركة الناس، بينما الخبر عن عمل الطلاب لا يحقق الدعوة المطلوبة.",
+        "independence_rationale": "L18 يطلب تسمية نوع جملتين فقط. في E18 يوجد خياران يحققان نوع الجملتين، لكن أحدهما فعل خبري لا يدعو السكان إلى المشاركة؛ فلا يكفي تكرار معيار أول كلمة لحل المهمة التواصلية."
       },
       {
         "exam_code": "SYAR-G5-20261015-E19",
@@ -2756,8 +2756,8 @@
         },
         {
           "exam_code": "SYAR-G5-20261015-E10",
-          "closest_learning_code": "SYAR-G5-20261015-L04",
-          "reasoned_difference": "تطبيق إحدى قاعدتين شرطيتين وفق واقعة تسرب وصنبور مغلق لا انتقاء إرشاد عام لفرز النفايات",
+          "closest_learning_code": "SYAR-G5-20261015-L06",
+          "reasoned_difference": "L06 يختار بين مواد جاهزة من حيث الصلة والموثوقية؛ E10 يحدد أسئلة المشاركة الأساسية التي يجب توجيهها للمنظمين أثناء جمع المعلومات، ولا يطلب تطبيق قواعد سلامة خارج نطاق تصميم المطوية.",
           "other_exam_for_contrast": "SYAR-G5-20261015-E15"
         },
         {
@@ -2793,7 +2793,7 @@
         {
           "exam_code": "SYAR-G5-20261015-E16",
           "closest_learning_code": "SYAR-G5-20261015-L18",
-          "reasoned_difference": "Grammar alone yields two options; preserving source day and count determines the unique key.",
+          "reasoned_difference": "L18 يصنف جملتين تامتين من بدايتهما؛ E16 يتطلب التأكد من اكتمال معنى تركيب يبدأ باسم ولكنه يفتقر إلى الخبر، وهو فرق في المعطيات يؤثر على التصحيح، ولا يتضمن إعادة نقل تاريخ E06.",
           "other_exam_for_contrast": "SYAR-G5-20261015-E18"
         },
         {
@@ -2805,7 +2805,7 @@
         {
           "exam_code": "SYAR-G5-20261015-E18",
           "closest_learning_code": "SYAR-G5-20261015-L18",
-          "reasoned_difference": "A time adjunct without predication must be excluded before classifying the two complete sentences.",
+          "reasoned_difference": "L18 يطلب تسمية نوع جملتين فقط. في E18 يوجد خياران يحققان نوع الجملتين، لكن أحدهما فعل خبري لا يدعو السكان إلى المشاركة؛ فلا يكفي تكرار معيار أول كلمة لحل المهمة التواصلية.",
           "other_exam_for_contrast": "SYAR-G5-20261015-E17"
         },
         {

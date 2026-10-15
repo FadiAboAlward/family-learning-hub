@@ -74,22 +74,19 @@ for (const q of pkg.questions) {
   for (const o of incorrect) assert.ok(o.distractor_rationale.length > 15, q.question_code);
 }
 
-// PDF p8 transfer must need more than a coached first-word comparison.
-const e16 = exam.find(q => q.question_code.endsWith('-E16'));
-assert.ok(e16 && e16.prompt.includes('ثلاث شجيرات') && e16.prompt.includes('الخميس'));
-const grammarOnly = e16.options.map(o => {
- const parts=o.content.split('.').map(s=>s.trim()).filter(Boolean);
- return parts.length===2 && /^الحديقةُ/u.test(parts[0]) && /^يزرعُ/u.test(parts[1]);
-});
-assert.deepEqual(grammarOnly,[true,true,false,false],
- 'E16 needs two grammar-valid options, so source factual accuracy is necessary');
-const e18=exam.find(q => q.question_code.endsWith('-E18'));
-assert.ok(e18 && e18.prompt.includes('عندَ نهايةِ الدوامِ'),
- 'E18 must test an incomplete expression, not just coached sentence types');
-const l19=learning.find(q => q.question_code.endsWith('-L19'));
-assert.ok(l19 && l19.prompt.includes('همزة أولية') &&
- l19.options.find(o=>o.is_correct).content.startsWith('أ'),
- 'L19 needs an actual initial-hamza example');
+// Source-grounded, item-specific regression without treating labels as semantics.
+const e10=exam.find(q=>q.question_code.endsWith('-E10'));
+assert.ok(e10 && e10.prompt.includes('جمع معلومات') && !e10.prompt.includes('تسرّباً'),
+  'E10 must test p7 brochure authorship');
+const e16=exam.find(q=>q.question_code.endsWith('-E16'));
+assert.ok(e16 && e16.options.some(o=>o.content.includes('التي خلفَ المدرسةِ')),
+  'E16 must include incomplete nominal-predicate evidence');
+const e18=exam.find(q=>q.question_code.endsWith('-E18'));
+assert.ok(e18 && e18.options.some(o=>o.content.includes('ينظّفُ الطلابُ')),
+  'E18 must discriminate a grammatical verbal report from an invitation');
+const l19=learning.find(q=>q.question_code.endsWith('-L19'));
+assert.ok(l19 && l19.hints.length===4 && !l19.hints[0].content.includes('الهمزة الأولية هي'),
+  'L19 first hint must not disclose the full solution rule');
 // Publication integrity: the embedded forward-only SQL package must be the exact
 // validator-approved question/option/answer/hint content, not an independently
 // edited answer key that could silently misgrade students.
