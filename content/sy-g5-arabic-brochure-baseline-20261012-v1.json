@@ -353,9 +353,7 @@
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "reasoning_signature": "تصنيف ثلاث وظائف تواصلية مختلفة داخل المطويّة",
-      "context_type": "contextual",
-      "context_necessary": true,
-      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+      "context_type": "direct"
     },
     {
       "question_code": "SYAR-G5-20261012-E05",
@@ -2516,7 +2514,7 @@
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
     "review_findings": "Final second targeted review round: fixed E03, which replayed L15's 'add missing instructions' operation, by replacing it with a source-bounded evaluation of an unsupported superlative against observed facts. Previous distinct E07/E10 corrections retained, E16 options remain verb-initial. All other candidate questions unchanged.",
-    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval.",
+    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval. E04 is a direct phrase-function classification whose decorative library setting does not change the answer; its context_type was corrected from contextual to direct, keeping 15 true contextual exam items without any learner-visible wording change.",
     "approval_scope": "ACADEMIC_AUTHORING_PASS_ONLY — RELEASE_AFTER_EXACT_HEAD_CI_AND_REAL_RUNTIME_CHECKS",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
