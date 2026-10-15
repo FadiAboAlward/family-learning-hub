@@ -1,5 +1,13 @@
 # Assessment publication gate (FLH-FEAT-2026-027 v1.2)
 
+
+> **CURRENT OPERATIONS STATUS — 15 October 2026 (supersedes dated pre-merge checklists below)**
+>
+> - PR [#154](https://github.com/FadiAboAlward/family-learning-hub/pull/154) is **MERGED** at `cfc9a277acaff63253544f337cdbf2fe4c9ceaba`. The owner explicitly approved E2 Production activation; both forward migrations `20261012095406` and `20261012111729` are installed and `learning-api` is **ACTIVE v15**. Live read-only verification repeated on 15 October confirmed both migration ledger entries, the publication RPCs, and Edge deployment metadata. Older statements that this PR is draft, migrations are unapplied, or the entire publication feature is unavailable are **historical only**.
+> - **Normal content-only exercise requests are not blocked by that historical draft status.** Start by checking newest verified learner state and assigned source; author an exact 20 Learning + 20 Exam candidate, run the deterministic academic validator plus proportional semantic review, then follow existing authenticated scoped staging, publication, required exact-context video, verified student deep links and Gmail handoff. An unpublished offline HTML artifact is not the default deliverable. Do not use real students as Testing fixtures or bypass version/authorization/provider gates.
+> - Remaining uncertainties are **per-version** official YouTube validation, authenticated authoring/provider context, learner links and complete Gmail/SENT reconciliation; they are not proof of a global outage. If any fails, report the actual operation and mark only that package blocked. Prior Aya Arabic candidates [#156](https://github.com/FadiAboAlward/family-learning-hub/pull/156) and [#161](https://github.com/FadiAboAlward/family-learning-hub/pull/161) remain QUALITY_BLOCKED individually, not as a global platform restriction. Future source-matched new candidates follow approved proportional QA spec FLH-FEAT-2026-029 v1.1.
+> - Canonical academic operating rule: [Adaptive Assessment SOP v1.14](https://docs.google.com/document/d/11pWzQlPiHtb44-krikpn-T2XwKwu9nkRqw4LVLBYYg0/edit). This note clarifies documented status only and changes no runtime behavior, database authorization, security requirement or historical evidence.
+
 Canonical approved specification: https://docs.google.com/document/d/1g1Zv-G4qpqd1wlui7MFNktP-fSfX7Ua7-CtK3Ai4Mk0/edit
 Issue: https://github.com/FadiAboAlward/family-learning-hub/issues/153
 
