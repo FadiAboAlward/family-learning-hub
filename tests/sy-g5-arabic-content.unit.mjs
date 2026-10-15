@@ -92,6 +92,12 @@ for (const [i, q] of pkg.questions.entries()) {
   assert.equal(row.prompt, q.prompt);
   assert.equal(row.explain, q.explanation);
   assert.equal(row.source_ref, q.source_ref);
+  assert.equal(row.difficulty, q.difficulty_level, 'Difficulty parity ' + q.question_code);
+  assert.equal(row.origin, q.origin, 'Origin parity ' + q.question_code);
+  assert.equal(row.learning_set, i < 20 ? (i < 10 ? 1 : 2) : null, 'Learning set parity ' + q.question_code);
+  assert.equal(row.decomposable, q.decomposable ?? false, 'Decomposable parity ' + q.question_code);
+  assert.equal(q.question_type, 'single_choice', 'Question type parity ' + q.question_code);
+  assert.equal(row.db_code, 'Q-20261012' + String(i + 1).padStart(4, '0'), 'DB code parity ' + q.question_code);
   const sourcePage = /\bPDF_PAGE=(\d+)\b/u.exec(q.source_ref);
   assert.ok(sourcePage, 'Source reference missing PDF_PAGE at ' + q.question_code);
   assert.equal(row.page, Number(sourcePage[1]),

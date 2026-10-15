@@ -550,10 +550,10 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
-      "reasoning_signature": "تفسير تبدل نطق همزة وصل في الكلمة نفسها بحسب موضعها",
+      "reasoning_signature": "استخلاص سبب اختلاف موضع همزة القطع في كلمتين من حركتي الفتح والكسر",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+      "context_necessity_reason": "الكلمتان المختلفتان وحركتاهما لازمتان لتفسير موضع الهمزة المكتوبة في كلٍّ منهما."
     }
   ],
   "questions": [
@@ -2469,33 +2469,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تُقال «اسمي جميل» عند ابتداء الكلام، ثم «واسمي جميل» بعد الواو. لماذا يُسمع صوت الهمزة أولاً ولا يُسمع منفصلاً بعد الواو؟",
+      "prompt": "كتبت تلميذة في مطويّة عن الأخلاق كلمتَي «أَمانة» و«إِخلاص». لاحظت أن همزة الأولى فوق الألف، وهمزة الثانية تحته. ما سبب اختلاف موضع الهمزتين؟",
       "options": [
         {
-          "content": "لأن الألف تُحذف من كتابة «اسم» بعد الواو",
           "position": 1,
+          "content": "لأنّ الهمزتين للوصل، وتتغيّر كتابتهما بتغيّر مكانهما في السطر",
           "is_correct": false,
-          "distractor_rationale": "حروف «اسم» تبقى في الكتابة بعد الواو."
+          "distractor_rationale": "الكلمتان تبدآن بهمزة قطع مكتوبة، وليس بهمزة وصل يتبدل رسمها بسبب موضعها."
         },
         {
-          "content": "لأن همزة «اسم» قطع تنطق في الموضعين",
           "position": 2,
-          "is_correct": false,
-          "distractor_rationale": "«اسم» لا تبدأ بهمزة قطع."
-        },
-        {
-          "content": "لأن الواو تحول القطع إلى وصل في الرسم",
-          "position": 3,
-          "is_correct": false,
-          "distractor_rationale": "الواو لا تغيّر نوع الهمزة المكتوب."
-        },
-        {
-          "content": "لأن همزة «اسم» وصل تُنطق عند الابتداء ولا تُنطق في الوصل",
-          "position": 4,
+          "content": "لأنّ الأولى همزة قطع مفتوحة فتُكتب فوق الألف، والثانية همزة قطع مكسورة فتُكتب تحته",
           "is_correct": true
+        },
+        {
+          "position": 3,
+          "content": "لأنّ كل كلمة قصيرة تُكتب همزتها فوق الألف، والطويلة تحته",
+          "is_correct": false,
+          "distractor_rationale": "طول الكلمة ليس معيار موضع همزة القطع."
+        },
+        {
+          "position": 4,
+          "content": "لأنّ الهمزة المفتوحة تُكتب تحت الألف، والمكسورة فوقه",
+          "is_correct": false,
+          "distractor_rationale": "هذا يعكس قاعدة موضعي الفتح والكسر كما يشرح الكتاب."
         }
       ],
-      "explanation": "همزة «اسم» وصل، تنطق في بدء الكلام وتسقط من النطق حال وصل الكلمة بما قبلها."
+      "explanation": "همزة القطع المفتوحة أو المضمومة تُكتب فوق الألف، وهمزة القطع المكسورة تُكتب تحته؛ ولذلك كُتبت «أَمانة» و«إِخلاص» بهذه الصورة."
     }
   ],
   "video_candidate": null,
@@ -2510,23 +2510,23 @@
   "creative_performance_followup": "Performance evidence for actual brochure drafting and oral presentation should be assessed separately; MCQ baseline cannot alone prove the ability to produce a complete brochure.",
   "academic_semantic_review": {
     "review_date": "2026-10-15",
-    "review_basis": "Independent second-pass academic source-grounded review of the exact 40-item candidate, 80 Learning hint levels, all 20 Exam rationales, Exam-versus-Learning cognitive paths and within-Exam overlaps; canonical AR-LUGATI-G5-T1 source PDF pages 7–9. Publication/runtime remains separate.",
+    "review_basis": "Holistic authoring review of full Exam bank vs Learning + 80 hints, with all 20 individually documented closest operations and concept/content fidelity to book pages 7–9.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Final second targeted review round: fixed E03, which replayed L15's 'add missing instructions' operation, by replacing it with a source-bounded evaluation of an unsupported superlative against observed facts. Previous distinct E07/E10 corrections retained, E16 options remain verb-initial. All other candidate questions unchanged. Codex identified L06 (not L03) as the closest coaching path for E03. The audit was corrected to compare topical credibility/relevance selection against assessing sufficiency of factual observations to justify an absolute superlative; external final semantic acceptance is still required.",
-    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval. E04 is a direct phrase-function classification whose decorative library setting does not change the answer; its context_type was corrected from contextual to direct, keeping 15 true contextual exam items without any learner-visible wording change. No question/options/hints/SQL were modified in this audit correction; a final reviewer must independently verify the semantic distinction from L06 before release.",
-    "approval_scope": "ACADEMIC_AUTHORING_PASS_ONLY — RELEASE_AFTER_EXACT_HEAD_CI_AND_REAL_RUNTIME_CHECKS",
+    "review_findings": "E20 replayed the exact hamza pronunciation rule coached by L20; rewritten to test the position of written hamzat al-qat under fatha and kasra instead. Other Exam items were assessed at bank level and retained where their deciding operations differed. The matrix now includes 20 exam-specific cognitive contrasts.",
+    "warning_disposition": "Authoring review supports request for independent final semantic review. Formal review must check remaining semantic mirrors and exact candidate; published mastery for brochure creation requires authentic task evidence, not MCQ alone.",
+    "approval_scope": "ACADEMIC_AUTHORING_REVIEWED; EXTERNAL_SEMANTIC_REVIEW_AND_EXACT_HEAD_CI_REQUIRED",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED",
-    "independent_semantic_review": "PASS"
+    "independent_semantic_review": "PENDING_EXTERNAL_REVIEW"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
     "spec_version": "1.0",
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
-    "method": "All 20 Exam prompts and explanations compared with the 20 Learning hints/solution paths and all 190 intra-Exam pairs, with a nearest-learning cognitive-operation and evidence rationale for each; deterministic checks only verify audit correspondence, not semantic truth.",
+    "method": "Holistic authoring review of all 20 Exam operations against all 20 Learning questions and 80 hint levels, with named closest trained comparator and within-Exam contrast for every item. Metadata labels are not proof; external review separately required.",
     "status": "SEMANTIC_REVIEW_READY",
     "rows": [
       {
@@ -2535,7 +2535,7 @@
         "input_evidence": "مسؤولية الرسوم لم تُنجز، أما معلومات المطويّة فمكتملة",
         "cognitive_action": "إعادة توزيع مهمة فنية متعثّرة من غير إسقاط المرحلة الختامية",
         "deciding_criterion": "يسند العمل الفني إلى متاحة ثم تتم المراجعة",
-        "independence_rationale": "التعلم يختار مادة للجمع؛ الامتحان يعيد توزيع العمل في مشروع تعطّل."
+        "independence_rationale": "إعادة توزيع الأدوار مع الحفاظ على نهاية سير العمل لا استدعاء المادة التي تجمع بعد تحديد الموضوع"
       },
       {
         "exam_code": "SYAR-G5-20261012-E02",
@@ -2543,7 +2543,7 @@
         "input_evidence": "غلاف مصوّر لكن عنوان الموضوع محذوف",
         "cognitive_action": "تفسير أثر حذف العنوان على التعرف السريع إلى الموضوع",
         "deciding_criterion": "عنوان الغلاف يساعد على فهم المقصد قبل فتح المطويّة",
-        "independence_rationale": "التعلم يختار عنواناً بين بدائل؛ الامتحان يفسر وظيفة عنصر غائب من تصميم جاهز."
+        "independence_rationale": "تفسير أثر غياب العنوان في فهم قارئ الغلاف لا اختيار عبارة عنوان تؤدي غاية جمع الكتب"
       },
       {
         "exam_code": "SYAR-G5-20261012-E03",
@@ -2551,15 +2551,15 @@
         "input_evidence": "L06: حقائق موثوقة ذات صلة مقابل صورة غير ذات صلة. E03: أشجار ومقاعد مشاهدة، مقابل ادعاء تفضيل مطلق يتجاوز البيانات.",
         "cognitive_action": "الحكم على مدى ملاءمة ادعاء مطلق لما تسنده أدلة محدودة",
         "deciding_criterion": "ليس السؤال عن ملاءمة المواد للنشر كما في L06، بل عن كفاية مشاهدات محدودة لتبرير مقارنة شاملة لا دليل عليها.",
-        "independence_rationale": "أقرب تدريب هو L06 الذي يوازن بين مواد موثوقة مرتبطة بالموضوع وصورة جميلة غير مرتبطة، ويختار ما يُدرج في المطويّة؛ أما E03 فيقدم معلومات مشاهدة مرتبطة فعلاً بالحديقة ويطالب بالحكم هل تكفي هذه الأدلة لإثبات صيغة التفضيل المطلقة «الأجمل في العالم». لا يمكن حلّ E03 بمجرّد استبعاد صورة غير مرتبطة أو اختيار حقائق مناسبة؛ يجب تمييز محدودية الدليل من صحة مادته وصلته. جرت مقارنة المسارين واعتُبر الفرق بين اختيار المادة وتقويم قوة الادعاء فرقاً معرفياً يتطلب مراجعة مستقلة للنسخة النهائية."
+        "independence_rationale": "تقويم كفاية أدلة محدودة لإثبات تفضيل شامل لا انتقاء حقائق موثوقة ذات صلة واستبعاد صورة بعيدة"
       },
       {
         "exam_code": "SYAR-G5-20261012-E04",
-        "closest_learning_code": "SYAR-G5-20261012-L04",
+        "closest_learning_code": "SYAR-G5-20261012-L10",
         "input_evidence": "جمل خبرية وأمرية وإعلام بوقت نشاط",
         "cognitive_action": "تصنيف ثلاث وظائف تواصلية مختلفة داخل المطويّة",
         "deciding_criterion": "تمييز فائدة عامة من توجيه وموعد",
-        "independence_rationale": "التعلم يفاضل بين إرشادات فرز؛ الامتحان يحدد وظائف ثلاثة أنواع من المحتوى."
+        "independence_rationale": "ربط ثلاث عبارات بثلاث وظائف خطابية بالترتيب لا تعرّف وظيفة صيغة دعوة واحدة"
       },
       {
         "exam_code": "SYAR-G5-20261012-E05",
@@ -2567,7 +2567,7 @@
         "input_evidence": "نداء واسع يقابله نشاط محلي محدد",
         "cognitive_action": "تعديل المخاطبة وفق النطاق الجغرافي الحقيقي للنشاط",
         "deciding_criterion": "تحديد الجمهور المناسب مع الحفاظ على طريقة المشاركة",
-        "independence_rationale": "التعلم يستنتج المخاطبين من دعوة؛ الامتحان يصلح عدم التناسب بين نطاق النداء والحدث."
+        "independence_rationale": "تصحيح مدى المخاطَب بناء على موقع المشاركين الممكن لا استنتاج الجمهور من نص دعوة جاهزة"
       },
       {
         "exam_code": "SYAR-G5-20261012-E06",
@@ -2575,7 +2575,7 @@
         "input_evidence": "بطاقة تحتوي يوماً ومجموعاً وتوزيعاً للعدد",
         "cognitive_action": "نقل بيانات أصلية متعددة القيود دون تحريف",
         "deciding_criterion": "ثبات اليوم والمجموع وحصتي الصفين",
-        "independence_rationale": "التعلم يختار بيانات لها صلة بالهدف؛ الامتحان يراجع أمانة نقل أربعة معطيات."
+        "independence_rationale": "الحفاظ على ثلاثة قيود رقمية وزمنية وفئات أثناء نقل بيان لا اختيار مواد للموضوع"
       },
       {
         "exam_code": "SYAR-G5-20261012-E07",
@@ -2583,7 +2583,7 @@
         "input_evidence": "ثلاثة أوجه تظهر للقارئ بالتتابع وثلاث وظائف معلوماتية مختلفة مطلوب توزيعها",
         "cognitive_action": "توزيع العنوان والإرشادات والتواصل عبر أوجه المطويّة وفق ترتيب اطلاع القارئ والغرض من كل وجه",
         "deciding_criterion": "تحقيق ترتيب اطّلاع القارئ: التعرّف على الحملة، معرفة طريقة المشاركة، ثم الاستفسار",
-        "independence_rationale": "L12 يتناول تنظيم فقرات نص واحد، أما هنا فيلزم تطبيق قيد ظهور كل وجه من مطويّة مطوية وتخصيص ثلاثة أنواع معلومات لمساحات مختلفة؛ لا يحلّه حفظ تسلسل مراحل الإنتاج من L03 وL11."
+        "independence_rationale": "توزيع ثلاث وظائف على أوجه المطوية حسب ترتيب اطلاع القارئ لا تنظيم ترتيب فقرات نص"
       },
       {
         "exam_code": "SYAR-G5-20261012-E08",
@@ -2591,7 +2591,7 @@
         "input_evidence": "كتابة كبيرة ومتباعدة لكنها بلون قريب من الورق",
         "cognitive_action": "عزل متغير التباين البصري مع تثبيت الحجم والمسافة",
         "deciding_criterion": "اختلاف لون الحروف عن الخلفية لتمييزها",
-        "independence_rationale": "التعلم يعالج صغر الخط والازدحام؛ الامتحان يعزل التباين رغم صلاحية الحجم والتباعد."
+        "independence_rationale": "تشخيص ضعف تباين اللون مع ثبات كبر الحرف والمسافات لا صغر خط مزدحم لكبار السن"
       },
       {
         "exam_code": "SYAR-G5-20261012-E09",
@@ -2599,15 +2599,15 @@
         "input_evidence": "موعدان متعارضان في موضعين ولا معرفة بالصح",
         "cognitive_action": "حسم تناقض معلوماتي بالرجوع إلى مصدر موثوق",
         "deciding_criterion": "التحقق أولاً ثم توحيد التاريخ",
-        "independence_rationale": "التعلم يبرر أهمية تحديد الموعد؛ الامتحان يحسم تضارباً لا يمكن حله من النص وحده."
+        "independence_rationale": "التحقق من تعارض موعدين بين واجهتين قبل الطباعة لا إدراك أهمية ذكر الزمان والمكان"
       },
       {
         "exam_code": "SYAR-G5-20261012-E10",
-        "closest_learning_code": "SYAR-G5-20261012-L10",
+        "closest_learning_code": "SYAR-G5-20261012-L04",
         "input_evidence": "نص إرشادين مختلفين وموقف فيه أنبوب يتسرّب وصنبور مغلق بالفعل",
         "cognitive_action": "تطبيق إرشاد شرطي على واقعة محددة بعد التمييز بين تسرب أنبوب وصنبور مغلق",
         "deciding_criterion": "مطابقة شرط الإبلاغ عن التسرب مع الحدث المشاهد واستبعاد الإغلاق غير الملائم",
-        "independence_rationale": "L10 يتعرف وظيفة كلمة دعوة عامة، بينما يتطلب الامتحان تحليل شرطين في نص إرشادي ثم اختيار عمل واحد يطابق وقائع حالة؛ ولا يعيد E06 نقل الأرقام والحقائق بأمانة أو دمج التعليمات لفظياً."
+        "independence_rationale": "تطبيق إحدى قاعدتين شرطيتين وفق واقعة تسرب وصنبور مغلق لا انتقاء إرشاد عام لفرز النفايات"
       },
       {
         "exam_code": "SYAR-G5-20261012-E11",
@@ -2615,7 +2615,7 @@
         "input_evidence": "فاء فصلت خطأ عن فعل الأمر مع ألف زائدة",
         "cognitive_action": "تنفيذ ثلاثة شروط تحريرية في خطأ كتابي محدد",
         "deciding_criterion": "وصل الفاء وحذف الألف وضبط الفصل بعلامة مناسبة",
-        "independence_rationale": "التعلم يشرح غاية الضبط اللغوي؛ الامتحان ينفّذ إصلاحاً كتابياً محدداً."
+        "independence_rationale": "تنفيذ تصحيح مكتوب يحقق الوصل والفاصلة وحذف الزائد لا تفسير أهمية مراجعة اللغة"
       },
       {
         "exam_code": "SYAR-G5-20261012-E12",
@@ -2623,15 +2623,15 @@
         "input_evidence": "صندوق لجمع الكتب شُرح بأنه صندوق للنفايات",
         "cognitive_action": "تصحيح مفتاح رمز ذي تفسير غير متطابق مع استخدامه",
         "deciding_criterion": "مواءمة شرح الرمز مع غايته داخل الرسالة",
-        "independence_rationale": "التعلم يراجع انسجام عناصر عامة؛ الامتحان يصلح معنى أيقونة بعينها في مفتاح الرموز."
+        "independence_rationale": "تصحيح تسمية رمز لا يوافق مدلوله ضمن مفتاح بصري لا تقويم اتساق العنوان والصورة والنص إجمالاً"
       },
       {
         "exam_code": "SYAR-G5-20261012-E13",
-        "closest_learning_code": "SYAR-G5-20261012-L13",
+        "closest_learning_code": "SYAR-G5-20261012-L05",
         "input_evidence": "مصطلحات علمية معقدة تستهدف طلاباً صغاراً",
         "cognitive_action": "تبسيط تعبير تقني لطفل صغير مع ثبات الفكرة",
         "deciding_criterion": "وضوح العناية بالشجرة من دون تبديل الغاية",
-        "independence_rationale": "التعلم يفحص صورة وعنوان؛ الامتحان يكيف السجل اللغوي للقارئ."
+        "independence_rationale": "تحويل خطاب تقني إلى ألفاظ تلائم سن الصف الثاني مع بقاء هدف التشجير لا استنتاج الجمهور من خطاب قائم"
       },
       {
         "exam_code": "SYAR-G5-20261012-E14",
@@ -2639,7 +2639,7 @@
         "input_evidence": "شكوى من سرعة النطق وخفوت خطوة أخيرة",
         "cognitive_action": "الاستجابة لملحوظة مستمع عن وضوح الإلقاء",
         "deciding_criterion": "تحسين السرعة والوضوح من غير حذف المحتوى",
-        "independence_rationale": "التعلم يقارن إقناع عرضين؛ الامتحان يعالج مشكلة تواصل شفهي مرصودة."
+        "independence_rationale": "الاستجابة لملاحظة محددة عن سرعة الإلقاء ووضوح آخر خطوة لا مقارنة قوة حجتين للإقناع"
       },
       {
         "exam_code": "SYAR-G5-20261012-E15",
@@ -2647,15 +2647,15 @@
         "input_evidence": "مستمع راغب لا يملك قفازات وفريق لديه احتياط",
         "cognitive_action": "إزالة عائق لوجستي موصوف عند تقديم المطويّة",
         "deciding_criterion": "معالجة العائق بأداة حاضرة دون تغيير الموضوع",
-        "independence_rationale": "التعلم يضيف خطوة مشاركة ناقصة للمحتوى؛ الامتحان يحل اعتراضاً واقعياً بمورد محدد."
+        "independence_rationale": "معالجة عائق أدوات محدد بموارد متاحة أثناء لقاء جار لا إضافة تعليمات مشاركة غائبة إلى نص"
       },
       {
         "exam_code": "SYAR-G5-20261012-E16",
-        "closest_learning_code": "SYAR-G5-20261012-L16",
+        "closest_learning_code": "SYAR-G5-20261012-L18",
         "input_evidence": "نص أصلي مع ثلاثة قيود صريحة: الفاعلون والتصرف وموضوعه",
         "cognitive_action": "التحويل إلى الجملة الفعلية مع فحص ثبات ثلاثة قيود معنوية عبر أربعة بدائل تبدأ جميعاً بأفعال",
         "deciding_criterion": "التحقق من بداية فعلية ومن الأشخاص والسلوك والموضوع معاً، لا الاعتماد على بدايات الأفعال",
-        "independence_rationale": "بدائل الامتحان الأربعة فعلية بالفعل؛ لا يمكن اختيار الصحيح بتحديد الفعل الأول كما في التعلّم، بل يجب اختبار الأشخاص والعمل وموضوعه."
+        "independence_rationale": "إنتاج إعادة ترتيب تحافظ على الفاعل والعمل والموضوع لا تسمية نوعين انطلاقاً من أول كلمة"
       },
       {
         "exam_code": "SYAR-G5-20261012-E17",
@@ -2663,7 +2663,7 @@
         "input_evidence": "شبه جمل وصلة وشرط زمان مقابل فعل له إسناد مكتمل",
         "cognitive_action": "التفريق بين الجملة المكتملة والعبارات المتعلّقة بتتمة محذوفة",
         "deciding_criterion": "تمام الخبر لا مجرد بدء العبارة باسم أو فعل",
-        "independence_rationale": "التعلم يصنّف الفعلية؛ الامتحان يفحص صلاحية العبارة مستقلة خبراً تاماً."
+        "independence_rationale": "تعيين تركيب يفيد معنى تاماً لا تحديد سبب فعلية جملة صحيحة معروفة النوع"
       },
       {
         "exam_code": "SYAR-G5-20261012-E18",
@@ -2671,7 +2671,7 @@
         "input_evidence": "جملتان كاملتان تصف إحداهما الحاجة وتخبر الأخرى بعمل استجابة لها",
         "cognitive_action": "تفسير العلاقة المعنوية بين الحاجة والاستجابة ضمن فقرة ذات نوعين من الجمل",
         "deciding_criterion": "العمل المذكور في الجملة الثانية يعالج المشكلة الواردة في الأولى",
-        "independence_rationale": "التعلم يسأل فقط عن تصنيف البداية الاسمية والفعلية؛ الامتحان يطلب تفسير علاقة الفكرة والسبب والاستجابة بين نصّي الجملتين ولا تكفي معرفة النوع وحده."
+        "independence_rationale": "تفسير صلة السبب والحل عبر جملتين مختلفتي النوع لا تسمية الاسمية والفعلية"
       },
       {
         "exam_code": "SYAR-G5-20261012-E19",
@@ -2679,16 +2679,148 @@
         "input_evidence": "قول خاطئ يساوي همزتين لفعلين ماضيين",
         "cognitive_action": "نقض تعميم إملائي خاطئ بفعلين ماضيين مختلفي البنية",
         "deciding_criterion": "التمييز بين قطع أحسن ووصل استمع",
-        "independence_rationale": "التعلم يراجع رسم أمر «شاركوا»؛ الامتحان ينقد تعميم نوع الهمزة على الماضي."
+        "independence_rationale": "تفنيد تعميم نوع الهمزة في فعلين ماضيين مختلفين لا تصحيح حرف زائد في أمر شاركوا"
       },
       {
         "exam_code": "SYAR-G5-20261012-E20",
         "closest_learning_code": "SYAR-G5-20261012-L20",
-        "input_evidence": "اسم أول الكلام ثم بعد واو العطف",
-        "cognitive_action": "تفسير تبدل نطق همزة وصل في الكلمة نفسها بحسب موضعها",
-        "deciding_criterion": "ظهور وصل عند الابتداء وسقوطه نطقاً عند الاتصال",
-        "independence_rationale": "التعلم يثبت نطق القطع بعد الواو؛ الامتحان يقارن حالتي همزة الوصل."
+        "input_evidence": "موضع همزتَي أَمانة وإِخلاص وحركتي الفتح والكسر",
+        "cognitive_action": "تفسير اختلاف موضع رسم همزة القطع فوق الألف أو تحته",
+        "deciding_criterion": "الفتحة تقتضي الرسم فوق الألف، والكسرة تحته",
+        "independence_rationale": "تفسير موضع همزة القطع المكتوبة بحسب حركتي الفتح والكسر لا نطق نوع الهمزة عند الوصل بالواو"
       }
-    ]
+    ],
+    "holistic_revision": {
+      "date": "2026-10-15",
+      "source": "AR-LUGATI-G5-T1 PDF pages 7–9",
+      "reviewed": "40 questions, 80 hint levels; evaluated cognitive distinctness and closest comparisons; matrix covers 20 Exam items",
+      "potential_pairs": {
+        "cross_mode": 400,
+        "within_exam": 190
+      },
+      "exam_operations": [
+        {
+          "exam_code": "SYAR-G5-20261012-E01",
+          "closest_learning_code": "SYAR-G5-20261012-L03",
+          "reasoned_difference": "إعادة توزيع الأدوار مع الحفاظ على نهاية سير العمل لا استدعاء المادة التي تجمع بعد تحديد الموضوع",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E02"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E02",
+          "closest_learning_code": "SYAR-G5-20261012-L02",
+          "reasoned_difference": "تفسير أثر غياب العنوان في فهم قارئ الغلاف لا اختيار عبارة عنوان تؤدي غاية جمع الكتب",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E07"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E03",
+          "closest_learning_code": "SYAR-G5-20261012-L06",
+          "reasoned_difference": "تقويم كفاية أدلة محدودة لإثبات تفضيل شامل لا انتقاء حقائق موثوقة ذات صلة واستبعاد صورة بعيدة",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E06"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E04",
+          "closest_learning_code": "SYAR-G5-20261012-L10",
+          "reasoned_difference": "ربط ثلاث عبارات بثلاث وظائف خطابية بالترتيب لا تعرّف وظيفة صيغة دعوة واحدة",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E13"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E05",
+          "closest_learning_code": "SYAR-G5-20261012-L05",
+          "reasoned_difference": "تصحيح مدى المخاطَب بناء على موقع المشاركين الممكن لا استنتاج الجمهور من نص دعوة جاهزة",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E13"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E06",
+          "closest_learning_code": "SYAR-G5-20261012-L06",
+          "reasoned_difference": "الحفاظ على ثلاثة قيود رقمية وزمنية وفئات أثناء نقل بيان لا اختيار مواد للموضوع",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E09"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E07",
+          "closest_learning_code": "SYAR-G5-20261012-L12",
+          "reasoned_difference": "توزيع ثلاث وظائف على أوجه المطوية حسب ترتيب اطلاع القارئ لا تنظيم ترتيب فقرات نص",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E02"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E08",
+          "closest_learning_code": "SYAR-G5-20261012-L08",
+          "reasoned_difference": "تشخيص ضعف تباين اللون مع ثبات كبر الحرف والمسافات لا صغر خط مزدحم لكبار السن",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E12"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E09",
+          "closest_learning_code": "SYAR-G5-20261012-L09",
+          "reasoned_difference": "التحقق من تعارض موعدين بين واجهتين قبل الطباعة لا إدراك أهمية ذكر الزمان والمكان",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E06"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E10",
+          "closest_learning_code": "SYAR-G5-20261012-L04",
+          "reasoned_difference": "تطبيق إحدى قاعدتين شرطيتين وفق واقعة تسرب وصنبور مغلق لا انتقاء إرشاد عام لفرز النفايات",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E15"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E11",
+          "closest_learning_code": "SYAR-G5-20261012-L11",
+          "reasoned_difference": "تنفيذ تصحيح مكتوب يحقق الوصل والفاصلة وحذف الزائد لا تفسير أهمية مراجعة اللغة",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E19"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E12",
+          "closest_learning_code": "SYAR-G5-20261012-L13",
+          "reasoned_difference": "تصحيح تسمية رمز لا يوافق مدلوله ضمن مفتاح بصري لا تقويم اتساق العنوان والصورة والنص إجمالاً",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E08"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E13",
+          "closest_learning_code": "SYAR-G5-20261012-L05",
+          "reasoned_difference": "تحويل خطاب تقني إلى ألفاظ تلائم سن الصف الثاني مع بقاء هدف التشجير لا استنتاج الجمهور من خطاب قائم",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E04"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E14",
+          "closest_learning_code": "SYAR-G5-20261012-L14",
+          "reasoned_difference": "الاستجابة لملاحظة محددة عن سرعة الإلقاء ووضوح آخر خطوة لا مقارنة قوة حجتين للإقناع",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E15"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E15",
+          "closest_learning_code": "SYAR-G5-20261012-L15",
+          "reasoned_difference": "معالجة عائق أدوات محدد بموارد متاحة أثناء لقاء جار لا إضافة تعليمات مشاركة غائبة إلى نص",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E10"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E16",
+          "closest_learning_code": "SYAR-G5-20261012-L18",
+          "reasoned_difference": "إنتاج إعادة ترتيب تحافظ على الفاعل والعمل والموضوع لا تسمية نوعين انطلاقاً من أول كلمة",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E18"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E17",
+          "closest_learning_code": "SYAR-G5-20261012-L17",
+          "reasoned_difference": "تعيين تركيب يفيد معنى تاماً لا تحديد سبب فعلية جملة صحيحة معروفة النوع",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E18"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E18",
+          "closest_learning_code": "SYAR-G5-20261012-L18",
+          "reasoned_difference": "تفسير صلة السبب والحل عبر جملتين مختلفتي النوع لا تسمية الاسمية والفعلية",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E17"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E19",
+          "closest_learning_code": "SYAR-G5-20261012-L19",
+          "reasoned_difference": "تفنيد تعميم نوع الهمزة في فعلين ماضيين مختلفين لا تصحيح حرف زائد في أمر شاركوا",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E20"
+        },
+        {
+          "exam_code": "SYAR-G5-20261012-E20",
+          "closest_learning_code": "SYAR-G5-20261012-L20",
+          "reasoned_difference": "تفسير موضع همزة القطع المكتوبة بحسب حركتي الفتح والكسر لا نطق نوع الهمزة عند الوصل بالواو",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E19"
+        }
+      ],
+      "note": "E20 replaced because L20 directly coached the same pronunciation operation. Preserve valid independently distinct Exam items. Formal Codex review and CI not inferred from these labels."
+    }
   }
 }
