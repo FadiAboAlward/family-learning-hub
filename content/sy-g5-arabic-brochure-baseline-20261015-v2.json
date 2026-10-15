@@ -1,6 +1,6 @@
 {
   "package_id": "SY-G5-ARABIC-U1-BROCHURE-BASELINE-20261015-V2",
-  "status": "CANDIDATE",
+  "status": "PENDING_REVIEW",
   "academic_context": {
     "student_ref": "Syrian G5 learner — anonymized curriculum baseline",
     "grade": "5",
@@ -289,7 +289,7 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
-      "reasoning_signature": "مراجعة الرسم دون افتراض وجوب همزة | learning",
+      "reasoning_signature": "تحديد موقع الهمزة في الحرف الأول وتمييزها من همزة تظهر قرب نهاية الكلمة",
       "context_type": "direct"
     },
     {
@@ -503,10 +503,10 @@
       "difficulty_role": "target",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "تأليف سطرين متماسكين يحققان شرط ترتيب جملة اسمية ثم فعلية دون اللجوء لتحويل بنية درس لاحق",
+      "reasoning_signature": "التحقق من ترتيب الاسمية والفعلية مع حفظ اليوم والعدد في نقل معلومة محددة",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "الشرطان المتزامنان، وحدة الموضوع وترتيب الاسمية والفعلية، ضروريان لفحص صحة البديل."
+      "context_necessity_reason": "تفاصيل المعطيات داخل السؤال ضرورية لتطبيق الشروط النحوية والمعلوماتية معاً."
     },
     {
       "question_code": "SYAR-G5-20261015-E17",
@@ -527,10 +527,10 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
-      "reasoning_signature": "تفنيد تعميم خاطئ يستدل على فعلية الجملة بوجود فعل في أي موضع بدل فحص الكلمة الأولى",
+      "reasoning_signature": "الجمع بين اختبار تمام المعنى وتصنيف الاسمية والفعلية عبر ثلاث عبارات",
       "context_type": "contextual",
       "context_necessary": true,
-      "context_necessity_reason": "الحكم الخاطئ والجملتان اللتان تحتوي إحداهما فعلًا بعد اسم شرط لفهم سبب نقض التعميم."
+      "context_necessity_reason": "تفاصيل المعطيات داخل السؤال ضرورية لتطبيق الشروط النحوية والمعلوماتية معاً."
     },
     {
       "question_code": "SYAR-G5-20261015-E19",
@@ -1647,54 +1647,54 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=9",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "كتبت تلميذة: «إشاركوا في الحملة». أي تعديل صحيح لأول كلمة؟",
+      "prompt": "اقرئي العبارة: «أكرمَ سامرٌ صديقَهُ مساءً». أي كلمة تبدأ بهمزة أولية؟",
       "options": [
         {
-          "content": "«أشاركوا» لأن الأفعال تحتاج همزة قطع",
+          "content": "سامرٌ",
+          "position": 1,
           "is_correct": false,
-          "distractor_rationale": "إضافة همزة فوق الألف إلى «شاركوا» لا توافق صيغة الأمر من «شارك».",
-          "position": 1
+          "distractor_rationale": "الكلمة تبدأ بحرف السين وليس بالهمزة الأولية التي يطلبها السؤال."
         },
         {
-          "content": "«إِشاركوا» لأن الأمر يبدأ بهمزة تحت الألف",
+          "content": "صديقَهُ",
+          "position": 2,
           "is_correct": false,
-          "distractor_rationale": "همزة تحت الألف لا تلزم لكل فعل أمر، و«شاركوا» يبدأ بالشين.",
-          "position": 2
+          "distractor_rationale": "الكلمة تبدأ بحرف الصاد ولا تقع همزة في أولها."
         },
         {
-          "content": "«اشاركوا» بإضافة ألف في أول الفعل",
+          "content": "مساءً",
+          "position": 3,
           "is_correct": false,
-          "distractor_rationale": "إضافة ألف في بداية «شاركوا» تشوّه كتابة فعل الأمر الصحيح.",
-          "position": 3
+          "distractor_rationale": "تظهر الهمزة قرب آخر الكلمة، فلا تسمّى همزة أولية."
         },
         {
-          "content": "«شاركوا» دون إضافة همزة",
-          "is_correct": true,
-          "position": 4
+          "content": "أكرمَ",
+          "position": 4,
+          "is_correct": true
         }
       ],
-      "explanation": "صيغة الأمر من «شارك» هي «شاركوا» من غير ألف أولية.",
+      "explanation": "تبدأ «أكرمَ» بهمزة قطع مكتوبة في أول الكلمة، أما همزة «مساءً» فليست أولية.",
       "decomposable": false,
       "hints": [
         {
           "level": 1,
           "role": "nudge",
-          "content": "• انظري إلى كلمة «إشاركوا» وحدها، ولا تنشغلي بمضمون الحملة أو من سيدعو الآخرين إليها.\n• المطلوب تصحيح الرسم الإملائي لأول كلمة، لذلك راجعي حروف الفعل الأساسي قبل إضافة أي همزة.\n• هناك أفعال أمر تبدأ بألف، وأخرى لا تحتاج ألفاً إضافية؛ لا تطبقي قاعدة واحدة على جميع الأفعال."
+          "content": "• اقرئي كلمات العبارة أولاً وتأملي مكان الهمزة لا معنى القصة أو زمن الأفعال الموجودة فيها.\n• الهمزة الأولية هي التي تأتي في بداية الكلمة، وهذا الشرط هو أساس السؤال الآن.\n• قد تري همزة في كلمة أخرى، لكن ظهورها بعد حروف سابقة لا يجعلها همزة أولية."
         },
         {
           "level": 2,
           "role": "guide",
-          "content": "• استخرجي الفعل الأصلي من صيغة الأمر، وتذكري أن الأمر قد يُبنى من فعل ثلاثي أو مزيد.\n• قارني بين مثالين مستقلين: «اكتبوا» و«ساعدوا»؛ ليست كل أوامر المخاطبين مرسومة بالطريقة نفسها.\n• افحصي هل البداية الصحيحة للكلمة تحتاج إلى ألف أصلاً قبل تقرير كون الهمزة وصلاً أو قطعاً."
+          "content": "• مرّي بعينيك على الكلمة من اليمين إلى اليسار، وحددي الحرف الذي تبدأ به قبل متابعة بقيتها.\n• قارني مثالاً من خارج الخيارات: «أمل» بهمزة في الأول، و«سماء» بهمزة قرب النهاية.\n• لا تعتمدي على وجود الرسم وحده؛ حاولي ربط موضع العلامة بموضع البداية."
         },
         {
           "level": 3,
           "role": "strong_guide",
-          "content": "• لا تنخدعي بخيارات تضيف همزة فوق الألف أو تحتها لمجرد أن الكلمة فعل أمر.\n• أعيدي صياغة الأمر من «شارك» إلى جمع المخاطبين مع المحافظة على حروف الأصل دون زيادة غير لازمة.\n• قارني الصيغ الأربع من جهة بنية الفعل أولاً، ثم راجعي أيها يخالف صيغة الأمر الصحيحة."
+          "content": "• استبعدي الكلمات التي تبدأ بحروف واضحة لا تحمل همزة في بدايتها، حتى لو كانت مألوفة أو ذات معنى مناسب.\n• افحصي الكلمات التي قد تحمل علامة همزة في موضع آخر، مثل نهاية الكلمة أو وسطها.\n• تذكري أن المطلوب كلمة تبدأ بالهمزة نفسها، وليس كلمة تشمل أي نوع من الهمزات فحسب."
         },
         {
           "level": 4,
           "role": "near_solution",
-          "content": "• انطقي صيغة الأمر من الفعل «شارك» لمجموعة من الأصدقاء مع التأني في الحرف الذي تبدأ به.\n• بعد ذلك راقبي إن كانت الصيغة تتطلب همزة مرسومة أم أن الحرف الأول من الجذر ظاهر مباشرةً.\n• استبعدي الخيارات ذات الهمزات المضافة بلا سبب صرفي، واختاري الرسم الذي يحافظ على بنية الفعل."
+          "content": "• راجعي بداية كل خيار على حدة، ثم قارني نتيجة هذا الفحص بين جميع الكلمات الأربع من جديد.\n• لا تتسرعي في اختيار كلمة بسبب همزة قرب نهايتها، ولا تبحثي عن نوع الجملة أو الفعل.\n• اختاري الكلمة التي يثبت عند قراءتها من البداية أن الهمزة هي أول ما تراه عينك."
         }
       ]
     },
@@ -2322,33 +2322,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "تريد تلميذة كتابة سطرين مترابطين في مطويّة المدرسة: الجملة الأولى اسمية تصف الحديقة، والثانية فعلية تذكر عملاً يجري فيها. أي سطرين يحققان الشرطين معاً؟",
+      "prompt": "بطاقة المعلومات تقول: «حديقة المدرسة جميلة، وسيزرع التلاميذ فيها ثلاث شجيرات يوم الخميس». تريد تلميذة سطرين: الأول جملة اسمية تصف المكان، والثاني فعلية تذكر العمل، مع الحفاظ على اليوم والعدد. أي نص يحقق جميع الشروط؟",
       "options": [
         {
-          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ فيها أشجاراً.",
+          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ فيها ثلاثَ شجيراتٍ يومَ الخميس.",
           "position": 1,
           "is_correct": true
         },
         {
-          "content": "تتفتحُ الأزهارُ في الحديقة. التلاميذُ يزرعونَ فيها أشجاراً.",
+          "content": "الحديقةُ جميلةٌ. يزرعُ التلاميذُ فيها ثلاثَ شجيراتٍ يومَ الجمعة.",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "السطر الأول يبدأ بفعل والثاني باسم، فهو يعكس الترتيب المطلوب."
+          "distractor_rationale": "يحافظ النص على ترتيب الاسمية والفعلية لكنه يغيّر اليوم الذي ورد في المصدر."
         },
         {
-          "content": "الحديقةُ جميلةٌ. التلاميذُ يزرعونَ فيها أشجاراً.",
+          "content": "يزرعُ التلاميذُ ثلاثَ شجيراتٍ يومَ الخميس. الحديقةُ جميلةٌ.",
           "position": 3,
           "is_correct": false,
-          "distractor_rationale": "السطر الثاني يبدأ باسم، فلا يحقق الشرط الذي يطلب جملة فعلية."
+          "distractor_rationale": "حافظ النص على تفاصيل الحدث لكنه عكس ترتيب الجملة الاسمية والفعلية المطلوب."
         },
         {
-          "content": "تتفتحُ أزهارُ الحديقة. يزرعُ التلاميذُ فيها أشجاراً.",
+          "content": "الحديقةُ جميلةٌ. التلاميذُ يزرعونَ فيها ثلاثَ شجيراتٍ يومَ الخميس.",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "السطر الأول يبدأ بفعل، مع أن المطلوب أن تبدأ الجملة الأولى باسم."
+          "distractor_rationale": "يبدأ السطر الثاني باسم التلاميذ بدل الفعل، فيخالف شرط نوع الجملة الثانية."
         }
       ],
-      "explanation": "«الحديقة جميلة» جملة اسمية تبدأ باسم، و«يزرع التلاميذ» جملة فعلية تبدأ بفعل، والجملتان تصفان المكان والعمل فيه."
+      "explanation": "الأول اسمي والثاني فعلي، كما بقي العدد ثلاث شجيرات واليوم الخميس؛ فقاعدة بداية الجملة وحدها لا تكفي لحل السؤال."
     },
     {
       "question_code": "SYAR-G5-20261015-E17",
@@ -2396,33 +2396,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=8",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "راجعت تلميذة جملتين في مطويّة الحديقة: «يزرعُ الأطفالُ أشجاراً». و«الحديقةُ تحتاجُ رعايةً». قال زميل إن الجملتين فعليتان لأنهما تتضمنان فعلًا. ما التعليل الصحيح؟",
+      "prompt": "اقرئي ثلاث عبارات في مسودة مطويّة: «الحديقةُ واسعةٌ». «يزرعُ التلاميذُ الأشجارَ». «عندَ نهايةِ الدوامِ». أي حكم صحيح يجمع بين تمام المعنى ونوع الجملة عند اكتمالها؟",
       "options": [
         {
-          "content": "الجملتان اسميتان لأن كلًّا منهما تتحدث عن الحديقة.",
+          "content": "الأولى اسمية تامة، والثانية فعلية تامة، والثالثة فعلية تامة.",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "وجود كلمة تدل على الحديقة في الكلام لا يحدد نوع بدايته."
+          "distractor_rationale": "الظرف الزمني وحده لا يبين ما الذي وقع، فلا يفيد معنى جملة تامة."
         },
         {
-          "content": "الجملتان فعليتان لأن وجود فعل في أي موضع يجعل الجملة فعلية.",
+          "content": "الأولى فعلية تامة، والثانية اسمية تامة، والثالثة غير تامة.",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "معيار التفريق هنا هو الكلمة التي تبدأ بها الجملة، لا مجرد وجود فعل داخلها."
+          "distractor_rationale": "هذا يعكس بدايتي الجملتين الأولى والثانية، رغم أن الثالثة غير تامة بالفعل."
         },
         {
-          "content": "الأولى فعلية لأنها تبدأ بفعل، والثانية اسمية لأنها تبدأ باسم.",
+          "content": "الأولى اسمية تامة، والثانية فعلية تامة، والثالثة عبارة غير تامة المعنى.",
           "position": 3,
           "is_correct": true
         },
         {
-          "content": "الأولى اسمية لأنها تبدأ بكلمة «يزرع»، والثانية فعلية لأنها تبدأ بكلمة «الحديقة».",
+          "content": "الأولى والثانية ناقصتان، والثالثة جملة اسمية.",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "هذا يعكس طبيعة بدايات الجملتين، فـ«يزرع» فعل و«الحديقة» اسم."
+          "distractor_rationale": "الأولى والثانية تفيدان معنى تاماً، بينما عبارة الزمان تحتاج إلى جملة أخرى."
         }
       ],
-      "explanation": "يبدأ النص الأول بالفعل «يزرع»، والثاني بالاسم «الحديقة» ولو ورد فعل بعده؛ وبذلك لا يكفي وجود فعل للحكم على كل جملة بأنها فعلية."
+      "explanation": "العبارة الأولى جملة اسمية، والثانية فعلية، وهما كاملتا المعنى، أما «عند نهاية الدوام» فلا تُفيد معنى تاماً وحدها."
     },
     {
       "question_code": "SYAR-G5-20261015-E19",
@@ -2501,7 +2501,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "PASS",
+    "academic_semantic_review": "PENDING_REVIEW",
     "canonical_validator": "PENDING",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2514,9 +2514,9 @@
     "review_basis": "Versioned fresh v2 candidate. Reviewed 40 questions against Syrian G5 Arabic source PDF pages 7–9 and 80 progressive Learning hint levels; previous v1 QUALITY_BLOCKED version preserved in separate PR #156.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope.",
-    "warning_disposition": "Semantic authoring review supports external full-bank verification, NOT an external Codex APPROVED outcome. Grading metadata fidelity is subject to exact-head validator and SQL checks. No candidate deployment or learner communication until all gates pass.",
-    "approval_scope": "CONTENT_READY_FOR_EXTERNAL_REVIEW_ONLY",
+    "review_findings": "V2 redesign removed repeated E14/E15 complaint-response operation: E14 creates a respectful leading question; E15 separately measures comprehension after distribution. E16 no longer assesses future p50 sentence transformation; it selects an original pair of nominal then verbal sentences in the same topic. E18 now tests the book p8 first-word rule against an incorrect claim instead of measuring causal semantics. E20 remains distinct cut-hamza orthographic placement; all Exam items have source-aligned grade scope. Consolidated correction (one bounded round): L19 now detects actual initial hamza; E16 cannot be solved by the coached grammar-only path because two options match grammar but differ in source day; E18 adds full-meaning decision for an incomplete time phrase. Pending full-bank independent review.",
+    "warning_disposition": "Do NOT claim authoring metadata is external approval. Independent reviewer must inspect exact candidate again before activation.",
+    "approval_scope": "EXTERNAL_SEMANTIC_REVIEW_PENDING — DO_NOT_PUBLISH",
     "independent_semantic_review": "PENDING_EXTERNAL_REVIEW",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
@@ -2528,7 +2528,7 @@
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
     "method": "Whole-bank v2 authoring audit: all 20 Exam operations compared against 20 Learning questions and four hints each, and all within-Exam contrasts checked. No evidence of exact same coached cognitive choice after redesign of E14, E16, E18; Codex external semantic review still required before release.",
-    "status": "PASS",
+    "status": "PENDING_EXTERNAL_REVIEW",
     "rows": [
       {
         "exam_code": "SYAR-G5-20261015-E01",
@@ -2653,10 +2653,10 @@
       {
         "exam_code": "SYAR-G5-20261015-E16",
         "closest_learning_code": "SYAR-G5-20261015-L18",
-        "input_evidence": "سطران مطلوبان عن حديقة واحدة بالترتيب اسمية ثم فعلية مع ترابط الموضوع",
-        "cognitive_action": "اختيار تركيب ثنائي متماسك يحقق ترتيبًا نحويًا محددًا لا مجرد تسمية نوع معزول",
-        "deciding_criterion": "السطر الأول يبدأ باسم ويصف الحديقة، والثاني يبدأ بفعل يروي عملاً داخلها",
-        "independence_rationale": "L18 يحدد نوع عبارتين معطاتين تختلفان بتقديم اسم أو فعل، لكن E16 يتطلب اختيار نص مؤلف من جملتين مترابطتين يحقق ترتيبًا ونطاق موضوع مقيّدين؛ لا يطلب تحويل الاسمية إلى فعلية كما في درس لاحق."
+        "input_evidence": "بطاقة المعلومات تقول: «حديقة المدرسة جميلة، وسيزرع التلاميذ فيها ثلاث شجيرات يوم الخميس». تريد تلميذة سطرين: الأول جملة اسمية تصف المكان، والثاني فعلية تذكر العمل، مع الحفاظ على اليوم والعدد. أي نص يحقق جميع الشروط؟",
+        "cognitive_action": "التحقق من ترتيب الاسمية والفعلية مع حفظ اليوم والعدد في نقل معلومة محددة",
+        "deciding_criterion": "الأول اسمي والثاني فعلي، كما بقي العدد ثلاث شجيرات واليوم الخميس؛ فقاعدة بداية الجملة وحدها لا تكفي لحل السؤال.",
+        "independence_rationale": "L18 يدرب على تحديد نوع جملتين من البداية فقط؛ هنا يوجد بديلان مستوفيان لشرط النوع، لذا يحتاج الحكم إلى فحص العدد واليوم أيضاً، كما توجد صيغة تحفظ المعلومات لكنها تعكس البنية."
       },
       {
         "exam_code": "SYAR-G5-20261015-E17",
@@ -2668,11 +2668,11 @@
       },
       {
         "exam_code": "SYAR-G5-20261015-E18",
-        "closest_learning_code": "SYAR-G5-20261015-L17",
-        "input_evidence": "حكم خاطئ على جملتين إحداهما تبدأ بالفعل والأخرى بالاسم الذي يتبعه فعل",
-        "cognitive_action": "نقض قاعدة تصنيف غير صحيحة اعتماداً على موقع الفعل وبداية كل جملة",
-        "deciding_criterion": "وجود فعل بعد الاسم لا ينقل الجملة التي تبدأ باسم إلى الجملة الفعلية",
-        "independence_rationale": "L17 يعلل نوع جملة معطاة تبدأ بالفعل؛ E18 يفحص ادعاء خاطئًا عن وجود فعل في منتصف تركيب اسمي ويثبت خطأ التعميم من مثالين متعارضين. لا يستنتج علاقة سببية خارجة عن مهارة نوع الجملة."
+        "closest_learning_code": "SYAR-G5-20261015-L18",
+        "input_evidence": "اقرئي ثلاث عبارات في مسودة مطويّة: «الحديقةُ واسعةٌ». «يزرعُ التلاميذُ الأشجارَ». «عندَ نهايةِ الدوامِ». أي حكم صحيح يجمع بين تمام المعنى ونوع الجملة عند اكتمالها؟",
+        "cognitive_action": "الجمع بين اختبار تمام المعنى وتصنيف الاسمية والفعلية عبر ثلاث عبارات",
+        "deciding_criterion": "العبارة الأولى جملة اسمية، والثانية فعلية، وهما كاملتا المعنى، أما «عند نهاية الدوام» فلا تُفيد معنى تاماً وحدها.",
+        "independence_rationale": "L18 يصنف جملتين مكتملتين من بدايتهما؛ هذا السؤال يتطلب أولاً فصل عبارة ظرف غير تامة المعنى ثم تصنيف الجملتين التامتين، فلا تكفي قاعدة الكلمة الأولى دون اختبار اكتمال الإسناد."
       },
       {
         "exam_code": "SYAR-G5-20261015-E19",
@@ -2793,7 +2793,7 @@
         {
           "exam_code": "SYAR-G5-20261015-E16",
           "closest_learning_code": "SYAR-G5-20261015-L18",
-          "reasoned_difference": "L18 يحدد نوع عبارتين معطاتين تختلفان بتقديم اسم أو فعل، لكن E16 يتطلب اختيار نص مؤلف من جملتين مترابطتين يحقق ترتيبًا ونطاق موضوع مقيّدين؛ لا يطلب تحويل الاسمية إلى فعلية كما في درس لاحق.",
+          "reasoned_difference": "Grammar alone yields two options; preserving source day and count determines the unique key.",
           "other_exam_for_contrast": "SYAR-G5-20261015-E18"
         },
         {
@@ -2804,8 +2804,8 @@
         },
         {
           "exam_code": "SYAR-G5-20261015-E18",
-          "closest_learning_code": "SYAR-G5-20261015-L17",
-          "reasoned_difference": "L17 يعلل نوع جملة معطاة تبدأ بالفعل؛ E18 يفحص ادعاء خاطئًا عن وجود فعل في منتصف تركيب اسمي ويثبت خطأ التعميم من مثالين متعارضين. لا يستنتج علاقة سببية خارجة عن مهارة نوع الجملة.",
+          "closest_learning_code": "SYAR-G5-20261015-L18",
+          "reasoned_difference": "A time adjunct without predication must be excluded before classifying the two complete sentences.",
           "other_exam_for_contrast": "SYAR-G5-20261015-E17"
         },
         {

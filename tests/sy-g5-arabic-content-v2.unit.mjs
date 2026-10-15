@@ -69,25 +69,22 @@ for (const q of pkg.questions) {
   for (const o of incorrect) assert.ok(o.distractor_rationale.length > 15, q.question_code);
 }
 
-// Regression for the current PDF-page-8 concept: E16 asks for two complete
-// context-linked sentences, nominal first and verbal second. It must not test
-// the future-unit transformation of nominal into verbal sentences.
+// PDF p8 transfer must need more than a coached first-word comparison.
 const e16 = exam.find(q => q.question_code.endsWith('-E16'));
-assert.ok(e16 && e16.prompt.includes('الجملة الأولى اسمية') &&
-  e16.prompt.includes('والثانية فعلية'), 'E16 must remain in p8 scope');
-const e16CorrectStructure = e16.options.map(o => {
-  const sentences = o.content.split('.').map(s => s.trim()).filter(Boolean);
-  if (sentences.length !== 2) return false;
-  const firstIsNominal = /^(?:الحديقةُ|التلاميذُ)/u.test(sentences[0]);
-  const secondIsVerbal = /^(?:يزرعُ|تتفتحُ)/u.test(sentences[1]);
-  return firstIsNominal && secondIsVerbal;
+assert.ok(e16 && e16.prompt.includes('ثلاث شجيرات') && e16.prompt.includes('الخميس'));
+const grammarOnly = e16.options.map(o => {
+ const parts=o.content.split('.').map(s=>s.trim()).filter(Boolean);
+ return parts.length===2 && /^الحديقةُ/u.test(parts[0]) && /^يزرعُ/u.test(parts[1]);
 });
-assert.deepEqual(e16CorrectStructure,
-  e16.options.map(o => o.is_correct), 'E16 ordered grammatical constraints must match the key');
-const e18 = exam.find(q => q.question_code.endsWith('-E18'));
-assert.ok(e18 && e18.prompt.includes('الجملتين فعليتان') &&
-  e18.prompt.includes('فعلًا'), 'E18 must correct a false sentence-type rule, not score causal understanding');
-
+assert.deepEqual(grammarOnly,[true,true,false,false],
+ 'E16 needs two grammar-valid options, so source factual accuracy is necessary');
+const e18=exam.find(q => q.question_code.endsWith('-E18'));
+assert.ok(e18 && e18.prompt.includes('عندَ نهايةِ الدوامِ'),
+ 'E18 must test an incomplete expression, not just coached sentence types');
+const l19=learning.find(q => q.question_code.endsWith('-L19'));
+assert.ok(l19 && l19.prompt.includes('همزة أولية') &&
+ l19.options.find(o=>o.is_correct).content.startsWith('أ'),
+ 'L19 needs an actual initial-hamza example');
 // Publication integrity: the embedded forward-only SQL package must be the exact
 // validator-approved question/option/answer/hint content, not an independently
 // edited answer key that could silently misgrade students.
@@ -154,6 +151,8 @@ for (const suffix of ['E06','E17','E18']) {
 // Run all mechanical, answer-pattern and exact SQL checks before the release gate.
 // PENDING_REVIEW must still fail this branch, but should not hide earlier QA evidence.
 console.log('Academic authoring mechanical QA, answer positions and exact migration fidelity: PASS');
+assert.equal(pkg.academic_semantic_review?.independent_semantic_review, 'PASS',
+ 'Exact independent review must pass before publication');
 assert.equal(pkg.publication_gates.academic_semantic_review, 'PASS',
   'Independent semantic review is required before merge and publication');
 console.log('Syrian G5 Arabic public-private separation, canonical CLI, 40/80 content and embedded publication integrity: PASS');
