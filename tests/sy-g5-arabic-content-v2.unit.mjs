@@ -69,11 +69,24 @@ for (const q of pkg.questions) {
   for (const o of incorrect) assert.ok(o.distractor_rationale.length > 15, q.question_code);
 }
 
-// Regression: all Exam E16 alternatives must begin with a verb so first-word
-// classification alone cannot solve the meaning-preserving transformation.
+// Regression for the current PDF-page-8 concept: E16 asks for two complete
+// context-linked sentences, nominal first and verbal second. It must not test
+// the future-unit transformation of nominal into verbal sentences.
 const e16 = exam.find(q => q.question_code.endsWith('-E16'));
-assert.ok(e16 && e16.options.every(o => /^(?:يحافظُ|يُهملُ)/u.test(o.content)));
-assert.equal(e16.options.filter(o => o.is_correct).length, 1);
+assert.ok(e16 && e16.prompt.includes('الجملة الأولى اسمية') &&
+  e16.prompt.includes('والثانية فعلية'), 'E16 must remain in p8 scope');
+const e16CorrectStructure = e16.options.map(o => {
+  const sentences = o.content.split('.').map(s => s.trim()).filter(Boolean);
+  if (sentences.length !== 2) return false;
+  const firstIsNominal = /^(?:الحديقةُ|التلاميذُ)/u.test(sentences[0]);
+  const secondIsVerbal = /^(?:يزرعُ|تتفتحُ)/u.test(sentences[1]);
+  return firstIsNominal && secondIsVerbal;
+});
+assert.deepEqual(e16CorrectStructure,
+  e16.options.map(o => o.is_correct), 'E16 ordered grammatical constraints must match the key');
+const e18 = exam.find(q => q.question_code.endsWith('-E18'));
+assert.ok(e18 && e18.prompt.includes('الجملتين فعليتان') &&
+  e18.prompt.includes('فعلًا'), 'E18 must correct a false sentence-type rule, not score causal understanding');
 
 // Publication integrity: the embedded forward-only SQL package must be the exact
 // validator-approved question/option/answer/hint content, not an independently

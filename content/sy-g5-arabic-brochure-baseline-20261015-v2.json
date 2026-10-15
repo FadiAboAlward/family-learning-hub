@@ -327,9 +327,8 @@
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "reasoning_signature": "تفسير أثر حذف العنوان على التعرف السريع إلى الموضوع",
-      "context_type": "contextual",
-      "context_necessary": true,
-      "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
+      "context_type": "direct",
+      "context_necessary": false
     },
     {
       "question_code": "SYAR-G5-20261015-E03",
