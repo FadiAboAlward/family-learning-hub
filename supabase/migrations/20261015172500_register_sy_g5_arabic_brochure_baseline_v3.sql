@@ -23,7 +23,7 @@ declare
   v_correct integer;
   v_items jsonb := $assessment_pkg$[
   {
-    "db_code": "Q-20261015V30001",
+    "db_code": "Q-202610150001",
     "authored_code": "SYAR-G5-20261015-V3-L01",
     "pos": 1,
     "role": "core",
@@ -73,7 +73,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30002",
+    "db_code": "Q-202610150002",
     "authored_code": "SYAR-G5-20261015-V3-L02",
     "pos": 2,
     "role": "core",
@@ -123,7 +123,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30003",
+    "db_code": "Q-202610150003",
     "authored_code": "SYAR-G5-20261015-V3-L03",
     "pos": 3,
     "role": "core",
@@ -173,7 +173,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30004",
+    "db_code": "Q-202610150004",
     "authored_code": "SYAR-G5-20261015-V3-L04",
     "pos": 4,
     "role": "core",
@@ -223,7 +223,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30005",
+    "db_code": "Q-202610150005",
     "authored_code": "SYAR-G5-20261015-V3-L05",
     "pos": 5,
     "role": "core",
@@ -273,7 +273,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30006",
+    "db_code": "Q-202610150006",
     "authored_code": "SYAR-G5-20261015-V3-L06",
     "pos": 6,
     "role": "core",
@@ -323,7 +323,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30007",
+    "db_code": "Q-202610150007",
     "authored_code": "SYAR-G5-20261015-V3-L07",
     "pos": 7,
     "role": "core",
@@ -373,7 +373,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30008",
+    "db_code": "Q-202610150008",
     "authored_code": "SYAR-G5-20261015-V3-L08",
     "pos": 8,
     "role": "core",
@@ -423,7 +423,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30009",
+    "db_code": "Q-202610150009",
     "authored_code": "SYAR-G5-20261015-V3-L09",
     "pos": 9,
     "role": "core",
@@ -473,7 +473,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30010",
+    "db_code": "Q-202610150010",
     "authored_code": "SYAR-G5-20261015-V3-L10",
     "pos": 10,
     "role": "core",
@@ -523,7 +523,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30011",
+    "db_code": "Q-202610150011",
     "authored_code": "SYAR-G5-20261015-V3-L11",
     "pos": 11,
     "role": "core",
@@ -573,7 +573,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30012",
+    "db_code": "Q-202610150012",
     "authored_code": "SYAR-G5-20261015-V3-L12",
     "pos": 12,
     "role": "core",
@@ -623,7 +623,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30013",
+    "db_code": "Q-202610150013",
     "authored_code": "SYAR-G5-20261015-V3-L13",
     "pos": 13,
     "role": "core",
@@ -673,7 +673,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30014",
+    "db_code": "Q-202610150014",
     "authored_code": "SYAR-G5-20261015-V3-L14",
     "pos": 14,
     "role": "core",
@@ -723,7 +723,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30015",
+    "db_code": "Q-202610150015",
     "authored_code": "SYAR-G5-20261015-V3-L15",
     "pos": 15,
     "role": "core",
@@ -773,7 +773,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30016",
+    "db_code": "Q-202610150016",
     "authored_code": "SYAR-G5-20261015-V3-L16",
     "pos": 16,
     "role": "core",
@@ -823,7 +823,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30017",
+    "db_code": "Q-202610150017",
     "authored_code": "SYAR-G5-20261015-V3-L17",
     "pos": 17,
     "role": "core",
@@ -873,7 +873,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30018",
+    "db_code": "Q-202610150018",
     "authored_code": "SYAR-G5-20261015-V3-L18",
     "pos": 18,
     "role": "core",
@@ -923,7 +923,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30019",
+    "db_code": "Q-202610150019",
     "authored_code": "SYAR-G5-20261015-V3-L19",
     "pos": 19,
     "role": "core",
@@ -973,7 +973,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30020",
+    "db_code": "Q-202610150020",
     "authored_code": "SYAR-G5-20261015-V3-L20",
     "pos": 20,
     "role": "core",
@@ -1023,7 +1023,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30021",
+    "db_code": "Q-202610150021",
     "authored_code": "SYAR-G5-20261015-V3-E01",
     "pos": 21,
     "role": "exam_pool",
@@ -1052,7 +1052,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30022",
+    "db_code": "Q-202610150022",
     "authored_code": "SYAR-G5-20261015-V3-E02",
     "pos": 22,
     "role": "exam_pool",
@@ -1081,7 +1081,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30023",
+    "db_code": "Q-202610150023",
     "authored_code": "SYAR-G5-20261015-V3-E03",
     "pos": 23,
     "role": "exam_pool",
@@ -1110,7 +1110,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30024",
+    "db_code": "Q-202610150024",
     "authored_code": "SYAR-G5-20261015-V3-E04",
     "pos": 24,
     "role": "exam_pool",
@@ -1139,7 +1139,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30025",
+    "db_code": "Q-202610150025",
     "authored_code": "SYAR-G5-20261015-V3-E05",
     "pos": 25,
     "role": "exam_pool",
@@ -1168,7 +1168,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30026",
+    "db_code": "Q-202610150026",
     "authored_code": "SYAR-G5-20261015-V3-E06",
     "pos": 26,
     "role": "exam_pool",
@@ -1197,7 +1197,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30027",
+    "db_code": "Q-202610150027",
     "authored_code": "SYAR-G5-20261015-V3-E07",
     "pos": 27,
     "role": "exam_pool",
@@ -1226,7 +1226,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30028",
+    "db_code": "Q-202610150028",
     "authored_code": "SYAR-G5-20261015-V3-E08",
     "pos": 28,
     "role": "exam_pool",
@@ -1255,7 +1255,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30029",
+    "db_code": "Q-202610150029",
     "authored_code": "SYAR-G5-20261015-V3-E09",
     "pos": 29,
     "role": "exam_pool",
@@ -1284,7 +1284,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30030",
+    "db_code": "Q-202610150030",
     "authored_code": "SYAR-G5-20261015-V3-E10",
     "pos": 30,
     "role": "exam_pool",
@@ -1313,7 +1313,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30031",
+    "db_code": "Q-202610150031",
     "authored_code": "SYAR-G5-20261015-V3-E11",
     "pos": 31,
     "role": "exam_pool",
@@ -1342,7 +1342,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30032",
+    "db_code": "Q-202610150032",
     "authored_code": "SYAR-G5-20261015-V3-E12",
     "pos": 32,
     "role": "exam_pool",
@@ -1371,7 +1371,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30033",
+    "db_code": "Q-202610150033",
     "authored_code": "SYAR-G5-20261015-V3-E13",
     "pos": 33,
     "role": "exam_pool",
@@ -1400,7 +1400,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30034",
+    "db_code": "Q-202610150034",
     "authored_code": "SYAR-G5-20261015-V3-E14",
     "pos": 34,
     "role": "exam_pool",
@@ -1429,7 +1429,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30035",
+    "db_code": "Q-202610150035",
     "authored_code": "SYAR-G5-20261015-V3-E15",
     "pos": 35,
     "role": "exam_pool",
@@ -1458,7 +1458,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30036",
+    "db_code": "Q-202610150036",
     "authored_code": "SYAR-G5-20261015-V3-E16",
     "pos": 36,
     "role": "exam_pool",
@@ -1487,7 +1487,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30037",
+    "db_code": "Q-202610150037",
     "authored_code": "SYAR-G5-20261015-V3-E17",
     "pos": 37,
     "role": "exam_pool",
@@ -1516,7 +1516,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30038",
+    "db_code": "Q-202610150038",
     "authored_code": "SYAR-G5-20261015-V3-E18",
     "pos": 38,
     "role": "exam_pool",
@@ -1545,7 +1545,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30039",
+    "db_code": "Q-202610150039",
     "authored_code": "SYAR-G5-20261015-V3-E19",
     "pos": 39,
     "role": "exam_pool",
@@ -1574,7 +1574,7 @@ declare
     ]
   },
   {
-    "db_code": "Q-20261015V30040",
+    "db_code": "Q-202610150040",
     "authored_code": "SYAR-G5-20261015-V3-E20",
     "pos": 40,
     "role": "exam_pool",
