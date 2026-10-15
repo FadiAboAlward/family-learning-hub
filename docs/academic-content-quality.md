@@ -83,6 +83,18 @@ Difficulty comes from learner evidence and prerequisite status, not grade or tot
 
 The reasoning_signature is deliberately explicit. It prevents Learning, Exam, and Paper from being filled with cosmetic variants that change only names or numbers while testing the same reasoning path.
 
+## Reasoning independence preflight (FLH-FEAT-2026-029 v1.0)
+
+Author the Learning and Exam reasoning operations as one package, not as two independently renamed banks. Before calling either mode complete, compare each Exam item against every Learning item (20×20 in a standard package) and against every other Exam item (190 unordered comparisons). Treat this as one holistic academic semantic review, not 590 required runtime calls.
+
+For every Exam item, explicitly record its given evidence, cognitive action, deciding criterion, closest Learning item, and material reason the Exam solution cannot simply replay the coached Learning path. An assessment_independence_audit with one such entry per Exam item is the preferred lightweight authoring evidence. Do not assign an invented "unique" signature solely to make an automated check pass: the actual decision path and misconception must differ. Shared syllabus concepts are allowed; copying the same rule and just replacing a topic, name, date, values, or distractor order is not.
+
+Review within Exam as well as cross-mode. Repeating the same diagnosis/fix with two themes inflates mastery just as repeated Learning/Exam pairs do. For example, verifying two contradictory dates then unifying them repeated under different activity names is the same reasoning path. Rewriting it into audience-sensitive language editing, meaningful-sentence completion, or a new evidence transformation is a material change if it stays within the verified book scope.
+
+The deterministic gate checks the existence, correspondence and consistency of documented review evidence; it does not establish semantic independence. The author/independent reviewer must inspect the prompts, choices, correct answer, explanation, and Learning hints (the coached solution path) across all relevant pairs. If the same category of semantic duplication recurs after repair, stop the isolated item-by-item repair loop, mark QUALITY_BLOCKED, and perform the full package-level comparison before seeking review again. Follow the bounded repair rule below instead of repeatedly asking automated reviewers to find the next mirror.
+
+This is an authoring/QA control only, not a change to the live Learning/Exam runtime, progression, hint rules or existing published attempts. Exact-candidate validation, source-grounded review, publication fidelity, privacy and the standard spec/CI/review gates still apply.
+
 ## Question and option quality
 
 A single-choice question normally has four coherent options and one unambiguous correct option. Options must be unique after Unicode/whitespace normalization, and their positions must cover 1 through the actual option count. The existing five/six-option format remains available only with a question-level `option_count_justification` explaining the source/skill-specific exception. This emits `OPTION_COUNT_OVERRIDE_REVIEW`; an exception never permits fewer than four or more than six choices, ambiguous answers or filler distractors.
