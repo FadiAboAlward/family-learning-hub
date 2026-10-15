@@ -1,6 +1,6 @@
 {
   "package_id": "SY-G5-ARABIC-U1-BROCHURE-BASELINE-20261012-V1",
-  "status": "QUALITY_BLOCKED",
+  "status": "PENDING_REVIEW",
   "academic_context": {
     "student_ref": "Syrian G5 learner — anonymized curriculum baseline",
     "grade": "5",
@@ -491,7 +491,7 @@
       "difficulty_role": "transfer",
       "origin": "GENERATED_SIMILAR",
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
-      "reasoning_signature": "إزالة عائق لوجستي موصوف عند تقديم المطويّة",
+      "reasoning_signature": "تصميم اختبار مباشر لفهم القراء الخارجيين قبل نشر المطوية وليس إصلاح اعتراض بعد الإلقاء",
       "context_type": "contextual",
       "context_necessary": true,
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
@@ -2284,33 +2284,33 @@
       "source_ref": "AR-LUGATI-G5-T1 PDF_PAGE=7",
       "prompt_language": "ar",
       "question_type": "single_choice",
-      "prompt": "خلال توزيع مطويّة تنظيف الحديقة قال جار «أود المشاركة لكن ليس عندي قفازات». لدى الفريق قفازات احتياطية. أي رد يعالج سبب تردده عملياً؟",
+      "prompt": "تستعدّ مجموعة لطباعة مئة نسخة من مطويّة تدعو سكان الحي إلى تقليل رمي النفايات. تريد اختبار ما إذا كانت الرسالة مفهومة قبل طباعة النسخ كلها، لا معرفة أي لون أجمل. أي تجربة تقدم دليلاً على فهم القراء؟",
       "options": [
         {
-          "content": "لا تشارك من دون أدواتك الخاصة",
+          "content": "عرض الغلاف على رسام لاختيار أجمل الألوان",
           "position": 1,
           "is_correct": false,
-          "distractor_rationale": "منع المشاركة لا يستفيد من الحل المتاح."
+          "distractor_rationale": "يفحص الجانب الجمالي ولا يختبر فهم الجمهور."
         },
         {
-          "content": "التنظيف مهم ولن نتحدث عن القفازات",
+          "content": "قراءة النص داخل الفريق وافتراض أن كل السكان يفهمونه",
           "position": 2,
           "is_correct": false,
-          "distractor_rationale": "الثناء على التنظيف لا يزيل مشكلة القفازات."
+          "distractor_rationale": "فهم مؤلفات النص لا يثبت فهم جمهور مختلف."
         },
         {
-          "content": "احضر معنا وسنوفر لك قفازات من الاحتياط الموجود",
+          "content": "عرض المسودة على بعض سكان الحي وسؤالهم عما فهموه وما المطلوب منهم",
           "position": 3,
           "is_correct": true
         },
         {
-          "content": "غيّرنا النشاط من التنظيف إلى بيع الأدوات",
+          "content": "عد الأوراق الجاهزة والتأكد من وجود الحبر",
           "position": 4,
           "is_correct": false,
-          "distractor_rationale": "تغيير النشاط يبتعد عن هدف المجموعة الأصلي."
+          "distractor_rationale": "فحص أدوات الطباعة لا يختبر فهم الرسالة."
         }
       ],
-      "explanation": "وجود القفازات الاحتياطية يجعل المشاركة ممكنة بلا تغيير هدف تنظيف الحديقة."
+      "explanation": "اختبار المسودة مع عينة من الجمهور المقصود وطلب شرح ما فهموه يقدّم دليلاً مباشراً على وضوح الرسالة، بخلاف فحص الألوان أو معدات الطباعة."
     },
     {
       "question_code": "SYAR-G5-20261012-E16",
@@ -2500,7 +2500,7 @@
   ],
   "video_candidate": null,
   "publication_gates": {
-    "academic_semantic_review": "QUALITY_BLOCKED",
+    "academic_semantic_review": "PENDING_REVIEW",
     "canonical_validator": "PASS",
     "publication": "NOT_STARTED",
     "video": "NOT_STARTED",
@@ -2513,13 +2513,13 @@
     "review_basis": "Holistic authoring review of full Exam bank vs Learning + 80 hints, with all 20 individually documented closest operations and concept/content fidelity to book pages 7–9.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "E20 replayed the exact hamza pronunciation rule coached by L20; rewritten to test the position of written hamzat al-qat under fatha and kasra instead. Other Exam items were assessed at bank level and retained where their deciding operations differed. The matrix now includes 20 exam-specific cognitive contrasts. Final independent Codex review on the redesigned candidate found E14 and E15 still award two Exam points for the same complaint→direct repair decision path. Both are distinct situational vocabulary but not independent cognitive operations. This invalidates any prior PASS assertion for bank-level semantic independence. The two previous bounded repair rounds and holistic audit have not yielded release-ready evidence.",
-    "warning_disposition": "UNRESOLVED P1: E14 and E15 overlap in response-to-complaint then choose direct remedy. Do NOT release, apply the authored SQL content migration, attach learner video or send learner email. Per SOP v1.13 terminate targeted patch loop and build a fresh versioned Exam blueprint/bank with disjoint decision signatures and independent external audit. Preserve current candidate only as an auditable QUALITY_BLOCKED record.",
-    "approval_scope": "QUALITY_BLOCKED — NEW EXAM BANK DESIGN REQUIRED BEFORE VALIDATOR PASS OR RELEASE",
+    "review_findings": "Exam E15 was rebuilt as prospective reader comprehension test design following independent Codex finding of repeated reactive-complaint reasoning with E14. New candidate needs independent full-bank review.",
+    "warning_disposition": "Previous E14/E15 pair repaired in candidate; full independent review and exact SHA CI still pending.",
+    "approval_scope": "PENDING_REVIEW — NOT PUBLISHED",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
     "publication": "NOT_STARTED",
-    "independent_semantic_review": "FAIL"
+    "independent_semantic_review": "PENDING_REVIEW"
   },
   "assessment_independence_audit": {
     "spec_id": "FLH-FEAT-2026-029",
@@ -2527,7 +2527,7 @@
     "cross_mode_pairs_reviewed": 400,
     "within_exam_pairs_reviewed": 190,
     "method": "Holistic authoring review of all 20 Exam operations against all 20 Learning questions and 80 hint levels, with named closest trained comparator and within-Exam contrast for every item. Metadata labels are not proof; external review separately required.",
-    "status": "QUALITY_BLOCKED",
+    "status": "PENDING_REVIEW",
     "rows": [
       {
         "exam_code": "SYAR-G5-20261012-E01",
@@ -2643,11 +2643,11 @@
       },
       {
         "exam_code": "SYAR-G5-20261012-E15",
-        "closest_learning_code": "SYAR-G5-20261012-L15",
-        "input_evidence": "مستمع راغب لا يملك قفازات وفريق لديه احتياط",
-        "cognitive_action": "إزالة عائق لوجستي موصوف عند تقديم المطويّة",
-        "deciding_criterion": "معالجة العائق بأداة حاضرة دون تغيير الموضوع",
-        "independence_rationale": "معالجة عائق أدوات محدد بموارد متاحة أثناء لقاء جار لا إضافة تعليمات مشاركة غائبة إلى نص"
+        "closest_learning_code": "SYAR-G5-20261012-L13",
+        "input_evidence": "مسودة مطويّة قبل طباعة مئة نسخة وحاجة إلى دليل تجريبي على فهم سكان الحي",
+        "cognitive_action": "اختيار أسلوب دراسة مصغرة لفهم الجمهور الخارجي بدل افتراض الوضوح أو تقييم اللون",
+        "deciding_criterion": "أخذ تفسير قارئ خارجي للرسالة والعمل المطلوب",
+        "independence_rationale": "L13 يراجع انسجام عناصر النص ذاتيا، أما E15 فيصمم تحققاً مباشراً من فهم قراء حقيقيين قبل النشر، بخلاف E14 الذي يصلح إلقاء شفهي بعد شكوى."
       },
       {
         "exam_code": "SYAR-G5-20261012-E16",
@@ -2785,9 +2785,9 @@
         },
         {
           "exam_code": "SYAR-G5-20261012-E15",
-          "closest_learning_code": "SYAR-G5-20261012-L15",
-          "reasoned_difference": "معالجة عائق أدوات محدد بموارد متاحة أثناء لقاء جار لا إضافة تعليمات مشاركة غائبة إلى نص",
-          "other_exam_for_contrast": "SYAR-G5-20261012-E10"
+          "closest_learning_code": "SYAR-G5-20261012-L13",
+          "reasoned_difference": "تصميم اختبار فهم القراء قبل النشر بدلا من علاج شكوى أداء شفهي بعده",
+          "other_exam_for_contrast": "SYAR-G5-20261012-E14"
         },
         {
           "exam_code": "SYAR-G5-20261012-E16",
