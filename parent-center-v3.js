@@ -85,7 +85,7 @@
         const releaseButton=preview.querySelector('[data-confirm-release]'),links=preview.querySelector('[data-official-links]');
         releaseButton.addEventListener('click',async()=>{
           if(releaseButton.disabled||!window.confirm(`تفعيل النسخة ${version} للطالب ${learner.display_name}؟`))return;
-          releaseButton.disabled=true;status.textContent='جارِ طلب التفعيل الرسمي والتحقق من النتيجة…';
+          releaseButton.disabled=true;reviewButton.disabled=true;status.textContent='جارِ طلب التفعيل الرسمي والتحقق من النتيجة…';
           try{
             const released=await call(LEARNING,'release_assessment',pointer);
             const checked=await call(LEARNING,'read_assessment',pointer);
@@ -94,7 +94,7 @@
             if(!learning||!exam){status.textContent='تم تأكيد التفعيل، لكن لم يُعِد الخادم رابطين صالحين. راجع سجلات النسخة ولا ترسل بريدًا.';return}
             links.innerHTML=`<div class="actions"><a class="btn btn-soft" href="${safe(learning)}" target="_blank" rel="noopener noreferrer">رابط التعلّم</a><a class="btn btn-soft" href="${safe(exam)}" target="_blank" rel="noopener noreferrer">رابط الامتحان</a></div><p class="muted">تحقق من وصول الطالب ثم أرسل البريد عبر الإجراء المعتمد بشكل منفصل.</p>`;
             status.textContent='تم تفعيل الامتحان والتحقق من حالة النشر. لم يُرسَل أي بريد.';
-          }catch{status.textContent='تعذر تأكيد التفعيل. افحص الحالة مجددًا قبل إعادة أي طلب؛ لا يُعاد التفعيل تلقائيًا.'}
+          }catch{status.textContent='تعذر تأكيد التفعيل. افحص الحالة مجددًا قبل إعادة أي طلب؛ لا يُعاد التفعيل تلقائيًا.'}finally{reviewButton.disabled=false}
         });
       }catch{status.textContent='تعذر التحقق من هذه النسخة بصلاحية الأهل الحالية. راجع البيانات أو سجّل الدخول مجددًا.'}
       finally{reviewButton.disabled=false}
