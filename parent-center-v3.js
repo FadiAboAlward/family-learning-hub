@@ -1,13 +1,13 @@
 (() => {
   const SUPABASE_URL='https://gkpoylfozvuwuwqeoduc.supabase.co';
   const PUBLISHABLE_KEY='sb_publishable_-ysUtue-9LpsJ8gabyrQaA_IaUf4F0W';
-  const FAMILY=`${SUPABASE_URL}/functions/v1/family-api`,ACCESS=`${SUPABASE_URL}/functions/v1/parent-program-api`,ACTIVITY=`${SUPABASE_URL}/functions/v1/activity-api`;
+  const FAMILY=`${SUPABASE_URL}/functions/v1/family-api`,ACCESS=`${SUPABASE_URL}/functions/v1/parent-program-api`,ACTIVITY=`${SUPABASE_URL}/functions/v1/activity-api`,LEARNING=`${SUPABASE_URL}/functions/v1/learning-api`;
   const safe=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function token(){try{return (typeof state!=='undefined'&&state.parentSession?.access_token)||JSON.parse(localStorage.getItem('parent_session')||'null')?.access_token||''}catch{return''}}
   async function call(url,action,payload={}){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
   const fmtMin=s=>{const m=Math.round(Number(s||0)/60);return m<1?'أقل من دقيقة':`${m} د`};const fmtDate=v=>v?new Date(v).toLocaleDateString('ar',{year:'numeric',month:'numeric',day:'numeric'}):'—';const fmtTime=v=>v?new Date(v).toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}):'—';
   function logout(){localStorage.removeItem('parent_session');if(typeof state!=='undefined')state.parentSession=null;location.hash='parents';location.reload()}
-  function navHtml(){return `<section class="panel parent-center-nav" data-parent-center-nav><div class="section-title">إدارة ومتابعة</div><div class="parent-nav-grid"><button data-go="parent-access">👥<b>الطلاب والمحتوى</b><small>الصف، البرامج، والكتب</small></button><button data-go="parent-results">📈<b>النتائج</b><small>المحاولات والدرجات</small></button><button data-go="parent-activity">⏱️<b>سجل النشاط</b><small>الجلسات والوقت والفلاتر</small></button><button data-go="parent-rewards">🎁<b>الجوائز والعادات</b><small>النقاط، السلوكيات، والموافقات</small></button></div><div class="actions"><button class="btn btn-soft" data-parent-logout>تسجيل خروج</button></div></section>`}
+  function navHtml(){return `<section class="panel parent-center-nav" data-parent-center-nav><div class="section-title">إدارة ومتابعة</div><div class="parent-nav-grid"><button data-go="parent-access">👥<b>الطلاب والمحتوى</b><small>الصف، البرامج، والكتب</small></button><button data-go="parent-release">✅<b>تفعيل امتحان</b><small>نسخة جاهزة ومراجعة</small></button><button data-go="parent-results">📈<b>النتائج</b><small>المحاولات والدرجات</small></button><button data-go="parent-activity">⏱️<b>سجل النشاط</b><small>الجلسات والوقت والفلاتر</small></button><button data-go="parent-rewards">🎁<b>الجوائز والعادات</b><small>النقاط، السلوكيات، والموافقات</small></button></div><div class="actions"><button class="btn btn-soft" data-parent-logout>تسجيل خروج</button></div></section>`}
   function bindNav(root=document){root.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.getAttribute('data-go')||'parents'}));root.querySelectorAll('[data-parent-logout]').forEach(b=>b.addEventListener('click',logout));}
 
   async function installDashboard(){if(location.hash!=='#parents'||!token())return;const hero=document.querySelector('.hero h1');if(!hero||(hero.textContent||'').includes('لوحة الأهل')===false)return;const oldDetail=[...document.querySelectorAll('#app .panel')].find(p=>(p.textContent||'').includes('تفاصيل المحاولات'));if(oldDetail)oldDetail.style.display='none';if(!document.querySelector('[data-parent-center-nav]')){const cards=document.querySelector('#app section:not(.hero)');if(cards)cards.insertAdjacentHTML('afterend',navHtml());else document.querySelector('.footer-links')?.insertAdjacentHTML('beforebegin',navHtml());bindNav();}
@@ -47,6 +47,60 @@
 
   async function renderResults(){if(!token())return location.hash='parents';shellPage('📈 نتائج التعلم','تفاصيل الدرجات في صفحة مستقلة عن لوحة الملخص.','<section class="panel" data-results-root><div class="loading-card">جارِ تحميل النتائج…</div></section>');const root=document.querySelector('[data-results-root]');try{const d=await call(FAMILY,'parent_dashboard'),learners=d.learners||[],attempts=d.attempts||[];root.innerHTML=`<div class="parent-filter-grid"><div class="field"><label>الطالب</label><select data-res-learner><option value="">كل الطلاب</option>${learners.map(l=>`<option value="${l.id}">${safe(l.display_name)}</option>`).join('')}</select></div><div class="field"><label>الفترة</label><select data-res-days><option value="7">7 أيام</option><option value="30" selected>30 يوم</option><option value="90">90 يوم</option><option value="365">سنة</option></select></div></div><div data-results-table></div>`;const draw=()=>{const lid=root.querySelector('[data-res-learner]')?.value||'',days=Number(root.querySelector('[data-res-days]')?.value||30),cut=Date.now()-days*86400000,rows=attempts.filter(a=>(!lid||a.learner_id===lid)&&(!a.submitted_at||new Date(a.submitted_at).getTime()>=cut));root.querySelector('[data-results-table]').innerHTML=`<div class="table-scroll"><table class="parent-table"><thead><tr><th>الطالب</th><th>الدرجة</th><th>الوضع</th><th>من أول مرة</th><th>التلميحات</th><th>التاريخ</th></tr></thead><tbody>${rows.map(a=>{const l=learners.find(x=>x.id===a.learner_id);return`<tr><td>${safe(l?.display_name||'طالب')}</td><td>${a.percentage!=null?Math.round(a.percentage)+'%':'—'}</td><td>${a.delivery_mode==='exam'?'امتحان':'تعلّم'}</td><td>${a.metadata?.first_try_correct??'—'}</td><td>${a.metadata?.hints_used??'—'}</td><td>${fmtDate(a.submitted_at)}</td></tr>`}).join('')||'<tr><td colspan="6">لا توجد نتائج ضمن الفترة.</td></tr>'}</tbody></table></div><div class="muted">هذه الصفحة تحمل فقط سجل النتائج المحدود الذي يرسله ملخص الأهل حاليًا؛ سجل النشاط الكامل له Pagination مستقل.</div>`};root.querySelector('[data-res-learner]')?.addEventListener('change',draw);root.querySelector('[data-res-days]')?.addEventListener('change',draw);draw();}catch{root.innerHTML='<div class="error">تعذر تحميل النتائج.</div>';}}
 
-  function route(){const h=location.hash;if(h==='#parents'){prefetchDashboardSummary();setTimeout(installDashboard,20)}else if(h==='#parent-access')renderAccess();else if(h==='#parent-activity')renderActivity();else if(h==='#parent-results')renderResults();}
+
+  // FLH-031: parent-initiated, exact-candidate release. Server owns every authorization and integrity check.
+  const releaseUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const releaseHash=/^[0-9a-f]{64}$/;
+  function officialAssessmentLink(path,mode){
+    if(typeof path!=='string'||!path.startsWith('index.html?'))return null;
+    try{
+      const url=new URL(path,location.href),canonical=new URL('./index.html',location.href);
+      if(url.origin!==canonical.origin||url.pathname!==canonical.pathname||url.hash||url.searchParams.get('mode')!==mode||!url.searchParams.get('quiz')||!url.searchParams.get('learner'))return null;
+      return url.href;
+    }catch{return null}
+  }
+  function renderAssessmentRelease(){
+    if(!token()){location.hash='parents';return}
+    shellPage('✅ تفعيل امتحان جاهز','لنسخة خضعت للمراجعة والنشر المعلّق فقط. لا يُنشئ أسئلة أو يرسل بريدًا.',
+      '<section class="panel" data-assessment-release><form data-release-review-form><div class="field"><label for="release-version">معرّف نسخة الامتحان</label><input id="release-version" name="version" autocomplete="off" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" dir="ltr"></div><div class="field"><label for="release-hash">بصمة الحزمة المعتمدة (SHA-256)</label><input id="release-hash" name="hash" autocomplete="off" required maxlength="64" placeholder="64 hexadecimal characters" dir="ltr"></div><button class="btn btn-primary" type="submit">مراجعة النسخة</button></form><div role="status" aria-live="polite" data-release-status></div><div data-release-preview></div></section>');
+    const root=document.querySelector('[data-assessment-release]'),form=root?.querySelector('[data-release-review-form]'),status=root?.querySelector('[data-release-status]'),preview=root?.querySelector('[data-release-preview]');
+    if(!root||!form||!status||!preview)return;
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const version=String(form.elements.version.value||'').trim(),hash=String(form.elements.hash.value||'').trim();
+      preview.replaceChildren();
+      if(!releaseUuid.test(version)||!releaseHash.test(hash)){status.textContent='تحقق من معرّف النسخة والبصمة؛ لم يُرسل أي طلب.';return}
+      const pointer={quiz_version_id:version,candidate_sha256:hash},reviewButton=form.querySelector('button[type="submit"]');
+      reviewButton.disabled=true;status.textContent='جارِ فحص النسخة الرسمية…';
+      try{
+        const read=await call(LEARNING,'read_assessment',pointer),publication=read?.publication;
+        if(!publication||publication.quiz_version_id!==version||publication.candidate_sha256!==hash)throw new Error('READ_MISMATCH');
+        if(publication.state==='released'){status.textContent='هذه النسخة مفعّلة سابقًا. لا تعِد التفعيل أو إرسال البريد دون مراجعة سجل التسليم.';return}
+        if(publication.state!=='held'){status.textContent='هذه النسخة ليست في حالة انتظار التفعيل.';return}
+        const catalog=await call(ACCESS,'catalog');
+        const learner=(catalog.learners||[]).find(item=>item.id===publication.learner_id);
+        if(!learner){status.textContent='لا يمكن التحقق من هوية الطالب المرتبط؛ لن يظهر زر التفعيل.';return}
+        preview.innerHTML=`<div class="topline"><b>الطالب: ${safe(learner.display_name)}</b><span>الصف ${safe(learner.grade_level||'—')}</span></div><p>نسخة المراجعة: <code dir="ltr">${safe(version)}</code></p><p>الحالة: قيد الانتظار، ولن تُفعّل إلا بعد تأكيدك.</p><button class="btn btn-primary" data-confirm-release>تأكيد تفعيل هذا الامتحان</button><div data-official-links></div>`;
+        status.textContent='تأكد من هوية الطالب والنسخة قبل التفعيل.';
+        const releaseButton=preview.querySelector('[data-confirm-release]'),links=preview.querySelector('[data-official-links]');
+        releaseButton.addEventListener('click',async()=>{
+          if(releaseButton.disabled||!window.confirm(`تفعيل النسخة ${version} للطالب ${learner.display_name}؟`))return;
+          releaseButton.disabled=true;reviewButton.disabled=true;status.textContent='جارِ طلب التفعيل الرسمي والتحقق من النتيجة…';
+          try{
+            const released=await call(LEARNING,'release_assessment',pointer);
+            const checked=await call(LEARNING,'read_assessment',pointer);
+            if(checked?.publication?.state!=='released'||checked.publication.quiz_version_id!==version||checked.publication.candidate_sha256!==hash){status.textContent='النتيجة غير مؤكدة. أعد مراجعة الحالة قبل أي خطوة أخرى.';return}
+            const learning=officialAssessmentLink(released?.learning_path,'learning'),exam=officialAssessmentLink(released?.exam_path,'exam');
+            if(!learning||!exam){status.textContent='تم تأكيد التفعيل، لكن لم يُعِد الخادم رابطين صالحين. راجع سجلات النسخة ولا ترسل بريدًا.';return}
+            links.innerHTML=`<div class="actions"><a class="btn btn-soft" href="${safe(learning)}" target="_blank" rel="noopener noreferrer">رابط التعلّم</a><a class="btn btn-soft" href="${safe(exam)}" target="_blank" rel="noopener noreferrer">رابط الامتحان</a></div><p class="muted">تحقق من وصول الطالب ثم أرسل البريد عبر الإجراء المعتمد بشكل منفصل.</p>`;
+            status.textContent='تم تفعيل الامتحان والتحقق من حالة النشر. لم يُرسَل أي بريد.';
+          }catch{status.textContent='تعذر تأكيد التفعيل. افحص الحالة مجددًا قبل إعادة أي طلب؛ لا يُعاد التفعيل تلقائيًا.'}finally{reviewButton.disabled=false}
+        });
+      }catch{status.textContent='تعذر التحقق من هذه النسخة بصلاحية الأهل الحالية. راجع البيانات أو سجّل الدخول مجددًا.'}
+      finally{reviewButton.disabled=false}
+    });
+  }
+
+  function route(){const h=location.hash;if(h==='#parents'){prefetchDashboardSummary();setTimeout(installDashboard,20)}else if(h==='#parent-access')renderAccess();else if(h==='#parent-release')renderAssessmentRelease();else if(h==='#parent-activity')renderActivity();else if(h==='#parent-results')renderResults();}
   const observer=new MutationObserver(()=>{if(location.hash==='#parents')installDashboard()});observer.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('hashchange',()=>setTimeout(route,0));document.addEventListener('DOMContentLoaded',route);route();
 })();

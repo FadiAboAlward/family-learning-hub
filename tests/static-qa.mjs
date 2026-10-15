@@ -281,3 +281,6 @@ for(const phrase of ['playwright-screenshots/','retention-days: 7','Do not commi
 
 if(failures.length){console.error('\nSTATIC QA FAILED');for(const m of failures)console.error(`- ${m}`);process.exit(1);}
 console.log('Static QA passed: unified build cache busting, A-F option labels, global RTL-safe math isolation, protected math-surface semantics, direct unconditional required-job QA wiring, immutable artifact action pinning, seven-day Playwright screenshot evidence, numeric input direction, mobile full-width layout, Learning confirmation flow, active runtime/legacy guards and Exam API protections are valid.');
+
+// Run the scoped FLH-031 deterministic parent-release UI contract in the mandatory static gate.
+await import('./parent-release-ui.unit.mjs');
