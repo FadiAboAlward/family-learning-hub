@@ -1664,8 +1664,8 @@ begin
     select 1 from jsonb_array_elements(v_items) item
     left join public.learning_concepts concept
       on concept.workspace_id=v_workspace and concept.code=item->>'concept'
-    where concept.id is null or concept.subject_id<>v_arabic or concept.grade_level<>5
-      or (concept.curriculum_id is not null and concept.curriculum_id<>v_curriculum)
+    where concept.id is null or concept.subject_id<>v_arabic or concept.grade_level is distinct from 5
+      or concept.curriculum_id is distinct from v_curriculum
   ) then raise exception 'SY_G5_AR_BROCHURE_CONCEPT_SCOPE_MISMATCH'; end if;
 
   insert into public.quizzes(

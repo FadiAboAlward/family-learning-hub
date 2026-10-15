@@ -9,9 +9,12 @@ declare
   v_book uuid;
   v_count int;
 begin
-  select q.id,q.workspace_id,q.book_id into v_quiz,v_workspace,v_book
+  select id into v_workspace from public.workspaces where slug='family-learning-hub' limit 1;
+  if v_workspace is null then raise exception 'SY_G5_WORKSPACE_MISSING'; end if;
+  select q.id,q.book_id into v_quiz,v_book
   from public.quizzes q
-  where q.slug='sy-g5-arabic-u1-brochure-baseline-20261015-v2'
+  where q.workspace_id=v_workspace
+    and q.slug='sy-g5-arabic-u1-brochure-baseline-20261015-v2'
     and q.status='active'
     and q.curriculum_id=(select id from public.curricula where code='syrian-national')
     and q.subject_id=(select id from public.subjects where code='arabic');
@@ -90,8 +93,8 @@ begin
     join public.learning_concepts c on c.id=qc.concept_id
     where q.quiz_version_id=v_version
       and (c.subject_id<>(select id from public.subjects where code='arabic')
-        or c.grade_level<>5
-        or (c.curriculum_id is not null and c.curriculum_id<>(select id from public.curricula where code='syrian-national'))))
+        or c.grade_level is distinct from 5
+        or c.curriculum_id is distinct from (select id from public.curricula where code='syrian-national')))
   then raise exception 'SY_G5_PRIMARY_CONCEPT_WRONG_SCOPE'; end if;
 
   -- This content migration must not have generated synthetic academic attempts.

@@ -19,6 +19,11 @@ const learning = pkg.questions.filter(q => q.delivery_surface === 'learning');
 const exam = pkg.questions.filter(q => q.delivery_surface === 'exam');
 assert.equal(learning.length, 20);
 assert.equal(exam.length, 20);
+const examBlueprint=new Map(pkg.blueprint.map(b=>[b.question_code,b]));
+assert.equal(exam.filter(q=>examBlueprint.get(q.question_code)?.context_type==='contextual').length,15,
+  'This package requires exactly 15 meaningful contextual Exam items');
+assert.equal(examBlueprint.get('SYAR-G5-20261015-E02')?.context_type,'direct',
+  'E02 is a direct missing-title function question, not a contextual case');
 assert.equal(new Set(pkg.questions.map(q => q.question_code)).size, 40);
 assert.equal(new Set(pkg.questions.map(q => q.prompt)).size, 40);
 assert.equal(learning.flatMap(q => q.hints ?? []).length, 80);
