@@ -2513,8 +2513,8 @@
     "review_basis": "Independent second-pass academic source-grounded review of the exact 40-item candidate, 80 Learning hint levels, all 20 Exam rationales, Exam-versus-Learning cognitive paths and within-Exam overlaps; canonical AR-LUGATI-G5-T1 source PDF pages 7–9. Publication/runtime remains separate.",
     "reviewed_items": 40,
     "reviewed_learning_hint_levels": 80,
-    "review_findings": "Final second targeted review round: fixed E03, which replayed L15's 'add missing instructions' operation, by replacing it with a source-bounded evaluation of an unsupported superlative against observed facts. Previous distinct E07/E10 corrections retained, E16 options remain verb-initial. All other candidate questions unchanged.",
-    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval. E04 is a direct phrase-function classification whose decorative library setting does not change the answer; its context_type was corrected from contextual to direct, keeping 15 true contextual exam items without any learner-visible wording change.",
+    "review_findings": "Final second targeted review round: fixed E03, which replayed L15's 'add missing instructions' operation, by replacing it with a source-bounded evaluation of an unsupported superlative against observed facts. Previous distinct E07/E10 corrections retained, E16 options remain verb-initial. All other candidate questions unchanged. Codex identified L06 (not L03) as the closest coaching path for E03. The audit was corrected to compare topical credibility/relevance selection against assessing sufficiency of factual observations to justify an absolute superlative; external final semantic acceptance is still required.",
+    "warning_disposition": "Package-level candidate authoring reviewed following final bounded repairs E03/E07/E10. Independent external reviewer dispositions and verified publication/video/email remain separate required gates; this authoring metadata cannot substitute for reviewer approval. E04 is a direct phrase-function classification whose decorative library setting does not change the answer; its context_type was corrected from contextual to direct, keeping 15 true contextual exam items without any learner-visible wording change. No question/options/hints/SQL were modified in this audit correction; a final reviewer must independently verify the semantic distinction from L06 before release.",
     "approval_scope": "ACADEMIC_AUTHORING_PASS_ONLY — RELEASE_AFTER_EXACT_HEAD_CI_AND_REAL_RUNTIME_CHECKS",
     "video": "NOT_VERIFIED",
     "testing": "NOT_RUN",
@@ -2547,11 +2547,11 @@
       },
       {
         "exam_code": "SYAR-G5-20261012-E03",
-        "closest_learning_code": "SYAR-G5-20261012-L03",
-        "input_evidence": "صياغة غلاف تحمل حكماً مطلقاً، مقابل معلومات مشاهدة لا تثبت التفوق الشامل.",
+        "closest_learning_code": "SYAR-G5-20261012-L06",
+        "input_evidence": "L06: حقائق موثوقة ذات صلة مقابل صورة غير ذات صلة. E03: أشجار ومقاعد مشاهدة، مقابل ادعاء تفضيل مطلق يتجاوز البيانات.",
         "cognitive_action": "الحكم على مدى ملاءمة ادعاء مطلق لما تسنده أدلة محدودة",
-        "deciding_criterion": "الفصل بين ملاحظة قابلة للتحقق ومبالغة تتجاوز ما هو موثق",
-        "independence_rationale": "L03 يتدرّب على جمع معلومات مرتبطة بالموضوع، وL15 على إصلاح غياب تعليمات المشاركة؛ أما هنا فيقارن المتعلم نطاق الادعاء المطلق بالأدلة المحدودة ويفسّر سبب عدم صلاحية المبالغة، وليس اختيار إرشاد إضافي أو جمع معلومات جديدة."
+        "deciding_criterion": "ليس السؤال عن ملاءمة المواد للنشر كما في L06، بل عن كفاية مشاهدات محدودة لتبرير مقارنة شاملة لا دليل عليها.",
+        "independence_rationale": "أقرب تدريب هو L06 الذي يوازن بين مواد موثوقة مرتبطة بالموضوع وصورة جميلة غير مرتبطة، ويختار ما يُدرج في المطويّة؛ أما E03 فيقدم معلومات مشاهدة مرتبطة فعلاً بالحديقة ويطالب بالحكم هل تكفي هذه الأدلة لإثبات صيغة التفضيل المطلقة «الأجمل في العالم». لا يمكن حلّ E03 بمجرّد استبعاد صورة غير مرتبطة أو اختيار حقائق مناسبة؛ يجب تمييز محدودية الدليل من صحة مادته وصلته. جرت مقارنة المسارين واعتُبر الفرق بين اختيار المادة وتقويم قوة الادعاء فرقاً معرفياً يتطلب مراجعة مستقلة للنسخة النهائية."
       },
       {
         "exam_code": "SYAR-G5-20261012-E04",

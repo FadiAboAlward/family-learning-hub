@@ -92,6 +92,10 @@ for (const [i, q] of pkg.questions.entries()) {
   assert.equal(row.prompt, q.prompt);
   assert.equal(row.explain, q.explanation);
   assert.equal(row.source_ref, q.source_ref);
+  const sourcePage = /\bPDF_PAGE=(\d+)\b/u.exec(q.source_ref);
+  assert.ok(sourcePage, 'Source reference missing PDF_PAGE at ' + q.question_code);
+  assert.equal(row.page, Number(sourcePage[1]),
+    'Published SQL source page does not match the exact candidate at ' + q.question_code);
   assert.deepEqual(row.opts, q.options.map(o => o.content));
   assert.equal(row.correct, q.options.find(o => o.is_correct).position);
   assert.deepEqual(row.hints, q.hints ?? []);
