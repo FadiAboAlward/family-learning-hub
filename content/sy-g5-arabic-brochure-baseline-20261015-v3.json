@@ -58,7 +58,7 @@
   "runtime_external_dependencies": [],
   "blueprint": [
     {
-      "question_code": "Q-202610150001",
+      "question_code": "Q-20261015220001",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -71,7 +71,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150002",
+      "question_code": "Q-20261015220002",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -84,7 +84,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150003",
+      "question_code": "Q-20261015220003",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -95,7 +95,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150004",
+      "question_code": "Q-20261015220004",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -108,7 +108,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150005",
+      "question_code": "Q-20261015220005",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -121,7 +121,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150006",
+      "question_code": "Q-20261015220006",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -134,7 +134,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150007",
+      "question_code": "Q-20261015220007",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -145,7 +145,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150008",
+      "question_code": "Q-20261015220008",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -158,7 +158,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150009",
+      "question_code": "Q-20261015220009",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -171,7 +171,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150010",
+      "question_code": "Q-20261015220010",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -184,7 +184,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150011",
+      "question_code": "Q-20261015220011",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -195,7 +195,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150012",
+      "question_code": "Q-20261015220012",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -208,7 +208,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150013",
+      "question_code": "Q-20261015220013",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -221,7 +221,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150014",
+      "question_code": "Q-20261015220014",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -234,7 +234,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150015",
+      "question_code": "Q-20261015220015",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -247,7 +247,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150016",
+      "question_code": "Q-20261015220016",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -258,7 +258,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150017",
+      "question_code": "Q-20261015220017",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -269,7 +269,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150018",
+      "question_code": "Q-20261015220018",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 5,
@@ -282,7 +282,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150019",
+      "question_code": "Q-20261015220019",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 3,
@@ -293,7 +293,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150020",
+      "question_code": "Q-20261015220020",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 4,
@@ -306,7 +306,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150021",
+      "question_code": "Q-20261015220021",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -319,7 +319,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150022",
+      "question_code": "Q-20261015220022",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -331,7 +331,7 @@
       "context_necessary": false
     },
     {
-      "question_code": "Q-202610150023",
+      "question_code": "Q-20261015220023",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -344,7 +344,7 @@
       "context_necessity_reason": "عبارة التفوق على جميع الحدائق والمعلومات المحدودة التي شاهدتها التلميذات ضرورية لتفسير سبب مراجعة الادعاء."
     },
     {
-      "question_code": "Q-202610150024",
+      "question_code": "Q-20261015220024",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -355,7 +355,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150025",
+      "question_code": "Q-20261015220025",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -368,7 +368,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150026",
+      "question_code": "Q-20261015220026",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -381,7 +381,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150027",
+      "question_code": "Q-20261015220027",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -394,7 +394,7 @@
       "context_necessity_reason": "ترتيب ظهور الغلاف والداخل والظهر ووظيفة العناصر الثلاثة ضروري لتحديد موضع كل عنصر، ولا تكفي معرفة مراحل تصميم المطويّة."
     },
     {
-      "question_code": "Q-202610150028",
+      "question_code": "Q-20261015220028",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -407,7 +407,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150029",
+      "question_code": "Q-20261015220029",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -420,7 +420,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150030",
+      "question_code": "Q-20261015220030",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -433,7 +433,7 @@
       "context_necessity_reason": "شروط الجفاف واكتمال الصفحات واستثناء المجلات والسماح بالملاحظات جميعها لازمة؛ معرفة أن مرحلة جمع المعلومات تسبق التصميم لا تحدد الإجابة."
     },
     {
-      "question_code": "Q-202610150031",
+      "question_code": "Q-20261015220031",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -444,7 +444,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150032",
+      "question_code": "Q-20261015220032",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -457,7 +457,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150033",
+      "question_code": "Q-20261015220033",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -470,7 +470,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150034",
+      "question_code": "Q-20261015220034",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -483,7 +483,7 @@
       "context_necessity_reason": "بدء لقاء شفوي مع سكان الحي بسؤال غير اتهامي هو القيد الذي يحكم صحة البديل."
     },
     {
-      "question_code": "Q-202610150035",
+      "question_code": "Q-20261015220035",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -496,7 +496,7 @@
       "context_necessity_reason": "سياق المسودة أو الجمهور أو الهدف أو الفعالية الوارد في السؤال ضروري لاختيار التصرف المناسب، وليس زخرفة لفظية."
     },
     {
-      "question_code": "Q-202610150036",
+      "question_code": "Q-20261015220036",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -509,7 +509,7 @@
       "context_necessity_reason": "المعطيات والسياق يضيفان قيدًا ضروريًا لا تكفي معه معرفة موضوع الجملة وحده."
     },
     {
-      "question_code": "Q-202610150037",
+      "question_code": "Q-20261015220037",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -520,7 +520,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150038",
+      "question_code": "Q-20261015220038",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 5,
@@ -533,7 +533,7 @@
       "context_necessity_reason": "المعطيات والسياق يضيفان قيدًا ضروريًا لا تكفي معه معرفة موضوع الجملة وحده."
     },
     {
-      "question_code": "Q-202610150039",
+      "question_code": "Q-20261015220039",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 3,
@@ -544,7 +544,7 @@
       "context_type": "direct"
     },
     {
-      "question_code": "Q-202610150040",
+      "question_code": "Q-20261015220040",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 4,
@@ -559,7 +559,7 @@
   ],
   "questions": [
     {
-      "question_code": "Q-202610150001",
+      "question_code": "Q-20261015220001",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -619,7 +619,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150002",
+      "question_code": "Q-20261015220002",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -679,7 +679,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150003",
+      "question_code": "Q-20261015220003",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -739,7 +739,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150004",
+      "question_code": "Q-20261015220004",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -799,7 +799,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150005",
+      "question_code": "Q-20261015220005",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -859,7 +859,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150006",
+      "question_code": "Q-20261015220006",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -919,7 +919,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150007",
+      "question_code": "Q-20261015220007",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -979,7 +979,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150008",
+      "question_code": "Q-20261015220008",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1039,7 +1039,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150009",
+      "question_code": "Q-20261015220009",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1099,7 +1099,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150010",
+      "question_code": "Q-20261015220010",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1159,7 +1159,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150011",
+      "question_code": "Q-20261015220011",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1219,7 +1219,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150012",
+      "question_code": "Q-20261015220012",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1279,7 +1279,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150013",
+      "question_code": "Q-20261015220013",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1339,7 +1339,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150014",
+      "question_code": "Q-20261015220014",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -1399,7 +1399,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150015",
+      "question_code": "Q-20261015220015",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -1459,7 +1459,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150016",
+      "question_code": "Q-20261015220016",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -1519,7 +1519,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150017",
+      "question_code": "Q-20261015220017",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -1579,7 +1579,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150018",
+      "question_code": "Q-20261015220018",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 5,
@@ -1639,7 +1639,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150019",
+      "question_code": "Q-20261015220019",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 3,
@@ -1699,7 +1699,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150020",
+      "question_code": "Q-20261015220020",
       "delivery_surface": "learning",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 4,
@@ -1759,7 +1759,7 @@
       ]
     },
     {
-      "question_code": "Q-202610150021",
+      "question_code": "Q-20261015220021",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -1796,7 +1796,7 @@
       "explanation": "ما دام جمع المعلومات قد اكتمل، يمكن إعادة إسناد الرسوم لزميلة متاحة، ثم الانتقال إلى الضبط اللغوي والشكل النهائي."
     },
     {
-      "question_code": "Q-202610150022",
+      "question_code": "Q-20261015220022",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -1833,7 +1833,7 @@
       "explanation": "قد يشير الرسم إلى الفكرة، لكن العنوان يحدد للقارئ موضوع المطويّة بوضوح من النظرة الأولى."
     },
     {
-      "question_code": "Q-202610150023",
+      "question_code": "Q-20261015220023",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -1870,7 +1870,7 @@
       "explanation": "قول «الأجمل في العالم» حكم مطلق لا تثبته مشاهدة أشجار ومقاعد، والأفضل أن تكون معلومات المطويّة قابلة للتحقق، مع بقاء الدعوة مشجّعة."
     },
     {
-      "question_code": "Q-202610150024",
+      "question_code": "Q-20261015220024",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 1,
@@ -1907,7 +1907,7 @@
       "explanation": "العبارة الأولى تعرض فائدة القراءة، والثانية توجه القارئ إلى فعل، والثالثة تعلن وقت اللقاء."
     },
     {
-      "question_code": "Q-202610150025",
+      "question_code": "Q-20261015220025",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1944,7 +1944,7 @@
       "explanation": "توجيه الدعوة لمن يستطيع المشاركة في المكان المعني يجعل الجمهور أوضح دون إخفاء موعد النشاط."
     },
     {
-      "question_code": "Q-202610150026",
+      "question_code": "Q-20261015220026",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -1981,7 +1981,7 @@
       "explanation": "الجملة الصحيحة تحفظ يوم الثلاثاء والمجموع 12 وتوزيعه إلى 5 و7 كما هو مسجل."
     },
     {
-      "question_code": "Q-202610150027",
+      "question_code": "Q-20261015220027",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2018,7 +2018,7 @@
       "explanation": "عندما يرى القارئ الغلاف أولاً يتعرّف عنوان الحملة، ثم يجد داخل المطويّة ما سيفعله، وفي ظهرها وسيلة التواصل مع المنظمين."
     },
     {
-      "question_code": "Q-202610150028",
+      "question_code": "Q-20261015220028",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2055,7 +2055,7 @@
       "explanation": "القارئ يحتاج تبايناً واضحاً بين النص والخلفية؛ حجم الحرف الكبير وحده لا يكفي إن تقارب اللونان."
     },
     {
-      "question_code": "Q-202610150029",
+      "question_code": "Q-20261015220029",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2092,7 +2092,7 @@
       "explanation": "لا يستطيع الفريق الجزم باليوم من نصين متناقضين؛ يسأل الجهة المنظمة ثم يصلح الموضعين."
     },
     {
-      "question_code": "Q-202610150030",
+      "question_code": "Q-20261015220030",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2129,7 +2129,7 @@
       "explanation": "الكتاب المقبول يجب أن يجمع النوع المسموح والجفاف واكتمال الصفحات. تسمح التعليمات بملاحظات صغيرة بالقلم الرصاص، لذلك يحقق كتاب العلوم الجاف الكامل جميع الشروط."
     },
     {
-      "question_code": "Q-202610150031",
+      "question_code": "Q-20261015220031",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2166,7 +2166,7 @@
       "explanation": "الصيغة الصحيحة تصل فاء الربط بـ«حافظوا» دون ألف دخيلة وتضع فاصلة بين الجزأين."
     },
     {
-      "question_code": "Q-202610150032",
+      "question_code": "Q-20261015220032",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2203,7 +2203,7 @@
       "explanation": "الرمز يدل على صندوق لجمع الكتب هنا، لذلك ينبغي أن يشرح المفتاح وظيفة جمع الكتب لا القمامة."
     },
     {
-      "question_code": "Q-202610150033",
+      "question_code": "Q-20261015220033",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 2,
@@ -2240,7 +2240,7 @@
       "explanation": "العبارة المختارة تحول هدف التشجير إلى فعل بسيط مفهوم للطفل مع الحفاظ على معناه."
     },
     {
-      "question_code": "Q-202610150034",
+      "question_code": "Q-20261015220034",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -2277,7 +2277,7 @@
       "explanation": "السؤال المحترم الذي يدعو الناس إلى التفكير في التعاون يفتح الحوار ويقرّبهم من هدف المطوية دون اتهامهم."
     },
     {
-      "question_code": "Q-202610150035",
+      "question_code": "Q-20261015220035",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-brochure",
       "difficulty_level": 3,
@@ -2314,7 +2314,7 @@
       "explanation": "اختبار المسودة مع عينة من الجمهور المقصود وطلب شرح ما فهموه يقدّم دليلاً مباشراً على وضوح الرسالة، بخلاف فحص الألوان أو معدات الطباعة."
     },
     {
-      "question_code": "Q-202610150036",
+      "question_code": "Q-20261015220036",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -2351,7 +2351,7 @@
       "explanation": "«الحديقة جميلة» جملة اسمية تامة، و«يزرع التلاميذ الأشجار» جملة فعلية تامة. البديل الذي يبدأ «الحديقة التي خلف المدرسة» لا يفيد معنى تامًا رغم بدايته بالاسم."
     },
     {
-      "question_code": "Q-202610150037",
+      "question_code": "Q-20261015220037",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 4,
@@ -2388,7 +2388,7 @@
       "explanation": "«ينظف التلاميذ ممرات المدرسة صباحاً» جملة مكتملة تتضمن فعلاً وفاعلاً وما يوضح الحدث."
     },
     {
-      "question_code": "Q-202610150038",
+      "question_code": "Q-20261015220038",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-sentence-types",
       "difficulty_level": 5,
@@ -2425,7 +2425,7 @@
       "explanation": "«التعاون قوة» جملة اسمية مفيدة، و«شاركوا في تنظيف ساحة الحي» جملة فعلية تامة وتطلب مشاركة الناس، بينما الخبر عن عمل الطلاب لا يحقق الدعوة المطلوبة."
     },
     {
-      "question_code": "Q-202610150039",
+      "question_code": "Q-20261015220039",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 3,
@@ -2462,7 +2462,7 @@
       "explanation": "«أحسن» همزته قطع و«استمع» وصل، ومجرد اشتراكهما في الماضي لا يجعل همزتيهما من النوع نفسه."
     },
     {
-      "question_code": "Q-202610150040",
+      "question_code": "Q-20261015220040",
       "delivery_surface": "exam",
       "concept_code": "arabic-g5-u1-initial-hamza",
       "difficulty_level": 4,
@@ -2532,160 +2532,160 @@
     "status": "AUTHORING_REVIEW_PASS",
     "rows": [
       {
-        "exam_code": "Q-202610150021",
-        "closest_learning_code": "Q-202610150003",
+        "exam_code": "Q-20261015220021",
+        "closest_learning_code": "Q-20261015220003",
         "input_evidence": "مسؤولية الرسوم لم تُنجز، أما معلومات المطويّة فمكتملة",
         "cognitive_action": "إعادة توزيع مهمة فنية متعثّرة من غير إسقاط المرحلة الختامية",
         "deciding_criterion": "يسند العمل الفني إلى متاحة ثم تتم المراجعة",
         "independence_rationale": "إعادة توزيع الأدوار مع الحفاظ على نهاية سير العمل لا استدعاء المادة التي تجمع بعد تحديد الموضوع"
       },
       {
-        "exam_code": "Q-202610150022",
-        "closest_learning_code": "Q-202610150002",
+        "exam_code": "Q-20261015220022",
+        "closest_learning_code": "Q-20261015220002",
         "input_evidence": "غلاف مصوّر لكن عنوان الموضوع محذوف",
         "cognitive_action": "تفسير أثر حذف العنوان على التعرف السريع إلى الموضوع",
         "deciding_criterion": "عنوان الغلاف يساعد على فهم المقصد قبل فتح المطويّة",
         "independence_rationale": "تفسير أثر غياب العنوان في فهم قارئ الغلاف لا اختيار عبارة عنوان تؤدي غاية جمع الكتب"
       },
       {
-        "exam_code": "Q-202610150023",
-        "closest_learning_code": "Q-202610150006",
+        "exam_code": "Q-20261015220023",
+        "closest_learning_code": "Q-20261015220006",
         "input_evidence": "L06: حقائق موثوقة ذات صلة مقابل صورة غير ذات صلة. E03: أشجار ومقاعد مشاهدة، مقابل ادعاء تفضيل مطلق يتجاوز البيانات.",
         "cognitive_action": "الحكم على مدى ملاءمة ادعاء مطلق لما تسنده أدلة محدودة",
         "deciding_criterion": "ليس السؤال عن ملاءمة المواد للنشر كما في L06، بل عن كفاية مشاهدات محدودة لتبرير مقارنة شاملة لا دليل عليها.",
         "independence_rationale": "تقويم كفاية أدلة محدودة لإثبات تفضيل شامل لا انتقاء حقائق موثوقة ذات صلة واستبعاد صورة بعيدة"
       },
       {
-        "exam_code": "Q-202610150024",
-        "closest_learning_code": "Q-202610150010",
+        "exam_code": "Q-20261015220024",
+        "closest_learning_code": "Q-20261015220010",
         "input_evidence": "جمل خبرية وأمرية وإعلام بوقت نشاط",
         "cognitive_action": "تصنيف ثلاث وظائف تواصلية مختلفة داخل المطويّة",
         "deciding_criterion": "تمييز فائدة عامة من توجيه وموعد",
         "independence_rationale": "ربط ثلاث عبارات بثلاث وظائف خطابية بالترتيب لا تعرّف وظيفة صيغة دعوة واحدة"
       },
       {
-        "exam_code": "Q-202610150025",
-        "closest_learning_code": "Q-202610150005",
+        "exam_code": "Q-20261015220025",
+        "closest_learning_code": "Q-20261015220005",
         "input_evidence": "نداء واسع يقابله نشاط محلي محدد",
         "cognitive_action": "تعديل المخاطبة وفق النطاق الجغرافي الحقيقي للنشاط",
         "deciding_criterion": "تحديد الجمهور المناسب مع الحفاظ على طريقة المشاركة",
         "independence_rationale": "تصحيح مدى المخاطَب بناء على موقع المشاركين الممكن لا استنتاج الجمهور من نص دعوة جاهزة"
       },
       {
-        "exam_code": "Q-202610150026",
-        "closest_learning_code": "Q-202610150006",
+        "exam_code": "Q-20261015220026",
+        "closest_learning_code": "Q-20261015220006",
         "input_evidence": "بطاقة تحتوي يوماً ومجموعاً وتوزيعاً للعدد",
         "cognitive_action": "نقل بيانات أصلية متعددة القيود دون تحريف",
         "deciding_criterion": "ثبات اليوم والمجموع وحصتي الصفين",
         "independence_rationale": "الحفاظ على ثلاثة قيود رقمية وزمنية وفئات أثناء نقل بيان لا اختيار مواد للموضوع"
       },
       {
-        "exam_code": "Q-202610150027",
-        "closest_learning_code": "Q-202610150012",
+        "exam_code": "Q-20261015220027",
+        "closest_learning_code": "Q-20261015220012",
         "input_evidence": "ثلاثة أوجه تظهر للقارئ بالتتابع وثلاث وظائف معلوماتية مختلفة مطلوب توزيعها",
         "cognitive_action": "توزيع العنوان والإرشادات والتواصل عبر أوجه المطويّة وفق ترتيب اطلاع القارئ والغرض من كل وجه",
         "deciding_criterion": "تحقيق ترتيب اطّلاع القارئ: التعرّف على الحملة، معرفة طريقة المشاركة، ثم الاستفسار",
         "independence_rationale": "توزيع ثلاث وظائف على أوجه المطوية حسب ترتيب اطلاع القارئ لا تنظيم ترتيب فقرات نص"
       },
       {
-        "exam_code": "Q-202610150028",
-        "closest_learning_code": "Q-202610150008",
+        "exam_code": "Q-20261015220028",
+        "closest_learning_code": "Q-20261015220008",
         "input_evidence": "كتابة كبيرة ومتباعدة لكنها بلون قريب من الورق",
         "cognitive_action": "عزل متغير التباين البصري مع تثبيت الحجم والمسافة",
         "deciding_criterion": "اختلاف لون الحروف عن الخلفية لتمييزها",
         "independence_rationale": "تشخيص ضعف تباين اللون مع ثبات كبر الحرف والمسافات لا صغر خط مزدحم لكبار السن"
       },
       {
-        "exam_code": "Q-202610150029",
-        "closest_learning_code": "Q-202610150009",
+        "exam_code": "Q-20261015220029",
+        "closest_learning_code": "Q-20261015220009",
         "input_evidence": "موعدان متعارضان في موضعين ولا معرفة بالصح",
         "cognitive_action": "حسم تناقض معلوماتي بالرجوع إلى مصدر موثوق",
         "deciding_criterion": "التحقق أولاً ثم توحيد التاريخ",
         "independence_rationale": "التحقق من تعارض موعدين بين واجهتين قبل الطباعة لا إدراك أهمية ذكر الزمان والمكان"
       },
       {
-        "exam_code": "Q-202610150030",
-        "closest_learning_code": "Q-202610150003",
+        "exam_code": "Q-20261015220030",
+        "closest_learning_code": "Q-20261015220003",
         "input_evidence": "فئات الكتب المسموحة مع شروط الجفاف والصفحات الكاملة والسماح بملاحظات صغيرة واستثناء المجلات.",
         "cognitive_action": "مطابقة كل مثال مع القيود المتزامنة والمستثنيات لا تحديد ترتيب مراحل صنع المطويّة.",
         "deciding_criterion": "يلزم أن يكون كتاب قصص/علوم جافاً وكامل الصفحات؛ الملاحظات الخفيفة لا تمنع قبوله.",
         "independence_rationale": "L03 يختبر معرفة مرحلة جمع المعلومات، أما E10 الجديد فيستخدم بيانات مكتملة ويطبّق شروط قبول متزامنة على أربع حالات، ويمكن أن تكون كل الخيارات كتبًا أو مواد حقيقية؛ لا يُحل باختيار «اجمع المعلومات» فقط."
       },
       {
-        "exam_code": "Q-202610150031",
-        "closest_learning_code": "Q-202610150011",
+        "exam_code": "Q-20261015220031",
+        "closest_learning_code": "Q-20261015220011",
         "input_evidence": "فاء فصلت خطأ عن فعل الأمر مع ألف زائدة",
         "cognitive_action": "تنفيذ ثلاثة شروط تحريرية في خطأ كتابي محدد",
         "deciding_criterion": "وصل الفاء وحذف الألف وضبط الفصل بعلامة مناسبة",
         "independence_rationale": "تنفيذ تصحيح مكتوب يحقق الوصل والفاصلة وحذف الزائد لا تفسير أهمية مراجعة اللغة"
       },
       {
-        "exam_code": "Q-202610150032",
-        "closest_learning_code": "Q-202610150013",
+        "exam_code": "Q-20261015220032",
+        "closest_learning_code": "Q-20261015220013",
         "input_evidence": "صندوق لجمع الكتب شُرح بأنه صندوق للنفايات",
         "cognitive_action": "تصحيح مفتاح رمز ذي تفسير غير متطابق مع استخدامه",
         "deciding_criterion": "مواءمة شرح الرمز مع غايته داخل الرسالة",
         "independence_rationale": "تصحيح تسمية رمز لا يوافق مدلوله ضمن مفتاح بصري لا تقويم اتساق العنوان والصورة والنص إجمالاً"
       },
       {
-        "exam_code": "Q-202610150033",
-        "closest_learning_code": "Q-202610150005",
+        "exam_code": "Q-20261015220033",
+        "closest_learning_code": "Q-20261015220005",
         "input_evidence": "مصطلحات علمية معقدة تستهدف طلاباً صغاراً",
         "cognitive_action": "تبسيط تعبير تقني لطفل صغير مع ثبات الفكرة",
         "deciding_criterion": "وضوح العناية بالشجرة من دون تبديل الغاية",
         "independence_rationale": "تحويل خطاب تقني إلى ألفاظ تلائم سن الصف الثاني مع بقاء هدف التشجير لا استنتاج الجمهور من خطاب قائم"
       },
       {
-        "exam_code": "Q-202610150034",
-        "closest_learning_code": "Q-202610150014",
+        "exam_code": "Q-20261015220034",
+        "closest_learning_code": "Q-20261015220014",
         "input_evidence": "سؤال شفوي افتتاحي لجيران الحي، ممنوع فيه الاتهام أو الخروج عن موضوع العمل",
         "cognitive_action": "اختيار صيغة استفهام تقنع بالحوار دون افتراض ذنب الجمهور",
         "deciding_criterion": "السؤال متعلق بالتعاون، غير اتهامي، ومناسب لافتتاح عرض المطوية",
         "independence_rationale": "L14 يقارن عرضين بحسب اجتماع فائدة العمل والدعوة إليه، أما E14 فيختار سؤالًا افتتاحيًا من أربع صيغ استفهامية تختلف في الافتراضات ونبرة الخطاب. لا تكفي قاعدة إضافة الفائدة والدعوة المحفوظة من Learning."
       },
       {
-        "exam_code": "Q-202610150035",
-        "closest_learning_code": "Q-202610150013",
+        "exam_code": "Q-20261015220035",
+        "closest_learning_code": "Q-20261015220013",
         "input_evidence": "مسودة مطويّة قبل طباعة مئة نسخة وحاجة إلى دليل تجريبي على فهم سكان الحي",
         "cognitive_action": "اختيار أسلوب دراسة مصغرة لفهم الجمهور الخارجي بدل افتراض الوضوح أو تقييم اللون",
         "deciding_criterion": "أخذ تفسير قارئ خارجي للرسالة والعمل المطلوب",
         "independence_rationale": "L13 يراجع انسجام عناصر النص ذاتيا، أما E15 فيصمم تحققاً مباشراً من فهم قراء حقيقيين قبل النشر، بخلاف E14 الذي يصلح إلقاء شفهي بعد شكوى."
       },
       {
-        "exam_code": "Q-202610150036",
-        "closest_learning_code": "Q-202610150018",
+        "exam_code": "Q-20261015220036",
+        "closest_learning_code": "Q-20261015220018",
         "input_evidence": "أثناء مراجعة مطويّة عن الاهتمام بالحديقة طُلب أن يبدأ النص بجملة اسمية تامّة تصف الحديقة، وأن يتبعها سطر يبدأ بفعل ويذكر عمل التلاميذ. أي زوج من العبارات يحقّق نوع الجملتين وتمام معنى كلٍّ منهما؟",
         "cognitive_action": "استبعاد تركيب يبدأ باسم لكنه لا يفيد معنى تاماً قبل اختيار جملتين متكاملتين",
         "deciding_criterion": "«الحديقة جميلة» جملة اسمية تامة، و«يزرع التلاميذ الأشجار» جملة فعلية تامة. البديل الذي يبدأ «الحديقة التي خلف المدرسة» لا يفيد معنى تامًا رغم بدايته بالاسم.",
         "independence_rationale": "L18 يصنف جملتين تامتين من بدايتهما؛ E16 يتطلب التأكد من اكتمال معنى تركيب يبدأ باسم ولكنه يفتقر إلى الخبر، وهو فرق في المعطيات يؤثر على التصحيح، ولا يتضمن إعادة نقل تاريخ E06."
       },
       {
-        "exam_code": "Q-202610150037",
-        "closest_learning_code": "Q-202610150017",
+        "exam_code": "Q-20261015220037",
+        "closest_learning_code": "Q-20261015220017",
         "input_evidence": "شبه جمل وصلة وشرط زمان مقابل فعل له إسناد مكتمل",
         "cognitive_action": "التفريق بين الجملة المكتملة والعبارات المتعلّقة بتتمة محذوفة",
         "deciding_criterion": "تمام الخبر لا مجرد بدء العبارة باسم أو فعل",
         "independence_rationale": "تعيين تركيب يفيد معنى تاماً لا تحديد سبب فعلية جملة صحيحة معروفة النوع"
       },
       {
-        "exam_code": "Q-202610150038",
-        "closest_learning_code": "Q-202610150018",
+        "exam_code": "Q-20261015220038",
+        "closest_learning_code": "Q-20261015220018",
         "input_evidence": "تريد تلميذة أن تعرض على سكان الحي قيمة التعاون ثم تدعوهم للمشاركة بعبارتين تامتّين. المطلوب جملة اسمية أولى تفيد معنى كاملًا، ثم جملة فعلية تدعو الناس إلى عمل واضح. أي نص يصلح للمطويّة؟",
         "cognitive_action": "اختيار فقرة من جملة اسمية تخبر بفائدة وجملة فعلية تدعو المخاطبين للمشاركة",
         "deciding_criterion": "«التعاون قوة» جملة اسمية مفيدة، و«شاركوا في تنظيف ساحة الحي» جملة فعلية تامة وتطلب مشاركة الناس، بينما الخبر عن عمل الطلاب لا يحقق الدعوة المطلوبة.",
         "independence_rationale": "L18 يطلب تسمية نوع جملتين فقط. في E18 يوجد خياران يحققان نوع الجملتين، لكن أحدهما فعل خبري لا يدعو السكان إلى المشاركة؛ فلا يكفي تكرار معيار أول كلمة لحل المهمة التواصلية."
       },
       {
-        "exam_code": "Q-202610150039",
-        "closest_learning_code": "Q-202610150019",
+        "exam_code": "Q-20261015220039",
+        "closest_learning_code": "Q-20261015220019",
         "input_evidence": "قول خاطئ يساوي همزتين لفعلين ماضيين",
         "cognitive_action": "نقض تعميم إملائي خاطئ بفعلين ماضيين مختلفي البنية",
         "deciding_criterion": "التمييز بين قطع أحسن ووصل استمع",
         "independence_rationale": "تفنيد تعميم نوع الهمزة في فعلين ماضيين مختلفين لا تصحيح حرف زائد في أمر شاركوا"
       },
       {
-        "exam_code": "Q-202610150040",
-        "closest_learning_code": "Q-202610150020",
+        "exam_code": "Q-20261015220040",
+        "closest_learning_code": "Q-20261015220020",
         "input_evidence": "موضع همزتَي أَمانة وإِخلاص وحركتي الفتح والكسر",
         "cognitive_action": "تفسير اختلاف موضع رسم همزة القطع فوق الألف أو تحته",
         "deciding_criterion": "الفتحة تقتضي الرسم فوق الألف، والكسرة تحته",

@@ -22,7 +22,7 @@ assert.equal(exam.length, 20);
 const examBlueprint=new Map(pkg.blueprint.map(b=>[b.question_code,b]));
 assert.equal(exam.filter(q=>examBlueprint.get(q.question_code)?.context_type==='contextual').length,15,
   'This package requires exactly 15 meaningful contextual Exam items');
-assert.equal(examBlueprint.get('Q-202610150022')?.context_type,'direct',
+assert.equal(examBlueprint.get('Q-20261015220022')?.context_type,'direct',
   'E02 is a direct missing-title function question, not a contextual case');
 assert.equal(new Set(pkg.questions.map(q => q.question_code)).size, 40);
 assert.equal(new Set(pkg.questions.map(q => q.prompt)).size, 40);
@@ -74,16 +74,16 @@ for (const q of pkg.questions) {
 }
 
 // Scoped academic fidelity regression for the single material v3 change.
-const e10=exam.find(q=>q.question_code==='Q-202610150030');
+const e10=exam.find(q=>q.question_code==='Q-20261015220030');
 assert.ok(e10 && e10.prompt.includes('المجلات') && e10.prompt.includes('الصفحات'),
  'E10 must apply eligibility constraints, not repeat L03 choice of gathering information');
 assert.equal(e10.options.filter(o=>o.is_correct).length,1);
 assert.ok(e10.options.some(o=>o.content.includes('مبلل')),
  'E10 wrong option must violate a substantive acceptance criterion');
-const e16=exam.find(q=>q.question_code==='Q-202610150036');
+const e16=exam.find(q=>q.question_code==='Q-20261015220036');
 assert.ok(e16 && e16.options.some(o=>o.content.includes('التي خلفَ المدرسةِ')),
  'E16 grammar scope and sentence completeness');
-const e18=exam.find(q=>q.question_code==='Q-202610150038');
+const e18=exam.find(q=>q.question_code==='Q-20261015220038');
 assert.ok(e18 && e18.options.some(o=>o.content.includes('ينظّفُ الطلابُ')),
  'E18 verbal report vs invitation');
 // FLH-027 uses the existing official assessment stage and release contracts.
