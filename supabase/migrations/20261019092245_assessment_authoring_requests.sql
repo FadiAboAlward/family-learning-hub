@@ -124,8 +124,18 @@ create function private.flh_assessment_authoring_bind() returns trigger
 language plpgsql security invoker set search_path='' as $$
 declare r private.assessment_authoring_requests%rowtype;
 begin
- select * into r from private.assessment_authoring_requests where workspace_id=new.workspace_id and quiz_version_id=new.quiz_version_id;
- if found and (new.quiz_id is distinct from r.quiz_id or new.learner_id is distinct from r.learner_id
+ if tg_op='UPDATE' then
+  select * into r from private.assessment_authoring_requests where workspace_id=old.workspace_id and quiz_version_id=old.quiz_version_id;
+  if not found then
+   -- An unrelated publication cannot be moved into a fresh integration request.
+   perform 1 from private.assessment_authoring_requests where workspace_id=new.workspace_id and quiz_version_id=new.quiz_version_id;
+   if found then raise exception 'ASSESSMENT_RETRY_CONFLICT'; end if;
+  end if;
+ else
+  select * into r from private.assessment_authoring_requests where workspace_id=new.workspace_id and quiz_version_id=new.quiz_version_id;
+ end if;
+ if r.request_id is not null and (new.workspace_id is distinct from r.workspace_id or new.quiz_version_id is distinct from r.quiz_version_id
+  or new.quiz_id is distinct from r.quiz_id or new.learner_id is distinct from r.learner_id
   or new.program_id is distinct from r.program_id or new.created_by is distinct from r.created_by
   or new.candidate_sha256 is distinct from r.candidate_sha256)
  then raise exception 'ASSESSMENT_RETRY_CONFLICT'; end if;
@@ -134,5 +144,5 @@ end;
 $$;
 revoke all on function private.flh_assessment_authoring_bind() from public,anon,authenticated;
 grant execute on function private.flh_assessment_authoring_bind() to service_role;
-create trigger assessment_authoring_bind before insert on public.assessment_publications
+create trigger assessment_authoring_bind before insert or update on public.assessment_publications
 for each row execute function private.flh_assessment_authoring_bind();

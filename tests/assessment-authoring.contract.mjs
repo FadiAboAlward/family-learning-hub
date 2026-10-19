@@ -67,6 +67,13 @@ await query(`begin; ${setup}
   perform pg_temp.authoring_check(not exists(select 1 from public.quiz_questions where quiz_version_id='${ids.version}'));
   r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='draft');
   r:=${publication('stage',staged)};perform pg_temp.authoring_check(r->>'state'='staged');
+  ${[['workspace_id',ids.other],['quiz_version_id',ids.other],['quiz_id',ids.other],
+    ['learner_id',ids.other],['program_id',ids.other],['created_by',ids.teacher],['candidate_sha256','0'.repeat(64)]
+   ].map(([field,value])=>`begin
+    update public.assessment_publications set ${field}='${value}' where workspace_id='${w}' and quiz_version_id='${ids.version}';
+    raise exception 'EXPECTED_BINDING_FAILURE_MISSING';
+    exception when raise_exception then if sqlerrm<>'ASSESSMENT_RETRY_CONFLICT' then raise;end if;
+   end;`).join('\n')}
   r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='staged' and r->>'question_count'='40' and not r ? 'candidate' and not r ? 'expected_graph');
   r:=${publication('publish')};perform pg_temp.authoring_check(r->>'state'='held');
   ${fail(publication('release'),'ASSESSMENT_VIDEO_GATE_FAILED')}
