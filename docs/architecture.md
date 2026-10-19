@@ -64,6 +64,8 @@ The learner library's next action is a read-only summary of the authenticated le
 
 ## Parent management
 
+Direct ChatGPT assessment authoring is prepared under FLH-033 through an OAuth MCP Edge Function and two bounded `learning-api` actions: fresh atomic draft creation and resumable status. It reuses the existing FLH-027 academic/semantic staging, held publication, provider video validation and release handlers; a private request receipt binds creator, exact target, quiz definition and candidate hash. MCP can advance only new integration-owned requests. It adds no manual authoring UI or learner runtime behavior. Deployment, OAuth consent/client/resource configuration and a real ChatGPT invocation remain distinct activation gates; see [the integration runbook](chatgpt-assessment-authoring.md).
+
 Authorized parents/admins can manage, from the parent dashboard:
 
 - learner grade hints,

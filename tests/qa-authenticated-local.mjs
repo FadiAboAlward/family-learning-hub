@@ -6,6 +6,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
 import { readQaTestingConfig, requireQaOidcUrl, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { verifyAssessmentAuthoringApi } from './assessment-authoring.authenticated.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
@@ -255,6 +256,9 @@ async function main() {
     parentId = (await created.json()).id;
     if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(parentId || '')) throw new Error('QA_LOCAL_PARENT_ID_INVALID');
     await sql(config, (await fs.readFile('tests/qa-authenticated-local.fixtures.sql', 'utf8')).replaceAll('__QA_PARENT_ID__', parentId));
+    mark(stage);
+    stage = 'direct_assessment_authoring_api';
+    await verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql});
     mark(stage);
     stage = 'local_application';
     const app = ownedProcess('python3', ['-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', path.resolve('.')], process.env);
