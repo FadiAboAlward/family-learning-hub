@@ -1,9 +1,10 @@
 -- FLH-FEAT-2026-033 v1.0 / Drive revision 1. Prospective integration requests only.
 -- No historical adoption, RLS changes, learner writes or publication-gate replacement.
+-- Do not add erasure blockers to fresh drafts; existing publication guards still apply.
 create table private.assessment_authoring_requests (
- workspace_id uuid not null references public.workspaces(id),
+ workspace_id uuid not null references public.workspaces(id) on delete cascade,
  request_id uuid not null,
- created_by uuid not null references auth.users(id),
+ created_by uuid not null references auth.users(id) on delete cascade,
  quiz_id uuid not null,
  quiz_version_id uuid not null,
  learner_id uuid not null,
@@ -15,10 +16,10 @@ create table private.assessment_authoring_requests (
  primary key(workspace_id,request_id),
  unique(workspace_id,quiz_id), unique(workspace_id,quiz_version_id),
  unique(workspace_id,learner_id,program_id,candidate_sha256),
- foreign key(quiz_id,workspace_id) references public.quizzes(id,workspace_id),
- foreign key(quiz_version_id,workspace_id) references public.quiz_versions(id,workspace_id),
- foreign key(learner_id,workspace_id) references public.learners(id,workspace_id),
- foreign key(program_id,workspace_id) references public.learning_programs(id,workspace_id)
+ foreign key(quiz_id,workspace_id) references public.quizzes(id,workspace_id) on delete cascade,
+ foreign key(quiz_version_id,workspace_id) references public.quiz_versions(id,workspace_id) on delete cascade,
+ foreign key(learner_id,workspace_id) references public.learners(id,workspace_id) on delete cascade,
+ foreign key(program_id,workspace_id) references public.learning_programs(id,workspace_id) on delete cascade
 );
 alter table private.assessment_authoring_requests enable row level security;
 revoke all on private.assessment_authoring_requests from public,anon,authenticated;

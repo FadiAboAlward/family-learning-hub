@@ -18,9 +18,9 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  }
  assert.equal(mcp.status,503,'unconfigured real Edge MCP stays disabled');
  assert.equal(mcpBody.error,'ASSESSMENT_MCP_DISABLED','SDK/import-map boot errors are not a disabled PASS');
+ console.log('Authoring API checkpoint: real Edge MCP boot PASS');
  const w='55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
- const ids=Object.fromEntries(['quiz','version','request','program','curriculum'].map((k,i)=>[k,`03320000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));
- const literal=v=>"'"+JSON.stringify(v).replaceAll("'","''")+"'::jsonb";
+ const ids=Object.fromEntries(['quiz','version','request','program'].map((k,i)=>[k,`03320000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));
  const query=source=>sql(runtime,source);
  const learner=(await query(`select id from public.learners where workspace_id='${w}' and slug='test' and is_active and metadata->>'is_test'='true';`)).trim();assert.match(learner,/^[a-f0-9-]{36}$/);
  const candidate=JSON.parse(await fs.readFile('tests/fixtures/assessment-publication/valid-package.json','utf8'));
@@ -28,8 +28,11 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  const target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
  const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:validation.candidate_sha256,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:API-review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:parent',warning_dispositions:validation.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic isolated transport QA only.'}))};
  await assessmentStagePayload(w,parentId,{target,candidate,semantic_review}); // Exact fixture gate before setup/publication.
- const subject=Number((await query('select coalesce(max(id),0)+1 from public.subjects;')).trim());
- const quiz={slug:'qa-authoring-api',title:'Synthetic authoring API',subject_id:subject,curriculum_id:ids.curriculum};
+ // Concept codes are workspace-wide unique. Reuse the pre-existing synthetic
+ // catalog just as production authoring does; never duplicate or delete it.
+ const catalog=JSON.parse((await query(`select jsonb_build_object('subject_id',q.subject_id,'curriculum_id',q.curriculum_id) from public.quizzes q join public.curricula c on c.id=q.curriculum_id where q.workspace_id='${w}' and q.slug='qa-assessment-authenticated' and c.code='qa-assessment-authenticated';`)).trim());
+ assert.ok(Number.isSafeInteger(catalog.subject_id)&&catalog.subject_id>0);assert.match(catalog.curriculum_id,/^[a-f0-9-]{36}$/);
+ const quiz={slug:'qa-authoring-api',title:'Synthetic authoring API',...catalog};
  let token,owned=false,failure;
  async function api(body,bearer=token) {
   const response=await fetch(`${checked.backendUrl}/functions/v1/learning-api`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json',...(bearer?{authorization:`Bearer ${bearer}`}:{})},body:JSON.stringify(body)});
@@ -38,17 +41,13 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  try {
   await query(`do $$ begin if exists(select 1 from public.quizzes where id='${ids.quiz}' or slug='qa-authoring-api')
    or exists(select 1 from public.learning_programs where id='${ids.program}' or slug='qa-authoring-api')
-   or exists(select 1 from public.curricula where id='${ids.curriculum}' or code='qa-authoring-api')
-   or exists(select 1 from public.subjects where id=${subject} or code='qa-authoring-api')
    then raise exception 'AUTHORING_API_NAMESPACE_NOT_EMPTY';end if;end$$;`);
   owned=true; // The commit may succeed even if its transport result is lost.
   await query(`begin;
-   insert into public.curricula(id,code,name_ar) values('${ids.curriculum}','qa-authoring-api','Synthetic curriculum');
-   insert into public.subjects(id,code,name_ar) overriding system value values(${subject},'qa-authoring-api','Synthetic subject');
-   insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-authoring-api','Synthetic authoring','active','${ids.curriculum}',7);
+   insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-authoring-api','Synthetic authoring','active','${catalog.curriculum_id}',7);
    insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');
-   ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',${subject},'${ids.curriculum}',7,'${code}','Synthetic concept');`).join('\n')}
    commit;`);
+  console.log('Authoring API checkpoint: existing synthetic catalog and owned setup PASS');
   const login=await fetch(`${checked.backendUrl}/auth/v1/token?grant_type=password`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:JSON.stringify({email,password})});
   assert.equal(login.status,200,'synthetic parent normal Auth grant');token=(await login.json()).access_token;assert.ok(token);
   const create={action:'create_assessment_draft',request_id:ids.request,target,quiz,candidate,semantic_review};
@@ -79,11 +78,10 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
    delete from public.quizzes where workspace_id='${w}' and id='${ids.quiz}' and slug='qa-authoring-api';
    delete from public.learner_program_enrollments where workspace_id='${w}' and learner_id='${learner}' and program_id='${ids.program}';
    delete from public.learning_programs where workspace_id='${w}' and id='${ids.program}';
-   delete from public.learning_concepts where workspace_id='${w}' and subject_id=${subject};
-   delete from public.subjects where id=${subject} and code='qa-authoring-api';
-   delete from public.curricula where id='${ids.curriculum}' and code='qa-authoring-api';commit;`); }
+   commit;`); }
   catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_API_CLEANUP_FAILED'); }
  }
  assert.equal((await query(`select count(*) from public.quizzes where id='${ids.quiz}';`)).trim(),'0');
+ assert.equal((await query(`select count(*) from public.quizzes where workspace_id='${w}' and slug='qa-assessment-authenticated' and subject_id=${catalog.subject_id} and curriculum_id='${catalog.curriculum_id}';`)).trim(),'1','existing synthetic catalog is preserved');
  console.log('Authenticated isolated authoring API: normal parent Auth, missing/invalid session, teacher denial, exact academic/semantic draft/stage/held, duplicate/conflict, missing-video release denial, status and owned cleanup PASS');
 }

@@ -258,7 +258,7 @@ async function main() {
     await sql(config, (await fs.readFile('tests/qa-authenticated-local.fixtures.sql', 'utf8')).replaceAll('__QA_PARENT_ID__', parentId));
     mark(stage);
     stage = 'direct_assessment_authoring_api';
-    await verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql});
+    await verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source)});
     mark(stage);
     stage = 'local_application';
     const app = ownedProcess('python3', ['-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', path.resolve('.')], process.env);

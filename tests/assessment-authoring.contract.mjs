@@ -49,6 +49,17 @@ await query(`begin; ${setup}
   ${fail(author('create',{...payload,semantic_review:{...staged.semantic_review,result:'FAIL'}}),'ASSESSMENT_AUTHORING_INPUT_INVALID')}
   perform pg_temp.authoring_check(not exists(select 1 from public.quizzes where id='${ids.quiz}'));
   r:=${author('create',payload)};perform pg_temp.authoring_check(r->>'state'='draft' and r->>'question_count'='0' and r->>'duplicate'='false');
+  ${[
+   ['public.quizzes',ids.quiz],['public.quiz_versions',ids.version],
+   ['public.learners',learner],['public.learning_programs',ids.program],
+   ['auth.users',ids.parent],['public.workspaces',w],
+  ].map(([table,id])=>`begin
+   delete from ${table} where id='${id}';
+   perform pg_temp.authoring_check(not exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}'));
+   raise exception 'AUTHORING_ERASURE_TEST_ROLLBACK';
+   exception when raise_exception then if sqlerrm<>'AUTHORING_ERASURE_TEST_ROLLBACK' then raise;end if;
+  end;
+  perform pg_temp.authoring_check(exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}'));`).join('\n')}
   r:=${author('create',payload)};perform pg_temp.authoring_check(r->>'duplicate'='true');
   ${fail(author('create',{...payload,quiz:{...quiz,title:'Changed retry'}}),'ASSESSMENT_RETRY_CONFLICT')}
   ${fail(publication('stage',malformed),'ASSESSMENT_ACADEMIC_REJECTED')}

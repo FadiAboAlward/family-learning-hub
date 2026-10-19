@@ -24,6 +24,8 @@ Publishing that managed version leaves its quiz draft and inaccessible. A separa
 
 The user identified the existing operational Gmail/ChatGPT integration on 12 October and authorized outbox/receipt infrastructure. It extends the same private publication receipt, reuses the parent API and locks, and permits one explicit Gmail handoff for a released version with reviewed recipient and links. Uncertain delivery blocks a new handoff. Reconciliation validates the operator-supplied full Gmail SENT readback against the exact immutable envelope and stores minimal parent-reviewed evidence. The backend does not independently query Gmail, send mail, or prove the provenance of that supplied readback. Approved v1.2 revision 3 accepts this explicitly authorized operational witness as notification completion; automated sending and independent backend reconciliation are outside FLH-027 scope. Actual official-provider and full Gmail SENT interoperability remain unproven. Publication release does not prove email delivery. See [the publication runbook](assessment-publication-runbook.md). Production migration/deployment, merge and real mail require separate authorization.
 
+Direct ChatGPT assessment authoring is prepared under FLH-033 through an OAuth MCP Edge Function and two bounded `learning-api` actions: fresh atomic draft creation and resumable status. It reuses the existing FLH-027 academic/semantic staging, held publication, provider video validation and release handlers; a private request receipt binds creator, exact target, quiz definition and candidate hash. MCP can advance only new integration-owned requests. It adds no manual authoring UI or learner runtime behavior. Deployment, OAuth consent/client/resource configuration and a real ChatGPT invocation remain distinct activation gates; see [the integration runbook](chatgpt-assessment-authoring.md).
+
 ## Catalog layer
 
 Reusable content lives in structures such as:
@@ -63,8 +65,6 @@ The learner library's next action is a read-only summary of the authenticated le
 `learners.grade_level` is an optional display/default hint. When a learner has a primary program, the program/enrollment context is the curriculum and grade source of truth. This allows one learner to take courses outside a single school-grade boundary without corrupting the learner account model.
 
 ## Parent management
-
-Direct ChatGPT assessment authoring is prepared under FLH-033 through an OAuth MCP Edge Function and two bounded `learning-api` actions: fresh atomic draft creation and resumable status. It reuses the existing FLH-027 academic/semantic staging, held publication, provider video validation and release handlers; a private request receipt binds creator, exact target, quiz definition and candidate hash. MCP can advance only new integration-owned requests. It adds no manual authoring UI or learner runtime behavior. Deployment, OAuth consent/client/resource configuration and a real ChatGPT invocation remain distinct activation gates; see [the integration runbook](chatgpt-assessment-authoring.md).
 
 Authorized parents/admins can manage, from the parent dashboard:
 
