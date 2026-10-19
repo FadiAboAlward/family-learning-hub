@@ -8,6 +8,10 @@ import { validateAuthoringCandidate } from '../supabase/functions/_shared/assess
 export async function verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql}) {
  const checked=requireIsolatedQaBackend(runtime);
  assert.equal(checked.mode,'runner-local');assert.equal(checked.backendUrl,'http://127.0.0.1:54321');
+ // Load the real Deno/npm SDK module graph too, not just the Node transport test.
+ const mcp=await fetch(`${checked.backendUrl}/functions/v1/assessment-mcp/mcp`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:'{}'});
+ assert.equal(mcp.status,503,'unconfigured real Edge MCP stays disabled');
+ assert.equal((await mcp.json()).error,'ASSESSMENT_MCP_DISABLED','SDK/import-map boot errors are not a disabled PASS');
  const w='55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
  const ids=Object.fromEntries(['quiz','version','request','program','curriculum'].map((k,i)=>[k,`03320000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));
  const literal=v=>"'"+JSON.stringify(v).replaceAll("'","''")+"'::jsonb";
