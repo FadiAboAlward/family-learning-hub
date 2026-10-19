@@ -28,7 +28,7 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  try {
   await query(`begin;
    insert into public.curricula(id,code,name_ar) values('${ids.curriculum}','qa-authoring-api','Synthetic curriculum');
-   insert into public.subjects(id,code,name_ar) values(${subject},'qa-authoring-api','Synthetic subject');
+   insert into public.subjects(id,code,name_ar) overriding system value values(${subject},'qa-authoring-api','Synthetic subject');
    insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-authoring-api','Synthetic authoring','active','${ids.curriculum}',7);
    insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');
    ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',${subject},'${ids.curriculum}',7,'${code}','Synthetic concept');`).join('\n')}

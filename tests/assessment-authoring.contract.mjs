@@ -30,7 +30,7 @@ const setup=`
  insert into auth.users(id,email) values('${ids.parent}','qa-authoring-owner@example.invalid'),('${ids.teacher}','qa-authoring-teacher@example.invalid');
  insert into public.workspace_members(workspace_id,user_id,role) values('${w}','${ids.parent}','owner'),('${w}','${ids.teacher}','teacher');
  insert into public.curricula(id,code,name_ar) values('${ids.curriculum}','qa-assessment-authoring','Testing curriculum');
- insert into public.subjects(id,code,name_ar) values(${subject},'qa-assessment-authoring','Testing subject');
+ insert into public.subjects(id,code,name_ar) overriding system value values(${subject},'qa-assessment-authoring','Testing subject');
  insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-assessment-authoring','Testing authoring','active','${ids.curriculum}',7);
  insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');
  ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',${subject},'${ids.curriculum}',7,'${code}','Synthetic concept');`).join('\n')}`;
