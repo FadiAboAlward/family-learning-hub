@@ -10,8 +10,14 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  assert.equal(checked.mode,'runner-local');assert.equal(checked.backendUrl,'http://127.0.0.1:54321');
  // Load the real Deno/npm SDK module graph too, not just the Node transport test.
  const mcp=await fetch(`${checked.backendUrl}/functions/v1/assessment-mcp/mcp`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:'{}'});
+ const mcpBody=await mcp.json();
+ if(mcp.status!==503 || mcpBody.error!=='ASSESSMENT_MCP_DISABLED') {
+  const allowedCodes=new Set(['BOOT_ERROR','WORKER_ERROR','INVALID_JWT','NOT_FOUND','ASSESSMENT_MCP_DISABLED']);
+  const code=mcpBody.code||mcpBody.error;
+  console.error('Authoring MCP boot diagnostic',JSON.stringify({http_status:mcp.status,code:allowedCodes.has(code)?code:'UNCLASSIFIED'}));
+ }
  assert.equal(mcp.status,503,'unconfigured real Edge MCP stays disabled');
- assert.equal((await mcp.json()).error,'ASSESSMENT_MCP_DISABLED','SDK/import-map boot errors are not a disabled PASS');
+ assert.equal(mcpBody.error,'ASSESSMENT_MCP_DISABLED','SDK/import-map boot errors are not a disabled PASS');
  const w='55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
  const ids=Object.fromEntries(['quiz','version','request','program','curriculum'].map((k,i)=>[k,`03320000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));
  const literal=v=>"'"+JSON.stringify(v).replaceAll("'","''")+"'::jsonb";
@@ -53,7 +59,8 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
   await query(`update public.workspace_members set role='owner' where workspace_id='${w}' and user_id='${parentId}';`);
   assert.equal((await api({...create,quiz:{...quiz,title:''}})).result.error,'ASSESSMENT_AUTHORING_INPUT_INVALID');
   assert.equal((await api({...create,semantic_review:{...semantic_review,result:'FAIL'}})).result.error,'ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
-  let r=await api(create);assert.equal(r.status,200);assert.equal(r.result.state,'draft');
+  const upperTarget=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+  let r=await api({...create,target:upperTarget,semantic_review:{...semantic_review,...upperTarget,workspace_id:w.toUpperCase()}});assert.equal(r.status,200);assert.equal(r.result.state,'draft');
   r=await api(create);assert.equal(r.result.duplicate,true);
   assert.equal((await api({...create,quiz:{...quiz,title:'Conflicting retry'}})).result.error,'ASSESSMENT_RETRY_CONFLICT');
   const pointer={quiz_version_id:ids.version,candidate_sha256:validation.candidate_sha256};

@@ -6,6 +6,12 @@ export const AUTHORING_ACTIONS = Object.freeze(['create_assessment_draft','read_
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const deny = code => { throw new Error(code); };
+const targetKeys=['quiz_id','quiz_version_id','learner_id','program_id'];
+// PostgreSQL returns canonical lowercase UUIDs. Preserve closed-key/type validation
+// and the exact candidate/hash while normalizing only known identity fields.
+const uuidFields=(value,keys)=>object(value)?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,keys.includes(k)&&uuid(v)?v.toLowerCase():v])):value;
+const authoringInput=body=>({...uuidFields(body,['request_id']),target:uuidFields(body.target,targetKeys),
+  semantic_review:uuidFields(body.semantic_review,['workspace_id',...targetKeys]),quiz:uuidFields(body.quiz,['curriculum_id'])});
 
 /** This is the existing academic gate, not an automated semantic reviewer. */
 export async function validateAuthoringCandidate(candidate) {
@@ -20,6 +26,7 @@ export async function validateAuthoringCandidate(candidate) {
 
 /** Session identity is supplied by the parent-authenticated application boundary. */
 export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body,trace) {
+  body=authoringInput(body);
   if (!AUTHORING_ACTIONS.includes(body.action) || !uuid(body.request_id)) deny('ASSESSMENT_AUTHORING_INPUT_INVALID');
   let payload={request_id:body.request_id};
   if (body.action==='create_assessment_draft') {
@@ -41,6 +48,7 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
 
 /** MCP may only advance fresh requests created by this integration and this parent. */
 export async function assessmentAuthoringTool(admin,workspaceId,parentId,name,args,trace,providerOptions={}) {
+  args=authoringInput(args);
   if(name==='validate_assessment_candidate') return validateAuthoringCandidate(args.candidate);
   if(AUTHORING_ACTIONS.includes(name)) return assessmentAuthoringCommand(admin,workspaceId,parentId,{...args,action:name},trace);
   if(!['stage_assessment','publish_assessment','attach_optional_video','release_assessment'].includes(name)) deny('ASSESSMENT_ACTION_INVALID');
@@ -52,7 +60,7 @@ export async function assessmentAuthoringTool(admin,workspaceId,parentId,name,ar
     if(await academicCandidateHash(args.candidate)!==before.candidate_sha256) deny('ASSESSMENT_RETRY_CONFLICT');
     operation=await assessmentCommand(admin,workspaceId,parentId,{...args,action:name},trace);
   } else if(name==='attach_optional_video') {
-    const video=args.candidate;
+    const video=uuidFields(args.candidate,['learner_id','quiz_version_id','program_id','curriculum_id','concept_id']);
     if(!object(video) || video.quiz_version_id!==before.target.quiz_version_id || video.learner_id!==before.target.learner_id || video.program_id!==before.target.program_id) deny('ASSESSMENT_TARGET_INVALID');
     operation=await attachOptionalVideo(admin,workspaceId,parentId,{video},trace,providerOptions);
   } else {

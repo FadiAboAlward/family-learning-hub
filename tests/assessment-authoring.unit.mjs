@@ -5,11 +5,11 @@ import { assessmentParent } from '../supabase/functions/_shared/assessment-paren
 import { mcpConfiguration, requireMcpClaims } from '../supabase/functions/assessment-mcp/auth.mjs';
 import { assessmentMcpHttp, ASSESSMENT_MCP_TOOLS } from '../supabase/functions/assessment-mcp/handler.mjs';
 
-const w='33000000-0000-4000-8000-000000000001',parent='33000000-0000-4000-8000-000000000002';
-const target=Object.fromEntries(['quiz_id','quiz_version_id','learner_id','program_id'].map((k,i)=>[k,`33000000-0000-4000-8000-${String(i+3).padStart(12,'0')}`]));
+const w='a3300000-0000-4000-8000-000000000001',parent='a3300000-0000-4000-8000-000000000002';
+const target=Object.fromEntries(['quiz_id','quiz_version_id','learner_id','program_id'].map((k,i)=>[k,`a3300000-0000-4000-8000-${String(i+3).padStart(12,'0')}`]));
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const checked=await validateAuthoringCandidate(candidate);assert.equal(checked.ok,true);assert.equal(checked.semantic_review,'REQUIRED');
-const hash=checked.candidate_sha256,request_id='33000000-0000-4000-8000-000000000007';
+const hash=checked.candidate_sha256,request_id='a3300000-0000-4000-8000-000000000007';
 const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:review',authority_ref:'synthetic:owner',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:test',warning_dispositions:checked.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical QA only.'}))};
 const args={request_id,target,candidate,semantic_review,quiz:{slug:'qa-authoring',title:'Synthetic authoring test',subject_id:1,curriculum_id:w}};
 const trace={measure:(_n,_m,fn)=>fn()};
@@ -51,6 +51,11 @@ for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,req
 assert.equal(calls.length,before,'invalid candidates/reviews/metadata cannot write');
 await assessmentAuthoringCommand(admin,w,parent,{...args,action:'create_assessment_draft'},trace);
 const createdCall=calls.at(-1);assert.equal(createdCall.payload.p_parent_id,parent);assert.equal(createdCall.payload.p_payload.semantic_review.reviewed_by,parent);
+const upperTarget=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+const upperReview={...semantic_review,...upperTarget,workspace_id:w.toUpperCase()};
+await assessmentAuthoringCommand(admin,w,parent,{...args,action:'create_assessment_draft',request_id:request_id.toUpperCase(),target:upperTarget,semantic_review:upperReview,quiz:{...args.quiz,curriculum_id:w.toUpperCase()}},trace);
+assert.deepEqual(calls.at(-1).payload.p_payload.target,target,'canonical UUID target before request fingerprint/semantic gate');
+assert.equal(calls.at(-1).payload.p_payload.request_id,request_id);
 await assert.rejects(()=>assessmentAuthoringTool(admin,w,parent,'publish_assessment',{request_id,candidate_sha256:'0'.repeat(64)},trace),/ASSESSMENT_RETRY_CONFLICT/);
 await assert.rejects(()=>assessmentAuthoringTool(admin,w,parent,'release_assessment',{request_id:w,candidate_sha256:hash},trace),/ASSESSMENT_TARGET_INVALID/);
 await assert.rejects(()=>assessmentAuthoringTool(admin,w,parent,'stage_assessment',{request_id,candidate_sha256:hash,target,candidate:{...candidate,runtime_external_dependencies:['changed']},semantic_review},trace),/ASSESSMENT_RETRY_CONFLICT/);
@@ -72,10 +77,12 @@ assert.equal((await rpc('tools/call',{name:'publish_assessment',arguments:{reque
 async function call(name,arguments_) {const r=await rpc('tools/call',{name,arguments:arguments_});assert.equal(r.status,200);assert.equal(r.body.result?.isError,undefined,JSON.stringify(r.body));return r.body.result.structuredContent;}
 assert.equal((await call('validate_assessment_candidate',{candidate})).ok,true);
 assert.equal((await call('create_assessment_draft',args)).state,'draft');
-assert.equal((await call('stage_assessment',{request_id,candidate_sha256:hash,target,candidate,semantic_review})).status.state,'staged');
+assert.equal((await call('stage_assessment',{request_id:request_id.toUpperCase(),candidate_sha256:hash,target:upperTarget,candidate,semantic_review:upperReview})).status.state,'staged');
 assert.equal((await call('publish_assessment',{request_id,candidate_sha256:hash})).status.state,'held');
 const video={learner_id:target.learner_id,quiz_version_id:target.quiz_version_id,program_id:target.program_id,curriculum_id:w,grade_level:7,subject_id:1,concept_id:w,position:1,video_ref:'qaVideo0001',title:'Synthetic reviewed video',language:'tr',rationale:'Synthetic provider contract only'};
-await call('attach_optional_video',{request_id,candidate_sha256:hash,candidate:video});
+const upperVideo=Object.fromEntries(Object.entries(video).map(([k,v])=>[k,k.endsWith('_id')&&typeof v==='string'?v.toUpperCase():v]));
+await call('attach_optional_video',{request_id,candidate_sha256:hash,candidate:upperVideo});
+assert.equal(calls.findLast(c=>c.name==='flh_learning_video_attach').payload.p_candidate.concept_id,w);
 assert.equal((await call('release_assessment',{request_id,candidate_sha256:hash})).status.state,'released');
 assert.equal((await call('read_assessment_authoring',{request_id})).state,'released');
 lostRead=true;
