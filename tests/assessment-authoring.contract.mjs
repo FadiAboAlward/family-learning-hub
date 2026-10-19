@@ -24,6 +24,10 @@ const staged=await assessmentStagePayload(w,ids.parent,{target,candidate,semanti
 const subject=Number(await query('select coalesce(max(id),0)+1 from public.subjects;'));
 const quiz={slug:'qa-assessment-authoring',title:'Synthetic direct authoring',subject_id:subject,curriculum_id:ids.curriculum};
 const payload={...staged,request_id:ids.request,quiz};
+const duplicateTarget={...target,quiz_id:'03310000-0000-4000-8000-000000000009',quiz_version_id:'03310000-0000-4000-8000-000000000010'};
+const duplicateRequest='03310000-0000-4000-8000-000000000011';
+const duplicatePayload={...await assessmentStagePayload(w,ids.parent,{target:duplicateTarget,candidate,semantic_review:{...semantic_review,...duplicateTarget}}),
+ request_id:duplicateRequest,quiz:{...quiz,slug:'qa-assessment-authoring-duplicate'}};
 const author=(action,p={request_id:ids.request},parent=ids.parent,workspace=w)=>`public.flh_assessment_authoring_command('${workspace}','${parent}','${action}',${json(p)})`;
 const publication=(action,p={quiz_version_id:ids.version,candidate_sha256:hash})=>`public.flh_assessment_command('${w}','${ids.parent}','${action}',${json(p)})`;
 const setup=`
@@ -92,6 +96,9 @@ try {
   or exists(select 1 from public.learning_programs where id='${ids.program}' or slug='qa-assessment-authoring')
   or exists(select 1 from public.curricula where id='${ids.curriculum}' or code='qa-assessment-authoring')
   or exists(select 1 from public.subjects where id=${subject} or code='qa-assessment-authoring')
+  or exists(select 1 from public.quizzes where id='${duplicateTarget.quiz_id}' or slug='qa-assessment-authoring-duplicate')
+  or exists(select 1 from public.quiz_versions where id='${duplicateTarget.quiz_version_id}')
+  or exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${duplicateRequest}')
   then raise exception 'AUTHORING_NAMESPACE_NOT_EMPTY';end if;end$$;`);
  owned=true;
  await query(`begin; ${setup} commit;`);
@@ -99,15 +106,20 @@ try {
  assert.equal(results.filter(x=>JSON.parse(x).duplicate===true).length,2);
  assert.equal(await query(`select count(*) from public.quiz_versions where quiz_id='${ids.quiz}';`),'1');
  await assert.rejects(()=>query(`set role service_role;select ${author('create',{...payload,request_id:ids.other})};`),/ASSESSMENT_RETRY_CONFLICT/);
+ // All native identifiers and the unique slug are fresh: only exact-candidate
+ // deduplication can reject this request. The entire draft must roll back.
+ await assert.rejects(()=>query(`set role service_role;select ${author('create',duplicatePayload)};`),/ASSESSMENT_RETRY_CONFLICT/);
+ assert.equal(await query(`select count(*) from public.quizzes where id='${duplicateTarget.quiz_id}';`),'0');
+ assert.equal(await query(`select count(*) from public.quiz_versions where id='${duplicateTarget.quiz_version_id}';`),'0');
  await query(`set role service_role;select ${publication('stage',staged)};`);
  assert.equal(JSON.parse(await query(`set role service_role;select ${author('read')};`)).question_count,40);
 } catch(error) { failure=error;throw error; }
 finally {
  try { if(owned) await query(`begin;
  do $$ begin if exists(select 1 from auth.users where id='${ids.parent}' and email<>'qa-authoring-owner@example.invalid') then raise exception 'AUTHORING_CLEANUP_OWNER_MISMATCH';end if;end$$;
- delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}' and created_by='${ids.parent}';
+ delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id in('${ids.request}','${duplicateRequest}') and created_by='${ids.parent}';
  delete from public.assessment_publications where workspace_id='${w}' and quiz_version_id='${ids.version}' and created_by='${ids.parent}';
- delete from public.quizzes where workspace_id='${w}' and id='${ids.quiz}' and slug='qa-assessment-authoring';
+ delete from public.quizzes where workspace_id='${w}' and ((id='${ids.quiz}' and slug='qa-assessment-authoring') or (id='${duplicateTarget.quiz_id}' and slug='qa-assessment-authoring-duplicate'));
  delete from public.learner_program_enrollments where workspace_id='${w}' and learner_id='${learner}' and program_id='${ids.program}';
  delete from public.learning_programs where workspace_id='${w}' and id='${ids.program}';
  delete from public.learning_concepts where workspace_id='${w}' and subject_id=${subject};

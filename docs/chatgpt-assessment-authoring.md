@@ -14,7 +14,7 @@ The connected Supabase MCP inventory provides management tools such as `execute_
 
 Option A (wrapper only) would still need to implement draft creation and multi-write recovery. Option B adds two small application actions, one private request receipt and an official-SDK MCP transport. It reuses the existing validator, semantic gate, native question/option/key/concept/hint importer, publication state machine and video provider checks. No student runtime or parent authoring UI changes are needed.
 
-Evidence reviewed on 19 October 2026: current main `55839bf95c546235b7c2ec9d18b18de24e4a74a0`, academic SOP v1.14, development SOP v1.6, PR #170 / Issue #169 and [Mohammad's task](https://app.clickup.com/t/z8xb3ut781) / [Aya's task](https://app.clickup.com/t/z8xb3ut6a4). Aya's recorded flow used official staged → held → video → released operations after creating a draft. Mohammad's comparison records a pre-network tool-safety block and does not establish a backend defect. Read-only live inspection found both referenced quizzes active; historical held snapshots must not be treated as current instructions. None of those operations was retried. PR #170 remains separate and unchanged.
+Evidence reviewed on 19 October 2026: current main `55839bf95c546235b7c2ec9d18b18de24e4a74a0`, academic SOP v1.14, development SOP v1.6, PR #170 / Issue #169 and the authorized operational/comparison records. Detailed learner-linked references remain in private tracking. A recorded pre-network tool-safety block is not evidence of a backend defect; historical snapshots are not instructions to retry it. No blocked operation was retried. PR #170 remains separate and unchanged.
 
 ## Tools and calls
 
