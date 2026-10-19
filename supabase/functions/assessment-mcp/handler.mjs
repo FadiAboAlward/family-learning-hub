@@ -43,13 +43,16 @@ export function createAssessmentMcpServer({admin,workspaceId,parentId,trace,prov
 }
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store',...headers}});
+// Hosted gateway URLs include /functions/v1; the Edge runtime can receive it stripped.
+// Only routing is normalized. OAuth resource/audience/metadata remain the exact public URL.
+const runtimePath=pathname=>pathname.replace(/^\/functions\/v1(?=\/)/,'');
 /** Stateless official SDK transport; each request gets its own verified parent closure. */
 export async function assessmentMcpHttp(req,{admin,workspaceId,env,trace,providerOptions}) {
   let config; try { config=mcpConfiguration(env); } catch { return json({error:'ASSESSMENT_MCP_DISABLED'},503); }
   const url=new URL(req.url), resource=new URL(config.resource);
   if(req.headers.has('origin') && req.headers.get('origin')!==resource.origin) return json({error:'ORIGIN_FORBIDDEN'},403);
-  if(url.pathname===new URL(config.metadataUrl).pathname && req.method==='GET') return json({resource:config.resource,authorization_servers:[config.issuer],scopes_supported:['openid'],bearer_methods_supported:['header']});
-  if(url.pathname!==resource.pathname) return json({error:'NOT_FOUND'},404);
+  if(runtimePath(url.pathname)===runtimePath(new URL(config.metadataUrl).pathname) && req.method==='GET') return json({resource:config.resource,authorization_servers:[config.issuer],scopes_supported:['openid'],bearer_methods_supported:['header']});
+  if(runtimePath(url.pathname)!==runtimePath(resource.pathname)) return json({error:'NOT_FOUND'},404);
   if(req.method!=='POST') return new Response(null,{status:405,headers:{Allow:'POST'}});
   let parentId;
   try { parentId=await authenticateAssessmentMcp(admin,workspaceId,req,config); }

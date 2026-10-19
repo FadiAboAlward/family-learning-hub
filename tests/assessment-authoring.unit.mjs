@@ -56,8 +56,8 @@ await assert.rejects(()=>assessmentAuthoringTool(admin,w,parent,'release_assessm
 await assert.rejects(()=>assessmentAuthoringTool(admin,w,parent,'stage_assessment',{request_id,candidate_sha256:hash,target,candidate:{...candidate,runtime_external_dependencies:['changed']},semantic_review},trace),/ASSESSMENT_RETRY_CONFLICT/);
 
 const deps={admin,workspaceId:w,env,trace,providerOptions:{apiKey:'synthetic-provider-key',fetchImpl:async()=>new Response(JSON.stringify({items:[{id:'qaVideo0001',status:{embeddable:true,madeForKids:true,privacyStatus:'public'}}]}),{status:200})}};
-async function rpc(method,params={},headers={}) {
-  const response=await assessmentMcpHttp(new Request(resource,{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream',authorization:'Bearer opaque-test-token',...headers},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}),deps);
+async function rpc(method,params={},headers={},url=resource) {
+  const response=await assessmentMcpHttp(new Request(url,{method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream',authorization:'Bearer opaque-test-token',...headers},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})}),deps);
   return {status:response.status,body:await response.json(),headers:response.headers};
 }
 assert.equal((await rpc('initialize',{protocolVersion:'2025-11-25',capabilities:{},clientInfo:{name:'synthetic-test',version:'1'}})).body.result.serverInfo.name,'family-learning-hub-assessment-authoring');
@@ -88,5 +88,8 @@ claims=goodClaims;role='teacher';assert.equal((await rpc('tools/list')).status,4
 assert.equal((await rpc('tools/list',{}, {origin:'https://evil.example'})).status,403);
 const disabled=await assessmentMcpHttp(new Request(resource),{...deps,env:{}});assert.equal(disabled.status,503);
 const discovery=await assessmentMcpHttp(new Request(config.metadataUrl),deps);assert.equal((await discovery.json()).resource,resource);
+const runtimeDiscovery=await assessmentMcpHttp(new Request('http://localhost/assessment-mcp/.well-known/oauth-protected-resource'),deps);assert.equal((await runtimeDiscovery.json()).resource,resource);
+assert.equal((await rpc('tools/list',{}, {},'http://localhost/assessment-mcp/mcp')).body.result.tools.length,7,'runtime strips gateway prefix');
+assert.equal((await rpc('tools/list',{}, {},'http://localhost/unrelated/assessment-mcp/mcp')).status,404,'no arbitrary suffix routing');
 assert.equal(calls.some(c=>!['flh_assessment_command','flh_assessment_authoring_command','flh_learning_video_attach'].includes(c.name)),false);
 console.log('Assessment authoring validation, session/role/resource/client authorization, official MCP discovery/schemas/full synthetic flow, safe errors and resumable reads: PASS (mocked persistence)');
