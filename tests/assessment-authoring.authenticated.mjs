@@ -20,19 +20,25 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  await assessmentStagePayload(w,parentId,{target,candidate,semantic_review}); // Exact fixture gate before setup/publication.
  const subject=Number((await query('select coalesce(max(id),0)+1 from public.subjects;')).trim());
  const quiz={slug:'qa-authoring-api',title:'Synthetic authoring API',subject_id:subject,curriculum_id:ids.curriculum};
- let token,owned=false;
+ let token,owned=false,failure;
  async function api(body,bearer=token) {
   const response=await fetch(`${checked.backendUrl}/functions/v1/learning-api`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json',...(bearer?{authorization:`Bearer ${bearer}`}:{})},body:JSON.stringify(body)});
   const result=await response.json();return {status:response.status,result};
  }
  try {
+  await query(`do $$ begin if exists(select 1 from public.quizzes where id='${ids.quiz}' or slug='qa-authoring-api')
+   or exists(select 1 from public.learning_programs where id='${ids.program}' or slug='qa-authoring-api')
+   or exists(select 1 from public.curricula where id='${ids.curriculum}' or code='qa-authoring-api')
+   or exists(select 1 from public.subjects where id=${subject} or code='qa-authoring-api')
+   then raise exception 'AUTHORING_API_NAMESPACE_NOT_EMPTY';end if;end$$;`);
+  owned=true; // The commit may succeed even if its transport result is lost.
   await query(`begin;
    insert into public.curricula(id,code,name_ar) values('${ids.curriculum}','qa-authoring-api','Synthetic curriculum');
    insert into public.subjects(id,code,name_ar) overriding system value values(${subject},'qa-authoring-api','Synthetic subject');
    insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-authoring-api','Synthetic authoring','active','${ids.curriculum}',7);
    insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');
    ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',${subject},'${ids.curriculum}',7,'${code}','Synthetic concept');`).join('\n')}
-   commit;`);owned=true;
+   commit;`);
   const login=await fetch(`${checked.backendUrl}/auth/v1/token?grant_type=password`,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:JSON.stringify({email,password})});
   assert.equal(login.status,200,'synthetic parent normal Auth grant');token=(await login.json()).access_token;assert.ok(token);
   const create={action:'create_assessment_draft',request_id:ids.request,target,quiz,candidate,semantic_review};
@@ -51,9 +57,10 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
   r=await api({action:'publish_assessment',...pointer});assert.equal(r.status,200);assert.equal(r.result.state,'held');
   r=await api({action:'release_assessment',...pointer});assert.equal(r.result.error,'ASSESSMENT_VIDEO_GATE_FAILED','no provider credentials/receipt, cannot release');
   r=await api({action:'read_assessment_authoring',request_id:ids.request});assert.equal(r.status,200);assert.equal(r.result.state,'held');assert.equal(r.result.question_count,40);assert.equal(r.result.quiz_status,'draft');assert.equal(r.result.learning_path,null);
- } finally {
+ } catch(error) { failure=error;throw error; }
+ finally {
   token=undefined;
-  if(owned) await query(`begin;
+  try { if(owned) await query(`begin;
    do $$ begin if not exists(select 1 from auth.users where id='${parentId}' and raw_app_meta_data->>'technical_qa'='true') then raise exception 'AUTHORING_API_CLEANUP_OWNER_MISMATCH';end if;end$$;
    update public.workspace_members set role='owner' where workspace_id='${w}' and user_id='${parentId}';
    delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}' and created_by='${parentId}';
@@ -63,7 +70,8 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
    delete from public.learning_programs where workspace_id='${w}' and id='${ids.program}';
    delete from public.learning_concepts where workspace_id='${w}' and subject_id=${subject};
    delete from public.subjects where id=${subject} and code='qa-authoring-api';
-   delete from public.curricula where id='${ids.curriculum}' and code='qa-authoring-api';commit;`);
+   delete from public.curricula where id='${ids.curriculum}' and code='qa-authoring-api';commit;`); }
+  catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_API_CLEANUP_FAILED'); }
  }
  assert.equal((await query(`select count(*) from public.quizzes where id='${ids.quiz}';`)).trim(),'0');
  console.log('Authenticated isolated authoring API: normal parent Auth, missing/invalid session, teacher denial, exact academic/semantic draft/stage/held, duplicate/conflict, missing-video release denial, status and owned cleanup PASS');

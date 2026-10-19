@@ -67,18 +67,26 @@ await query(`begin; ${setup}
   perform pg_temp.authoring_check((select count(*)=1 from public.quiz_assignments where quiz_version_id='${ids.version}') and not exists(select 1 from public.quiz_attempts where quiz_version_id='${ids.version}'));
  end $test$; rollback;`);
 assert.equal(await query(`select count(*) from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}';`),'0');
-let owned=false;
+let owned=false,failure;
 try {
- await query(`begin; ${setup} commit;`);owned=true;
+ await query(`do $$ begin if exists(select 1 from auth.users where id in('${ids.parent}','${ids.teacher}'))
+  or exists(select 1 from public.quizzes where id='${ids.quiz}' or slug='qa-assessment-authoring')
+  or exists(select 1 from public.learning_programs where id='${ids.program}' or slug='qa-assessment-authoring')
+  or exists(select 1 from public.curricula where id='${ids.curriculum}' or code='qa-assessment-authoring')
+  or exists(select 1 from public.subjects where id=${subject} or code='qa-assessment-authoring')
+  then raise exception 'AUTHORING_NAMESPACE_NOT_EMPTY';end if;end$$;`);
+ owned=true;
+ await query(`begin; ${setup} commit;`);
  const results=await Promise.all(Array.from({length:3},()=>query(`set role service_role;select ${author('create',payload)};`)));
  assert.equal(results.filter(x=>JSON.parse(x).duplicate===true).length,2);
  assert.equal(await query(`select count(*) from public.quiz_versions where quiz_id='${ids.quiz}';`),'1');
  await assert.rejects(()=>query(`set role service_role;select ${author('create',{...payload,request_id:ids.other})};`),/ASSESSMENT_RETRY_CONFLICT/);
  await query(`set role service_role;select ${publication('stage',staged)};`);
  assert.equal(JSON.parse(await query(`set role service_role;select ${author('read')};`)).question_count,40);
-} finally {
- if(owned) await query(`begin;
- do $$ begin if not exists(select 1 from auth.users where id='${ids.parent}' and email='qa-authoring-owner@example.invalid') then raise exception 'AUTHORING_CLEANUP_OWNER_MISMATCH';end if;end$$;
+} catch(error) { failure=error;throw error; }
+finally {
+ try { if(owned) await query(`begin;
+ do $$ begin if exists(select 1 from auth.users where id='${ids.parent}' and email<>'qa-authoring-owner@example.invalid') then raise exception 'AUTHORING_CLEANUP_OWNER_MISMATCH';end if;end$$;
  delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}' and created_by='${ids.parent}';
  delete from public.assessment_publications where workspace_id='${w}' and quiz_version_id='${ids.version}' and created_by='${ids.parent}';
  delete from public.quizzes where workspace_id='${w}' and id='${ids.quiz}' and slug='qa-assessment-authoring';
@@ -88,7 +96,8 @@ try {
  delete from public.subjects where id=${subject} and code='qa-assessment-authoring';
  delete from public.curricula where id='${ids.curriculum}' and code='qa-assessment-authoring';
  delete from public.workspace_members where workspace_id='${w}' and user_id in('${ids.parent}','${ids.teacher}');
- delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid'); commit;`);
+ delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid'); commit;`); }
+ catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_DB_CLEANUP_FAILED'); }
 }
 assert.equal(await query(`select count(*) from public.quizzes where id='${ids.quiz}';`),'0','owned committed cleanup');
 assert.deepEqual(JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)),priorFlag);
