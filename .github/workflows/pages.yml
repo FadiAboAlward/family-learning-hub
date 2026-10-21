@@ -1,10 +1,12 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Approved full main commit SHA to publish
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +20,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -26,41 +29,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Build production site with open PR previews
+      - name: Build approved main site
         id: site
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
           set -euo pipefail
-          SITE_DIR="${RUNNER_TEMP}/family-learning-hub-pages"
-          rm -rf "${SITE_DIR}"
-          mkdir -p "${SITE_DIR}/pr-preview"
-
-          git archive HEAD | tar -x -C "${SITE_DIR}"
-
-          curl -fsSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/pulls?state=open&base=main&per_page=100" \
-            > /tmp/open-prs.json
-
-          jq -r --arg repo "${REPO}" '.[] | select(.head.repo.full_name == $repo) | [.number, .head.sha] | @tsv' /tmp/open-prs.json |
-          while IFS=$'\t' read -r pr sha; do
-            [ -n "${pr}" ] || continue
-            echo "Adding preview for PR #${pr} at ${sha}"
-            mkdir -p "${SITE_DIR}/pr-preview/pr-${pr}"
-            curl -fsSL -L \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${REPO}/tarball/${sha}" \
-              | tar -xz --strip-components=1 -C "${SITE_DIR}/pr-preview/pr-${pr}"
-          done
-
+          test "${GITHUB_EVENT_NAME}" = workflow_dispatch
+          test "${GITHUB_REF}" = refs/heads/main
+          [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          test "${GITHUB_SHA}" = "${EXPECTED_SHA}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          git fetch --no-tags origin main
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"
+          SITE_DIR="$(mktemp -d "${RUNNER_TEMP}/family-learning-hub-pages.XXXXXX")"
+          git archive "${EXPECTED_SHA}" | tar -x -C "${SITE_DIR}"
+          test ! -e "${SITE_DIR}/pr-preview"
           touch "${SITE_DIR}/.nojekyll"
           echo "site_dir=${SITE_DIR}" >> "$GITHUB_OUTPUT"
 
