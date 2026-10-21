@@ -34,7 +34,7 @@ function fixture() {
   function catalog(second = false) {
     if (second) return { programs: [{ id: 'second-program', title: 'محتوى جلسة الاختبار الثانية', books: [], program_type: 'curriculum' }], standalone_books: [], standalone_assessments: [] };
     const qs = [activity('qa-complete', 'نشاط مكتمل', 'COMPLETE'), activity('qa-new', 'نشاط جديد', 'NEW'),
-      activity('qa-continue', 'تابع نشاطك المحفوظ', learningDone ? 'START_EXAM' : 'CONTINUE_LEARNING'), activity('qa-exam-ready', 'جاهز للامتحان', 'START_EXAM'),
+      activity('qa-continue', 'تابع نشاطك المحفوظ — 19 - (-7)', learningDone ? 'START_EXAM' : 'CONTINUE_LEARNING'), activity('qa-exam-ready', 'جاهز للامتحان', 'START_EXAM'),
       activity('qa-support', 'تمرين تعلّم فقط', 'COMPLETE', { support_session: true, exam: { enabled: false } }), activity('qa-unavailable', 'نشاط يحتاج إتاحة', 'UNAVAILABLE')];
     return { programs: [{ id: 'p', title: 'منهاج الاختبار', program_type: 'curriculum', grade_level: 7, school_year: '2026/<img src=x onerror=alert(1)>', is_primary: true,
       books: [{ id: 'b', title: 'كتاب الاختبار', units: [{ id: 'u', title: 'وحدة الاختبار', quizzes: qs }], extras: [] }] }],
@@ -66,10 +66,13 @@ function fixture() {
       if (endpoint === 'question-reference-api') return json(route, { codes: {} });
       if (endpoint === 'attempt-history-api') {
         if (body.action === 'list_attempts') {
+          if(second)return json(route,{items:[],has_more:false});
           const items=Array.from({length:7},(_,i)=>({id:UUID(21+i),delivery_mode:i%2?'learning':'exam',percentage:80+i,wrong_count:2,duration_seconds:30,submitted_at:`2026-10-${String(18-i).padStart(2,'0')}T11:00:00Z`,context:{quiz:{title:`محاولة اختبار سابقة ${i+1}`}}}));
           return json(route,{items:items.filter(x=>body.mode==='all'||x.delivery_mode===body.mode).slice(0,body.page_size),has_more:false});
         }
-        assert.equal(body.action, 'attempt_detail'); assert.equal(body.attempt_id, UUID(21));
+        assert.equal(body.action, 'attempt_detail');
+        if(second)return json(route,{error:'ATTEMPT_NOT_FOUND'},403);
+        assert.equal(body.attempt_id, UUID(21));
         return json(route, { attempt: { id: UUID(21), delivery_mode: 'exam', percentage: 0, wrong_count: 1, duration_seconds: 30,
           submitted_at: '2026-10-08T11:00:00Z', context: { quiz: { title: 'مراجعة نتيجة الاختبار' } } },
           review: [{ question_id: UUID(30), prompt: question.prompt, prompt_language: 'ar', selected_option: { content: '3' }, correct_option: { content: '2' },
@@ -119,6 +122,11 @@ try {
     assert.equal(await page.locator('[data-attempt-history] .flh-attempt-card').count(),4,'original compact history keeps four attempts');
     assert.equal(await dash.locator('.flh-dashboard-hero [data-journey-primary]').count(),1);
     assert.equal(await dash.locator('.flh-dashboard-hero [data-learn]').getAttribute('data-learn'),'qa-continue');
+    for(const title of [dash.locator('.flh-dashboard-hero h3'),dash.locator('[data-dashboard-task="qa-continue"] b')]){
+      assert.equal(await title.locator('.flh-math-ltr').count(),1,'actual dashboard title uses shared renderer');
+      assert.equal(await title.locator('.flh-math-ltr').textContent(),'19 - (-7)');
+      assert.equal(await title.locator('.flh-math-ltr').evaluate(el=>getComputedStyle(el).direction),'ltr','math keeps logical order inside RTL Home');
+    }
     assert.equal(await dash.locator('[data-dashboard-list] [data-dashboard-task]').count(),4,'default list is compact');
     await dash.locator('[data-dashboard-more]').click();
     const ids=await dash.locator('[data-dashboard-list] [data-dashboard-task]').evaluateAll(nodes=>nodes.map(n=>n.dataset.dashboardTask));
@@ -204,16 +212,26 @@ try {
     data.delayCatalog(); await page.locator('#flhLibraryRefresh').click(); await data.captured;
     await page.evaluate(({ token, next }) => { localStorage.setItem('learner_session', token); state.learnerProfile = next; renderStudentHome(next); }, { token: B, next: profile(true) });
     await page.getByText('محتوى جلسة الاختبار الثانية', { exact: true }).waitFor(); data.release();
+    await page.locator('#ahAll').waitFor();
+    assert.equal(await page.locator('[data-attempt-history] .flh-attempt-card').count(),0,'second learner never receives first learner history');
     await page.waitForFunction(() => !document.querySelector('[data-student-library]')?.textContent.includes('تابع نشاطك المحفوظ'));
     assert.equal(await page.locator('[data-journey-primary]').count(), 0, 'late previous session response cannot paint previous learner actions');
     await page.reload({ waitUntil: 'domcontentloaded' }); await page.getByText('محتوى جلسة الاختبار الثانية', { exact: true }).waitFor();
+    await page.locator('#ahAll').waitFor();
+    assert.equal(await page.locator('[data-attempt-history] .flh-attempt-card').count(),0,'reload retains second learner history isolation');
+    await page.evaluate(id=>window.FLH.openAttemptHistoryAttempt(id),UUID(21));
+    await page.locator('[data-attempt-history] .error').waitFor();
+    assert.equal(await page.locator('.flh-history-review-list').count(),0,'second session cannot review first session attempt');
+    await page.locator('#ahDetailBack').click();await page.locator('#ahAll').waitFor();
     assert.equal(await page.locator('[data-learn="qa-continue"]').count(), 0, 'reload preserves new learner isolation');
     await page.evaluate(({token,next})=>{localStorage.setItem('learner_session',token);state.learnerProfile=next;renderStudentHome(next);},{token:A,next:profile()});
     await page.locator('.flh-dashboard-hero [data-exam="qa-exam-ready"]').waitFor();
+    await page.locator('[data-attempt-history] .flh-attempt-card').first().waitFor();
+    assert.equal(await page.locator('[data-attempt-history] .flh-attempt-card').count(),4,'reverse switch restores only first learner history');
     assert.equal(await page.getByText('محتوى جلسة الاختبار الثانية',{exact:true}).count(),0,'reverse switch clears second session');
     await overflow(page);
     assert.deepEqual(pageErrors, [], `${device.name}: no runtime errors`);
-    assert.deepEqual(failedResponses, [{ path: '/functions/v1/student-library-api', status: 500 }], 'only injected backend failure is observed');
+    assert.deepEqual(failedResponses, [{ path: '/functions/v1/student-library-api', status: 500 },{path:'/functions/v1/attempt-history-api',status:403}], 'only injected network failure and cross-session denial are observed');
     console.log(`PASS learner journey ${device.name}: four states, unfinished ordering, bookless assignment, Learning-only completion, live launcher/resume, refreshed progress, read-only results, error retry and stale-session isolation`);
     await context.close();
   }
