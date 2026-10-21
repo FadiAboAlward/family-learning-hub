@@ -95,7 +95,14 @@ try {
   git('add', 'pr-preview');
   git('commit', '-m', 'accidental tracked preview');
   const contaminated = git('rev-parse', 'HEAD');
+  assert.ok(git('ls-tree', '-d', '--name-only', contaminated).split('\n').includes('pr-preview'));
+  const staged = () => fs.readdirSync(runtime).filter(name => name.startsWith('family-learning-hub-pages.'));
+  const before = staged();
   run({EXPECTED_SHA: contaminated, GITHUB_SHA: contaminated});
+  const added = staged().filter(name => !before.includes(name));
+  assert.equal(added.length, 1, 'Contaminated archive must reach extraction in a fresh site directory');
+  assert.equal(fs.existsSync(path.join(runtime, added[0], 'pr-preview')), true,
+    'Failure must occur at the preview guard after extraction');
   console.log(`PASS Pages workflow contract and ${cases} real Git artifact/negative cases`);
 } finally {
   // Only remove the uniquely created disposable fixture, never a checkout or caller path.
