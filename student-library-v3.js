@@ -40,9 +40,60 @@
   }
   function bindNav(root,handlers){root.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>handlers[b.getAttribute('data-nav')]?.()));}
 
+  // FLH-034: project the authenticated catalog; never infer work from book membership.
+  function dashboardActivities(d){
+    const rows=[],seen=new Set();
+    function add(q,context){
+      if(!q?.id||!q.slug||seen.has(q.id))return;
+      const j=q.journey,action=j?.primary_action;
+      if(!journeyStates.has(j?.state))return;
+      if(j.state==='CONTINUE_LEARNING'&&action!=='learning'||j.state==='START_EXAM'&&action!=='exam')return;
+      const available=action==='results'?j.state==='COMPLETE'&&resultIdOk(j.result_attempt_id)
+        :['learning','exam'].includes(action)&&j[action]?.available===true&&q.delivery_config?.[action]?.enabled!==false;
+      if(!available||j.state==='COMPLETE'&&action!=='results'||j.state!=='COMPLETE'&&action==='results')return;
+      seen.add(q.id);
+      const group=j.state==='COMPLETE'?'complete':j.state==='CONTINUE_LEARNING'||j[action]?.resumed===true?'continue':j.state==='START_EXAM'?'exam':'new';
+      rows.push({q,context,group});
+    }
+    function book(b,p){
+      const context=[p?.title,b.subject?.name_ar,b.title].filter(Boolean).join(' · ');
+      for(const u of b.units||[])for(const q of u.quizzes||[])add(q,[context,u.title].filter(Boolean).join(' · '));
+      for(const q of b.extras||[])add(q,context);
+    }
+    for(const p of d.programs||[])for(const b of p.books||[])book(b,p);
+    for(const b of d.standalone_books||[])book(b);
+    for(const q of d.standalone_assessments||[])add(q,'نشاط مخصص');
+    const rank={continue:0,exam:1,new:2,complete:3};
+    return rows.sort((a,b)=>rank[a.group]-rank[b.group]);
+  }
+  function dashboardLabel({q,group}){return group==='complete'?'عرض النتيجة':q.journey.primary_action==='exam'?(group==='continue'?'تابع الامتحان':'ابدأ الامتحان'):group==='continue'?'تابع التعلّم':q.delivery_config?.support_session?'ابدأ حلّ التمرين':'ابدأ التعلّم';}
+  function renderDashboard(root,d){
+    const rows=dashboardActivities(d),pending=rows.filter(x=>x.group!=='complete'),completed=rows.filter(x=>x.group==='complete'),next=pending[0];
+    const groups=[['continue','أكمّلها','تمارين بدأتها'],['new','تمارين جديدة','لم تبدأها بعد'],['exam','جاهزة للامتحان','خطوتك التالية بعد التعلّم']];
+    const status={continue:'قيد المتابعة',new:'جديد',exam:'جاهز للامتحان',complete:'مكتمل'};
+    const button=item=>journeyButton(item.q,item.q.journey.primary_action,dashboardLabel(item),true,item.q.journey.result_attempt_id);
+    const row=item=>`<article class="flh-dashboard-task flh-journey" data-dashboard-task="${safe(item.q.id)}" data-dashboard-group="${item.group}"><div><b dir="auto">${safe(item.q.title)}</b><p class="flh-dashboard-context" dir="auto">${safe(item.context)}</p><span class="flh-dashboard-status ${item.group}">${status[item.group]}</span></div><div class="flh-dashboard-action">${button(item)}</div><p class="flh-journey-error muted" role="alert" hidden></p></article>`;
+    root.innerHTML=`<section aria-labelledby="flhNextTitle"><h2 id="flhNextTitle">خطوتك التالية</h2><p class="muted">خطوة واحدة واضحة، من المكان الذي وصلت إليه.</p><div class="flh-dashboard-hero flh-journey">${next?`<span class="flh-dashboard-kicker">${next.group==='continue'?'لنكمّل ما بدأته':'جاهز لخطوتك التالية'}</span><h3 dir="auto">${safe(next.q.title)}</h3><p class="flh-dashboard-context" dir="auto">${safe(next.context)}</p><p>${next.group==='continue'?'تابع من المكان المحفوظ.':next.group==='exam'?'أكملت التعلّم. يمكنك الآن بدء الامتحان.':'ابدأ عندما تكون مستعدًا.'}</p>${button(next)}`:`<h3>${completed.length?'أحسنت! لا توجد تمارين منتظرة الآن.':'لا توجد تمارين متاحة الآن.'}</h3><p>يمكنك تصفّح مكتبتك ومراجعة محاولاتك السابقة.</p>`}<p class="flh-journey-error muted" role="alert" hidden></p></div><div class="flh-dashboard-meters" role="group" aria-label="تصنيف التمارين المنتظرة">${groups.map(([key,label,hint])=>`<button type="button" data-dashboard-filter="${key}" aria-pressed="false"><span><b>${label}</b><small>${hint}</small></span><strong>${pending.filter(x=>x.group===key).length}</strong></button>`).join('')}</div></section>
+      <section class="flh-dashboard-list" aria-labelledby="flhTasksTitle"><div class="flh-dashboard-heading"><div><h2 id="flhTasksTitle">تماريني المنتظرة</h2><p class="muted">من مناهجك وكتبك، مرتبة لتسهيل المتابعة.</p></div><span data-dashboard-count role="status"></span></div><div class="flh-dashboard-filters" role="group" aria-label="تصفية التمارين"><button type="button" data-dashboard-filter="all" aria-pressed="true">الكل</button>${[['continue','أكمّلها'],['new','الجديدة'],['exam','الامتحانات']].map(([key,label])=>`<button type="button" data-dashboard-filter="${key}" aria-pressed="false">${label}</button>`).join('')}</div><div data-dashboard-list></div><div class="flh-dashboard-more"><button type="button" class="btn btn-soft" data-dashboard-more hidden></button></div></section>
+      ${completed.length?`<details class="flh-dashboard-completed"><summary>تماريني المكتملة (${completed.length}) — عرض النتائج</summary>${completed.map(row).join('')}</details>`:''}`;
+    let filter='all',expanded=false;
+    const list=root.querySelector('[data-dashboard-list]'),more=root.querySelector('[data-dashboard-more]');
+    function paint(){
+      const filtered=pending.filter(x=>filter==='all'||x.group===filter),shown=expanded?filtered:filtered.slice(0,4);
+      list.innerHTML=shown.length?shown.map(row).join(''):'<p class="empty">لا توجد تمارين منتظرة ضمن هذا التصنيف.</p>';
+      root.querySelector('[data-dashboard-count]').textContent=`${shown.length} من ${filtered.length}`;
+      more.hidden=filtered.length<=4;more.textContent=expanded?'عرض أقل':`عرض بقية التمارين (${filtered.length-shown.length})`;more.setAttribute('aria-expanded',String(expanded));
+      root.querySelectorAll('[data-dashboard-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dashboardFilter===filter)));
+      bindModes(list);
+    }
+    root.querySelectorAll('[data-dashboard-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.dashboardFilter;expanded=false;paint();}));
+    more.addEventListener('click',()=>{expanded=!expanded;paint();});
+    bindModes(root);paint();
+  }
+
   function renderHome(root,d){
     const programs=d.programs||[],standalone=d.standalone_books||[],assessments=orderedQuizzes(d.standalone_assessments||[]);
-    root.innerHTML=`<div class="flh-library-head"><div><b>📚 مكتبتي</b><div class="muted">اختَر المنهاج أو الكتاب، وبعدها الوحدة والنشاط التالي.</div></div><button class="btn btn-soft" id="flhLibraryRefresh">تحديث الأنشطة</button></div>
+    root.innerHTML=`<div data-student-dashboard class="flh-student-dashboard"></div><div class="flh-library-head"><div><b>📚 مكتبتي</b><div class="muted">اختَر المنهاج أو الكتاب، وبعدها الوحدة والنشاط التالي.</div></div><button class="btn btn-soft" id="flhLibraryRefresh">تحديث الأنشطة</button></div>
       ${programs.length?`<div class="flh-library-title">🎓 مناهجي وكورساتي</div><div class="flh-card-grid">${programs.map((p,i)=>`<button class="flh-library-card" data-open-program="${i}"><span class="flh-card-icon">${p.program_type==='curriculum'?'🏫':'🎯'}</span><b>${safe(p.title)}</b><small>${safe([p.grade_level?`الصف ${p.grade_level}`:'',p.school_year||'',`${(p.books||[]).length} كتاب`].filter(Boolean).join(' · '))}</small>${p.is_primary?'<em>البرنامج الأساسي</em>':''}</button>`).join('')}</div>`:''}
       ${standalone.length?`<div class="flh-library-title">📖 كتبي المستقلة</div><div class="flh-card-grid">${standalone.map((b,i)=>`<button class="flh-library-card" data-open-standalone="${i}"><span class="flh-card-icon">📘</span><b>${safe(b.title)}</b><small>${safe(contextBook(b)||'كتاب مستقل')}</small></button>`).join('')}</div>`:''}
       ${assessments.length?`<div class="flh-library-title">🎯 أنشطتي المخصصة</div>${assessments.map(q=>`<div class="flh-activity-card"><b>${safe(q.title)}</b>${q.description?`<div class="muted">${safe(q.description)}</div>`:''}${modeButtons(q)}</div>`).join('')}`:''}
@@ -51,6 +102,7 @@
     root.querySelectorAll('[data-open-program]').forEach(b=>b.addEventListener('click',()=>renderProgram(root,programs[Number(b.getAttribute('data-open-program'))],d)));
     root.querySelectorAll('[data-open-standalone]').forEach(b=>b.addEventListener('click',()=>renderBook(root,standalone[Number(b.getAttribute('data-open-standalone'))],d,null)));
     bindModes(root);
+    renderDashboard(root.querySelector('[data-student-dashboard]'),d);
   }
 
   function renderProgram(root,p,d){

@@ -226,7 +226,11 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/optional-learning-video-browser.mjs
-      - name: Capture Playwright screenshot evidence
+      - name: Verify student dashboard, library and attempt-history preservation
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-journey-browser.mjs
+      - name: Capture Learning and Exam screenshot evidence
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/screenshot-evidence.mjs

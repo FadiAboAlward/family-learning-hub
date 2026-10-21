@@ -1,6 +1,7 @@
 import { launchMockQaBrowser } from './qa-isolation.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 import { deriveLearnerJourney } from '../supabase/functions/_shared/learner-journey.mjs';
 
@@ -36,8 +37,9 @@ function fixture() {
       activity('qa-continue', 'تابع نشاطك المحفوظ', learningDone ? 'START_EXAM' : 'CONTINUE_LEARNING'), activity('qa-exam-ready', 'جاهز للامتحان', 'START_EXAM'),
       activity('qa-support', 'تمرين تعلّم فقط', 'COMPLETE', { support_session: true, exam: { enabled: false } }), activity('qa-unavailable', 'نشاط يحتاج إتاحة', 'UNAVAILABLE')];
     return { programs: [{ id: 'p', title: 'منهاج الاختبار', program_type: 'curriculum', grade_level: 7, school_year: '2026/<img src=x onerror=alert(1)>', is_primary: true,
-      books: [{ id: 'b', title: 'كتاب الاختبار', units: [{ id: 'u', title: 'وحدة الاختبار', quizzes: qs }], extras: [] }] }], standalone_books: [],
-      standalone_assessments: [activity('qa-bookless-complete', 'نتيجة نشاط مستقل', 'COMPLETE'), activity('qa-bookless-new', 'نشاط مخصص دون كتاب', 'NEW')] };
+      books: [{ id: 'b', title: 'كتاب الاختبار', units: [{ id: 'u', title: 'وحدة الاختبار', quizzes: qs }], extras: [] }] }],
+      standalone_books: [{id:'standalone',title:'كتاب مستقل للاختبار',units:[{title:'وحدة مستقلة',quizzes:[activity('qa-standalone','تمرين من كتاب مستقل','NEW')]}],extras:[activity('qa-extra','تدريب إضافي مستقل','NEW')]}],
+      standalone_assessments: [qs[1], activity('qa-bookless-complete', 'نتيجة نشاط مستقل', 'COMPLETE'), activity('qa-bookless-new', 'نشاط مخصص دون كتاب', 'NEW')] };
   }
   const question = { id: UUID(30), question_code: 'QA-JOURNEY-V1', question_type: 'single_choice', prompt_language: 'ar',
     prompt: 'سؤال النسخة الأصلية: اختر العدد 2.', options: [{ position: 1, content: '2' }, { position: 2, content: '3' }], assets: [] };
@@ -63,7 +65,10 @@ function fixture() {
       if (endpoint === 'activity-api') return json(route, { ok: true });
       if (endpoint === 'question-reference-api') return json(route, { codes: {} });
       if (endpoint === 'attempt-history-api') {
-        if (body.action === 'list_attempts') return json(route, { items: [], has_more: false });
+        if (body.action === 'list_attempts') {
+          const items=Array.from({length:7},(_,i)=>({id:UUID(21+i),delivery_mode:i%2?'learning':'exam',percentage:80+i,wrong_count:2,duration_seconds:30,submitted_at:`2026-10-${String(18-i).padStart(2,'0')}T11:00:00Z`,context:{quiz:{title:`محاولة اختبار سابقة ${i+1}`}}}));
+          return json(route,{items:items.filter(x=>body.mode==='all'||x.delivery_mode===body.mode).slice(0,body.page_size),has_more:false});
+        }
         assert.equal(body.action, 'attempt_detail'); assert.equal(body.attempt_id, UUID(21));
         return json(route, { attempt: { id: UUID(21), delivery_mode: 'exam', percentage: 0, wrong_count: 1, duration_seconds: 30,
           submitted_at: '2026-10-08T11:00:00Z', context: { quiz: { title: 'مراجعة نتيجة الاختبار' } } },
@@ -109,6 +114,43 @@ try {
     await context.route('**/functions/v1/*', route => data.handle(route));
     await page.goto(`${APP_URL}?journey-testing#student`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-open-program="0"]').waitFor();
+    const dash=page.locator('[data-student-dashboard]');
+    await page.locator('[data-attempt-history] .flh-attempt-card').first().waitFor();
+    assert.equal(await page.locator('[data-attempt-history] .flh-attempt-card').count(),4,'original compact history keeps four attempts');
+    assert.equal(await dash.locator('.flh-dashboard-hero [data-journey-primary]').count(),1);
+    assert.equal(await dash.locator('.flh-dashboard-hero [data-learn]').getAttribute('data-learn'),'qa-continue');
+    assert.equal(await dash.locator('[data-dashboard-list] [data-dashboard-task]').count(),4,'default list is compact');
+    await dash.locator('[data-dashboard-more]').click();
+    const ids=await dash.locator('[data-dashboard-list] [data-dashboard-task]').evaluateAll(nodes=>nodes.map(n=>n.dataset.dashboardTask));
+    assert.equal(ids.length,6,'pending covers all book, extra and dedicated paths');
+    assert.equal(new Set(ids).size,ids.length,'duplicate program/standalone identity appears once');
+    assert.equal(ids.includes('qa-unavailable'),false,'catalog membership alone is never homework');
+    await dash.locator('[data-dashboard-more]').click();
+    assert.equal(await dash.locator('[data-dashboard-list] [data-dashboard-task]').count(),4);
+    for(const [key,count] of [['continue',1],['new',4],['exam',1]]){
+      const chip=dash.locator(`.flh-dashboard-filters [data-dashboard-filter="${key}"]`);
+      await chip.click();assert.equal(await chip.getAttribute('aria-pressed'),'true');
+      assert.equal(await dash.locator('[data-dashboard-list] [data-dashboard-task]').count(),count);
+      assert.equal(await dash.locator(`[data-dashboard-list] [data-dashboard-group="${key}"]`).count(),count);
+    }
+    await dash.locator('.flh-dashboard-meters [data-dashboard-filter="continue"]').click();
+    assert.equal(await dash.locator('[data-dashboard-count]').innerText(),'1 من 1');
+    await dash.locator('[data-dashboard-filter="all"]').click();
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('[data-student-dashboard]')).direction),'rtl');
+    assert.ok(await dash.locator('button').evaluateAll(nodes=>nodes.filter(n=>n.getClientRects().length).every(n=>n.getBoundingClientRect().height>=44)),'visible dashboard touch targets >=44px');
+    await overflow(page);fs.mkdirSync('playwright-screenshots',{recursive:true});
+    await page.screenshot({path:`playwright-screenshots/student-dashboard-${device.name}.png`,fullPage:true});
+    await page.locator('#ahAll').click();await page.locator('[data-mode="learning"]').waitFor();
+    await page.locator('[data-mode="learning"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('.flh-attempt-card').length===3);
+    assert.equal(await page.locator('.flh-attempt-mode.learning').count(),3,'Learning history filter preserved');
+    await page.locator('[data-mode="exam"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('.flh-attempt-card').length===4);
+    assert.equal(await page.locator('.flh-attempt-mode.exam').count(),4,'Exam history filter preserved');
+    await page.locator('[data-attempt]').first().click();await page.locator('#ahDetailBack').waitFor();
+    assert.match(await page.locator('.flh-history-review-list').innerText(),/طلب السؤال اختيار/);
+    await page.locator('#ahDetailBack').click();await page.locator('#ahBack').click();
+    await page.locator('#ahAll').waitFor();
     assert.equal(await page.locator('.flh-library-card small img').count(),0,'unsafe school-year markup cannot create an element in the catalog');
     assert.ok((await page.locator('.flh-library-card small').first().textContent()).includes('<img'),'catalog school-year is escaped and remains literal text');
     const bookless = page.locator('.flh-activity-card').filter({ hasText: 'نشاط مخصص دون كتاب' });
@@ -128,19 +170,25 @@ try {
     await page.screenshot({ path: `playwright-screenshots/learner-journey-${device.name}.png`, fullPage: true });
 
     const catalogBefore = data.count('student-library-api', 'catalog');
-    await page.locator('[data-learn="qa-continue"][data-journey-primary]').click();
+    await page.locator('[data-nav="home"]').first().click();
+    await page.locator('.flh-dashboard-hero [data-learn="qa-continue"]').click();
     await page.locator('#flhConfirmAnswer').waitFor();
     assert.match(await page.locator('.question').innerText(), /النسخة الأصلية/);
     assert.equal(await page.locator('.flh-resume-note').count(), 1);
     await page.locator('.flh-learn-answer').first().click(); await page.locator('#flhConfirmAnswer').click();
     await page.locator('#flhLearnNext').click(); await page.locator('#learnHome').click();
-    await page.locator('[data-open-program="0"]').waitFor(); await openUnit(page);
+    await page.locator('[data-open-program="0"]').waitFor();
+    assert.equal(await page.locator('[data-dashboard-task="qa-continue"]').getAttribute('data-dashboard-group'),'exam','Home reloads current state after completing Learning');
+    await openUnit(page);
     assert.ok(data.count('student-library-api', 'catalog') > catalogBefore, 'return after completion reloads authoritative status without hash change');
     assert.equal(await card(page, 'qa-continue').locator('.flh-journey').getAttribute('data-journey-state'), 'START_EXAM');
 
     await page.locator('[data-exam="qa-exam-ready"][data-journey-primary]').click();
     await page.locator('#examExit').waitFor(); assert.match(await page.locator('.question').innerText(), /النسخة الأصلية/);
-    await page.locator('#examExit').click(); await page.locator('[data-open-program="0"]').waitFor(); await openUnit(page);
+    await page.locator('#examExit').click(); await page.locator('[data-open-program="0"]').waitFor();
+    assert.equal(await page.locator('[data-dashboard-task="qa-exam-ready"]').getAttribute('data-dashboard-group'),'continue','open Exam belongs to continuation');
+    assert.equal(await page.locator('.flh-dashboard-hero [data-exam]').getAttribute('data-exam'),'qa-exam-ready');
+    await openUnit(page);
     assert.match(await page.locator('[data-exam="qa-exam-ready"][data-journey-primary]').innerText(), /تابع الامتحان/);
 
     const startsBeforeReview = data.count('learning-api', 'start_quiz') + data.count('exam-v2-api', 'start_exam');
@@ -160,6 +208,9 @@ try {
     assert.equal(await page.locator('[data-journey-primary]').count(), 0, 'late previous session response cannot paint previous learner actions');
     await page.reload({ waitUntil: 'domcontentloaded' }); await page.getByText('محتوى جلسة الاختبار الثانية', { exact: true }).waitFor();
     assert.equal(await page.locator('[data-learn="qa-continue"]').count(), 0, 'reload preserves new learner isolation');
+    await page.evaluate(({token,next})=>{localStorage.setItem('learner_session',token);state.learnerProfile=next;renderStudentHome(next);},{token:A,next:profile()});
+    await page.locator('.flh-dashboard-hero [data-exam="qa-exam-ready"]').waitFor();
+    assert.equal(await page.getByText('محتوى جلسة الاختبار الثانية',{exact:true}).count(),0,'reverse switch clears second session');
     await overflow(page);
     assert.deepEqual(pageErrors, [], `${device.name}: no runtime errors`);
     assert.deepEqual(failedResponses, [{ path: '/functions/v1/student-library-api', status: 500 }], 'only injected backend failure is observed');
@@ -167,4 +218,6 @@ try {
     await context.close();
   }
   fs.writeFileSync('playwright-screenshots/batch2-journey-manifest.json', JSON.stringify({ feature_id: 'FLH-FEAT-2026-024', spec_version: '1.1', head_sha: process.env.FLH_QA_HEAD_SHA || process.env.GITHUB_SHA || null, run_id: process.env.GITHUB_RUN_ID || null, source: 'isolated synthetic learner journey runtime', retention_days: 7, files: ['learner-journey-mobile.png', 'learner-journey-desktop.png'] }, null, 2));
+  const files=['student-dashboard-mobile.png','student-dashboard-desktop.png'];
+  fs.writeFileSync('playwright-screenshots/student-dashboard-manifest.json',JSON.stringify({feature_id:'FLH-FEAT-2026-034',spec_version:'1.0',drive_revision_id:'2',head_sha:process.env.FLH_QA_HEAD_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,run_attempt:process.env.GITHUB_RUN_ATTEMPT||null,source:'mock-local synthetic Testing APIs',retention_days:7,files:files.map(name=>({name,sha256:createHash('sha256').update(fs.readFileSync(`playwright-screenshots/${name}`)).digest('hex')}))},null,2));
 } finally { await browser.close(); }
