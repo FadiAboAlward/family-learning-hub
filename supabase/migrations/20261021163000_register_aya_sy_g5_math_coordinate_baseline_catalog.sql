@@ -13,7 +13,9 @@ BEGIN
   WHERE p.code = 'SY-G5-2025-2026' AND p.status = 'active'
     AND p.grade_level = 5;
 
-  SELECT q.id INTO STRICT v_quiz
+  -- Rebuilt/isolated databases do not contain the October 6 live draft.
+  -- Make fresh installs a no-op; when that draft exists, enforce all guards.
+  SELECT q.id INTO v_quiz
   FROM public.quizzes q
   JOIN public.learning_programs p ON p.id = v_program
    AND p.workspace_id = q.workspace_id AND p.curriculum_id = q.curriculum_id
@@ -21,6 +23,8 @@ BEGIN
   WHERE q.slug = 'sy-g5-math-coordinate-grid-baseline-20261006-a'
     AND q.status = 'draft' AND q.subject_id = 1
     AND b.code = 'AR-MATH-G5-2025-2026' AND q.workspace_id = v_workspace;
+
+  IF v_quiz IS NULL THEN RETURN; END IF;
 
   SELECT v.id INTO STRICT v_version
   FROM public.quiz_versions v
