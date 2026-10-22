@@ -12,7 +12,8 @@ export function consentConfiguration(config) {
 
 export function authorizationId(search) {
   const ids=new URLSearchParams(search).getAll('authorization_id');
-  if(ids.length!==1 || !uuid.test(ids[0])) throw new Error('INVALID_AUTHORIZATION');
+  // GoTrue's public authorization_id is SecureAlphanumeric(32); client IDs remain UUIDs.
+  if(ids.length!==1 || !/^[A-Za-z0-9]{32}$/.test(ids[0])) throw new Error('INVALID_AUTHORIZATION');
   return ids[0];
 }
 

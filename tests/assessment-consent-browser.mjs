@@ -12,7 +12,7 @@ assert.equal(process.env.GITHUB_ACTIONS,'true','Rendered synthetic consent regre
 const head=process.env.FLH_QA_HEAD_SHA;
 assert.match(head||'',/^[0-9a-f]{40}$/);
 const config={url:TESTING_ORIGIN,key:'sb_publishable_synthetic',clientId:'03320000-0000-4000-8000-000000000001',callback:'https://chatgpt.com/connector/oauth/syntheticCallback'};
-const id='03320000-0000-4000-8000-000000000002',user='03320000-0000-4000-8000-000000000003';
+const id='syntheticAuthorization0123456789',user='03320000-0000-4000-8000-000000000003';
 const sdk=`window.supabase={createClient:(url,key,options)=>{
   window.__authOptions=options.auth;const f=window.__fixture;
   const call=name=>window.__calls.push(name);
