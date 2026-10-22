@@ -7,7 +7,8 @@ language plpgsql stable security invoker
 set search_path = ''
 as $$
 begin
-  if event->>'client_id' = 'd555d742-2195-4676-bf35-e3d09c25077a' then
+  -- Supabase Custom Access Token input carries the OAuth client inside claims.
+  if event->'claims'->>'client_id' = 'd555d742-2195-4676-bf35-e3d09c25077a' then
     if event->'claims'->>'role' is distinct from 'authenticated' then
       raise exception 'MCP_OAUTH_ROLE_INVALID';
     end if;

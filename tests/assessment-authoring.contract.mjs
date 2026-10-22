@@ -13,6 +13,38 @@ function query(source) {
  let out='',err='';p.stdout.on('data',c=>out+=c);p.stderr.on('data',c=>err+=c);
  const done=new Promise((resolve,reject)=>{p.on('error',reject);p.on('close',code=>code===0?resolve(out.trim()):reject(new Error('Isolated authoring contract: '+err)));});p.stdin.end(source);return done;
 }
+// Exercise the real provider input shape and privileges in a rolled-back transaction.
+const tokenHook=fs.readFileSync('supabase/testing/assessment-mcp-token-hook.sql','utf8');
+await query(`begin; ${tokenHook}
+ do $$ declare
+  client text := 'd555d742-2195-4676-bf35-e3d09c25077a';
+  resource text := 'https://gzfbkudvvxthbhjsmwsc.supabase.co/functions/v1/assessment-mcp/mcp';
+  event jsonb; changed jsonb;
+ begin
+  event := jsonb_build_object('authentication_method','oauth_provider/authorization_code','claims',jsonb_build_object('client_id',client,'role','authenticated','aud','authenticated','scope','openid email offline_access'));
+  changed := public.flh_assessment_mcp_access_token_hook(event);
+  assert changed#>>'{claims,aud}'=resource, 'OAuth client must receive the exact MCP audience';
+  assert (changed#>'{claims}')-'aud'=(event#>'{claims}')-'aud', 'Other claims must remain unchanged';
+  assert public.flh_assessment_mcp_access_token_hook(jsonb_set(event,'{authentication_method}','"token_refresh"'))#>>'{claims,aud}'=resource, 'Refresh must preserve the resource audience';
+  event := jsonb_set(event,'{claims,client_id}','"03310000-0000-4000-8000-000000000002"');
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Other OAuth clients must remain unchanged';
+  event := jsonb_set(event,'{client_id}',to_jsonb(client));
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Top-level client must not override the actual claim';
+  event := jsonb_build_object('authentication_method','password','claims',jsonb_build_object('role','authenticated','aud','authenticated'));
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Ordinary sessions must remain unchanged';
+  event := jsonb_set(event,'{claims,client_id}',to_jsonb(client));
+  event := jsonb_set(event,'{claims,role}','"service_role"');
+  begin
+   perform public.flh_assessment_mcp_access_token_hook(event);
+   raise exception 'Hook accepted a non-parent role';
+   exception when others then if sqlerrm<>'MCP_OAUTH_ROLE_INVALID' then raise;end if;
+  end;
+  assert not has_function_privilege('anon','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not has_function_privilege('authenticated','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not has_function_privilege('service_role','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert has_function_privilege('supabase_auth_admin','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not (select prosecdef from pg_proc where oid='public.flh_assessment_mcp_access_token_hook(jsonb)'::regprocedure);
+ end $$; rollback;`);
 const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and is_active and metadata->>'is_test'='true';`);
 assert.match(learner,/^[a-f0-9-]{36}$/);
 const priorFlag=JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`));
