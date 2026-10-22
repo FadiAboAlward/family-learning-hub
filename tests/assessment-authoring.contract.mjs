@@ -32,8 +32,7 @@ await query(`begin; ${tokenHook}
   assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Top-level client must not override the actual claim';
   event := jsonb_build_object('authentication_method','password','claims',jsonb_build_object('role','authenticated','aud','authenticated'));
   assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Ordinary sessions must remain unchanged';
-  event := jsonb_set(event,'{claims,client_id}',to_jsonb(client));
-  event := jsonb_set(event,'{claims,role}','"service_role"');
+  event := jsonb_build_object('authentication_method','oauth_provider/authorization_code','claims',jsonb_build_object('client_id',client,'role','service_role','aud','authenticated','scope','openid email offline_access'));
   begin
    perform public.flh_assessment_mcp_access_token_hook(event);
    raise exception 'Hook accepted a non-parent role';
