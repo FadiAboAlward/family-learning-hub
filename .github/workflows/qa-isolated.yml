@@ -211,6 +211,8 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/qa-isolation-browser.mjs
+      - name: Render cloud consent artifact with synthetic Auth (desktop and mobile)
+        run: node tests/assessment-consent-browser.mjs
       - name: Run mobile browser smoke test
         env:
           APP_URL: http://127.0.0.1:4173/

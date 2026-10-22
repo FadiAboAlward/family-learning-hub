@@ -34,7 +34,7 @@ async function start() {
   let client,config,id,userId;
   try {
     id=authorizationId(location.search);
-    const response=await fetch('/config',{cache:'no-store'});
+    const response=await fetch('./config.json',{cache:'no-store'});
     if(!response.ok) throw new Error('CONSENT_NOT_CONFIGURED');
     config=consentConfiguration(await response.json());
     client=window.supabase.createClient(config.url,config.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
@@ -59,7 +59,7 @@ async function start() {
         const redirect=consentRedirect(result.data?.redirect_url,config);
         element('client-name').textContent='ChatGPT — ربط سبق اعتماده';element('scopes').textContent='openid';element('callback').textContent=config.callback;
         element('approve').textContent='متابعة الربط';element('approve').onclick=()=>location.assign(redirect);
-        element('deny').onclick=()=>{client.auth.signOut({scope:'local'});location.replace('/oauth/consent');};
+        element('deny').onclick=async()=>{await client.auth.signOut({scope:'local'}).catch(()=>{});location.replace('./');};
       } else {
         const details=consentDetails(result.data,id,userId,config);
         element('client-name').textContent=details.name;element('scopes').textContent=details.scope;element('callback').textContent=details.callback;
@@ -69,7 +69,11 @@ async function start() {
             const result=await client.auth.oauth[approve?'approveAuthorization':'denyAuthorization'](id,{skipBrowserRedirect:true});
             if(result.error) throw result.error;
             location.assign(consentRedirect(result.data?.redirect_url,config));
-          } catch { fail();pending(false); }
+          } catch {
+            await client.auth.signOut({scope:'local'}).catch(()=>{});
+            element('consent').hidden=true;element('login').hidden=false;
+            fail();pending(false);
+          }
         };
         element('approve').onclick=()=>decide(true);element('deny').onclick=()=>decide(false);
       }

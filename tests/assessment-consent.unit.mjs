@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { request } from 'node:http';
+import { existsSync } from 'node:fs';
 import { consentConfiguration,authorizationId,consentDetails,consentRedirect,TESTING_ORIGIN } from '../oauth/consent/consent.mjs';
-import { createConsentServer } from '../scripts/assessment-consent-server.mjs';
+import { consentFiles,buildConsentSite,SDK_SHA384 } from '../scripts/build-assessment-consent.mjs';
 
 const config={url:TESTING_ORIGIN,key:'sb_publishable_synthetic',clientId:'03320000-0000-4000-8000-000000000001',callback:'https://chatgpt.com/connector/oauth/syntheticCallback'};
 const id='03320000-0000-4000-8000-000000000002',user='03320000-0000-4000-8000-000000000003';
@@ -17,18 +17,17 @@ for(const change of [{authorization_id:user},{client:{id:user}},{user:{id:id}},{
 assert.equal(consentRedirect(config.callback+'?code=synthetic&state=synthetic',config),config.callback+'?code=synthetic&state=synthetic');
 for(const value of ['https://evil.example/?code=synthetic',config.callback+'/extra?code=synthetic',config.callback+'#code=synthetic','https://user@chatgpt.com/connector/oauth/syntheticCallback']) assert.throws(()=>consentRedirect(value,config));
 
-const server=await createConsentServer(config,'/* synthetic SDK fixture; no network */');
-try {
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const origin='http://127.0.0.1:'+server.address().port;
-  const page=await fetch(origin+'/oauth/consent?authorization_id='+id);
-  assert.equal(page.status,200);assert.equal(page.headers.get('referrer-policy'),'no-referrer');
-  assert.equal(page.headers.get('cache-control'),'no-store');assert.equal(page.headers.get('x-frame-options'),'DENY');
-  assert.match(page.headers.get('content-security-policy'),/frame-ancestors 'none'/);
-  assert.equal((await fetch(origin+'/app.js')).status,404);
-  assert.equal((await fetch(origin+'/oauth/consent',{method:'POST',body:'no credentials accepted'})).status,404);
-  const denied=await new Promise((resolve,reject)=>{const req=request(origin+'/config',{headers:{host:'untrusted.example'}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);req.end();});
-  assert.equal(denied,403);
-  const publicConfig=await (await fetch(origin+'/config')).json();assert.deepEqual(publicConfig,config);
-} finally { await new Promise(resolve=>server.close(resolve)); }
-console.log('Assessment consent: Testing isolation, client/user/scope binding, callback and local HTTP boundaries PASS');
+const head='a'.repeat(40),files=await consentFiles({...config,unpublishedSecret:'must not enter artifact'},'/* synthetic SDK fixture */',head);
+assert.deepEqual([...files.keys()],['oauth/consent/index.html','oauth/consent/consent.mjs','oauth/consent/config.json','oauth/consent/supabase.js','404.html','_headers','build.json']);
+assert.deepEqual(JSON.parse(files.get('oauth/consent/config.json')),config);
+assert.ok(![...files.values()].some(bytes=>String(bytes).includes('must not enter artifact')));
+assert.match(String(files.get('oauth/consent/index.html')),/src="\.\/consent\.mjs"/);
+assert.match(files.get('_headers'),/Referrer-Policy: no-referrer/);
+assert.match(files.get('_headers'),/frame-ancestors 'none'/);
+assert.equal(JSON.parse(files.get('build.json')).head,head);
+await assert.rejects(consentFiles(config,'synthetic','invalid head'),/CONSENT_HEAD_REQUIRED/);
+const outputDir='consent-invalid-sdk-must-not-be-created';assert.equal(existsSync(outputDir),false);
+await assert.rejects(buildConsentSite({config,outputDir,head},async()=>new Response('tampered SDK')),/SDK_INTEGRITY_FAILED/);
+assert.equal(existsSync(outputDir),false);
+assert.ok(SDK_SHA384.length>40);
+console.log('Assessment consent: Testing isolation, client/user/scope/callback and narrow static artifact integrity PASS');
