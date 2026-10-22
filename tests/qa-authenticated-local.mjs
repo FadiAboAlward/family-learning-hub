@@ -136,12 +136,24 @@ async function saveEvidence(config, stages, auth, teardown) {
   }, null, 2));
 }
 
-async function stopProcess(pid, expected) {
+/** Drain owned process cleanup before the CLI independently removes its containers. */
+export async function stopProcess(pid, expected, io = {}) {
   if (!Number.isInteger(pid) || pid < 2) return;
+  const read = io.readFile || fs.readFile, signal = io.kill || process.kill;
+  const wait = io.pause || pause, now = io.now || Date.now;
   let cmdline;
-  try { cmdline = await fs.readFile(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  try { cmdline = await read(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  if (!cmdline) return; // An exited/zombie child no longer runs cleanup.
   if (!expected.every(value => cmdline.split('\0').includes(value))) throw new Error('QA_LOCAL_PROCESS_NOT_OWNED');
-  process.kill(pid, 'SIGTERM');
+  try { signal(pid, 'SIGTERM'); } catch (error) { if (error.code === 'ESRCH') return; throw error; }
+  const deadline = now() + 10000;
+  while (now() < deadline) {
+    try { cmdline = await read(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+    if (!cmdline) return;
+    if (!expected.every(value => cmdline.split('\0').includes(value))) throw new Error('QA_LOCAL_PROCESS_NOT_OWNED');
+    await wait(100);
+  }
+  throw new Error('QA_LOCAL_PROCESS_STOP_TIMEOUT');
 }
 
 /** Retryable final workflow step: destroys only the recorded run/attempt's CLI project. */
