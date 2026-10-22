@@ -13,9 +13,11 @@ for(const callback of ['https://evil.example/connector/oauth/test','javascript:a
 assert.equal(authorizationId('?authorization_id='+id),id);
 for(const value of ['', 'bad',id.slice(1),id+'A',id.slice(0,-1)+'-',id.slice(0,-1)+' ',id.slice(0,-1)+'é',user]) assert.throws(()=>authorizationId('?authorization_id='+encodeURIComponent(value)));
 for(const query of ['',`?authorization_id=${id}&authorization_id=${id}`,`?authorization_id=${id}&authorization_id=bad`]) assert.throws(()=>authorizationId(query));
-const details={authorization_id:id,client:{id:config.clientId,name:'<img src=x onerror=alert(1)>'},user:{id:user},redirect_uri:config.callback,scope:'openid'};
+const details={authorization_id:id,client:{id:config.clientId,name:'<img src=x onerror=alert(1)>'},user:{id:user},redirect_uri:config.callback,scope:'openid email offline_access'};
 assert.equal(consentDetails(details,id,user,config).name,details.client.name); // UI uses textContent, never HTML.
+assert.equal(consentDetails({...details,scope:'offline_access openid email'},id,user,config).scope,'offline_access openid email');
 for(const change of [{authorization_id:user},{client:{id:user}},{user:{id:id}},{redirect_uri:config.callback+'/other'},{scope:'openid email'}]) assert.throws(()=>consentDetails({...details,...change},id,user,config));
+for(const scope of [undefined,null,[], '','openid','email offline_access','openid email email','openid email offline_access profile','openid email offline_access offline_access',' openid email offline_access','openid  email offline_access']) assert.throws(()=>consentDetails({...details,scope},id,user,config),/AUTHORIZATION_MISMATCH/);
 assert.equal(consentRedirect(config.callback+'?code=synthetic&state=synthetic',config),config.callback+'?code=synthetic&state=synthetic');
 for(const value of ['https://evil.example/?code=synthetic',config.callback+'/extra?code=synthetic',config.callback+'#code=synthetic','https://user@chatgpt.com/connector/oauth/syntheticCallback']) assert.throws(()=>consentRedirect(value,config));
 

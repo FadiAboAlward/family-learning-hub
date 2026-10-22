@@ -30,6 +30,8 @@ Direct ChatGPT assessment authoring is prepared under FLH-033 through an OAuth M
 
 FLH-033 v1.1 uses a small static HTTPS Testing consent frontend (Cloudflare Pages Free) connected directly to the existing Supabase OAuth server. It replaces the localhost consent runtime with a narrow static build artifact, while the existing Edge MCP, parent authorization and publication handlers remain unchanged. No credential proxy or manual authoring UI is added. The historical local execution denial remains a separate incident; deployment, real OAuth and installed ChatGPT proof are still required before activation.
 
+FLH-033 v1.2 (Drive revision 3) narrowly permits the owner's approved `openid email offline_access` scope set for the existing Testing client. Consent checks require the exact set without duplicates and display the actual request. Email identification and standard OAuth refresh do not change parent membership, MCP client/resource/token validation or assessment publication permissions; Production is excluded.
+
 Reusable content lives in structures such as:
 
 - curricula,

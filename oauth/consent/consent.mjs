@@ -1,6 +1,8 @@
 // The pilot intentionally accepts only the independently approved Free Testing project.
 export const TESTING_ORIGIN='https://gzfbkudvvxthbhjsmwsc.supabase.co';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// FLH-033 v1.2 / Drive revision 3: owner-approved scope set for this Testing client only.
+const approvedScopes=['openid','email','offline_access'];
 
 export function consentConfiguration(config) {
   if(config?.url!==TESTING_ORIGIN || !/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.key||'') || !uuid.test(config.clientId||'')) throw new Error('CONSENT_NOT_CONFIGURED');
@@ -18,8 +20,10 @@ export function authorizationId(search) {
 }
 
 export function consentDetails(data,id,userId,config) {
+  const scopes=typeof data?.scope==='string'?data.scope.split(' '):[];
   if(data?.authorization_id!==id || data.client?.id!==config.clientId || data.user?.id!==userId
-    || data.redirect_uri!==config.callback || data.scope!=='openid') throw new Error('AUTHORIZATION_MISMATCH');
+    || data.redirect_uri!==config.callback || scopes.length!==approvedScopes.length
+    || new Set(scopes).size!==scopes.length || scopes.some(scope=>!approvedScopes.includes(scope))) throw new Error('AUTHORIZATION_MISMATCH');
   return {name:String(data.client.name||'ChatGPT'),scope:data.scope,callback:data.redirect_uri};
 }
 
@@ -58,7 +62,7 @@ async function start() {
       // A previously consented grant may already return a redirect. Still show a deliberate Continue action.
       if(!('authorization_id' in (result.data||{}))) {
         const redirect=consentRedirect(result.data?.redirect_url,config);
-        element('client-name').textContent='ChatGPT — ربط سبق اعتماده';element('scopes').textContent='openid';element('callback').textContent=config.callback;
+        element('client-name').textContent='ChatGPT — ربط سبق اعتماده';element('scopes').textContent=approvedScopes.join(' ');element('callback').textContent=config.callback;
         element('approve').textContent='متابعة الربط';element('approve').onclick=()=>location.assign(redirect);
         element('deny').onclick=async()=>{await client.auth.signOut({scope:'local'}).catch(()=>{});location.replace('./');};
       } else {

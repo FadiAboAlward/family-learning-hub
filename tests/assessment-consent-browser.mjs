@@ -1,4 +1,4 @@
-// FLH-FEAT-2026-033 v1.1 / Drive revision 2. CI renders the static artifact only.
+// FLH-FEAT-2026-033 v1.2 / Drive revision 3. CI renders the static artifact only.
 // No OAuth runtime server/listener, provider call, live grant or external egress.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ const sdk=`window.supabase={createClient:(url,key,options)=>{
     getUser:async()=>f.userError?{error:{message:'synthetic'}}:({data:{user:{id:${JSON.stringify(user)}}}}),
     signOut:async()=>{call('signOut');return {};},
     oauth:{getAuthorizationDetails:async()=>{
-      call('details');return {data:f.priorGrant?{redirect_url:redirect(false)}:{authorization_id:${JSON.stringify(id)},client:{id:f.wrongClient?'invalid':${JSON.stringify(config.clientId)},name:'<img src=x onerror=alert(1)>'},user:{id:f.wrongUser?'invalid':${JSON.stringify(user)}},redirect_uri:${JSON.stringify(config.callback)},scope:f.extraScope?'openid email':'openid'}};
+      call('details');return {data:f.priorGrant?{redirect_url:redirect(false)}:{authorization_id:${JSON.stringify(id)},client:{id:f.wrongClient?'invalid':${JSON.stringify(config.clientId)},name:'<img src=x onerror=alert(1)>'},user:{id:f.wrongUser?'invalid':${JSON.stringify(user)}},redirect_uri:${JSON.stringify(config.callback)},scope:f.scope??'openid email offline_access'}};
     },approveAuthorization:async()=>{call('approve');return {data:{redirect_url:redirect(false)}};},denyAuthorization:async()=>{call('deny');return {data:{redirect_url:redirect(true)}};}}
   },from:()=>({select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:{role:f.role||'owner'}})})})})})};
 }};`;
@@ -71,6 +71,7 @@ try {
     assert.equal(await f.page.locator('#callback').evaluate(e=>getComputedStyle(e).direction),'ltr');
     assert.equal(await f.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'No mobile/desktop overflow');
     assert.equal(await f.page.locator('#client-name img').count(),0,'Client name is text, not markup');
+    assert.equal(await f.page.locator('#scopes').innerText(),'openid email offline_access','Display the exact requested scopes');
     assert.equal(await f.page.locator('#password').inputValue(),'');
     assert.deepEqual(await f.page.evaluate(()=>window.__authOptions),{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false});
     await shot(f.page,'consent-'+viewport.width);
@@ -79,7 +80,12 @@ try {
     f=await fixture(viewport,{role:'admin'});await login(f.page);await f.page.locator('#deny').click();
     await f.page.waitForURL(config.callback+'?error=access_denied&state=synthetic');await f.close();
 
-    for(const state of [{role:'teacher'},{role:'viewer'},{wrongClient:true},{wrongUser:true},{extraScope:true},{loginError:true},{userError:true}]) {
+    f=await fixture(viewport,{scope:'offline_access openid email'});await login(f.page);
+    await f.page.locator('#consent').waitFor({state:'visible'});
+    assert.equal(await f.page.locator('#scopes').innerText(),'offline_access openid email');
+    await f.page.locator('#deny').click();await f.page.waitForURL(config.callback+'?error=access_denied&state=synthetic');await f.close();
+
+    for(const state of [{role:'teacher'},{role:'viewer'},{wrongClient:true},{wrongUser:true},{scope:'openid email offline_access profile'},{scope:'openid email'},{scope:'openid email email'},{loginError:true},{userError:true}]) {
       f=await fixture(viewport,state);await login(f.page);await f.page.locator('#message').filter({hasText:'تعذر متابعة الربط.'}).waitFor();
       assert.equal(await f.page.locator('#consent').isVisible(),false);
       assert.ok((await f.page.evaluate(()=>window.__calls)).includes('signOut'));
@@ -96,6 +102,12 @@ try {
 
     f=await fixture(viewport,{priorGrant:true});await login(f.page);await f.page.locator('#deny').click();
     await f.page.waitForURL('https://consent-testing.invalid/oauth/consent/');assert.equal(await f.page.locator('#consent').isVisible(),false);await f.close();
+    f=await fixture(viewport,{priorGrant:true});await login(f.page);await f.page.locator('#approve').click();
+    await f.page.waitForURL(config.callback+'?code=synthetic&state=synthetic');await f.close();
+    f=await fixture(viewport,{priorGrant:true,badRedirect:true});await login(f.page);
+    await f.page.locator('#message').filter({hasText:'تعذر متابعة الربط.'}).waitFor();
+    assert.equal(await f.page.locator('#consent').isVisible(),false);
+    assert.ok((await f.page.evaluate(()=>window.__calls)).includes('signOut'));await f.close();
   }
   fs.writeFileSync(directory+'/manifest.json',JSON.stringify({head,mode:'synthetic-static-browser',cases,evidence,actualOAuth:'NOT RUN'},null,2));
   console.log(`PASS: ${cases} rendered static consent cases; RTL/mobile/authorization/approve/deny/session cleanup; no runtime server or external egress`);
