@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
-import { qaBrowserLaunchOptions } from './qa-isolation.mjs';
+import { launchMockQaBrowser } from './qa-isolation.mjs';
 import { consentFiles } from '../scripts/build-assessment-consent.mjs';
 import { TESTING_ORIGIN } from '../oauth/consent/consent.mjs';
 
@@ -27,7 +27,9 @@ const sdk=`window.supabase={createClient:(url,key,options)=>{
   },from:()=>({select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:{role:f.role||'owner'}})})})})})};
 }};`;
 const files=await consentFiles(config,sdk,head);
-const browser=await chromium.launch(qaBrowserLaunchOptions());
+// Shared guard installs Production DNS/HTTP/WebSocket and service-worker isolation.
+// All fixture HTTP requests below are fulfilled in memory; no local server starts.
+const browser=await launchMockQaBrowser(chromium,'http://127.0.0.1:4173/');
 const evidence=[],directory='playwright-screenshots/assessment-consent';fs.mkdirSync(directory,{recursive:true});
 let cases=0;
 
