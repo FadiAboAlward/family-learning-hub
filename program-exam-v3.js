@@ -86,12 +86,12 @@
 
     function saveAnswer(btn){
       if(submitting)return;
-      const row=questions[index],qid=row.question_id,pos=Number(btn.getAttribute('data-pos')),previous=answers.get(qid);
+      const row=questions[index],qid=row.question_id,questionNo=index+1,pos=Number(btn.getAttribute('data-pos')),previous=answers.get(qid);
       answers.set(qid,pos);
       answerSaveErrors.delete(qid);
       render();
       const prior=answerSaveChains.get(qid)||Promise.resolve();
-      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos} )).then(()=>{answerSaveErrors.delete(qid);globalThis.FLHTelemetry?.capture?.('flh_exam_answer_saved',{mode:'exam',attempt_id:session.attempt_id,question_id:qid,question_index:index+1,option_position:pos});}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(!submitting&&questions[index]?.question_id===qid)render();});
+      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos} )).then(()=>{answerSaveErrors.delete(qid);globalThis.FLHTelemetry?.capture?.('flh_exam_answer_saved',{mode:'exam',attempt_id:session.attempt_id,question_id:qid,question_index:questionNo,option_position:pos});}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(!submitting&&questions[index]?.question_id===qid)render();});
       answerSaveChains.set(qid,chain);
     }
 
