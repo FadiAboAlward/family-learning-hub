@@ -1,10 +1,10 @@
 # Direct ChatGPT assessment authoring
 
-Implementation contract: **FLH-FEAT-2026-033 v1.2**, [Drive revision 3](https://docs.google.com/document/d/1qWOtWjVawgpgrFYVuAamYZoPc-eLjz9ezoct23BuoV8/edit), [Issue #172](https://github.com/FadiAboAlward/family-learning-hub/issues/172). Version 1.1/revision 2 and version 1.0/revision 1 remain historical; the original immutable database migration retains its original pin.
+Implementation contract: **FLH-FEAT-2026-033 v1.3**, [Drive revision 4](https://docs.google.com/document/d/1qWOtWjVawgpgrFYVuAamYZoPc-eLjz9ezoct23BuoV8/edit), [Issue #172](https://github.com/FadiAboAlward/family-learning-hub/issues/172). Earlier versions remain historical; the original immutable database migration retains its original pin.
 
 Operational tracking: [FLH-033 — Direct ChatGPT Assessment Authoring](https://app.clickup.com/t/z8xb3utdnc).
 
-This PR prepares an application-authorized integration. Source QA, hosted Testing setup and actual ChatGPT use are separate results. **A live ChatGPT invocation is not yet proved.** See the Testing pilot record and activation gates below. Production rollout is excluded.
+PR #173 merged at `90449de78fedbc57412b22c658dadc2d39353cdf`. **Testing OAuth, installed ChatGPT invocation, all seven native OAuth tools, a 40-question package through Released, provider video verification and owned cleanup passed** ([observed evidence](https://github.com/FadiAboAlward/family-learning-hub/pull/173#issuecomment-6354039681)). This proves the Testing path, not Production. The v1.3 change only prepares environment-specific consent configuration and the Production activation below; Production writes still require the owner's separate explicit approval.
 
 ## What was missing and why option B
 
@@ -57,17 +57,17 @@ If ChatGPT safety blocks an operation, stop it and preserve evidence. Do not cha
 
 ## ChatGPT registration and activation gates
 
-Use an **independent Testing backend first**. The approved pilot uses the new Free `family-learning-hub-testing` project, not the separate legacy `family-quiz-lab`. Existing GitHub Runner QA creates a disposable local Supabase stack and cleans it up; that validates code/API/database behavior, but its loopback URL cannot be registered as a public ChatGPT MCP.
+Use an **independent Testing backend first**, as completed by the `family-learning-hub-testing` pilot (not legacy `family-quiz-lab`). The same steps below apply to a separately approved Production activation under v1.3; they are not permission to write there. Existing GitHub Runner QA uses a disposable local stack; its loopback URL cannot be registered as a public ChatGPT MCP.
 
-1. On an approved Testing project with the existing FLH schema, apply the reviewed migration and deploy the reviewed `learning-api` / `assessment-mcp` sources. A fresh empty project needs the complete existing schema first. Keep `FLH_ASSESSMENT_MCP_ENABLED` unset while preparing identity. These endpoints enforce their own existing parent/learner or OAuth authentication; disabling gateway verification must not remove those checks.
-2. Enable Supabase's OAuth 2.1 server on Testing. Configure its HTTPS authorization UI with normal parent sign-in and explicit approve/deny using `auth.oauth.getAuthorizationDetails`, `approveAuthorization` and `denyAuthorization`. `oauth/consent/` supplies a minimal **Testing-only static page**, packaged by `scripts/build-assessment-consent.mjs`; see the cloud setup below. Consent is identity setup, not an assessment entry/release UI. Do not substitute browser-token extraction or credentials in chat.
+1. On the approved target project with the existing FLH schema, apply only its missing reviewed migration and deploy the reviewed `learning-api` / `assessment-mcp` sources. A fresh empty Testing project needs the complete existing schema first; never replay that setup on Production. Keep `FLH_ASSESSMENT_MCP_ENABLED` unset while preparing identity. These endpoints enforce their own existing parent/learner or OAuth authentication; disabling gateway verification must not remove those checks.
+2. Enable Supabase's OAuth 2.1 server on that approved project. Configure its HTTPS authorization UI with normal parent sign-in and explicit approve/deny using `auth.oauth.getAuthorizationDetails`, `approveAuthorization` and `denyAuthorization`. `oauth/consent/` supplies the same minimal static page configured for one allowlisted project, packaged by `scripts/build-assessment-consent.mjs`; see the cloud setup below. Consent is identity setup, not an assessment entry/release UI. Do not substitute browser-token extraction or credentials in chat.
 3. Register a dedicated OAuth client for this MCP/environment with authorization-code + S256 PKCE. Prefer pre-registration over opening dynamic registration to arbitrary clients. Copy the exact callback URI displayed by ChatGPT into the client allowlist; never guess a legacy callback or use wildcards. Configure client authentication using the connection's supported method. Any OAuth client secret belongs only in the provider/ChatGPT connection settings, never in prompts or tool arguments.
 4. Supabase OAuth defaults to audience `authenticated`. **That default deliberately does not pass this MCP's audience check.** Configure a reviewed client-specific Custom Access Token Hook to mint the exact MCP resource audience for this one client, leaving other clients/session types unchanged. The pilot-specific `supabase/testing/assessment-mcp-token-hook.sql` contains that small SECURITY INVOKER function, with execution restricted to `supabase_auth_admin`. It is deliberately outside automatic migrations and pins only the approved Testing client/resource. Applying its definition does not enable it in Auth; inspect existing hooks before selecting it. Verify the actual signed claims privately through the full OAuth grant, including `client_id`, `scope` containing `openid` and exact `aud`. Verify `getClaims` and `getUser` accept that project configuration; no fallback to the default audience is permitted. Hook/consent/provider compatibility remains an activation prerequisite until proved.
    Supabase's hook input carries the OAuth client in `event.claims.client_id`, not at the event root. The rollback database contract covers issuance, refresh, unrelated sessions/clients, role rejection and execution grants. A successful consent alone does not prove the issued audience or authenticated tool discovery.
 5. Set server configuration (non-secret values):
 
    ```text
-   FLH_ASSESSMENT_MCP_RESOURCE=https://<testing-ref>.supabase.co/functions/v1/assessment-mcp/mcp
+   FLH_ASSESSMENT_MCP_RESOURCE=https://<approved-project-ref>.supabase.co/functions/v1/assessment-mcp/mcp
    FLH_ASSESSMENT_MCP_CLIENT_IDS=<dedicated-approved-client-id>
    FLH_ASSESSMENT_MCP_ENABLED=true
    ```
@@ -75,13 +75,13 @@ Use an **independent Testing backend first**. The approved pilot uses the new Fr
    The issuer is derived server-side as `SUPABASE_URL + /auth/v1`. The resource must share that origin. `YOUTUBE_API_KEY` stays in the existing server secret store; provider-unavailable fails closed. Do not add service keys to ChatGPT.
 6. Verify public HTTPS POST reachability with MCP Inspector. An unauthenticated POST must return HTTP 401 with `WWW-Authenticate` pointing to `.../assessment-mcp/.well-known/oauth-protected-resource`. GET that metadata and verify the resource and authorization server exactly. The stateless SDK supports JSON Streamable HTTP responses, not legacy SSE or a stdio-only connection. Check initialization, tool schemas and expired/wrong-resource/wrong-client rejection.
 7. In the account/workspace's available ChatGPT plugin/custom-MCP management surface, add a custom MCP server with the exact HTTPS `/mcp` URL, configure OAuth, review the risk warning and create/install the plugin. Current official OpenAI documentation describes **Plugins → plus → Add custom MCP server → Create as a plugin**; availability and labels depend on the account/workspace. Complete the real parent consent yourself. Refresh discovered tools and select the installed plugin in a new conversation.
-8. Record a real ChatGPT `tools/list` discovery and `read_assessment_authoring` / exact candidate validation invocation, then one authorized new Testing-only package flow, final readback and owned cleanup evidence. Record tool selection, confirmations and failures without tokens/cookies/candidate answer keys. Do not mark **USABLE IN CHATGPT** before this succeeds.
+8. Record real ChatGPT discovery and `read_assessment_authoring` / exact candidate validation, then one newly authorized synthetic package for that environment's dedicated test learner, final readback and owned cleanup. Production requires the explicit approval below; never reuse the erased Testing request or its target identities. Record tool selection, confirmations and failures without tokens/cookies/candidate answer keys. Do not mark **USABLE IN CHATGPT** for an environment before it succeeds there.
 
-The remaining setup is therefore concrete: an approved reachable Testing host, deployed reviewed sources, OAuth consent route/client/audience customization, and actual ChatGPT installation/consent/invocation. No connector-registration tool exposed to this development session can silently complete the user's OAuth consent. Production setup/deployment needs a separate explicit approval after QA/review.
+The Testing setup has passed these gates. Production still needs its own approved HTTPS artifact, reviewed deployments, client/audience configuration and actual ChatGPT connection. No connector tool can silently complete personal OAuth consent. Production setup/deployment needs the separate explicit approval after QA/review described below.
 
 Official setup references checked 19 October 2026: [Supabase MCP authentication](https://supabase.com/docs/guides/auth/oauth-server/mcp-authentication), [OAuth setup and consent](https://supabase.com/docs/guides/auth/oauth-server/getting-started), [OpenAI authentication](https://developers.openai.com/plugins/build/auth), [connect and test a ChatGPT plugin](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
-### Cloud-first Free Testing consent
+### Cloud-first Free Testing consent — completed pilot
 
 The independent backend is `family-learning-hub-testing` / `gzfbkudvvxthbhjsmwsc`. The owner approved a dedicated **Cloudflare Pages Free** static frontend on 22 October 2026. This is a new browser-to-Supabase architecture under v1.1; it does not run or relocate the former Node consent process. No Cloudflare Worker/Function, credential proxy, custom domain, paid add-on or new identity service is needed.
 
@@ -89,11 +89,12 @@ Supabase officially combines Site URL + Authorization Path for its consent redir
 
 The backend's existing fresh-rebuild/authorization evidence and v1 deployments remain separate from new frontend QA. The OAuth server was previously enabled, DCR kept off, and public client `d555d742-2195-4676-bf35-e3d09c25077a` registered without a client secret. The hook definition's behavior/grants were verified, but definition alone does not enable it in Auth. Read actual settings before changing them. Re-read ChatGPT's exact current callback; the old draft's callback may expire.
 
-Build a new static artifact directory from the reviewed checkout using public configuration only:
+Build a new static artifact from the reviewed checkout using the approved environment's public configuration only. Testing retains the legacy `FLH_TESTING_PUBLISHABLE_KEY` fallback; Production requires `FLH_PUBLISHABLE_KEY` and cannot use that fallback:
 
 ```powershell
-$env:FLH_TESTING_PUBLISHABLE_KEY = '<Testing publishable key>'
-$env:FLH_ASSESSMENT_MCP_CLIENT_ID = 'd555d742-2195-4676-bf35-e3d09c25077a'
+$env:FLH_SUPABASE_URL = '<approved Testing or Production project origin>'
+$env:FLH_PUBLISHABLE_KEY = '<matching publishable key>'
+$env:FLH_ASSESSMENT_MCP_CLIENT_ID = '<actual dedicated client for that project>'
 $env:FLH_ASSESSMENT_MCP_CALLBACK = '<exact current ChatGPT callback>'
 $env:FLH_QA_HEAD_SHA = '<reviewed full PR commit SHA>'
 node scripts/build-assessment-consent.mjs '<new output directory outside the checkout>'
@@ -101,7 +102,7 @@ node scripts/build-assessment-consent.mjs '<new output directory outside the che
 
 This command is an artifact build, with no listening port or application server. It verifies SDK 2.118.0 bytes against the pinned SHA384 and emits only the page/module, public configuration, SDK, 404 page, Cloudflare security headers and a source/hash manifest. It refuses an existing output directory. Never upload the repository, environment files, auth stores or service keys.
 
-Deploy that directory through the approved Pages project's static Direct Upload. Use its actual HTTPS URL, not a guessed address. Verify served build.json/source hashes, correct HTML/JS types, no-store/no-referrer, CSP/frame denial, directory redirects preserving authorization_id and default 404 behavior. Configure Testing Site URL to that actual origin and Authorization Path to `/oauth/consent/`. Keep DCR off and MCP disabled during preparation. Do not deploy the existing Production GitHub Pages site or run its preview aggregation.
+Deploy that directory through the approved Pages project's static Direct Upload. Use its actual HTTPS URL, not a guessed address. Verify served build.json/source hashes, correct HTML/JS types, no-store/no-referrer, CSP/frame denial, directory redirects preserving authorization_id and default 404 behavior. Configure the approved target's Site URL/path only under its authorization; see the additional Production gate below. Keep DCR off and MCP disabled during preparation. Do not deploy the existing learner GitHub Pages site or run its preview aggregation.
 
 The page calls Supabase Auth directly with the publishable key. The parent session remains in memory, normal current owner/admin membership is checked, returned details use textContent, callback/client/user/scope are exact, and failed decisions clear the local session. No token/password is sent to Pages application code or a custom API proxy; the static host delivers code only. Testing needs its own confirmed parent Auth user/member. Personal credentials, OAuth consent/install and OTP remain user steps.
 
@@ -109,16 +110,46 @@ The owner approved v1.2's exact Testing scope set `openid email offline_access` 
 
 The original 19 October ProcessStartInfo launch rejection remains unresolved. Its exact denying component is unknown; earlier attribution to an automatic approval reviewer was unsupported. The old `scripts/assessment-consent-server.mjs` activation entry point has been removed, not retried or moved. Cloud success would not prove that old denial was lifted. Any new security denial stops the affected operation.
 
-**Current activation status:** cloud source preparation/QA is separate from deployment, real Testing grant, signed-token/getClaims/getUser validation, provider checks and installed ChatGPT tools. Do not claim a final working consent/MCP URL until observed. Keep MCP disabled until security prerequisites and the authorized real integration test are satisfied.
+**Testing activation:** the previously pending live checks above subsequently passed, as recorded in the linked PR #173 checkpoint. The disposable request was released and cleaned; its historical links must not be reused or its identifiers recreated. Production remains a separate activation, not an automatic promotion of Testing credentials or approval.
+
+### Production activation — v1.3
+
+The same static page and Supabase OAuth/MCP architecture now accept only the two explicit project origins. `FLH_SUPABASE_URL` selects one; `FLH_PUBLISHABLE_KEY` supplies its public key. The old Testing variables/default remain compatible. Generated CSP allows only the selected backend; displayed labels distinguish Testing from Production. No server-side secret enters the artifact.
+
+Read-only preflight on 23 October 2026 established:
+
+| Component | Production observation / required action |
+| --- | --- |
+| Project | `gkpoylfozvuwuwqeoduc`, active; independent Testing remains `gzfbkudvvxthbhjsmwsc`. |
+| Workspace | Actual Production read confirms `55f9224c-8ba7-4cbc-9f88-713e6a6b41df`, coincidentally the same workspace identity as the Testing fixture. It was verified, not inferred from Testing. |
+| Migration | Publication gate/outbox already present. Apply only missing `20261019092245_assessment_authoring_requests.sql`; no catalog replay, broad `db push`, ledger repair or historical rewrite. |
+| Edge | `learning-api` v15 lacks create/read authoring. Its five shared deployed modules match merged source. Deploy reviewed learning-api plus the new assessment-mcp; preserve other functions and JWT/application checks. |
+| Auth | OAuth server off, no registered OAuth clients or configured Auth hooks; Site URL `http://localhost:3000`, redirect list empty. Record these originals before selecting the client-specific hook. |
+| Secrets | Existing modern publishable key and server-side YouTube key are available. MCP resource/client/enabled configuration is absent. Do not rotate/read service keys or copy Testing secrets. |
+| Video | Existing Production flag is `enabled=true,test_only=false`; leave it unchanged. |
+| Test identity | Existing active dedicated `test` learner and actual parent owner found; use their Production IDs, never Testing learner/user/client IDs. |
+
+After exact-head QA/review, request one Production approval describing this concrete batch, risks and rollback. Before it, do not apply migrations, deploy Production artifacts/functions, save Auth settings/register clients, or enable Production MCP.
+
+After approval:
+
+1. Capture the current learning-api bundle, Auth URL/hook/server settings and relevant counts. Apply only the missing prospective authoring migration through the official migration tool. Recheck RLS/grants, command/trigger definitions and unchanged publication functions. Use a short lock timeout and stop on contention; the Dashboard currently warns about low Disk IO budget, which is not permission to upgrade compute.
+2. Deploy merged learning-api and assessment-mcp with MCP disabled. Reuse free static HTTPS Pages hosting for a separately configured Production artifact; preserve the Testing deployment and existing learner GitHub Pages site. No Worker, paid domain or identity service.
+3. Obtain the exact Production ChatGPT callback from its new connection setup, register one dedicated public OAuth client with S256 and dynamic registration off. Adapt the existing `supabase/testing/assessment-mcp-token-hook.sql` **as a template only**: replace both its Testing client ID and resource with the actually registered Production values, review the generated definition, preserve SECURITY INVOKER and execute-only Auth-admin grants, and verify ordinary sessions/other clients remain unchanged. Never execute the unchanged Testing SQL in Production or overwrite an existing hook blindly.
+4. Build with `FLH_SUPABASE_URL=https://gkpoylfozvuwuwqeoduc.supabase.co`, its publishable key, actual new client/callback and reviewed SHA. Verify artifact hashes/HTTPS/security headers. Set Site URL to the actual static consent origin and Authorization Path `/oauth/consent/`; this also changes default Auth redirects/email-template SiteURL, so keep the original rollback value. Existing password sign-in and learner links must still work.
+5. Set the exact Production resource `https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/assessment-mcp/mcp` and only the actual new Production client ID. Enable the controlled connection after configuration/boundary checks; unauthorized requests must fail. Owner completes personal sign-in/consent; then verify real ChatGPT discovery/invocation. On authentication/authorization failure disable the new MCP path and stop that operation.
+6. Use a fresh labelled synthetic request for the dedicated Production test learner only. Validate/review the exact technical package, create/retry/read-resume/stage/Held/provider video/Released/readback through the actual parent OAuth MCP. Management SQL is only for narrowly owned synthetic fixture setup/cleanup and readback, never assessment authoring. No real-child attempt, historical assessment change, test email or academic-personalization claim. Clean the owned graph with identity and zero-attempt guards; preserve parent/test learner/shared catalog and the original video flag.
+
+Rollback: set MCP enabled=false, revoke only the new client grant if needed, restore captured prior Auth server/path/SiteURL/hook configuration and captured learning-api v15 bundle if necessary. Keep additive receipt schema/data rather than dropping a table with requests. Preserve unrelated project functions, secrets, learner data and existing links. Record deployed/verified/blocked separately in the same PR and ClickUp task; a prepared URL is not Production usability.
 
 ### Main compatibility
 
-Reviewed latest main `3632189bdce7352f61c47ab17d612a0fe45a3e5d`: #174 added a catalog migration, #178 made Production Pages approved-main/manual only, and #176 changed the student dashboard. This consent change neither replays the real-learner catalog migration nor changes dashboard/runtime or Production deployment workflows. Use the isolated Testing backend, not the Production Pages origin.
+PR #173 reviewed main `3632189bdce7352f61c47ab17d612a0fe45a3e5d` (#174 catalog, #178 manual-only Pages, #176 dashboard), then merged at `90449de78fedbc57412b22c658dadc2d39353cdf`. The v1.3 preparation starts from that merged main. It neither replays learner catalog registrations nor changes dashboard/runtime/Pages workflows. Production activation uses the separate approved consent artifact, preserving the learner site and Testing backend.
 
 ## Verification layers
 
-- `node tests/assessment-consent.unit.mjs`: Testing/key/client/user/scope/callback restrictions, narrow static file projection, source binding and tampered-SDK denial without creating an output directory.
+- `node tests/assessment-consent.unit.mjs`: explicit project/key/client/user/scope/callback restrictions, distinct environment configuration/CSP, narrow static projection, source binding and tampered-SDK denial without creating an output directory.
 - `node tests/assessment-consent-browser.mjs`: GitHub Actions only. Actual HTML/JavaScript static artifact rendered through browser network fixtures, with synthetic SDK/Auth and all unrecognized egress denied. Desktop and 390×844 cover RTL/LTR, overflow, login, owner/admin versus teacher/viewer, user/session/details failures, approval/denial, callback rejection and failed-session cleanup. No OAuth consent runtime server is created. Screenshots/manifest bind FLH_QA_HEAD_SHA and use the existing seven-day artifact retention.
 - Existing `assessment-authoring.unit.mjs`, actual DB contract, and authenticated Runner remain authoritative for their original boundaries; mocks do not establish live Auth/provider interoperability.
-- Hosted Testing must separately prove actual deployed asset/header behavior and true Supabase OAuth grant, denial, issued claims/live session, current membership and ChatGPT connection. Existing Core Browser or source screenshots do not replace this.
-- The final synthetic authoring flow uses the existing exact candidate validator and semantic/source review, original request IDs, authoritative reads/recovery, real provider validation and owned cleanup. No real learner data or Production operation is authorized.
+- Hosted deployment/OAuth proof is per environment: Testing's recorded result stands; Production remains NOT RUN until separately approved and observed. CI/source screenshots never substitute for real Auth/ChatGPT.
+- Each final synthetic flow uses the exact validator and semantic/source review, original request IDs, authoritative reads/recovery, real provider validation and owned cleanup. Production uses only its dedicated test learner after the explicit approval; real-child writes remain excluded.

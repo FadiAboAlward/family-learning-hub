@@ -1,4 +1,4 @@
-// Build a static Testing frontend. No listener, application server or credential proxy.
+// Build the same static consent frontend for one explicitly configured project.
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
@@ -18,8 +18,8 @@ export async function consentFiles(config,sdk,head) {
     ['oauth/consent/consent.mjs',await readFile(new URL('../oauth/consent/consent.mjs',import.meta.url))],
     ['oauth/consent/config.json',JSON.stringify({url:config.url,key:config.key,clientId:config.clientId,callback:config.callback})],
     ['oauth/consent/supabase.js',sdk],
-    ['404.html','<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>Testing</title><p>ابدأ الربط من ChatGPT.</p></html>'],
-    ['_headers',`/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Cross-Origin-Resource-Policy: same-origin\n  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' ${TESTING_ORIGIN}; frame-ancestors 'none'; base-uri 'none'; form-action 'none'\n`]
+    ['404.html','<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>Family Learning Hub</title><p>ابدأ الربط من ChatGPT.</p></html>'],
+    ['_headers',`/*\n  Cache-Control: no-store\n  Referrer-Policy: no-referrer\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Cross-Origin-Resource-Policy: same-origin\n  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' ${config.url}; frame-ancestors 'none'; base-uri 'none'; form-action 'none'\n`]
   ]);
   files.set('build.json',JSON.stringify({head,files:Object.fromEntries([...files].map(([name,bytes])=>[name,digest(bytes)]))},null,2));
   return files;
@@ -45,8 +45,9 @@ export async function buildConsentSite({config,outputDir,head},fetchImpl=globalT
 if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
   try {
     if(!process.argv[2]) throw new Error('CONSENT_OUTPUT_REQUIRED');
+    const url=process.env.FLH_SUPABASE_URL||TESTING_ORIGIN;
     const result=await buildConsentSite({outputDir:process.argv[2],head:process.env.FLH_QA_HEAD_SHA,
-      config:{url:TESTING_ORIGIN,key:process.env.FLH_TESTING_PUBLISHABLE_KEY,clientId:process.env.FLH_ASSESSMENT_MCP_CLIENT_ID,callback:process.env.FLH_ASSESSMENT_MCP_CALLBACK}});
-    console.log(`Static Testing consent artifact: ${result.fileCount} files; source ${result.head}`);
-  } catch { console.error('Testing consent build failed; inspect public configuration, pinned SDK and new output directory.');process.exitCode=1; }
+      config:{url,key:process.env.FLH_PUBLISHABLE_KEY||(url===TESTING_ORIGIN?process.env.FLH_TESTING_PUBLISHABLE_KEY:undefined),clientId:process.env.FLH_ASSESSMENT_MCP_CLIENT_ID,callback:process.env.FLH_ASSESSMENT_MCP_CALLBACK}});
+    console.log(`Static consent artifact: ${result.fileCount} files; source ${result.head}`);
+  } catch { console.error('Consent build failed; inspect public configuration, pinned SDK and new output directory.');process.exitCode=1; }
 }
