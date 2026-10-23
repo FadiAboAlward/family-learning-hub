@@ -4,6 +4,11 @@
 # working directory name when running `supabase init`.
 project_id = "family-learning-hub"
 
+# OAuth JWT audience/client/parent checks are enforced in this endpoint itself.
+# Deployment is separate; the endpoint fails closed unless explicitly configured.
+[functions.assessment-mcp]
+verify_jwt = false
+
 [api]
 enabled = true
 # Port to use for the API URL.

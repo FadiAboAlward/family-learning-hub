@@ -6,6 +6,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
 import { readQaTestingConfig, requireQaOidcUrl, verifyQaTestingBackend } from './qa-isolation.mjs';
+import { verifyAssessmentAuthoringApi } from './assessment-authoring.authenticated.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
@@ -135,12 +136,24 @@ async function saveEvidence(config, stages, auth, teardown) {
   }, null, 2));
 }
 
-async function stopProcess(pid, expected) {
+/** Drain owned process cleanup before the CLI independently removes its containers. */
+export async function stopProcess(pid, expected, io = {}) {
   if (!Number.isInteger(pid) || pid < 2) return;
+  const read = io.readFile || fs.readFile, signal = io.kill || process.kill;
+  const wait = io.pause || pause, now = io.now || Date.now;
   let cmdline;
-  try { cmdline = await fs.readFile(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  try { cmdline = await read(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  if (!cmdline) return; // An exited/zombie child no longer runs cleanup.
   if (!expected.every(value => cmdline.split('\0').includes(value))) throw new Error('QA_LOCAL_PROCESS_NOT_OWNED');
-  process.kill(pid, 'SIGTERM');
+  try { signal(pid, 'SIGTERM'); } catch (error) { if (error.code === 'ESRCH') return; throw error; }
+  const deadline = now() + 10000;
+  while (now() < deadline) {
+    try { cmdline = await read(`/proc/${pid}/cmdline`, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+    if (!cmdline) return;
+    if (!expected.every(value => cmdline.split('\0').includes(value))) throw new Error('QA_LOCAL_PROCESS_NOT_OWNED');
+    await wait(100);
+  }
+  throw new Error('QA_LOCAL_PROCESS_STOP_TIMEOUT');
 }
 
 /** Retryable final workflow step: destroys only the recorded run/attempt's CLI project. */
@@ -255,6 +268,9 @@ async function main() {
     parentId = (await created.json()).id;
     if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(parentId || '')) throw new Error('QA_LOCAL_PARENT_ID_INVALID');
     await sql(config, (await fs.readFile('tests/qa-authenticated-local.fixtures.sql', 'utf8')).replaceAll('__QA_PARENT_ID__', parentId));
+    mark(stage);
+    stage = 'direct_assessment_authoring_api';
+    await verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source)});
     mark(stage);
     stage = 'local_application';
     const app = ownedProcess('python3', ['-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', path.resolve('.')], process.env);
