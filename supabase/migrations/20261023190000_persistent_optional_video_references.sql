@@ -1,9 +1,8 @@
 -- FLH-FEAT-2026-036 SPEC_VERSION 1.0
--- Author-approved linked YouTube reference persists; provider-status TTL only governs cached metadata.
--- The existing private.flh_learning_video_context_matches predicates remain authoritative.
--- Never issue a provider API request or modify learner attempts from this migration.
--- Existing separate 29-day provider API status pruning remains unchanged, as do RLS/ACL.
--- Derived from the currently installed function definitions on 2026-10-23, forward-only.
+-- Author-approved linked YouTube reference persists; TTL only governs cached metadata.
+-- Existing private.flh_learning_video_context_matches predicates remain authoritative.
+-- No YouTube status checks, stored-data edits, RLS/ACL changes, or scheduled provider calls here.
+-- Existing 29-day provider API metadata pruning remains separate from video references.
 CREATE OR REPLACE FUNCTION private.flh_learning_optional_video(p_workspace_id uuid, p_learner_id uuid, p_attempt_id uuid, p_version_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -38,25 +37,7 @@ begin
  select coalesce(jsonb_agg(
    jsonb_build_object(
      'id',s.video_id,'provider','youtube','position',s.position,'video_ref',s.video_ref,'title',s.title,'language',s.language,'learning_outcomes',s.learning_outcomes,
-     'availability',case when s.video_ref ~ '^[A-Za-z0-9_-]{11},
-     'made_for_kids',s.made_for_kids,'verification_expires_at',s.verification_expires_at,'self_report',s.self_report,'report_revision',s.report_revision
-   ) order by s.position
- ),'[]'::jsonb)
- into items
- from public.learning_video_attempts s
- where s.workspace_id=p_workspace_id and s.attempt_id=p_attempt_id and s.learner_id=p_learner_id and s.quiz_version_id=p_version_id
-   and private.flh_learning_video_context_matches(p_workspace_id,p_learner_id,p_version_id,s.program_id,s.curriculum_id,s.grade_level,s.subject_id,s.concept_id);
-
- if jsonb_array_length(items)=0 then return null; end if;
- prior_interaction := exists(select 1 from public.quiz_answer_attempts where workspace_id=p_workspace_id and quiz_attempt_id=p_attempt_id);
- first_item := (items->0) || jsonb_build_object('only_before_first_question',not prior_interaction);
- if jsonb_array_length(items)>1 then
-   first_item := first_item || jsonb_build_object('videos',items);
- end if;
- return first_item;
-end;
-$function$
- then 'available' else 'unavailable' end,
+     'availability',case when s.video_ref ~ '^[A-Za-z0-9_-]{11}$' then 'available' else 'unavailable' end,
      'made_for_kids',s.made_for_kids,'verification_expires_at',s.verification_expires_at,'self_report',s.self_report,'report_revision',s.report_revision
    ) order by s.position
  ),'[]'::jsonb)
@@ -246,54 +227,7 @@ begin
         'title', a.title,
         'language', a.language,
         'learning_outcomes', a.learning_outcomes,
-        'availability', case when a.video_ref ~ '^[A-Za-z0-9_-]{11},
-        'made_for_kids', a.made_for_kids,
-        'verification_expires_at', a.verification_expires_at,
-        'self_report', 'not_reported',
-        'report_revision', 0
-      )
-      order by a.position
-    ),
-    '[]'::jsonb
-  )
-  into v_items
-  from public.learning_video_assignments a
-  where a.workspace_id = p_workspace_id
-    and a.learner_id = p_learner_id
-    and a.quiz_version_id = v_version.id
-    and private.flh_learning_video_context_matches(
-      p_workspace_id,
-      p_learner_id,
-      v_version.id,
-      a.program_id,
-      a.curriculum_id,
-      a.grade_level,
-      a.subject_id,
-      a.concept_id
-    );
-
-  if jsonb_array_length(v_items) = 0 then
-    return jsonb_build_object('error', 'VIDEO_NOT_AVAILABLE');
-  end if;
-
-  v_first := (v_items->0) || jsonb_build_object('only_before_first_question', false);
-  if jsonb_array_length(v_items) > 1 then
-    v_first := v_first || jsonb_build_object('videos', v_items);
-  end if;
-
-  return jsonb_build_object(
-    'quiz_version_id', v_version.id,
-    'resumable_attempt_id', v_attempt_id,
-    'quiz', jsonb_build_object(
-      'slug', v_quiz.slug,
-      'title', v_quiz.title,
-      'description', v_quiz.description
-    ),
-    'optional_video', v_first
-  );
-end;
-$function$
- then 'available' else 'unavailable' end,
+        'availability', case when a.video_ref ~ '^[A-Za-z0-9_-]{11}$' then 'available' else 'unavailable' end,
         'made_for_kids', a.made_for_kids,
         'verification_expires_at', a.verification_expires_at,
         'self_report', 'not_reported',
