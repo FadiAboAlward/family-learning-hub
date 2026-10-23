@@ -59,12 +59,14 @@
     try{session=await call('start_quiz',{quiz_slug:slug});}
     catch{shell('تعذر بدء التدريب','هذا التدريب غير متاح لهذا الحساب.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="learnBack">رجوع</button></div></section>');document.getElementById('learnBack')?.addEventListener('click',home);return;}
 
+    globalThis.FLHTelemetry?.capture?.('flh_learning_started',{mode:'learning',quiz_slug:slug,attempt_id:session.attempt_id,resumed:Boolean(session.resumed),question_count:(session.queue||[]).length});
     const queue=(session.queue||[]).map(x=>({...x}));
     let started=Date.now();
     const questionTimer=globalThis.FLHElapsedTimer?.create();
     const timerHtml='<span class="flh-elapsed-timer"><span aria-hidden="true">◷</span> وقت السؤال <b id="flhLearningElapsed" dir="ltr" role="timer" aria-live="off" aria-label="الوقت المنقضي في السؤال">00:00</b></span>';
     const attachTimer=()=>questionTimer?.attach(document.getElementById('flhLearningElapsed'));
     let index=queue.findIndex(x=>x.status==='active');if(index<0)index=Math.max(0,queue.findIndex(x=>!['completed','skipped'].includes(x.status)));
+    const seenQuestions=new Set();
     let busy=false,currentHint=queue[index]?.last_hint?.content?queue[index].last_hint:null,draftController=null,draftVersion=0;
     const remaining=()=>queue.some(x=>!['completed','skipped'].includes(x.status));
     const nextIndex=()=>queue.findIndex((x,i)=>i>index&&!['completed','skipped'].includes(x.status));
@@ -76,6 +78,7 @@
       try{
         const d=await call('finish_quiz',{attempt_id:session.attempt_id,duration_seconds:Math.max(1,Math.round((Date.now()-started)/1000))});
         await refreshProfile();
+        globalThis.FLHTelemetry?.capture?.('flh_learning_completed',{mode:'learning',quiz_slug:slug,attempt_id:session.attempt_id,percentage:Number(d.percentage||0),first_try_correct:Number(d.first_try_correct||0),hints_used:Number(d.hints_used||0),xp:Number(d.award?.xp||0),reward_points:Number(d.award?.reward_points||0),duration_seconds:Math.max(1,Math.round((Date.now()-started)/1000))});
         const review=(d.review||[]).map((r,i)=>`<details class="exam-review"><summary>${r.is_correct===true?'✅':r.is_correct===false?'❌':'📝'} السؤال ${i+1}</summary><div class="question" ${questionAttrs(r)}>${renderMath(r.prompt||'')}</div>${r.explanation?`<div class="muted" dir="auto">${renderMath(r.explanation)}</div>`:''}</details>`).join('');
         const award=d.award?.already_awarded?'<div class="muted">مكافأة هذا التدريب محسوبة سابقًا.</div>':`<div class="award-pop">🎉 +${Number(d.award?.xp||0)} XP &nbsp; 🪙 +${Number(d.award?.reward_points||0)} نقطة</div>`;
         qshell(`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">من أول مرة<b>${Number(d.first_try_correct||0)}</b></div><div class="stat">التلميحات<b>${Number(d.hints_used||0)}</b></div></div>${award}<div class="section-title">مراجعة</div>${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="flh-sticky-action"><button class="btn btn-primary" id="learnHome">رجوع لمكتبتي</button></div></section>`);
@@ -133,6 +136,10 @@
     function render(){
       if(!remaining()||index<0||index>=queue.length)return finish();
       const row=queue[index],q=row?.question;if(!q)return finish();
+      if(!seenQuestions.has(row.question_id)){
+        seenQuestions.add(row.question_id);
+        globalThis.FLHTelemetry?.capture?.('flh_learning_question_viewed',{mode:'learning',attempt_id:session.attempt_id,question_id:row.question_id,question_index:index+1,question_type:q.question_type,question_text:q.prompt});
+      }
       questionTimer?.activate(`${session.attempt_id}:${row.question_id}`);
       const typed=['numeric','short_answer'].includes(q.question_type);
       const selected=Number(row.draft_option_position||0)||null;
@@ -196,6 +203,7 @@
         const d=typed
           ?await call('answer_response',{attempt_id:session.attempt_id,question_id:row.question_id,response:{value}})
           :await call('answer',{attempt_id:session.attempt_id,question_id:row.question_id,option_position:pos});
+        globalThis.FLHTelemetry?.capture?.('flh_learning_answer',{mode:'learning',attempt_id:session.attempt_id,question_id:row.question_id,question_index:index+1,question_type:q.question_type,option_position:typed?undefined:pos,response_text:typed?value:undefined,is_correct:d.is_correct,finalized:Boolean(d.finalized)});
         row.draft_option_position=null;
         row.draft_response=null;
         if(d.hint_level)row.hint_level_requested=Math.max(Number(row.hint_level_requested||0),Number(d.hint_level));
@@ -236,6 +244,7 @@
           row.hint_unavailable_local=false;
           row.hint_level_requested=Number(d.hint_level||row.hint_level_requested||0);
           currentHint=d.hint;
+          globalThis.FLHTelemetry?.capture?.('flh_learning_hint',{mode:'learning',attempt_id:session.attempt_id,question_id:row.question_id,question_index:index+1,hint_level:Number(d.hint_level||row.hint_level_requested||0)});
         }else if(d.exhausted){
           row.hint_unavailable_local=true;
         }

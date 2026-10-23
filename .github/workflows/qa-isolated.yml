@@ -58,6 +58,8 @@ jobs:
           npx --yes esbuild@0.25.9 supabase/functions/qa-auth/index.ts --format=esm --platform=neutral --outfile=/tmp/qa-auth-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
+      - name: FLH-037 PostHog telemetry privacy and event tests
+        run: node tests/posthog-telemetry.unit.mjs
       - name: Academic content quality guard
         run: node tests/academic-content-quality.mjs
       - name: Official support workbook content guard

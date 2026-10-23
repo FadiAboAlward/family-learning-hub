@@ -30,11 +30,13 @@
     globalThis.FLHElapsedTimer?.dispose();
     shell('📝 جاري تجهيز الامتحان','إجاباتك تُحفظ تلقائيًا.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
     let session;try{session=await examApi('start_exam',{quiz_slug:slug});}catch{shell('تعذر فتح الامتحان','هذا الامتحان غير متاح لهذا الطالب.','<section class="panel"><button class="btn btn-primary" id="examBack">رجوع</button></section>');document.getElementById('examBack')?.addEventListener('click',home);return;}
+    globalThis.FLHTelemetry?.capture?.('flh_exam_started',{mode:'exam',quiz_slug:slug,attempt_id:session.attempt_id,resumed:Boolean(session.resumed),question_count:(session.questions||[]).length});
     const attemptTimer=globalThis.FLHElapsedTimer?.create();
     attemptTimer?.activate(session.attempt_id,session.started_at??null);
     const timerHtml='<span class="flh-elapsed-timer"><span aria-hidden="true">◷</span> وقت الامتحان <b id="flhExamElapsed" dir="ltr" role="timer" aria-live="off" aria-label="الوقت المنقضي في الامتحان">--:--</b></span>';
     const attachTimer=()=>attemptTimer?.attach(document.getElementById('flhExamElapsed'));
 
+    const seenQuestions=new Set();
     const questions=session.questions||[];
     const questionById=new Map(questions.map(x=>[x.question_id,x.question]));
     const optionText=(qid,pos)=>{const q=questionById.get(qid),o=(q?.options||[]).find(x=>Number(x.position)===Number(pos));return o?.content||''};
@@ -59,6 +61,10 @@
     function render(){
       if(!questions.length){attemptTimer?.dispose();shell('لا توجد أسئلة','هذا الامتحان لا يحتوي أسئلة منشورة.','<section class="panel"><button class="btn btn-primary" id="examBack">رجوع</button></section>');document.getElementById('examBack')?.addEventListener('click',home);return;}
       const row=questions[index],q=row.question,selected=answers.get(row.question_id),isFlagged=flagged.has(row.question_id),pending=answerPending(row.question_id),saveError=answerSaveErrors.has(row.question_id);
+      if(!seenQuestions.has(row.question_id)){
+        seenQuestions.add(row.question_id);
+        globalThis.FLHTelemetry?.capture?.('flh_exam_question_viewed',{mode:'exam',attempt_id:session.attempt_id,question_id:row.question_id,question_index:index+1,question_type:q.question_type,question_text:q.prompt});
+      }
       const opts=(q.options||[]).map(o=>{const pos=Number(o.position),sel=pos===selected;return`<button class="answer exam-v3-answer ${sel?'selected':''}" data-pos="${pos}" ${submitting?'disabled':''}><span class="answer-number">${sel?'✓':pos}</span><span>${renderMath(o.content)}</span></button>`}).join('');
       const nav=questions.map((x,i)=>`<button class="${statusClass(x.question_id,i)}" data-i="${i}" ${saving||submitting?'disabled':''}>${flagged.has(x.question_id)?'🚩 ':answers.has(x.question_id)?'✓ ':''}${i+1}</button>`).join('');
       const resume=session.resumed?'<div class="flh-resume-note">↩️ رجعناك لامتحانك، وإجاباتك المحفوظة موجودة.</div>':'';
@@ -80,18 +86,18 @@
 
     function saveAnswer(btn){
       if(submitting)return;
-      const row=questions[index],qid=row.question_id,pos=Number(btn.getAttribute('data-pos')),previous=answers.get(qid);
+      const row=questions[index],qid=row.question_id,questionNo=index+1,pos=Number(btn.getAttribute('data-pos')),previous=answers.get(qid);
       answers.set(qid,pos);
       answerSaveErrors.delete(qid);
       render();
       const prior=answerSaveChains.get(qid)||Promise.resolve();
-      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos})).then(()=>{answerSaveErrors.delete(qid);}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(!submitting&&questions[index]?.question_id===qid)render();});
+      const chain=prior.catch(()=>{}).then(()=>examApi('save_answer',{attempt_id:session.attempt_id,question_id:qid,option_position:pos} )).then(()=>{answerSaveErrors.delete(qid);globalThis.FLHTelemetry?.capture?.('flh_exam_answer_saved',{mode:'exam',attempt_id:session.attempt_id,question_id:qid,question_index:questionNo,option_position:pos});}).catch(()=>{answerSaveErrors.add(qid);if(answers.get(qid)===pos){if(previous==null)answers.delete(qid);else answers.set(qid,previous);}}).finally(()=>{if(answerSaveChains.get(qid)===chain)answerSaveChains.delete(qid);if(!submitting&&questions[index]?.question_id===qid)render();});
       answerSaveChains.set(qid,chain);
     }
 
     async function toggleFlag(){
       if(saving||submitting)return;const row=questions[index],next=!flagged.has(row.question_id);saving=true;render();
-      try{await examApi('set_flag',{attempt_id:session.attempt_id,question_id:row.question_id,is_flagged:next});if(next)flagged.add(row.question_id);else flagged.delete(row.question_id);}
+      try{await examApi('set_flag',{attempt_id:session.attempt_id,question_id:row.question_id,is_flagged:next});if(next)flagged.add(row.question_id);else flagged.delete(row.question_id);globalThis.FLHTelemetry?.capture?.('flh_exam_flag_changed',{mode:'exam',attempt_id:session.attempt_id,question_id:row.question_id,flagged:next});}
       catch{}
       finally{saving=false;render();}
     }
@@ -138,7 +144,7 @@
 
     async function submit(){
       if(submitting||saving||!allAnswered())return;submitting=true;attemptTimer?.stop();shell('📊 عم نثبت إجاباتك','نتأكد أن كل الإجابات محفوظة قبل التصحيح.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
-      try{await flushAnswerSaves();const d=await examApi('submit_exam',{attempt_id:session.attempt_id});attemptTimer?.dispose();localStorage.removeItem(storageKey);const profileRefresh=refreshProfile(),review=reviewHtml(d.review||[]),award=d.award||{},xp=Number(award.xp||0),rewardPoints=Number(award.reward_points||0),awardHtml=award.eligible===true?(xp>0||rewardPoints>0?`<div class="flh-explanation"><b>🎁 مكافأة الامتحان</b><div class="muted">${xp>0?`${renderMath(`+${xp} XP`)}`:''}${xp>0&&rewardPoints>0?' · ':''}${rewardPoints>0?`${renderMath(`+${rewardPoints}`)} نقطة مكافآت`:''}</div></div>`:'<div class="muted">مكافأة هذا الامتحان وصلت سابقًا لأعلى مستوى حققته.</div>'):'';shell('📊 نتيجة الامتحان',`${Number(d.percentage||0)}%`,`<section class="panel">${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="section-title">نتيجتك</div><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">النقاط<b>${Number(d.score_points||0)}/${Number(d.max_points||0)}</b></div></div>${awardHtml}<div id="examHomeError" class="muted" role="alert" hidden></div><div class="flh-sticky-action"><button class="btn btn-primary" id="examHome">رجوع لصفحتي</button></div></section>`);bindReviewHelp();document.getElementById('examHome')?.addEventListener('click',async(e)=>{const btn=e.currentTarget;if(btn.disabled)return;btn.disabled=true;const error=document.getElementById('examHomeError');if(error)error.hidden=true;const refreshed=(await profileRefresh)||await refreshProfile();if(!refreshed){if(error){error.textContent='تعذر تحديث رصيدك. حاول مرة أخرى.';error.hidden=false;}btn.disabled=false;return;}home();});}
+      try{await flushAnswerSaves();const d=await examApi('submit_exam',{attempt_id:session.attempt_id});attemptTimer?.dispose();localStorage.removeItem(storageKey);globalThis.FLHTelemetry?.capture?.('flh_exam_completed',{mode:'exam',quiz_slug:slug,attempt_id:session.attempt_id,percentage:Number(d.percentage||0),score_points:Number(d.score_points||0),max_points:Number(d.max_points||0),xp:Number(d.award?.xp||0),reward_points:Number(d.award?.reward_points||0)});const profileRefresh=refreshProfile(),review=reviewHtml(d.review||[]),award=d.award||{},xp=Number(award.xp||0),rewardPoints=Number(award.reward_points||0),awardHtml=award.eligible===true?(xp>0||rewardPoints>0?`<div class="flh-explanation"><b>🎁 مكافأة الامتحان</b><div class="muted">${xp>0?`${renderMath(`+${xp} XP`)}`:''}${xp>0&&rewardPoints>0?' · ':''}${rewardPoints>0?`${renderMath(`+${rewardPoints}`)} نقطة مكافآت`:''}</div></div>`:'<div class="muted">مكافأة هذا الامتحان وصلت سابقًا لأعلى مستوى حققته.</div>'):'';shell('📊 نتيجة الامتحان',`${Number(d.percentage||0)}%`,`<section class="panel">${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="section-title">نتيجتك</div><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">النقاط<b>${Number(d.score_points||0)}/${Number(d.max_points||0)}</b></div></div>${awardHtml}<div id="examHomeError" class="muted" role="alert" hidden></div><div class="flh-sticky-action"><button class="btn btn-primary" id="examHome">رجوع لصفحتي</button></div></section>`);bindReviewHelp();document.getElementById('examHome')?.addEventListener('click',async(e)=>{const btn=e.currentTarget;if(btn.disabled)return;btn.disabled=true;const error=document.getElementById('examHomeError');if(error)error.hidden=true;const refreshed=(await profileRefresh)||await refreshProfile();if(!refreshed){if(error){error.textContent='تعذر تحديث رصيدك. حاول مرة أخرى.';error.hidden=false;}btn.disabled=false;return;}home();});}
       catch{submitting=false;shell('تعذر تسليم الامتحان','في إجابة ما اكتمل حفظها. ارجع للامتحان وحاول مرة ثانية.','<section class="panel"><button class="btn btn-primary" id="examRetry">رجوع للامتحان</button></section>');document.getElementById('examRetry')?.addEventListener('click',render);}
     }
     render();
