@@ -25,6 +25,8 @@ assert.equal(outside.window.FLHTelemetry,undefined,'never instrument third-party
 assert.equal(outside.scripts.length,0,'no external SDK request on non-FLH origin');
 const otherPath=boot('https://fadiaboalward.github.io','/other-app/');
 assert.equal(otherPath.window.FLHTelemetry,undefined,'never instrument other GitHub Pages projects');
+const preview=boot('https://fadiaboalward.github.io','/family-learning-hub/pr-preview/pr-184/');
+assert.equal(preview.window.FLHTelemetry,undefined,'PR previews must not report synthetic QA to Production PostHog');
 
 const {window,scripts,calls,location}=boot();
 assert.equal(scripts.length,1,'load SDK just once');
