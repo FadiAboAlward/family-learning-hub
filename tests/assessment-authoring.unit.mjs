@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { assessmentAuthoringCommand, assessmentAuthoringTool, validateAuthoringCandidate } from '../supabase/functions/_shared/assessment-authoring.mjs';
+import { assessmentAuthoringCommand, assessmentAuthoringTool, validateAuthoringCandidate, verifyAssessmentConceptRegistry } from '../supabase/functions/_shared/assessment-authoring.mjs';
 import { assessmentParent } from '../supabase/functions/_shared/assessment-parent-auth.mjs';
 import { mcpConfiguration, requireMcpClaims } from '../supabase/functions/assessment-mcp/auth.mjs';
 import { assessmentMcpHttp, ASSESSMENT_MCP_TOOLS } from '../supabase/functions/assessment-mcp/handler.mjs';
@@ -24,7 +24,7 @@ let calls=[],role='owner',claims=goodClaims,authError=false,state='draft',lostRe
 const current=()=>({ok:true,state,request_id,target,candidate_sha256:hash,question_count:state==='draft'?0:40,quiz_status:state==='released'?'active':'draft',version_state:['held','released'].includes(state)?'published':'draft'});
 const admin={
   auth:{getClaims:async()=>({data:{claims},error:authError}),getUser:async()=>({data:{user:{id:parent}},error:authError})},
-  from:()=>{const chain={select:()=>chain,eq:()=>chain,maybeSingle:async()=>({data:{role}})};return chain;},
+  from:(table)=>{const chain={select:()=>chain,eq:()=>chain,in:()=>Promise.resolve({data:[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>({code})),error:null}),maybeSingle:async()=>({data:{role}})};return chain;},
   rpc:async(name,payload)=>{
     calls.push({name,payload});
     if(name==='flh_assessment_authoring_command') {
@@ -46,6 +46,25 @@ assert.equal(await assessmentParent(admin,w,req),parent);
 for(role of ['teacher','learner','viewer'])await assert.rejects(()=>assessmentParent(admin,w,req),/VIDEO_ATTACHMENT_FORBIDDEN/);
 role='owner';
 await assert.rejects(()=>assessmentParent(admin,w,new Request(resource)),/AUTH_REQUIRED/);
+// FLH-034 — scope-safe concept lookup never creates a draft on mismatched or missing codes.
+const scopeCodes=[...new Set(candidate.questions.map(q=>q.concept_code))];
+const registry=(rows,error=null)=>({from:(table)=>{
+  assert.equal(table,'learning_concepts');
+  const observed=[];
+  const chain={
+    select:()=>chain,
+    eq:(key,value)=>{observed.push([key,value]);return chain},
+    in:(key,values)=>{assert.equal(key,'code');assert.deepEqual(values,scopeCodes);
+      assert.deepEqual(observed,[['workspace_id',w],['curriculum_id',w],['subject_id',1],['grade_level',7]]);
+      return Promise.resolve({data:rows,error});}
+  };return chain;
+}});
+await verifyAssessmentConceptRegistry(registry(scopeCodes.map(code=>({code}))),w,candidate,args.quiz);
+await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(scopeCodes.slice(1).map(code=>({code}))),w,candidate,args.quiz),/ASSESSMENT_CONCEPTS_MISSING/);
+await assert.rejects(()=>verifyAssessmentConceptRegistry(registry([]),w,candidate,args.quiz),/ASSESSMENT_CONCEPTS_MISSING/);
+await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null,{message:'testing database unavailable'}),w,candidate,args.quiz),/ASSESSMENT_UNAVAILABLE/);
+await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null),w,candidate,args.quiz),/ASSESSMENT_UNAVAILABLE/);
+assert.equal(calls.length,0,'concept preflight never writes');
 const before=calls.length;
 for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
 assert.equal(calls.length,before,'invalid candidates/reviews/metadata cannot write');

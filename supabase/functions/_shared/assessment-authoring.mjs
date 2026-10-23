@@ -24,6 +24,22 @@ export async function validateAuthoringCandidate(candidate) {
   return {ok:validation.ok && publication_supported,validation,publication_supported,candidate_sha256:await academicCandidateHash(candidate),semantic_review:'REQUIRED'};
 }
 
+/** Fail before creating a draft when any authored skill is absent or out of scope.
+ * No concepts are created here; registration remains an authorized content action.
+ */
+export async function verifyAssessmentConceptRegistry(admin,workspaceId,candidate,quiz) {
+  const codes=[...new Set(candidate.questions.map(q=>q.concept_code))];
+  if(!codes.length || codes.some(code=>typeof code!=='string'||!code.trim())) deny('ASSESSMENT_ACADEMIC_REJECTED');
+  const grade=Number(candidate.academic_context.grade);
+  if(!Number.isInteger(grade)||grade<1||grade>12) deny('ASSESSMENT_CONTEXT_MISMATCH');
+  const {data,error}=await admin.from('learning_concepts').select('code')
+    .eq('workspace_id',workspaceId).eq('curriculum_id',quiz.curriculum_id)
+    .eq('subject_id',quiz.subject_id).eq('grade_level',grade).in('code',codes);
+  if(error || !Array.isArray(data)) deny('ASSESSMENT_UNAVAILABLE');
+  const found=new Set(data.map(row=>row.code));
+  if(codes.some(code=>!found.has(code))) deny('ASSESSMENT_CONCEPTS_MISSING');
+}
+
 /** Session identity is supplied by the parent-authenticated application boundary. */
 export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body,trace) {
   body=authoringInput(body);
@@ -36,6 +52,7 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
         || typeof m.title!=='string' || !m.title.trim() || m.title.length>300
         || !Number.isSafeInteger(m.subject_id) || m.subject_id<1 || !uuid(m.curriculum_id)) deny('ASSESSMENT_AUTHORING_INPUT_INVALID');
     const staged=await assessmentStagePayload(workspaceId,parentId,body);
+    await verifyAssessmentConceptRegistry(admin,workspaceId,body.candidate,m);
     payload={...staged,request_id:body.request_id,quiz:m};
   }
   const {data,error}=await trace.measure('assessment.authoring.rpc',{dbOperations:1},()=>admin.rpc('flh_assessment_authoring_command',{
