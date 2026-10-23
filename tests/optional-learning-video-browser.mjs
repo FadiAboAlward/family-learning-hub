@@ -550,7 +550,7 @@ async function priorInteractionResume(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
-// FLH-035: expired/pruned metadata never hides parent-approved YouTube references.
+// FLH-036: expired/pruned metadata never hides parent-approved YouTube references.
 async function persistentVideoWithoutProviderCache(browser, device) {
   for (const scenario of [
     {name:'status-expired',video:videoFixture({verification_expires_at:'2000-01-01T00:00:00Z',learning_outcomes:['Compare equal parts']})},
