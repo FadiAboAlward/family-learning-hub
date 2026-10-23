@@ -1,5 +1,7 @@
 # Direct ChatGPT assessment authoring
 
+> **CURRENT OPERATING REFERENCES — 24 October 2026:** Authoring/release must follow the [living Academic SOP v1.20](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit) and [living Platform QA SOP v1.7](https://docs.google.com/document/d/1X1L7AkxcQFtM6QTp3LW9x4AWods8ZM-ZEX-syE3u9eY/edit). The FLH-033 v1.3 Feature Spec and its Drive revision remain pinned implementation-contract evidence. PR [#179](https://github.com/FadiAboAlward/family-learning-hub/pull/179) records the subsequent Production OAuth and synthetic 40-question validation; this does not grant blanket permission for real-student writes or imply Gmail completion.
+
 Implementation contract: **FLH-FEAT-2026-033 v1.3**, [Drive revision 4](https://docs.google.com/document/d/1qWOtWjVawgpgrFYVuAamYZoPc-eLjz9ezoct23BuoV8/edit), [Issue #172](https://github.com/FadiAboAlward/family-learning-hub/issues/172). Earlier versions remain historical; the original immutable database migration retains its original pin.
 
 Operational tracking: [FLH-033 — Direct ChatGPT Assessment Authoring](https://app.clickup.com/t/z8xb3utdnc).
@@ -14,7 +16,7 @@ The connected Supabase MCP inventory provides management tools such as `execute_
 
 Option A (wrapper only) would still need to implement draft creation and multi-write recovery. Option B adds two small application actions, one private request receipt and an official-SDK MCP transport. It reuses the existing validator, semantic gate, native question/option/key/concept/hint importer, publication state machine and video provider checks. No student runtime or parent authoring UI changes are needed.
 
-Evidence reviewed on 19 October 2026: current main `55839bf95c546235b7c2ec9d18b18de24e4a74a0`, academic SOP v1.14, development SOP v1.6, PR #170 / Issue #169 and the authorized operational/comparison records. Detailed learner-linked references remain in private tracking. A recorded pre-network tool-safety block is not evidence of a backend defect; historical snapshots are not instructions to retry it. No blocked operation was retried. PR #170 remains separate and unchanged.
+Historical baseline evidence reviewed on 19 October 2026: current main `55839bf95c546235b7c2ec9d18b18de24e4a74a0`, academic SOP v1.14, development SOP v1.6, PR #170 / Issue #169 and the authorized operational/comparison records. Detailed learner-linked references remain in private tracking. A recorded pre-network tool-safety block is not evidence of a backend defect; historical snapshots are not instructions to retry it. No blocked operation was retried. PR #170 remains separate and unchanged.
 
 ## Tools and calls
 
@@ -39,7 +41,7 @@ Before calling tools, review current Student Academic State, assigned book/sourc
 5. Call `publish_assessment({request_id,candidate_sha256})`. Confirm status `held` and hidden quiz.
 6. Review a genuinely relevant video, then call `attach_optional_video({request_id,candidate_sha256,candidate: video})`. Video uses the existing IDs/context/title/language/rationale contract and an explicit `position` to keep retries stable. The caller cannot supply provider verification fields.
 7. Call `release_assessment({request_id,candidate_sha256})`; verify `status.state = released`, `quiz_status = active`, `version_state = published`, intended target and server-returned Learning/Exam paths.
-8. Call `read_assessment_authoring({request_id})` for a final independent read. Resolve returned relative paths against the configured, verified application origin. Do not invent links from titles or model-generated slugs. Gmail sending remains a separate, explicitly authorized connector operation under SOP v1.14; this MCP sends no mail and creates no paper.
+8. Call `read_assessment_authoring({request_id})` for a final independent read. Resolve returned relative paths against the configured, verified application origin. Do not invent links from titles or model-generated slugs. Gmail sending remains a separate, explicitly authorized connector operation under the current [Academic SOP v1.20](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit); this MCP sends no mail and creates no paper.
 
 Application clients can use the new `create_assessment_draft` and `read_assessment_authoring` actions on `learning-api` with a normal current parent session. MCP invokes the same shared authoring handler and the existing publication/video handlers directly, without HTTP token forwarding or administrative SQL.
 

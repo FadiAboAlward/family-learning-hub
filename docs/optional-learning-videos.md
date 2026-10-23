@@ -1,5 +1,7 @@
 # Optional Learning videos
 
+> Feature identity: **FLH-036** is the persistent optional-video decision ([PR #183](https://github.com/FadiAboAlward/family-learning-hub/pull/183)); **FLH-037** is the separate PostHog academic-analytics decision ([PR #184](https://github.com/FadiAboAlward/family-learning-hub/pull/184)). Their Spec versions are unrelated. Do not interpret the FLH-037 v1.1 contract as superseding FLH-036 video v1.0.
+
 > **Operational decision — 23 October 2026 / FLH-FEAT-2026-036 v1.0:** The video association is persistent, not seven-day expiring. Initial YouTube verification is only for attachment; stale or pruned provider status metadata cannot suppress an authorized video reference. Do not set up recurring YouTube validation tasks. The YouTube iframe attempts playback on the learner's visit; the existing player-error fallback permits immediate Learning without requiring watching. The separate 29-day purge of cached YouTube API metadata remains for provider data-retention compliance and never deletes the parent-authored video association. Preserve exact learner/version/program authorization and Exam independence. See [FLH-036 Spec](https://docs.google.com/document/d/1t5mbzIiAdlCP8w1eZ6Y059h51oo_uI_8Qo1WELXMT78/edit).
 
 

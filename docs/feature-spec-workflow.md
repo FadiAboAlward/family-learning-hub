@@ -4,6 +4,8 @@ This document is the repository-side handoff protocol. The detailed process poli
 
 `My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP`
 
+Living Platform SOP canonical URL: https://docs.google.com/document/d/1X1L7AkxcQFtM6QTp3LW9x4AWods8ZM-ZEX-syE3u9eY/edit. Read its current in-document version (v1.7 at the 24 October 2026 review); its ID stays stable as the operating policy evolves. This does not replace immutable Feature Spec pins for each Issue/PR.
+
 The canonical product requirement itself lives under:
 
 `My Drive / Family Learning Hub / System & SOP / Feature Specs`
