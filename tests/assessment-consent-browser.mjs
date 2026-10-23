@@ -14,20 +14,21 @@ assert.match(head||'',/^[0-9a-f]{40}$/);
 const config={url:TESTING_ORIGIN,key:'sb_publishable_synthetic',clientId:'03320000-0000-4000-8000-000000000001',callback:'https://chatgpt.com/connector/oauth/syntheticCallback'};
 const id='syntheticAuthorization0123456789',user='03320000-0000-4000-8000-000000000003';
 const sdk=`window.supabase={createClient:(url,key,options)=>{
-  window.__authOptions=options.auth;window.__projectUrl=url;const f=window.__fixture;
+  window.__authOptions=options.auth;window.__projectUrl=url;window.__projectKey=key;const f=window.__fixture;
   const call=name=>window.__calls.push(name);
-  const redirect=deny=>f.badRedirect?'https://unapproved.invalid/':${JSON.stringify(config.callback)}+(deny?'?error=access_denied&state=synthetic':'?code=synthetic&state=synthetic');
+  const callback=f.callback||${JSON.stringify(config.callback)};
+  const redirect=deny=>f.badRedirect?'https://unapproved.invalid/':callback+(deny?'?error=access_denied&state=synthetic':'?code=synthetic&state=synthetic');
   return {auth:{
     signInWithPassword:async()=>{call('login');return f.loginError?{error:{message:'synthetic'}}:{data:{}};},
     getUser:async()=>f.userError?{error:{message:'synthetic'}}:({data:{user:{id:${JSON.stringify(user)}}}}),
     signOut:async()=>{call('signOut');return {};},
     oauth:{getAuthorizationDetails:async()=>{
-      call('details');return {data:f.priorGrant?{redirect_url:redirect(false)}:{authorization_id:${JSON.stringify(id)},client:{id:f.wrongClient?'invalid':f.clientId||${JSON.stringify(config.clientId)},name:'<img src=x onerror=alert(1)>'},user:{id:f.wrongUser?'invalid':${JSON.stringify(user)}},redirect_uri:${JSON.stringify(config.callback)},scope:f.scope??'openid email offline_access'}};
+      call('details');return {data:f.priorGrant?{redirect_url:redirect(false)}:{authorization_id:${JSON.stringify(id)},client:{id:f.wrongClient?'invalid':f.clientId||${JSON.stringify(config.clientId)},name:'<img src=x onerror=alert(1)>'},user:{id:f.wrongUser?'invalid':${JSON.stringify(user)}},redirect_uri:callback,scope:f.scope??'openid email offline_access'}};
     },approveAuthorization:async()=>{call('approve');return {data:{redirect_url:redirect(false)}};},denyAuthorization:async()=>{call('deny');return {data:{redirect_url:redirect(true)}};}}
   },from:()=>({select:()=>({eq:()=>({eq:()=>({maybeSingle:async()=>({data:{role:f.role||'owner'}})})})})})};
 }};`;
 const files=await consentFiles(config,sdk,head);
-const productionConfig={...config,url:PRODUCTION_ORIGIN,clientId:'03330000-0000-4000-8000-000000000001'};
+const productionConfig={url:PRODUCTION_ORIGIN,key:'sb_publishable_synthetic_production',clientId:'03330000-0000-4000-8000-000000000001',callback:'https://chatgpt.com/connector/oauth/syntheticProductionCallback'};
 const productionFiles=await consentFiles(productionConfig,sdk,head);
 // Shared guard installs Production DNS/HTTP/WebSocket and service-worker isolation.
 // All fixture HTTP requests below are fulfilled in memory; no local server starts.
@@ -49,7 +50,7 @@ async function fixture(viewport,state={},query='?authorization_id='+id,artifact=
         'content-security-policy':artifact.get('_headers').split('Content-Security-Policy: ')[1].trim()
       }});
     }
-    if(url.origin==='https://chatgpt.com'&&url.pathname==='/connector/oauth/syntheticCallback')return route.fulfill({contentType:'text/html',body:'<title>Synthetic callback</title>'});
+    if(url.origin==='https://chatgpt.com'&&[new URL(config.callback).pathname,new URL(productionConfig.callback).pathname].includes(url.pathname))return route.fulfill({contentType:'text/html',body:'<title>Synthetic callback</title>'});
     blocked.push(url.origin);return route.abort();
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
@@ -76,6 +77,7 @@ try {
     assert.equal(await f.page.locator('#scopes').innerText(),'openid email offline_access','Display the exact requested scopes');
     assert.equal(await f.page.locator('#password').inputValue(),'');
     assert.match(await f.page.locator('#environment').innerText(),/بيئة التجارب/);
+    assert.equal(await f.page.evaluate(()=>window.__projectKey),config.key);
     assert.deepEqual(await f.page.evaluate(()=>window.__authOptions),{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false});
     await shot(f.page,'consent-'+viewport.width);
     await f.page.locator('#approve').click();await f.page.waitForURL(config.callback+'?code=synthetic&state=synthetic');await f.close();
@@ -113,16 +115,18 @@ try {
     assert.ok((await f.page.evaluate(()=>window.__calls)).includes('signOut'));await f.close();
 
     // Same hosted page with an independently configured client; all traffic stays mocked.
-    f=await fixture(viewport,{clientId:productionConfig.clientId},'?authorization_id='+id,productionFiles);await login(f.page);
+    f=await fixture(viewport,{clientId:productionConfig.clientId,callback:productionConfig.callback},'?authorization_id='+id,productionFiles);await login(f.page);
     await f.page.locator('#consent').waitFor({state:'visible'});
     assert.match(await f.page.locator('#environment').innerText(),/البيئة الفعلية/);
     assert.ok(!(await f.page.locator('#environment').innerText()).includes('بيئة التجارب'));
     assert.equal(await f.page.evaluate(()=>window.__projectUrl),PRODUCTION_ORIGIN);
+    assert.equal(await f.page.evaluate(()=>window.__projectKey),productionConfig.key);
+    assert.equal(await f.page.locator('#callback').innerText(),productionConfig.callback);
     assert.equal(await f.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await shot(f.page,'consent-production-'+viewport.width);
-    await f.page.locator('#approve').click();await f.page.waitForURL(config.callback+'?code=synthetic&state=synthetic');await f.close();
-    f=await fixture(viewport,{clientId:productionConfig.clientId},'?authorization_id='+id,productionFiles);await login(f.page);
-    await f.page.locator('#deny').click();await f.page.waitForURL(config.callback+'?error=access_denied&state=synthetic');await f.close();
+    await f.page.locator('#approve').click();await f.page.waitForURL(productionConfig.callback+'?code=synthetic&state=synthetic');await f.close();
+    f=await fixture(viewport,{clientId:productionConfig.clientId,callback:productionConfig.callback},'?authorization_id='+id,productionFiles);await login(f.page);
+    await f.page.locator('#deny').click();await f.page.waitForURL(productionConfig.callback+'?error=access_denied&state=synthetic');await f.close();
   }
   fs.writeFileSync(directory+'/manifest.json',JSON.stringify({head,mode:'synthetic-static-browser',cases,evidence,actualOAuth:'NOT RUN'},null,2));
   console.log(`PASS: ${cases} rendered static consent cases; RTL/mobile/authorization/approve/deny/session cleanup; no runtime server or external egress`);
