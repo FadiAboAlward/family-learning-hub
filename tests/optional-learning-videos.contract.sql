@@ -116,7 +116,7 @@ begin
   update public.learning_video_attempts set verification_expires_at=now()-interval '1 minute' where attempt_id=attempt;
   set local role service_role;
   resumed:=public.flh_learning_start(w,l,'qa-optional-video');
-  perform pg_temp.video_assert(resumed->>'error' is null and resumed->'optional_video'->>'availability'='unavailable','stale provider status never blocks Learning');
+  perform pg_temp.video_assert(resumed->>'error' is null and resumed->'optional_video'->>'availability'='available','stale provider metadata does not disable an assigned YouTube link');
   reset role;
   insert into public.quiz_answer_attempts(workspace_id,quiz_attempt_id,question_id,attempt_no,response,is_correct) values(w,attempt,question,1,'{"option_position":1}',false);
   set local role service_role;
@@ -140,6 +140,16 @@ begin
   result:=public.flh_learning_video_prune_status(w);
   perform pg_temp.video_assert(result->>'assignments_pruned'='1' and result->>'attempts_pruned'='1' and (select made_for_kids is null and verified_at is null and self_report='watched_full' from public.learning_video_attempts where attempt_id=attempt),'prune expired provider data keeps FLH report history');
   perform pg_temp.video_assert((select status_revision<>status_token from public.learning_video_assignments where id=assignment),'prune invalidates an inflight provider request');
+  resumed:=public.flh_learning_start(w,l,'qa-optional-video');
+  perform pg_temp.video_assert(resumed->>'error' is null
+    and resumed->'optional_video'->>'availability'='available'
+    and resumed->'optional_video'->>'video_ref'='qaVideo0001',
+    'status metadata pruning preserves authorized video playback reference in pinned Learning attempt');
+  result:=public.flh_learning_video_preview(w,l,'qa-optional-video');
+  perform pg_temp.video_assert(result->>'error' is null
+    and result->'optional_video'->>'availability'='available',
+    'readonly videos=1 preview preserves video after provider metadata pruning');
+
   result:=public.flh_learning_video_refresh(w,assignment,newer_video,status_token,candidate);
   perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='expired' and verified_at is null and made_for_kids is null from public.learning_video_assignments where id=assignment),'stale successful refresh cannot restore data after pruning');
   perform pg_temp.video_assert((select count(*)=events_before from public.gamification_events where workspace_id=w and learner_id=l),'report never changes academic rewards ledger');
