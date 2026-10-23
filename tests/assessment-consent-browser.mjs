@@ -75,7 +75,7 @@ try {
     assert.equal(await f.page.locator('#client-name img').count(),0,'Client name is text, not markup');
     assert.equal(await f.page.locator('#scopes').innerText(),'openid email offline_access','Display the exact requested scopes');
     assert.equal(await f.page.locator('#password').inputValue(),'');
-    assert.match(await f.page.locator('#environment').innerText(),/Testing/);
+    assert.match(await f.page.locator('#environment').innerText(),/بيئة التجارب/);
     assert.deepEqual(await f.page.evaluate(()=>window.__authOptions),{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false});
     await shot(f.page,'consent-'+viewport.width);
     await f.page.locator('#approve').click();await f.page.waitForURL(config.callback+'?code=synthetic&state=synthetic');await f.close();
@@ -115,8 +115,8 @@ try {
     // Same hosted page with an independently configured client; all traffic stays mocked.
     f=await fixture(viewport,{clientId:productionConfig.clientId},'?authorization_id='+id,productionFiles);await login(f.page);
     await f.page.locator('#consent').waitFor({state:'visible'});
-    assert.match(await f.page.locator('#environment').innerText(),/Production/);
-    assert.ok(!(await f.page.locator('#environment').innerText()).includes('Testing'));
+    assert.match(await f.page.locator('#environment').innerText(),/البيئة الفعلية/);
+    assert.ok(!(await f.page.locator('#environment').innerText()).includes('بيئة التجارب'));
     assert.equal(await f.page.evaluate(()=>window.__projectUrl),PRODUCTION_ORIGIN);
     assert.equal(await f.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await shot(f.page,'consent-production-'+viewport.width);

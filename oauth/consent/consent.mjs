@@ -44,8 +44,8 @@ async function start() {
     if(!response.ok) throw new Error('CONSENT_NOT_CONFIGURED');
     config=consentConfiguration(await response.json());
     const testing=config.url===TESTING_ORIGIN;
-    element('environment').textContent=testing?'Family Learning Hub Testing — بيانات اصطناعية فقط.':'Family Learning Hub — الحساب الفعلي (Production).';
-    element('login-environment').textContent=testing?'سجّل الدخول بحساب الأب الخاص ببيئة Testing.':'سجّل الدخول بحساب الأب الخاص بالمنصة.';
+    element('environment').textContent=testing?'Family Learning Hub — بيئة التجارب، بيانات اصطناعية فقط.':'Family Learning Hub — البيئة الفعلية.';
+    element('login-environment').textContent=testing?'سجّل الدخول بحساب الأب الخاص ببيئة التجارب.':'سجّل الدخول بحساب الأب الخاص بالمنصة.';
     client=window.supabase.createClient(config.url,config.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
     message.textContent='';element('login').hidden=false;
   } catch { fail();return; }
