@@ -51,10 +51,10 @@ function renderStudentLogin(){
 }
 function showPin(slug,name){
   state.selectedLearner=slug;
-  pinArea.innerHTML=`<div class="field"><label>رمز ${esc(name)}</label><input id="studentPin" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="8 أرقام" /></div><label class="muted"><input type="checkbox" id="rememberLearner" checked /> تذكرني على هذا الجهاز</label><div class="actions"><button class="btn btn-primary" id="studentLoginBtn">دخول</button></div><div id="studentMsg"></div>`;
+  pinArea.innerHTML=`<div class="field"><label>رمز ${esc(name)}</label><input id="studentPin" type="password" class="ph-no-capture" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="8 أرقام" /></div><label class="muted"><input type="checkbox" id="rememberLearner" checked /> تذكرني على هذا الجهاز</label><div class="actions"><button class="btn btn-primary" id="studentLoginBtn">دخول</button></div><div id="studentMsg"></div>`;
   studentLoginBtn.onclick=async()=>{
     studentLoginBtn.disabled=true; studentMsg.innerHTML='';
-    try{const d=await api('student_login',{slug,pin:studentPin.value}); state.learnerSession=d.session; state.learnerProfile=d.profile; const store=rememberLearner.checked?localStorage:sessionStorage; store.setItem('learner_session',d.session); renderStudentHome(d.profile)}
+    try{const d=await api('student_login',{slug,pin:studentPin.value}); state.learnerSession=d.session; state.learnerProfile=d.profile; globalThis.FLHTelemetry?.identifyLearner?.(d.profile?.learner); const store=rememberLearner.checked?localStorage:sessionStorage; store.setItem('learner_session',d.session); renderStudentHome(d.profile)}
     catch(e){studentMsg.innerHTML=`<div class="error">${errorText(e.message)}</div>`;studentLoginBtn.disabled=false}
   };
 }
@@ -63,6 +63,7 @@ function levelProgress(g){
   const span=Math.max(1,Number(next.min_xp)-Number(cur.min_xp)); return Math.max(0,Math.min(100,Math.round((Number(g.xp)-Number(cur.min_xp))/span*100)));
 }
 function renderStudentHome(p){
+  globalThis.FLHTelemetry?.identifyLearner?.(p?.learner);
   const l=p.learner,g=p.gamification,level=g.current_level_info||{icon:'🌱',name:'مستكشف'};
   const badges=(g.badges||[]).length?(g.badges||[]).map(x=>`<div class="badge"><div class="icon">${esc(x.badge?.icon||'🏅')}</div><b>${esc(x.badge?.title||'وسام')}</b><div class="muted">${esc(x.award_reason||'')}</div></div>`).join(''):`<div class="empty">أول وسام لسه بالطريق 🏅</div>`;
   const rewards='<a class="btn btn-soft fr-student-link" href="#student-rewards">🎁 جوائزي وعاداتي — نقاطي ومصدرها وطلبات الجوائز</a>';
