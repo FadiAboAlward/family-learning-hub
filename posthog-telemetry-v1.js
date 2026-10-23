@@ -29,7 +29,7 @@
     if (!event || !event.properties || typeof event.properties!=='object') return event;
     const props=event.properties;
     for (const key of Object.keys(props)) {
-      if (secretKey.test(key)) { delete props[key]; continue; }
+      if (secretKey.test(key) && !(key==='token' && props[key]===PH_TOKEN)) { delete props[key]; continue; }
       if (typeof props[key]==='string') {
         if (/url|referrer|href/i.test(key)) {
           try { const url=new URL(props[key],location.origin);props[key]=url.origin+url.pathname; }
