@@ -3,7 +3,7 @@
 (() => {
   'use strict';
   const SITE='https://fadiaboalward.github.io';
-  if (location.origin!==SITE || !/^\/family-learning-hub(?:\/|$)/.test(location.pathname)) return;
+  if (location.origin!==SITE || !/^\/family-learning-hub(?:\/|$)/.test(location.pathname) || /^\/family-learning-hub\/pr-preview(?:\/|$)/.test(location.pathname)) return;
 
   const PH_TOKEN='phc_rKwnoKHJRXXfJsqREy2HJz59zmqffsWnysUaqt3Jt4xj';
   const HOST='https://eu.i.posthog.com';
