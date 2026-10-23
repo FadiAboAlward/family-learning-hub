@@ -1,11 +1,12 @@
-// The pilot intentionally accepts only the independently approved Free Testing project.
+// FLH-033 v1.3 / Drive revision 4: explicit project configuration, never arbitrary origins.
 export const TESTING_ORIGIN='https://gzfbkudvvxthbhjsmwsc.supabase.co';
+export const PRODUCTION_ORIGIN='https://gkpoylfozvuwuwqeoduc.supabase.co';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-// FLH-033 v1.2 / Drive revision 3: owner-approved scope set for this Testing client only.
+// The same exact scope set applies to each separately registered environment client.
 const approvedScopes=['openid','email','offline_access'];
 
 export function consentConfiguration(config) {
-  if(config?.url!==TESTING_ORIGIN || !/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.key||'') || !uuid.test(config.clientId||'')) throw new Error('CONSENT_NOT_CONFIGURED');
+  if(![TESTING_ORIGIN,PRODUCTION_ORIGIN].includes(config?.url) || !/^sb_publishable_[A-Za-z0-9_-]+$/.test(config.key||'') || !uuid.test(config.clientId||'')) throw new Error('CONSENT_NOT_CONFIGURED');
   const callback=new URL(config.callback);
   if(callback.origin!=='https://chatgpt.com' || !/^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(callback.pathname)
     || callback.username || callback.password || callback.search || callback.hash || callback.href!==config.callback) throw new Error('INVALID_CALLBACK');
@@ -35,13 +36,16 @@ export function consentRedirect(value,config) {
 
 async function start() {
   const element=id=>document.getElementById(id), message=element('message');
-  const fail=()=>{message.textContent='تعذر متابعة الربط. ابدأ طلب ربط جديدًا من ChatGPT، وتأكد من حساب Testing وصلاحياته.';};
+  const fail=()=>{message.textContent='تعذر متابعة الربط. ابدأ طلب ربط جديدًا من ChatGPT، وتأكد من حساب الأب وصلاحياته في البيئة المعروضة.';};
   let client,config,id,userId;
   try {
     id=authorizationId(location.search);
     const response=await fetch('./config.json',{cache:'no-store'});
     if(!response.ok) throw new Error('CONSENT_NOT_CONFIGURED');
     config=consentConfiguration(await response.json());
+    const testing=config.url===TESTING_ORIGIN;
+    element('environment').textContent=testing?'Family Learning Hub Testing — بيانات اصطناعية فقط.':'Family Learning Hub — الحساب الفعلي (Production).';
+    element('login-environment').textContent=testing?'سجّل الدخول بحساب الأب الخاص ببيئة Testing.':'سجّل الدخول بحساب الأب الخاص بالمنصة.';
     client=window.supabase.createClient(config.url,config.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
     message.textContent='';element('login').hidden=false;
   } catch { fail();return; }

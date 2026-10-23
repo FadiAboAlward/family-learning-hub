@@ -32,6 +32,8 @@ FLH-033 v1.1 uses a small static HTTPS Testing consent frontend (Cloudflare Page
 
 FLH-033 v1.2 (Drive revision 3) narrowly permits the owner's approved `openid email offline_access` scope set for the existing Testing client. Consent checks require the exact set without duplicates and display the actual request. Email identification and standard OAuth refresh do not change parent membership, MCP client/resource/token validation or assessment publication permissions; Production is excluded.
 
+FLH-033 v1.3 (Drive revision 4) prepares the same proven OAuth/MCP architecture for a separately approved Production activation. The static consent artifact explicitly selects the verified Testing or Production project, its own public key/client/callback and project-only CSP; no identity service or authoring flow is added. Production migration/deployment/Auth writes require one explicit owner approval, then real parent OAuth/ChatGPT invocation and an owned synthetic test-learner release/cleanup. Testing success remains separate from Production verification; existing learner runtime and publication permissions are unchanged.
+
 Reusable content lives in structures such as:
 
 - curricula,

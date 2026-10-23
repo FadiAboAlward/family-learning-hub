@@ -1,10 +1,10 @@
 # Direct ChatGPT assessment authoring
 
-Implementation contract: **FLH-FEAT-2026-033 v1.2**, [Drive revision 3](https://docs.google.com/document/d/1qWOtWjVawgpgrFYVuAamYZoPc-eLjz9ezoct23BuoV8/edit), [Issue #172](https://github.com/FadiAboAlward/family-learning-hub/issues/172). Version 1.1/revision 2 and version 1.0/revision 1 remain historical; the original immutable database migration retains its original pin.
+Implementation contract: **FLH-FEAT-2026-033 v1.3**, [Drive revision 4](https://docs.google.com/document/d/1qWOtWjVawgpgrFYVuAamYZoPc-eLjz9ezoct23BuoV8/edit), [Issue #172](https://github.com/FadiAboAlward/family-learning-hub/issues/172). Earlier versions remain historical; the original immutable database migration retains its original pin.
 
 Operational tracking: [FLH-033 — Direct ChatGPT Assessment Authoring](https://app.clickup.com/t/z8xb3utdnc).
 
-This PR prepares an application-authorized integration. Source QA, hosted Testing setup and actual ChatGPT use are separate results. **A live ChatGPT invocation is not yet proved.** See the Testing pilot record and activation gates below. Production rollout is excluded.
+PR #173 merged at `90449de78fedbc57412b22c658dadc2d39353cdf`. **Testing OAuth, installed ChatGPT invocation, all seven native OAuth tools, a 40-question package through Released, provider video verification and owned cleanup passed** ([observed evidence](https://github.com/FadiAboAlward/family-learning-hub/pull/173#issuecomment-6354039681)). This proves the Testing path, not Production. The v1.3 change only prepares environment-specific consent configuration and the Production activation below; Production writes still require the owner's separate explicit approval.
 
 ## What was missing and why option B
 
@@ -109,7 +109,37 @@ The owner approved v1.2's exact Testing scope set `openid email offline_access` 
 
 The original 19 October ProcessStartInfo launch rejection remains unresolved. Its exact denying component is unknown; earlier attribution to an automatic approval reviewer was unsupported. The old `scripts/assessment-consent-server.mjs` activation entry point has been removed, not retried or moved. Cloud success would not prove that old denial was lifted. Any new security denial stops the affected operation.
 
-**Current activation status:** cloud source preparation/QA is separate from deployment, real Testing grant, signed-token/getClaims/getUser validation, provider checks and installed ChatGPT tools. Do not claim a final working consent/MCP URL until observed. Keep MCP disabled until security prerequisites and the authorized real integration test are satisfied.
+**Testing activation:** the previously pending live checks above subsequently passed, as recorded in the linked PR #173 checkpoint. The disposable request was released and cleaned; its historical links must not be reused or its identifiers recreated. Production remains a separate activation, not an automatic promotion of Testing credentials or approval.
+
+### Production activation — v1.3
+
+The same static page and Supabase OAuth/MCP architecture now accept only the two explicit project origins. `FLH_SUPABASE_URL` selects one; `FLH_PUBLISHABLE_KEY` supplies its public key. The old Testing variables/default remain compatible. Generated CSP allows only the selected backend; displayed labels distinguish Testing from Production. No server-side secret enters the artifact.
+
+Read-only preflight on 23 October 2026 established:
+
+| Component | Production observation / required action |
+| --- | --- |
+| Project | `gkpoylfozvuwuwqeoduc`, active; independent Testing remains `gzfbkudvvxthbhjsmwsc`. |
+| Workspace | Actual Production read confirms `55f9224c-8ba7-4cbc-9f88-713e6a6b41df`, coincidentally the same workspace identity as the Testing fixture. It was verified, not inferred from Testing. |
+| Migration | Publication gate/outbox already present. Apply only missing `20261019092245_assessment_authoring_requests.sql`; no catalog replay, broad `db push`, ledger repair or historical rewrite. |
+| Edge | `learning-api` v15 lacks create/read authoring. Its five shared deployed modules match merged source. Deploy reviewed learning-api plus the new assessment-mcp; preserve other functions and JWT/application checks. |
+| Auth | OAuth server off, no registered OAuth clients or configured Auth hooks; Site URL `http://localhost:3000`, redirect list empty. Record these originals before selecting the client-specific hook. |
+| Secrets | Existing modern publishable key and server-side YouTube key are available. MCP resource/client/enabled configuration is absent. Do not rotate/read service keys or copy Testing secrets. |
+| Video | Existing Production flag is `enabled=true,test_only=false`; leave it unchanged. |
+| Test identity | Existing active dedicated `test` learner and actual parent owner found; use their Production IDs, never Testing learner/user/client IDs. |
+
+After exact-head QA/review, request one Production approval describing this concrete batch, risks and rollback. Before it, do not apply migrations, deploy Production artifacts/functions, save Auth settings/register clients, or enable Production MCP.
+
+After approval:
+
+1. Capture the current learning-api bundle, Auth URL/hook/server settings and relevant counts. Apply only the missing prospective authoring migration through the official migration tool. Recheck RLS/grants, command/trigger definitions and unchanged publication functions. Use a short lock timeout and stop on contention; the Dashboard currently warns about low Disk IO budget, which is not permission to upgrade compute.
+2. Deploy merged learning-api and assessment-mcp with MCP disabled. Reuse free static HTTPS Pages hosting for a separately configured Production artifact; preserve the Testing deployment and existing learner GitHub Pages site. No Worker, paid domain or identity service.
+3. Obtain the exact Production ChatGPT callback from its new connection setup, register one dedicated public OAuth client with S256 and dynamic registration off. Adapt the existing `supabase/testing/assessment-mcp-token-hook.sql` **as a template only**: replace both its Testing client ID and resource with the actually registered Production values, review the generated definition, preserve SECURITY INVOKER and execute-only Auth-admin grants, and verify ordinary sessions/other clients remain unchanged. Never execute the unchanged Testing SQL in Production or overwrite an existing hook blindly.
+4. Build with `FLH_SUPABASE_URL=https://gkpoylfozvuwuwqeoduc.supabase.co`, its publishable key, actual new client/callback and reviewed SHA. Verify artifact hashes/HTTPS/security headers. Set Site URL to the actual static consent origin and Authorization Path `/oauth/consent/`; this also changes default Auth redirects/email-template SiteURL, so keep the original rollback value. Existing password sign-in and learner links must still work.
+5. Set the exact Production resource `https://gkpoylfozvuwuwqeoduc.supabase.co/functions/v1/assessment-mcp/mcp` and only the actual new Production client ID. Enable the controlled connection after configuration/boundary checks; unauthorized requests must fail. Owner completes personal sign-in/consent; then verify real ChatGPT discovery/invocation. On authentication/authorization failure disable the new MCP path and stop that operation.
+6. Use a fresh labelled synthetic request for the dedicated Production test learner only. Validate/review the exact technical package, create/retry/read-resume/stage/Held/provider video/Released/readback through the actual parent OAuth MCP. Management SQL is only for narrowly owned synthetic fixture setup/cleanup and readback, never assessment authoring. No real-child attempt, historical assessment change, test email or academic-personalization claim. Clean the owned graph with identity and zero-attempt guards; preserve parent/test learner/shared catalog and the original video flag.
+
+Rollback: set MCP enabled=false, revoke only the new client grant if needed, restore captured prior Auth server/path/SiteURL/hook configuration and captured learning-api v15 bundle if necessary. Keep additive receipt schema/data rather than dropping a table with requests. Preserve unrelated project functions, secrets, learner data and existing links. Record deployed/verified/blocked separately in the same PR and ClickUp task; a prepared URL is not Production usability.
 
 ### Main compatibility
 

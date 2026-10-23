@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>موافقة ربط ChatGPT — Family Learning Hub Testing</title>
+  <title>موافقة ربط ChatGPT — Family Learning Hub</title>
   <style>
     body{font:1.05rem/1.7 system-ui,sans-serif;background:#f4f7fa;color:#172b3a;margin:0;padding:24px}
     main{max-width:34rem;margin:3vh auto;background:white;padding:24px;border-radius:16px}
@@ -17,12 +17,12 @@
   <script type="module" src="./consent.mjs"></script>
 </head>
 <body><main>
-  <h1>ربط ChatGPT ببيئة التجارب</h1>
-  <p>Family Learning Hub Testing — بيانات اصطناعية فقط.</p>
+  <h1>ربط ChatGPT بالمنصة</h1>
+  <p id="environment">جارٍ التحقق من بيئة الاتصال…</p>
   <p>يسمح الربط لـChatGPT بإنشاء تمارين جديدة وتجهيزها وتفعيلها ضمن صلاحيات الأب وضوابط النشر القائمة.</p>
   <p id="message" role="status" aria-live="polite">جارٍ التحقق من طلب الربط…</p>
   <form id="login" hidden>
-    <p>سجّل الدخول بحساب الأب الخاص ببيئة Testing.</p>
+    <p id="login-environment"></p>
     <label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required>
     <label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required>
     <button type="submit">تسجيل الدخول</button>
