@@ -156,5 +156,5 @@ async function renderParentDashboard(){
   parentLogout.onclick=()=>{localStorage.removeItem('parent_session');state.parentSession=null;renderParentLogin('login')};
 }
 
-async function route(){const h=location.hash.replace('#','');if(h==='student')return studentRoute();if(h==='parents')return parentRoute();landing()}
+async function route(){const h=location.hash.replace('#','');if(h==='student')return studentRoute();if(h==='parents'){globalThis.FLHTelemetry?.resetLearner?.();return parentRoute();}landing()}
 window.addEventListener('hashchange',route);route();
