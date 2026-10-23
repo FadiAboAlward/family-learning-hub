@@ -47,6 +47,12 @@ assert.equal(evt.properties.authorization,undefined);
 assert.equal(evt.properties.pin,undefined);
 assert.equal(evt.properties.user_token,undefined);
 assert.equal(evt.properties.note,'[redacted]');
+const ingestion={event:'$pageview',properties:{token:publicKey,authorization:'Bearer sensitive',client_token:'another-key'}};
+config.before_send(ingestion);
+assert.equal(ingestion.properties.token,publicKey,'PostHog ingestion must keep its own public project token');
+assert.equal(ingestion.properties.authorization,undefined,'auth credential cannot be ingested');
+assert.equal(ingestion.properties.client_token,undefined,'only exact PostHog transport token may survive');
+
 
 const log=window.posthog;
 let count=log.length;
