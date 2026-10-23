@@ -62,6 +62,7 @@
     } catch { /* no learner blocking */ }
   }
   function resetLearner() {
+    if (!activeLearner) return;
     activeLearner='';
     try { window.posthog?.reset?.(); } catch {}
   }
