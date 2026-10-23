@@ -1,4 +1,4 @@
--- FLH-FEAT-2026-035 SPEC_VERSION 1.0
+-- FLH-FEAT-2026-036 SPEC_VERSION 1.0
 -- Author-approved linked YouTube reference persists; provider-status TTL only governs cached metadata.
 -- The existing private.flh_learning_video_context_matches predicates remain authoritative.
 -- Never issue a provider API request or modify learner attempts from this migration.
