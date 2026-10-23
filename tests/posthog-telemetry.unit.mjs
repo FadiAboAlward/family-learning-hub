@@ -85,6 +85,7 @@ assert.match(html,/posthog-telemetry-v1\.js/);
 assert.ok(html.indexOf('posthog-telemetry-v1.js')<html.indexOf('app.js'),'SDK bridge must precede app');
 assert.match(app,/id="studentPin" type="password" class="ph-no-capture"/,'PIN must never be plain text');
 assert.match(app,/FLHTelemetry\?\.identifyLearner/);
+assert.ok(exam.includes('question_index:questionNo'), 'async exam save must preserve selected question index');
 for(const event of ['flh_learning_started','flh_learning_question_viewed','flh_learning_answer','flh_learning_hint','flh_learning_completed']) {
   assert.ok(learning.includes(event), 'Learning event missing: '+event);
 }
