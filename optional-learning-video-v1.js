@@ -77,7 +77,7 @@
     }
     function cleanup() { if (!alive) return; alive = false; observer.disconnect(); stopPlayer(); }
     function available(item) {
-      return item.availability === 'available' && typeof item.made_for_kids === 'boolean' && Date.parse(item.verification_expires_at) > Date.now();
+      return item.availability === 'available' && /^[A-Za-z0-9_-]{11}$/.test(item.video_ref || '');
     }
     function markActive() {
       card.querySelectorAll('.flh-video-sequence-item').forEach((button,index) => button.setAttribute('aria-current', index === activeIndex ? 'true' : 'false'));
