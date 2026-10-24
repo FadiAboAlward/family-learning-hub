@@ -51,5 +51,7 @@ assert.doesNotMatch(source,/publication\.candidate\b/, 'Do not show answer keys/
 assert.ok(!source.includes('console.log(')&&!source.includes('console.error('), 'Do not log private assessment data');
 assert.ok(!source.includes('service_role')&&!source.includes('flh_assessment_command('),'Do not use service credentials/SQL in frontend');
 assert.ok(!source.includes("call(LEARNING,'prepare_assessment_delivery'"),'Email actions are out of UI scope');
-assert.ok(index.includes('20261016-flh031'),'Frontend cache version must reflect new UI');
+const build=index.match(/<meta name="app-build" content="([^"]+)"\s*\/>/);
+assert.ok(build&&build[1].startsWith('20261024-'),'Frontend build marker must be updated for new UI');
+assert.ok(index.includes(`./parent-center-v3.js?v=${build[1]}`),'Parent UI JavaScript asset must use the current build marker');
 console.log('FLH-031 parent release UI: static + safe-link contract PASS (authenticated browser QA pending)');
