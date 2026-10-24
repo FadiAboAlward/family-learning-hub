@@ -2,3 +2,9 @@
 .flh-hint-list{margin:10px 0 0;padding-inline-start:1.35rem}.flh-hint-list li{margin:7px 0;line-height:1.65}.flh-hint-notice{margin:10px 0;padding:10px 12px;border-radius:12px;background:#f6f3f7;color:#5f5264;font-size:.9rem}.flh-hint-notice.error{background:#fff1f1;color:#8a3030}@media(max-width:640px){.flh-hint-list{padding-inline-start:1.15rem}.flh-hint-list li{margin:8px 0;line-height:1.7}}
 
 .flh-misconception-feedback{margin:10px 0;padding:12px 14px;border-radius:12px;background:#f7f7fb;border:1px solid #e3ddea;line-height:1.65}.flh-misconception-feedback>b{display:block;margin-bottom:6px}.flh-misconception-feedback>div{unicode-bidi:plaintext}
+
+/* FLH-038: keep the mobile Exam review button reachable; avoid the sticky footer covering it. */
+@media(max-width:640px){
+  .flh-exam-swipe-zone>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
+  .flh-exam-swipe-zone.flh-touch-quiz{padding-bottom:24px}
+}
