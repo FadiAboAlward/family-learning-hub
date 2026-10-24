@@ -148,6 +148,28 @@ await assertArabicUnit(page.locator('.exam-review').first(),'Learning completed 
 await page.evaluate(()=>window.FLH.startExamQuiz('qa-unit'));
 await page.locator('.exam-v3-answer').first().waitFor({state:'visible',timeout:5000});
 mark('exam-open',{learnWidth});
+
+const examFlag=page.locator('#examFlag');
+const examBottom=page.locator('.flh-exam-swipe-zone>.flh-sticky-action');
+const stickyMobile=await examBottom.evaluate(el=>getComputedStyle(el).position);
+if(stickyMobile!=='static')throw new Error('FLH-038: mobile Exam footer must not cover the review flag, got '+stickyMobile);
+await page.evaluate(()=>window.scrollTo(0,0));
+await examFlag.scrollIntoViewIfNeeded();
+const flagHit=await examFlag.evaluate(el=>{
+  const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
+  return {x,y,hit:hit===el||el.contains(hit),obstruction:hit?.id||hit?.className||'none',width:document.documentElement.scrollWidth};
+});
+if(!flagHit.hit||flagHit.width>390)throw new Error('FLH-038: review flag is blocked or mobile overflows: '+JSON.stringify(flagHit));
+await examFlag.click();
+await page.locator('#examFlag.flh-flag-on').waitFor({state:'visible',timeout:2000});
+await page.locator('#examFlag.flh-flag-on').click();
+await page.waitForFunction(()=>{const el=document.getElementById('examFlag');return el&&!el.classList.contains('flh-flag-on')&&!el.disabled},{timeout:2000});
+await page.setViewportSize({width:1280,height:900});
+if(await examBottom.evaluate(el=>getComputedStyle(el).position)!=='sticky')throw new Error('FLH-038: desktop sticky Exam toolbar unexpectedly changed');
+if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw new Error('FLH-038: desktop horizontal overflow');
+await page.setViewportSize({width:390,height:844});
+mark('exam-mobile-hit-test',{flagHit});
+
 await assertUnfinishedMath(page.locator('.question'),'(-7) - 19','Exam unanswered question');
 await assertStructuredMath(page.locator('.question'),'(-3)^2 + sqrt(16) = 13','Exam power and root',{powers:1,roots:1});
 await assertFractionOperands(page.locator('.question'),'Exam fraction operands');
