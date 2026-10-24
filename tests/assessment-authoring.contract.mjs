@@ -1,0 +1,165 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { spawn } from 'node:child_process';
+import { assessmentStagePayload } from '../supabase/functions/_shared/assessment-publication.mjs';
+import { validateAuthoringCandidate } from '../supabase/functions/_shared/assessment-authoring.mjs';
+
+// Existing disposable Core QA DB only. No hosted URL/key, learner attempt or provider call.
+const w='55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
+const ids=Object.fromEntries(['parent','teacher','curriculum','program','quiz','version','request','other'].map((k,i)=>[k,`03310000-0000-4000-8000-${String(i+1).padStart(12,'0')}`]));
+const json=v=>"'"+JSON.stringify(v).replaceAll("'","''")+"'::jsonb";
+function query(source) {
+ const p=spawn('docker',['exec','-i','supabase_db_family-learning-hub','psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres','-t','-A'],{stdio:['pipe','pipe','pipe']});
+ let out='',err='';p.stdout.on('data',c=>out+=c);p.stderr.on('data',c=>err+=c);
+ const done=new Promise((resolve,reject)=>{p.on('error',reject);p.on('close',code=>code===0?resolve(out.trim()):reject(new Error('Isolated authoring contract: '+err)));});p.stdin.end(source);return done;
+}
+// Exercise the real provider input shape and privileges in a rolled-back transaction.
+const tokenHook=fs.readFileSync('supabase/testing/assessment-mcp-token-hook.sql','utf8');
+await query(`begin; ${tokenHook}
+ do $$ declare
+  client text := 'd555d742-2195-4676-bf35-e3d09c25077a';
+  resource text := 'https://gzfbkudvvxthbhjsmwsc.supabase.co/functions/v1/assessment-mcp/mcp';
+  event jsonb; changed jsonb;
+ begin
+  event := jsonb_build_object('authentication_method','oauth_provider/authorization_code','claims',jsonb_build_object('client_id',client,'role','authenticated','aud','authenticated','scope','openid email offline_access'));
+  changed := public.flh_assessment_mcp_access_token_hook(event);
+  assert changed#>>'{claims,aud}'=resource, 'OAuth client must receive the exact MCP audience';
+  assert (changed#>'{claims}')-'aud'=(event#>'{claims}')-'aud', 'Other claims must remain unchanged';
+  assert public.flh_assessment_mcp_access_token_hook(jsonb_set(event,'{authentication_method}','"token_refresh"'))#>>'{claims,aud}'=resource, 'Refresh must preserve the resource audience';
+  event := jsonb_set(event,'{claims,client_id}','"03310000-0000-4000-8000-000000000002"');
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Other OAuth clients must remain unchanged';
+  event := jsonb_set(event,'{client_id}',to_jsonb(client));
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Top-level client must not override the actual claim';
+  event := jsonb_build_object('authentication_method','password','claims',jsonb_build_object('role','authenticated','aud','authenticated'));
+  assert public.flh_assessment_mcp_access_token_hook(event)=event, 'Ordinary sessions must remain unchanged';
+  event := jsonb_build_object('authentication_method','oauth_provider/authorization_code','claims',jsonb_build_object('client_id',client,'role','service_role','aud','authenticated','scope','openid email offline_access'));
+  begin
+   perform public.flh_assessment_mcp_access_token_hook(event);
+   raise exception 'Hook accepted a non-parent role';
+   exception when others then if sqlerrm<>'MCP_OAUTH_ROLE_INVALID' then raise;end if;
+  end;
+  assert not has_function_privilege('anon','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not has_function_privilege('authenticated','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not has_function_privilege('service_role','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert has_function_privilege('supabase_auth_admin','public.flh_assessment_mcp_access_token_hook(jsonb)','EXECUTE');
+  assert not (select prosecdef from pg_proc where oid='public.flh_assessment_mcp_access_token_hook(jsonb)'::regprocedure);
+ end $$; rollback;`);
+const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and is_active and metadata->>'is_test'='true';`);
+assert.match(learner,/^[a-f0-9-]{36}$/);
+const priorFlag=JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`));
+const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
+const report=await validateAuthoringCandidate(candidate);assert.equal(report.ok,true);
+const hash=report.candidate_sha256,target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
+const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:owner',warning_dispositions:report.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical fixture only.'}))};
+const staged=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review});
+const subject=Number(await query('select coalesce(max(id),0)+1 from public.subjects;'));
+const quiz={slug:'qa-assessment-authoring',title:'Synthetic direct authoring',subject_id:subject,curriculum_id:ids.curriculum};
+const payload={...staged,request_id:ids.request,quiz};
+const duplicateTarget={...target,quiz_id:'03310000-0000-4000-8000-000000000009',quiz_version_id:'03310000-0000-4000-8000-000000000010'};
+const duplicateRequest='03310000-0000-4000-8000-000000000011';
+const duplicatePayload={...await assessmentStagePayload(w,ids.parent,{target:duplicateTarget,candidate,semantic_review:{...semantic_review,...duplicateTarget}}),
+ request_id:duplicateRequest,quiz:{...quiz,slug:'qa-assessment-authoring-duplicate'}};
+const author=(action,p={request_id:ids.request},parent=ids.parent,workspace=w)=>`public.flh_assessment_authoring_command('${workspace}','${parent}','${action}',${json(p)})`;
+const publication=(action,p={quiz_version_id:ids.version,candidate_sha256:hash})=>`public.flh_assessment_command('${w}','${ids.parent}','${action}',${json(p)})`;
+const setup=`
+ insert into auth.users(id,email) values('${ids.parent}','qa-authoring-owner@example.invalid'),('${ids.teacher}','qa-authoring-teacher@example.invalid');
+ insert into public.workspace_members(workspace_id,user_id,role) values('${w}','${ids.parent}','owner'),('${w}','${ids.teacher}','teacher');
+ insert into public.curricula(id,code,name_ar) values('${ids.curriculum}','qa-assessment-authoring','Testing curriculum');
+ insert into public.subjects(id,code,name_ar) overriding system value values(${subject},'qa-assessment-authoring','Testing subject');
+ insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-assessment-authoring','Testing authoring','active','${ids.curriculum}',7);
+ insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');
+ ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',${subject},'${ids.curriculum}',7,'${code}','Synthetic concept');`).join('\n')}`;
+const fail=(sql,code)=>`begin perform ${sql};raise exception 'EXPECTED_FAILURE_MISSING';exception when raise_exception then if sqlerrm<>'${code}' then raise;end if;end;`;
+const malformed=structuredClone(staged);delete malformed.candidate.questions[25].options;
+const video=`jsonb_build_object('learner_id','${learner}','quiz_version_id','${ids.version}','program_id','${ids.program}','curriculum_id','${ids.curriculum}','grade_level',7,'subject_id',${subject},'concept_id',(select id from public.learning_concepts where workspace_id='${w}' and code='${candidate.questions[0].concept_code}'),'position',1,'video_ref','qaVideo0001','title','Synthetic provider receipt','language','tr','rationale','Isolated contract provider fixture only','embeddable',true,'made_for_kids',true,'verified_at',now(),'verification_expires_at',now()+interval '1 hour')`;
+await query(`begin; ${setup}
+ create function pg_temp.authoring_check(ok boolean) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'AUTHORING_ASSERTION_FAILED';end if;end$$;
+ do $test$ declare r jsonb; begin
+  perform pg_temp.authoring_check(not has_function_privilege('authenticated','public.flh_assessment_authoring_command(uuid,uuid,text,jsonb)','EXECUTE'));
+  perform pg_temp.authoring_check(not has_table_privilege('authenticated','private.assessment_authoring_requests','SELECT'));
+  ${fail(author('create',payload,ids.teacher),'ASSESSMENT_FORBIDDEN')}
+  ${fail(author('create',payload,ids.parent,ids.other),'ASSESSMENT_FORBIDDEN')}
+  ${fail(author('read'),'ASSESSMENT_TARGET_INVALID')}
+  ${fail(author('create',{...payload,quiz:{...quiz,curriculum_id:ids.other}}),'ASSESSMENT_CONTEXT_MISMATCH')}
+  ${fail(author('create',{...payload,semantic_review:{...staged.semantic_review,result:'FAIL'}}),'ASSESSMENT_AUTHORING_INPUT_INVALID')}
+  perform pg_temp.authoring_check(not exists(select 1 from public.quizzes where id='${ids.quiz}'));
+  r:=${author('create',payload)};perform pg_temp.authoring_check(r->>'state'='draft' and r->>'question_count'='0' and r->>'duplicate'='false');
+  ${[
+   ['public.quizzes',ids.quiz],['public.quiz_versions',ids.version],
+   ['public.learners',learner],['public.learning_programs',ids.program],
+   ['auth.users',ids.parent],['public.workspaces',w],
+  ].map(([table,id])=>`begin
+   delete from ${table} where id='${id}';
+   perform pg_temp.authoring_check(not exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}'));
+   raise exception 'AUTHORING_ERASURE_TEST_ROLLBACK';
+   exception when raise_exception then if sqlerrm<>'AUTHORING_ERASURE_TEST_ROLLBACK' then raise;end if;
+  end;
+  perform pg_temp.authoring_check(exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}'));`).join('\n')}
+  r:=${author('create',payload)};perform pg_temp.authoring_check(r->>'duplicate'='true');
+  ${fail(author('create',{...payload,quiz:{...quiz,title:'Changed retry'}}),'ASSESSMENT_RETRY_CONFLICT')}
+  ${fail(publication('stage',malformed),'ASSESSMENT_ACADEMIC_REJECTED')}
+  ${fail(publication('stage',{...staged,candidate_sha256:'0'.repeat(64),semantic_review:{...staged.semantic_review,candidate_sha256:'0'.repeat(64)}}),'ASSESSMENT_RETRY_CONFLICT')}
+  perform pg_temp.authoring_check(not exists(select 1 from public.quiz_questions where quiz_version_id='${ids.version}'));
+  r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='draft');
+  r:=${publication('stage',staged)};perform pg_temp.authoring_check(r->>'state'='staged');
+  ${[['workspace_id',ids.other],['quiz_version_id',ids.other],['quiz_id',ids.other],
+    ['learner_id',ids.other],['program_id',ids.other],['created_by',ids.teacher],['candidate_sha256','0'.repeat(64)]
+   ].map(([field,value])=>`begin
+    update public.assessment_publications set ${field}='${value}' where workspace_id='${w}' and quiz_version_id='${ids.version}';
+    raise exception 'EXPECTED_BINDING_FAILURE_MISSING';
+    exception when raise_exception then if sqlerrm<>'ASSESSMENT_RETRY_CONFLICT' then raise;end if;
+   end;`).join('\n')}
+  r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='staged' and r->>'question_count'='40' and not r ? 'candidate' and not r ? 'expected_graph');
+  r:=${publication('publish')};perform pg_temp.authoring_check(r->>'state'='held');
+  ${fail(publication('release'),'ASSESSMENT_VIDEO_GATE_FAILED')}
+  r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='held' and r->>'quiz_status'='draft' and r->>'learning_path' is null);
+  r:=public.flh_learning_video_attach('${w}','${ids.parent}',${video});perform pg_temp.authoring_check(r->>'ok'='true');
+  update public.workspace_settings set value='{"enabled":true,"test_only":true}' where workspace_id='${w}' and key='optional_learning_videos';
+  r:=${publication('release')};perform pg_temp.authoring_check(r->>'state'='released');
+  r:=${author('read')};perform pg_temp.authoring_check(r->>'state'='released' and r->>'quiz_status'='active' and r->>'version_state'='published' and r->>'video_count'='1' and r->>'learning_path' like '%learner=test');
+  perform pg_temp.authoring_check((select count(*)=1 from public.quiz_assignments where quiz_version_id='${ids.version}') and not exists(select 1 from public.quiz_attempts where quiz_version_id='${ids.version}'));
+ end $test$; rollback;`);
+assert.equal(await query(`select count(*) from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${ids.request}';`),'0');
+let owned=false,failure;
+try {
+ await query(`do $$ begin if exists(select 1 from auth.users where id in('${ids.parent}','${ids.teacher}'))
+  or exists(select 1 from public.quizzes where id='${ids.quiz}' or slug='qa-assessment-authoring')
+  or exists(select 1 from public.learning_programs where id='${ids.program}' or slug='qa-assessment-authoring')
+  or exists(select 1 from public.curricula where id='${ids.curriculum}' or code='qa-assessment-authoring')
+  or exists(select 1 from public.subjects where id=${subject} or code='qa-assessment-authoring')
+  or exists(select 1 from public.quizzes where id='${duplicateTarget.quiz_id}' or slug='qa-assessment-authoring-duplicate')
+  or exists(select 1 from public.quiz_versions where id='${duplicateTarget.quiz_version_id}')
+  or exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${duplicateRequest}')
+  then raise exception 'AUTHORING_NAMESPACE_NOT_EMPTY';end if;end$$;`);
+ owned=true;
+ await query(`begin; ${setup} commit;`);
+ const results=await Promise.all(Array.from({length:3},()=>query(`set role service_role;select ${author('create',payload)};`)));
+ assert.equal(results.filter(x=>JSON.parse(x).duplicate===true).length,2);
+ assert.equal(await query(`select count(*) from public.quiz_versions where quiz_id='${ids.quiz}';`),'1');
+ await assert.rejects(()=>query(`set role service_role;select ${author('create',{...payload,request_id:ids.other})};`),/ASSESSMENT_RETRY_CONFLICT/);
+ // All native identifiers and the unique slug are fresh: only exact-candidate
+ // deduplication can reject this request. The entire draft must roll back.
+ await assert.rejects(()=>query(`set role service_role;select ${author('create',duplicatePayload)};`),/ASSESSMENT_RETRY_CONFLICT/);
+ assert.equal(await query(`select count(*) from public.quizzes where id='${duplicateTarget.quiz_id}';`),'0');
+ assert.equal(await query(`select count(*) from public.quiz_versions where id='${duplicateTarget.quiz_version_id}';`),'0');
+ await query(`set role service_role;select ${publication('stage',staged)};`);
+ assert.equal(JSON.parse(await query(`set role service_role;select ${author('read')};`)).question_count,40);
+} catch(error) { failure=error;throw error; }
+finally {
+ try { if(owned) await query(`begin;
+ do $$ begin if exists(select 1 from auth.users where id='${ids.parent}' and email<>'qa-authoring-owner@example.invalid') then raise exception 'AUTHORING_CLEANUP_OWNER_MISMATCH';end if;end$$;
+ delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id in('${ids.request}','${duplicateRequest}') and created_by='${ids.parent}';
+ delete from public.assessment_publications where workspace_id='${w}' and quiz_version_id='${ids.version}' and created_by='${ids.parent}';
+ delete from public.quizzes where workspace_id='${w}' and ((id='${ids.quiz}' and slug='qa-assessment-authoring') or (id='${duplicateTarget.quiz_id}' and slug='qa-assessment-authoring-duplicate'));
+ delete from public.learner_program_enrollments where workspace_id='${w}' and learner_id='${learner}' and program_id='${ids.program}';
+ delete from public.learning_programs where workspace_id='${w}' and id='${ids.program}';
+ delete from public.learning_concepts where workspace_id='${w}' and subject_id=${subject};
+ delete from public.subjects where id=${subject} and code='qa-assessment-authoring';
+ delete from public.curricula where id='${ids.curriculum}' and code='qa-assessment-authoring';
+ delete from public.workspace_members where workspace_id='${w}' and user_id in('${ids.parent}','${ids.teacher}');
+ delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid'); commit;`); }
+ catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_DB_CLEANUP_FAILED'); }
+}
+assert.equal(await query(`select count(*) from public.quizzes where id='${ids.quiz}';`),'0','owned committed cleanup');
+assert.deepEqual(JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)),priorFlag);
+console.log('Assessment authoring DB grants/tenant/review/input/duplicate/partial rollback/full release/concurrency/owned cleanup: PASS (isolated synthetic provider receipt)');

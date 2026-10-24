@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { handleQaParentBulkConfirmation, assertQaDeviceLayout, assertQaExamCompletion, assertQaParent, assertQaResume, qaEvidenceDirectory } from './authenticated-e2e.mjs';
-import { command, denyContainerProduction, qaOidcOriginEvidence, teardownLocal } from './qa-authenticated-local.mjs';
+import { command, denyContainerProduction, qaOidcOriginEvidence, stopProcess, teardownLocal } from './qa-authenticated-local.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeAuthenticatedFailure, safeQaFailure, safeQaProcessDiagnostic, AUTHENTICATED_QA_STAGES } from './qa-runner-local.mjs';
 
 assert.ok(AUTHENTICATED_QA_STAGES.includes('BROWSER_CONTEXT'), 'Context/browser page construction must have its own stage');
@@ -299,6 +299,28 @@ await assert.rejects(
   'Missing parent bulk dialog must fail with a bounded, recognizable error',
 );
 assert.equal(missingHandlerRemoved, true, 'Timed-out dialog listener must be removed');
+
+// No process is launched: model graceful CLI cleanup, disappearance and fail-closed ownership.
+const absentProcess = () => Object.assign(new Error('synthetic absent process'), {code:'ENOENT'});
+const expectedProcess = ['functions','serve','/synthetic-owned'];
+const ownedCommand = ['supabase',...expectedProcess].join('\0');
+let stopReads=0, stopWaits=0, stopSignals=0, stopClock=0;
+const stopIo = {
+  readFile:async()=>{if(++stopReads===4)throw absentProcess();return ownedCommand;},
+  kill:(pid,signal)=>{assert.equal(pid,333);assert.equal(signal,'SIGTERM');stopSignals++;},
+  pause:async ms=>{stopWaits++;stopClock+=ms;},now:()=>stopClock,
+};
+await stopProcess(333,expectedProcess,stopIo);
+assert.equal(stopSignals,1);assert.equal(stopWaits,2,'teardown must wait for owned process cleanup, not merely signal it');
+await stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>{throw absentProcess();},kill:()=>assert.fail('absent process must not be signalled')});
+await assert.rejects(()=>stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>'/foreign',kill:()=>assert.fail('foreign process must not be signalled')}),/PROCESS_NOT_OWNED/);
+let changedReads=0;
+await assert.rejects(()=>stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>++changedReads===1?ownedCommand:'/foreign'}),/PROCESS_NOT_OWNED/);
+await stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>ownedCommand,kill:()=>{throw Object.assign(new Error('already exited'),{code:'ESRCH'});}});
+await assert.rejects(()=>stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>ownedCommand,kill:()=>{throw Object.assign(new Error('denied'),{code:'EPERM'});}}),/denied/);
+stopClock=0;stopWaits=0;
+await assert.rejects(()=>stopProcess(333,expectedProcess,{...stopIo,readFile:async()=>ownedCommand}),/PROCESS_STOP_TIMEOUT/);
+assert.equal(stopClock,10000,'a hung child must fail after a bounded wait without force killing');
 
 // Owned teardown retries preserve foreign fixtures and fail honestly if resources remain.
 const originalTemp = process.env.RUNNER_TEMP;

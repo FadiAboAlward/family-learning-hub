@@ -59,7 +59,7 @@ assert.match(answerFunction, /throw new Error\("ANSWER_SAVE_FAILED"\)/, 'RPC fai
 const configuredFunctions = [...config.matchAll(/^\[functions\.([^\]]+)\]\s*\r?\nverify_jwt\s*=\s*false\s*$/gm)]
   .map((match) => match[1])
   .sort();
-assert.deepEqual(configuredFunctions, ['exam-v2-api', 'family-api', 'learning-api', 'student-library-api']);
+assert.deepEqual(configuredFunctions, ['assessment-mcp', 'exam-v2-api', 'family-api', 'learning-api', 'student-library-api']);
 
 assert.match(rollbackDoc, /new corrective migration that restores the previous/i);
 assert.match(rollbackDoc, /do not rewrite or delete either historical\s+migration/i);

@@ -49,6 +49,7 @@ jobs:
           find supabase/functions/exam-v2-api -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           find supabase/functions/_shared -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           npx --yes esbuild@0.25.9 supabase/functions/learning-api/index.ts --format=esm --platform=neutral --outfile=/tmp/learning-api-check.js
+          npx --yes esbuild@0.25.9 supabase/functions/assessment-mcp/index.ts --format=esm --platform=neutral --outfile=/tmp/assessment-mcp-check.js
           npx --yes esbuild@0.25.9 supabase/functions/student-library-api/index.ts --format=esm --platform=neutral --outfile=/tmp/student-library-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/family-api/index.ts --format=esm --platform=neutral --outfile=/tmp/family-api-check.js
           npx --yes esbuild@0.25.9 supabase/functions/activity-api/index.ts --format=esm --platform=neutral --outfile=/tmp/activity-api-check.js
@@ -57,6 +58,8 @@ jobs:
           npx --yes esbuild@0.25.9 supabase/functions/qa-auth/index.ts --format=esm --platform=neutral --outfile=/tmp/qa-auth-check.js
       - name: Static product QA
         run: node tests/static-qa.mjs
+      - name: FLH-037 PostHog telemetry privacy and event tests
+        run: node tests/posthog-telemetry.unit.mjs
       - name: Academic content quality guard
         run: node tests/academic-content-quality.mjs
       - name: Official support workbook content guard
@@ -69,6 +72,12 @@ jobs:
         run: node tests/content-direction.mjs
       - name: Exam API unit tests
         run: node tests/exam-v2-api.mjs
+      - name: Install pinned MCP transport dependencies
+        # Locked official MCP SDK is needed by the transport/authorization contract.
+        # No install hooks and no credentials are used.
+        # Installation has its own unconditional step before the discovered suite.
+        shell: bash
+        run: npm ci --prefix supabase/functions/assessment-mcp --ignore-scripts --no-audit --no-fund
       - name: Convention-based unit test suite
         shell: bash
         run: |
@@ -136,6 +145,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify assessment transactional staging and held publication
         run: node tests/assessment-publication.contract.mjs
+      - name: Verify direct assessment authoring transaction and concurrency
+        run: node tests/assessment-authoring.contract.mjs
       - name: Verify support-workbook paper ingestion
         run: npx --yes supabase@2.117.0 db query --local --file tests/support-workbook-paper-ingestion.contract.sql
       - name: Verify support paper/digital Learning mutual exclusion
@@ -202,6 +213,8 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/qa-isolation-browser.mjs
+      - name: Render cloud consent artifact with synthetic Auth (desktop and mobile)
+        run: node tests/assessment-consent-browser.mjs
       - name: Run mobile browser smoke test
         env:
           APP_URL: http://127.0.0.1:4173/
@@ -226,7 +239,11 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/optional-learning-video-browser.mjs
-      - name: Capture Playwright screenshot evidence
+      - name: Verify student dashboard, library and attempt-history preservation
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/learner-journey-browser.mjs
+      - name: Capture Learning and Exam screenshot evidence
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/screenshot-evidence.mjs

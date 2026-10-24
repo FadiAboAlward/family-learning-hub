@@ -71,7 +71,7 @@ for (const untouchedAction of ['saveDraft', 'requestHint', 'finishQuiz']) {
 const configuredFunctions = [...config.matchAll(/^\[functions\.([^\]]+)\]\s*\r?\nverify_jwt\s*=\s*false\s*$/gm)]
   .map((match) => match[1])
   .sort();
-assert.deepEqual(configuredFunctions, ['exam-v2-api', 'family-api', 'learning-api', 'student-library-api']);
+assert.deepEqual(configuredFunctions, ['assessment-mcp', 'exam-v2-api', 'family-api', 'learning-api', 'student-library-api']);
 
 assert.match(rollbackDoc, /Production baseline remains recorded as roughly 14 Edge-to-DB operations/i);
 assert.match(rollbackDoc, /redeploy\s+the previous `learning-api` version/i);

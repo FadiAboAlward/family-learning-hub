@@ -2,6 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
 import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport } from "../_shared/optional-learning-videos.mjs";
 import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
+import { AUTHORING_ACTIONS, assessmentAuthoringCommand } from "../_shared/assessment-authoring.mjs";
+import { assessmentParent } from "../_shared/assessment-parent-auth.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -37,13 +39,7 @@ async function previewVideos(learnerId:string,slug:string,trace:any){
 }
 
 async function videoAuthor(req:Request){
-  const auth=req.headers.get('authorization')||'';
-  if(!auth.startsWith('Bearer '))throw new Error('AUTH_REQUIRED');
-  const{data,error}=await admin.auth.getUser(auth.slice(7).trim());
-  if(error||!data.user)throw new Error('INVALID_PARENT_SESSION');
-  const{data:membership}=await admin.from('workspace_members').select('role').eq('workspace_id',WORKSPACE_ID).eq('user_id',data.user.id).maybeSingle();
-  if(!membership||!['owner','admin'].includes(membership.role))throw new Error('VIDEO_ATTACHMENT_FORBIDDEN');
-  return data.user.id;
+  return assessmentParent(admin,WORKSPACE_ID,req);
 }
 
 async function activeLearningQuestion(learnerId:string,attemptId:string,questionId:string,trace:any){const{data:a}=await trace.measure("question.attempt",{dbOperations:1},()=>admin.from("quiz_attempts").select("id,quiz_version_id,status,delivery_mode").eq("workspace_id",WORKSPACE_ID).eq("id",attemptId).eq("learner_id",learnerId).maybeSingle());if(!a||a.status!=="in_progress"||a.delivery_mode!=="learning")throw new Error("ATTEMPT_NOT_ACTIVE");const{data:qrow}=await trace.measure("question.queue",{dbOperations:1},()=>admin.from("quiz_attempt_question_queue").select("id,sequence_no,question_id,source_role,concept_id,status,draft_option_position,hint_level_requested,interaction_metadata").eq("workspace_id",WORKSPACE_ID).eq("quiz_attempt_id",attemptId).eq("question_id",questionId).maybeSingle());if(!qrow||qrow.status!=="active")throw new Error("QUESTION_NOT_ACTIVE");return{attempt:a,queue:qrow};}
@@ -113,7 +109,7 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
-    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS]);
+    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
     const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
@@ -121,7 +117,7 @@ Deno.serve(async(req:Request)=>{
     if(parentActions.has(action)){
       const parentId=await trace.measure("authentication",{},()=>videoAuthor(req));
       const providerOptions={apiKey:Deno.env.get("YOUTUBE_API_KEY")};
-      output=ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
+      output=AUTHORING_ACTIONS.includes(action)?await assessmentAuthoringCommand(admin,WORKSPACE_ID,parentId,b,trace):ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);

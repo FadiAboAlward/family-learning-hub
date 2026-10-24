@@ -550,12 +550,35 @@ async function priorInteractionResume(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
+// FLH-036: expired/pruned metadata never hides parent-approved YouTube references.
+async function persistentVideoWithoutProviderCache(browser, device) {
+  for (const scenario of [
+    {name:'status-expired',video:videoFixture({verification_expires_at:'2000-01-01T00:00:00Z',learning_outcomes:['Compare equal parts']})},
+    {name:'status-pruned',video:videoFixture({made_for_kids:null,verification_expires_at:null,learning_outcomes:['Compare equal parts']})},
+  ]) {
+    const test=await setup(browser,device,scenario);
+    const {page,fixture}=test;
+    try {
+      await start(page);
+      await page.locator('#flhOptionalVideo').waitFor({state:'visible'});
+      await page.waitForFunction(()=>window.__qaVideoProvider.instances.length===1);
+      assert.equal(await page.locator('#flhVideoFrame').count(),1,'video embed exists even when provider metadata is stale/pruned');
+      assert.equal(await page.locator('#flhVideoFallback').isHidden(),true,'no fake expiry message on valid video reference');
+      assert.equal(await page.locator('.flh-video-outcomes').count(),1,'authored learning outcomes remain visible');
+      assert.equal(fixture.count('refresh_optional_video'),0,'opening a video makes no provider revalidation calls');
+      assert.equal(fixture.count('start_quiz'),1,'normal learning start preserves the assigned video');
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');
+      await page.locator('#flhVideoStart').click();
+      await questionReady(page);
+      await test.verifyAndClose(`${device.name} persistent video ${scenario.name}`);
+    }catch(error){await test.context.close();throw error;}
+  }
+}
+
 async function failureScenarios(browser, device) {
   for (const scenario of [
     { name: 'no-video', video: null },
     { name: 'status-unavailable', video: videoFixture({ availability: 'unavailable', learning_outcomes: ['Compare equal parts'] }) },
-    { name: 'status-expired', video: videoFixture({ verification_expires_at: '2000-01-01T00:00:00Z', learning_outcomes: ['Compare equal parts'] }) },
-    { name: 'made-for-kids-unknown', video: videoFixture({ made_for_kids: null }) },
     { name: 'provider-error', providerMode: 'error' },
     { name: 'synchronous-provider-error', providerMode: 'sync-error' },
     { name: 'network-error', providerMode: 'network-error' },
@@ -578,7 +601,7 @@ async function failureScenarios(browser, device) {
           assert.equal(await page.evaluate(() => window.__qaVideoProvider.destroyed), 1, 'constructor failure disposes the returned provider instance');
           assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'synchronous failure removes playback frame');
         }
-        if (['status-unavailable', 'status-expired', 'made-for-kids-unknown'].includes(scenario.name)) {
+        if (['status-unavailable'].includes(scenario.name)) {
           assert.equal(await page.locator('.flh-video-outcomes').count(),0,'Outcomes are not shown for a video whose required provider status is unavailable');
           assert.equal(await page.locator('#flhVideoFrame').count(), 0, 'invalid required status cannot start an embed');
           assert.equal(test.providerRequests.length, 0, 'invalid required status cannot initiate provider requests');
@@ -676,6 +699,7 @@ try {
     await reportPendingDoesNotGate(browser, device);
     await priorInteractionResume(browser, device);
     await directPreviewDeepLink(browser, device);
+    await persistentVideoWithoutProviderCache(browser, device);
     await failureScenarios(browser, device);
     await examIndependence(browser, device);
     console.log(`Optional-video real-runtime regression PASS (${device.name}; synthetic Testing data; no live provider/device claim).`);

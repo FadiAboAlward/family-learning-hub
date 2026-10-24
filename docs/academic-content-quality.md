@@ -2,9 +2,11 @@
 
 ## Purpose
 
-This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016 and the prospective assessment-design rules in [FLH-FEAT-2026-023 v1.0](https://docs.google.com/document/d/17kG1T74t5-K_uOYwN7sZWjwuzdj5GUq1F1oF0BZSOh8/edit), Drive revision `3`. It complements docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the canonical Drive Adaptive Assessment, Paper & Follow-up SOP v1.13.
+This document is the repository contract for academically validating a newly authored Family Learning Hub assessment package before it is published. It implements FLH-FEAT-2026-007, including wording-clarity hardening from FLH-FEAT-2026-016 and the prospective assessment-design rules in [FLH-FEAT-2026-023 v1.0](https://docs.google.com/document/d/17kG1T74t5-K_uOYwN7sZWjwuzdj5GUq1F1oF0BZSOh8/edit), Drive revision `3`. It complements docs/adaptive-learning.md, docs/pedagogy-engine.md, docs/architecture.md, and the [current Adaptive Assessment, Paper & Follow-up SOP v1.20](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit).
 
 The gate is an authoring/QA control. It does not add a live AI dependency to a learner attempt.
+
+Operational boundary: SOP v1.20 §§30–34 additionally requires the package Evidence Manifest, observable learning-outcome evidence, page-to-skill completeness, pre-draft registered concept identifiers and persistent instructional-video association. These are authoring/release evidence obligations; a deterministic validator PASS alone does not prove their academic or production correctness.
 
 ## Authoritative input order
 
@@ -191,7 +193,7 @@ Before an agent creates or updates any migration, seed/import payload, backend r
 4. review and disposition warnings before continuing;
 5. record the package-specific validation result in the PR/Issue handoff or equivalent durable delivery evidence.
 
-Follow SOP v1.13's bounded authoring procedure: initial exact-candidate validation and one package-level semantic review, followed by at most two targeted repair/revalidation rounds if needed. Repair the failing item or smallest dependent set and revalidate the whole changed candidate. If a blocker remains, record `QUALITY_BLOCKED` or `SOURCE_REMEDIATION_REQUIRED`; do not publish. Record candidate identity, corrected requirements/items, warning dispositions and semantic review result. This is an authoring procedure, not a new runtime retry algorithm. A deterministic PASS alone is never overall academic PASS while semantic or visual evidence is missing.
+Follow the [current Adaptive Assessment SOP v1.20](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit) §27 bounded authoring procedure: initial exact-candidate validation and one package-level semantic review, followed by at most two targeted repair/revalidation rounds if needed. Repair the failing item or smallest dependent set and revalidate the whole changed candidate. If a blocker remains, record `QUALITY_BLOCKED` or `SOURCE_REMEDIATION_REQUIRED`; do not publish. Record candidate identity, corrected requirements/items, warning dispositions and semantic review result. This is an authoring procedure, not a new runtime retry algorithm. A deterministic PASS alone is never overall academic PASS while semantic or visual evidence is missing.
 
 Do not place real learner attempts into repository regression fixtures merely to satisfy this boundary. The exact package may be validated from a temporary working file; synthetic Testing-learner fixtures remain the committed regression evidence.
 

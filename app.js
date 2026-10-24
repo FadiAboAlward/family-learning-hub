@@ -40,7 +40,7 @@ function landing(){
 async function studentRoute(){
   if(state.learnerSession){
     try{ const p=await api('student_profile',{},state.learnerSession); state.learnerProfile=p; return renderStudentHome(p); }
-    catch{ localStorage.removeItem('learner_session');sessionStorage.removeItem('learner_session');state.learnerSession=''; }
+    catch{ localStorage.removeItem('learner_session');sessionStorage.removeItem('learner_session');state.learnerSession=''; globalThis.FLHTelemetry?.resetLearner?.(); }
   }
   renderStudentLogin();
 }
@@ -51,10 +51,10 @@ function renderStudentLogin(){
 }
 function showPin(slug,name){
   state.selectedLearner=slug;
-  pinArea.innerHTML=`<div class="field"><label>رمز ${esc(name)}</label><input id="studentPin" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="8 أرقام" /></div><label class="muted"><input type="checkbox" id="rememberLearner" checked /> تذكرني على هذا الجهاز</label><div class="actions"><button class="btn btn-primary" id="studentLoginBtn">دخول</button></div><div id="studentMsg"></div>`;
+  pinArea.innerHTML=`<div class="field"><label>رمز ${esc(name)}</label><input id="studentPin" type="password" class="ph-no-capture" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="8 أرقام" /></div><label class="muted"><input type="checkbox" id="rememberLearner" checked /> تذكرني على هذا الجهاز</label><div class="actions"><button class="btn btn-primary" id="studentLoginBtn">دخول</button></div><div id="studentMsg"></div>`;
   studentLoginBtn.onclick=async()=>{
     studentLoginBtn.disabled=true; studentMsg.innerHTML='';
-    try{const d=await api('student_login',{slug,pin:studentPin.value}); state.learnerSession=d.session; state.learnerProfile=d.profile; const store=rememberLearner.checked?localStorage:sessionStorage; store.setItem('learner_session',d.session); renderStudentHome(d.profile)}
+    try{const d=await api('student_login',{slug,pin:studentPin.value}); state.learnerSession=d.session; state.learnerProfile=d.profile; globalThis.FLHTelemetry?.identifyLearner?.(d.profile?.learner); const store=rememberLearner.checked?localStorage:sessionStorage; store.setItem('learner_session',d.session); renderStudentHome(d.profile)}
     catch(e){studentMsg.innerHTML=`<div class="error">${errorText(e.message)}</div>`;studentLoginBtn.disabled=false}
   };
 }
@@ -63,11 +63,12 @@ function levelProgress(g){
   const span=Math.max(1,Number(next.min_xp)-Number(cur.min_xp)); return Math.max(0,Math.min(100,Math.round((Number(g.xp)-Number(cur.min_xp))/span*100)));
 }
 function renderStudentHome(p){
+  globalThis.FLHTelemetry?.identifyLearner?.(p?.learner);
   const l=p.learner,g=p.gamification,level=g.current_level_info||{icon:'🌱',name:'مستكشف'};
   const badges=(g.badges||[]).length?(g.badges||[]).map(x=>`<div class="badge"><div class="icon">${esc(x.badge?.icon||'🏅')}</div><b>${esc(x.badge?.title||'وسام')}</b><div class="muted">${esc(x.award_reason||'')}</div></div>`).join(''):`<div class="empty">أول وسام لسه بالطريق 🏅</div>`;
   const rewards='<a class="btn btn-soft fr-student-link" href="#student-rewards">🎁 جوائزي وعاداتي — نقاطي ومصدرها وطلبات الجوائز</a>';
   shell(`أهلًا ${esc(l.display_name)} 👋`,`${level.icon||'🌱'} ${esc(level.name||'مستكشف')} — كل خطوة صغيرة محسوبة.`,`<section class="panel"><div class="topline"><b>تقدّمك</b><button class="btn btn-soft" id="studentLogout">تبديل الطالب</button></div><div class="stats"><div class="stat">⭐ XP<b>${g.xp||0}</b></div><div class="stat">🪙 نقاط<b>${g.reward_points||0}</b></div><div class="stat">🔥 سلسلة<b>${g.current_streak||0}</b></div><div class="stat">🏅 أوسمة<b>${(g.badges||[]).length}</b></div></div><div class="section-title">للمستوى التالي</div><div class="progress"><span style="width:${levelProgress(g)}%"></span></div><div class="muted">${g.next_level_info?`باقي ${g.xp_to_next} XP إلى ${esc(g.next_level_info.name)}`:'وصلت أعلى مستوى الحالي 🎉'}</div></section><section class="panel"><div class="section-title">📘 كويزاتك</div><button class="quiz-card" id="fractionQuiz"><b>الكسور (1)</b><div class="muted">مقارنة وترتيب الكسور — الصفحات 55–57</div></button><div class="section-title">🏅 أوسمتك</div><div class="badge-row">${badges}</div><div class="section-title">🎁 المكافآت</div><div class="choice-grid">${rewards}</div></section>`);
-  studentLogout.onclick=()=>{localStorage.removeItem('learner_session');sessionStorage.removeItem('learner_session');state.learnerSession='';renderStudentLogin()};
+  studentLogout.onclick=()=>{localStorage.removeItem('learner_session');sessionStorage.removeItem('learner_session');state.learnerSession='';globalThis.FLHTelemetry?.resetLearner?.();renderStudentLogin()};
   fractionQuiz.onclick=()=>startQuiz();
 }
 
@@ -155,5 +156,5 @@ async function renderParentDashboard(){
   parentLogout.onclick=()=>{localStorage.removeItem('parent_session');state.parentSession=null;renderParentLogin('login')};
 }
 
-async function route(){const h=location.hash.replace('#','');if(h==='student')return studentRoute();if(h==='parents')return parentRoute();landing()}
+async function route(){const h=location.hash.replace('#','');if(h==='student')return studentRoute();if(h==='parents'){globalThis.FLHTelemetry?.resetLearner?.();return parentRoute();}landing()}
 window.addEventListener('hashchange',route);route();
