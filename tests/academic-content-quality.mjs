@@ -34,7 +34,7 @@ englishHelp.blueprint.forEach((row, i) => {
 });
 englishHelp.blueprint[0].misconception_target = 'explain-versus-perform';
 const learningEnglish = englishHelp.questions[0];
-learningEnglish.prompt = 'The headmaster\'s assistant explains school rules to visitors. What does the verb 'explains' tell us?";
+learningEnglish.prompt = "The headmaster's assistant explains school rules to visitors. What does the verb 'explains' tell us?";
 learningEnglish.prompt_language = 'en';
 learningEnglish.source_ref = englishHelp.blueprint[0].source_ref;
 learningEnglish.concept_code = englishHelp.blueprint[0].concept_code;
