@@ -63,6 +63,9 @@ const arabicWordCount = value => lexicalWords(value).filter(w => /[ء-ي]/u.test
 const genericInstructionLine = value => /(?:find the important clue|read it twice|decide what information the question needs|say the idea in your own words|do not select an option|اقرأ السؤال مرة ثانية|اقرئي السؤال مرة ثانية|أعد قراءة السؤال|أعيدي قراءة السؤال|قارن الخيارات|قارني الخيارات|لا تختَر مباشرة|لا تختاري مباشرة)/iu.test(value);
 const genericHintOnly = lines => lines.length === 3 && lines.every(genericInstructionLine)
   && !/(?:تعني|معناها|يعني|مثال|قاعدة|القاعدة|نستخدم|بمعنى|means|for example)/iu.test(lines.join(' '));
+// Reject only tautological feedback. Semantic depth still requires independent review.
+const genericExplanationOnly = value => /(?:^|[.!؟]\s*)(?:الجواب|الإجابة|الإجابه)\s+(?:صحيح(?:ة)?|خاطئ(?:ة)?)\s+(?:لأن|لأنها|لأنه)\s+(?:(?:هو|هي)\s+)?(?:صحيح(?:ة)?|خاطئ(?:ة)?)(?:[.!؟]|$)/iu.test(text(value))
+  || /^\s*(?:the\s+)?answer\s+is\s+(?:correct|wrong)\s+because\s+(?:it\s+is\s+)?(?:correct|wrong)[.!]?\s*$/iu.test(text(value));
 const caseFold = value => value
   .toLocaleLowerCase('und')
   .normalize('NFD')
@@ -773,6 +776,9 @@ export function validateAcademicPackage(pkg) {
     const requiresArabicSupport = englishSubject(ctx?.subject);
     if (requiresArabicSupport) {
       for (const key of ['explanation', 'correct_explanation', 'final_incorrect_explanation', 'feedback']) {
+        if (typeof q?.[key] === 'string' && genericExplanationOnly(q[key])) {
+          issue(errors, 'EXPLANATION_TAUTOLOGY', p + '.' + key, 'Explanations must teach a reason, not repeat that an answer is right or wrong.');
+        }
         if (typeof q?.[key] === 'string' && text(q[key]) && arabicWordCount(q[key]) < 4) {
           issue(errors, 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED', p + '.' + key,
             'English-subject explanations and educational feedback must teach in accessible Arabic, preserving English target terms.');
