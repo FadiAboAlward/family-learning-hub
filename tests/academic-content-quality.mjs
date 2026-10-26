@@ -31,7 +31,7 @@ englishOnlyHelp.questions[0].hints[0].content = [
   '• Find the important clue in the situation. Read it twice before looking at any answer choice.',
   '• Decide what information the question needs: someone, somewhere, an activity, or a school instruction.',
   '• Say the idea in your own words first. Do not select an option only because its English looks familiar.'
-].join('\\n');
+].join('\n');
 const englishOnlyErrors = validateAcademicPackage(englishOnlyHelp).errors;
 assert.ok(englishOnlyErrors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'), 'English-only help is inaccessible to an Arabic-first English learner');
 assert.ok(englishOnlyErrors.some(e => e.code === 'HINT_GENERIC_INSTRUCTION_ONLY'), 'Aya screenshot-style generic instructions must not count as teaching');
@@ -42,7 +42,7 @@ const englishOnlyFinalIncorrect = structuredClone(englishHelp);
 englishOnlyFinalIncorrect.questions[0].final_incorrect_explanation = 'Try reading the question again and thinking about the correct option.';
 assert.ok(validateAcademicPackage(englishOnlyFinalIncorrect).errors.some(e => e.code === 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED'));
 const weakArabicBullet = structuredClone(englishHelp);
-weakArabicBullet.questions[0].hints[0].content = '• نعم okay.\\n' + englishHelp.questions[0].hints[0].content.split('\\n').slice(1).join('\\n');
+weakArabicBullet.questions[0].hints[0].content = '• نعم okay.\n' + englishHelp.questions[0].hints[0].content.split('\n').slice(1).join('\n');
 assert.ok(validateAcademicPackage(weakArabicBullet).errors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'));
 // Arabic/Turkish teaching remains free to use its established source vocabulary.
 assert.equal(validateAcademicPackage(read('valid-package.json')).ok, true);
