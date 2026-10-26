@@ -41,37 +41,37 @@ learningEnglish.concept_code = englishHelp.blueprint[0].concept_code;
 learningEnglish.decomposable = false;
 learningEnglish.option_count_justification = 'One synthetic five-option English comprehension case tests distinct roles and the help-language gate.';
 learningEnglish.options = [
-  { position: 1, content: 'The assistant creates a new weekly timetable.', is_correct: false, distractor_rationale: 'Confuses clarifying an existing rule with scheduling.' },
-  { position: 2, content: 'The assistant helps people understand the rules.', is_correct: true },
-  { position: 3, content: 'The assistant checks whether students are absent.', is_correct: false, misconception_code: 'explain-versus-perform', distractor_rationale: 'Mistakes explaining a policy for tracking attendance.' },
-  { position: 4, content: 'The assistant delivers the rules to a printing room.', is_correct: false, distractor_rationale: 'Mistakes oral explanation for reproduction of documents.' },
-  { position: 5, content: 'The assistant changes all classroom furniture.', is_correct: false, distractor_rationale: 'Substitutes a physical school task for communicating meaning.' }
+  { position: 1, content: 'The assistant tells visitors they must leave at once.', is_correct: false, distractor_rationale: 'Confuses explaining rules with imposing an unrelated instruction.' },
+  { position: 2, content: 'The assistant makes the rules clear to visitors.', is_correct: true },
+  { position: 3, content: 'The assistant checks whether visitors follow the rules.', is_correct: false, misconception_code: 'explain-versus-perform', distractor_rationale: 'Confuses clarifying rules with policing compliance.' },
+  { position: 4, content: 'The assistant writes a new set of school rules.', is_correct: false, distractor_rationale: 'Confuses clarifying the established rules with authoring them.' },
+  { position: 5, content: 'The assistant asks visitors to repeat the rules.', is_correct: false, distractor_rationale: 'Confuses explaining with testing recall.' }
 ];
 const schoolHints = [
   [
-    '• ابحث عن الفعل الإنجليزي الذي يصف عمل المساعد في الجملة، فالسؤال يريد فهم معنى فعل وليس تحديد مكان الشخص في المدرسة.',
-    '• انتبه إلى كلمة explains واترك أسماء الأشخاص مؤقتًا؛ حاول معرفة هل الفعل يتحدث عن كلام وتوضيح أم عن نشاط بدني.',
-    '• أعد قراءة سياق school rules؛ وهي قواعد المدرسة، وفكر لماذا قد يحتاج الزائر إلى سماع كلام من شخص يعرف هذه القواعد.'
+    '• في هذا السؤال المطلوب فهم وظيفة الفعل explains ضمن حديث عن قواعد المدرسة، وليس حفظ اسم الشخص الذي يؤدي الوظيفة.',
+    '• لاحظ أن rules تعني القواعد، وأن الاختيارات كلها تتعلق بطريقة تعامل المساعد مع القواعد؛ ابحث عن الفرق بين تلك الطرق.',
+    '• قبل الاختيار فكّر هل فعل المساعد يطلب من الزائر تنفيذ أمر أم يصف طريقة جعل المعلومات واضحة، دون تحديد أي جملة صحيحة الآن.'
   ],
   [
-    '• الفعل الإنجليزي explain يرتبط بفكرة الشرح والتوضيح باللغة العربية، وليس بمجرد صنع شيء جديد أو نقله من مكان إلى آخر.',
-    '• تذكّر أن كلمة rules تعني قواعد؛ عندما نسمع فعلًا يصف التعامل مع القواعد يجب أن نميز الشرح من الكتابة أو التعديل.',
-    '• قارن الأفعال الموجودة في الاختيارات بمهمة المساعد، وابحث عن الفعل الذي يوصل المعلومات لشخص آخر دون تغيير قواعد المدرسة نفسها.'
+    '• انتبه إلى الفرق بين معنى فعل يوضح معلومة موجودة، وفعل يغيّرها أو يراقب الالتزام بها؛ فهذه أعمال قريبة لكنها مختلفة.',
+    '• عندما تقرأ checks فهذا مرتبط بالتحقق، وwrites مرتبط بالكتابة؛ لا تخلط بين طبيعة كل فعل ومعنى الكلمة المطلوبة في السؤال.',
+    '• استعمل هذه المقارنة لتفسير ما يفعله المساعد مع school rules، ثم اقرأ كل اختيار كاملًا بدل الاعتماد على كلمة مشتركة فقط.'
   ],
   [
-    '• جرّب موقفًا آخر: يسأل زائر عن معنى كلمة library؛ فيجيب طالب بالعربية شارحًا ما يحدث في المكتبة، وهذا نوع من التواصل المفيد.',
-    '• في المثال لم يصنع الطالب مكتبة جديدة ولم ينقل الكتب، بل جعل المعلومة أوضح لمن يسأل؛ احتفظ بهذا الفرق عند العودة إلى السؤال.',
-    '• طبّق التمييز نفسه على فعل explains في الجملة الأصلية؛ فكر هل يتضمن السلوك تفسير شيء موجود أم تنظيم مهمة إدارية أخرى.'
+    '• جرّب مثالًا موازيًا: يسأل طالب عن معنى كلمة timetable، فيصف المعلم كيفية قراءة الجدول بدل صنع جدول جديد أو اختبار الطالب.',
+    '• في هذا المثال نفرق بين توصيل معنى شيء معروف وإجراء آخر يتعلق بالشيء نفسه؛ وهذا هو التمييز اللغوي المطلوب منك الآن.',
+    '• ارجع إلى الزائر وقواعد المدرسة، وميّز فعل إيضاح المعلومات من أفعال إصدار الأمر أو مراقبة السلوك أو كتابة قواعد جديدة.'
   ],
   [
-    '• اجمع ما توصلت إليه: يوجد زائر لا يعرف قواعد المدرسة، وشخص مسؤول يتعامل مع هذه القواعد باستخدام فعل إنجليزي له معنى تعليمي.',
-    '• افحص كل اختيار واسأل: هل تصف العبارة مشاركة معنى القواعد مع الزائر، أم عملًا آخر يمكن أن يفعله شخص داخل المدرسة؟',
-    '• استبعد الأعمال التي لا ترتبط بالتواصل حول القواعد، ثم حدد بنفسك الجملة الأقرب لمعنى الفعل من دون أن تعتمد على تشابه الكلمات فقط.'
+    '• حلّل العلاقة بين الشخص والفعل والمستفيد: المساعد يتعامل مع قواعد موجودة والزائر يحتاج معلومات، فلا تنشغل باسم مكان المدرسة.',
+    '• طبّق اختبارًا نهائيًا: لو غادر الزائر وقد فهم القواعد دون أن تُكتب قواعد جديدة ودون اختبار أو عقوبة، فأي وصف للفعل يناسب؟',
+    '• طابق هذا الاختبار مع جميع الاختيارات بنفسك؛ ابحث عن معنى الفعل في الجملة لا عن أول عبارة تذكر كلمة rules فقط.'
   ]
 ];
 learningEnglish.hints = learningEnglish.hints.map((h, i) => ({level:i+1,role:h.role,decomposable:false,language:'ar',content:schoolHints[i].join('\n')}));
-learningEnglish.correct_explanation = 'الفعل الإنجليزي explains يعني يشرح، أي يجعل معنى قواعد المدرسة واضحًا لشخص آخر. لا يعني وضع جدول أو تغيير أثاث المدرسة.';
-learningEnglish.final_incorrect_explanation = 'إذا خلطت بين الشرح والعمل الإداري، تذكر أن explain يصف توصيل معنى شيء موجود، مثل قاعدة مدرسة، بدل إنشاء مهمة جديدة.';
+learningEnglish.correct_explanation = 'الفعل الإنجليزي explains يعني يشرح أو يوضح. في القصة يوصل المساعد معنى القواعد للزائر. كتابة قواعد جديدة تختلف عن الشرح، وكذلك مراقبة الالتزام أو اختبار التذكر؛ لذلك نختار وصف توضيح القواعد بدل هذه الأعمال.';
+learningEnglish.final_incorrect_explanation = 'إذا اخترت فعلًا مثل checks أو writes فقد خلطت بين مراقبة الالتزام أو كتابة القواعد وبين توضيح معناها. الفعل explains يتصل بجعل معلومات موجودة مفهومة للآخرين؛ جرّب مقارنة هذه الأفعال بجملة جديدة بعد إكمال السؤال.';
 const examEnglish = englishHelp.questions[1];
 examEnglish.prompt = 'Where does the school coach usually work?';
 examEnglish.prompt_language = 'en';
