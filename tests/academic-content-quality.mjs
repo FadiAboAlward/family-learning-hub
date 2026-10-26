@@ -12,6 +12,41 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+// FLH-039: source English remains assessed, Arabic is the support/explanation language.
+const englishHelp = read('valid-package.json');
+englishHelp.academic_context.subject = 'English';
+englishHelp.academic_context.book_code = 'TR-ENGLISH-G7-2026-2027';
+for (const q of englishHelp.questions.filter(q => q.delivery_surface === 'learning')) {
+  q.prompt_language = 'en';
+  for (const h of q.hints) h.language = 'ar';
+  q.correct_explanation = 'الكلمة الإنجليزية left تعني اليسار، وهي تدل على اتجاه الحركة، ثم نربط هذا الاتجاه بالموضع على خط الأعداد.';
+}
+const englishHelpValid = validateAcademicPackage(englishHelp);
+assert.equal(englishHelpValid.ok, true, JSON.stringify(englishHelpValid.errors, null, 2));
+const mislabeledHelp = structuredClone(englishHelp);
+mislabeledHelp.questions[0].hints[0].language = 'en';
+assert.ok(validateAcademicPackage(mislabeledHelp).errors.some(e => e.code === 'ENGLISH_HINT_LANGUAGE_AR_REQUIRED'));
+const englishOnlyHelp = structuredClone(englishHelp);
+englishOnlyHelp.questions[0].hints[0].content = [
+  '• Find the important clue in the situation. Read it twice before looking at any answer choice.',
+  '• Decide what information the question needs: someone, somewhere, an activity, or a school instruction.',
+  '• Say the idea in your own words first. Do not select an option only because its English looks familiar.'
+].join('\\n');
+const englishOnlyErrors = validateAcademicPackage(englishOnlyHelp).errors;
+assert.ok(englishOnlyErrors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'), 'English-only help is inaccessible to an Arabic-first English learner');
+assert.ok(englishOnlyErrors.some(e => e.code === 'HINT_GENERIC_INSTRUCTION_ONLY'), 'Aya screenshot-style generic instructions must not count as teaching');
+const englishOnlyExplanation = structuredClone(englishHelp);
+englishOnlyExplanation.questions[0].correct_explanation = 'The answer is correct because the correct option matches the question.';
+assert.ok(validateAcademicPackage(englishOnlyExplanation).errors.some(e => e.code === 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED'));
+const englishOnlyFinalIncorrect = structuredClone(englishHelp);
+englishOnlyFinalIncorrect.questions[0].final_incorrect_explanation = 'Try reading the question again and thinking about the correct option.';
+assert.ok(validateAcademicPackage(englishOnlyFinalIncorrect).errors.some(e => e.code === 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED'));
+const weakArabicBullet = structuredClone(englishHelp);
+weakArabicBullet.questions[0].hints[0].content = '• نعم okay.\\n' + englishHelp.questions[0].hints[0].content.split('\\n').slice(1).join('\\n');
+assert.ok(validateAcademicPackage(weakArabicBullet).errors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'));
+// Arabic/Turkish teaching remains free to use its established source vocabulary.
+assert.equal(validateAcademicPackage(read('valid-package.json')).ok, true);
+
 // Real official Grade 7 English Unit 1 (PDF 13–14) academic-QA candidate;
 // synthetic learner only, no publication or real student evidence.
 const sourceGrounded20 = validateAcademicPackage(read('english-unit1-source-grounded-20.json'));
