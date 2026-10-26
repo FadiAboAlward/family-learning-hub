@@ -770,7 +770,7 @@ export function validateAcademicPackage(pkg) {
       if (median && correctLen > median * 2.5) issue(warnings, 'ANSWER_LENGTH_GIVEAWAY', p + '.options', 'Correct option is much longer than the typical distractor; review for answer-key leakage.');
     }
 
-    const requiresArabicSupport = englishSubject(ctx.subject);
+    const requiresArabicSupport = englishSubject(ctx?.subject);
     if (requiresArabicSupport) {
       for (const key of ['explanation', 'correct_explanation', 'final_incorrect_explanation', 'feedback']) {
         if (typeof q?.[key] === 'string' && text(q[key]) && arabicWordCount(q[key]) < 4) {
