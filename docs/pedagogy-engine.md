@@ -2,6 +2,12 @@
 
 The platform does not treat feedback as a fixed message after a right or wrong answer. Feedback, hints, explanations, and remediation are selected according to the learner, grade level, question difficulty, attempt number, detected misconception, and available learning media.
 
+## Subject language and genuine explanation (FLH-039)
+
+Under the [Academic SOP §37](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit), Arabic-curriculum teaching/help is normally in Arabic and Turkish-curriculum teaching/help normally in Turkish. For **English as a taught subject** for Arabic-first learners, keep original English questions and important English terms, but deliver child-readable **Arabic explanations and Learning hints**, with contextual English glosses. The correct-answer and final-incorrect explanations must teach WHY; misconception-specific feedback before finalization must avoid answer revelation. Exam gets no hints or correctness feedback until submitted.
+
+The four progressive hint levels must each contribute question-specific teachable information, not repeat generic advice. A separate exact-candidate semantic review checks the actual learning contribution and accessibility; word/bullet count and language-script tests are necessary but insufficient. No additional student-time AI call or automatic historical-content rewrite is introduced. Implementation details: [FLH-039 Spec v1.1](https://docs.google.com/document/d/1_PGME1LDyL7QafkKSPTHpHq8hiot4bF47EACtob_FTI/edit).
+
 ## Core principles
 
 1. **Supportive language by default**
