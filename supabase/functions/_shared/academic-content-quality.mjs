@@ -57,6 +57,12 @@ const text = value => typeof value === 'string' ? value.replace(/\p{Cf}/gu, '').
 const lexicalWords = value => text(value).replace(/^•\s*/gmu, '').match(/[\p{L}\p{M}\p{N}]+(?:['’ʼ-][\p{L}\p{M}\p{N}]+)*/gu) || [];
 const wordCount = value => lexicalWords(value).length;
 const hintBulletLines = value => text(value).split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
+// FLH-039: precise subject-language floor; semantic merit is reviewed separately.
+const englishSubject = subject => /^(?:english(?: language)?|ingilizce|اللغة الإنجليزية|الإنجليزية|الانجليزية|إنجليزي)$/iu.test(text(subject));
+const arabicWordCount = value => lexicalWords(value).filter(w => /[ء-ي]/u.test(w)).length;
+const genericInstructionLine = value => /(?:find the important clue|read it twice|decide what information the question needs|say the idea in your own words|do not select an option|اقرأ السؤال مرة ثانية|اقرئي السؤال مرة ثانية|أعد قراءة السؤال|أعيدي قراءة السؤال|قارن الخيارات|قارني الخيارات|لا تختَر مباشرة|لا تختاري مباشرة)/iu.test(value);
+const genericHintOnly = lines => lines.length === 3 && lines.every(genericInstructionLine)
+  && !/(?:تعني|معناها|يعني|مثال|قاعدة|القاعدة|نستخدم|بمعنى|means|for example)/iu.test(lines.join(' '));
 const caseFold = value => value
   .toLocaleLowerCase('und')
   .normalize('NFD')
@@ -764,6 +770,15 @@ export function validateAcademicPackage(pkg) {
       if (median && correctLen > median * 2.5) issue(warnings, 'ANSWER_LENGTH_GIVEAWAY', p + '.options', 'Correct option is much longer than the typical distractor; review for answer-key leakage.');
     }
 
+    const requiresArabicSupport = englishSubject(ctx.subject);
+    if (requiresArabicSupport) {
+      for (const key of ['explanation', 'correct_explanation', 'final_incorrect_explanation', 'feedback']) {
+        if (typeof q?.[key] === 'string' && text(q[key]) && arabicWordCount(q[key]) < 4) {
+          issue(errors, 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED', p + '.' + key,
+            'English-subject explanations and educational feedback must teach in accessible Arabic, preserving English target terms.');
+        }
+      }
+    }
     const hints = Array.isArray(q && q.hints) ? q.hints : [];
 
     if (q && q.delivery_surface === 'learning') {
@@ -785,6 +800,20 @@ export function validateAcademicPackage(pkg) {
 
         const learnerHintContent = text(h && h.content);
         const bulletLines = hintBulletLines(learnerHintContent);
+        if (requiresArabicSupport) {
+          if (text(h && h.language) !== 'ar') {
+            issue(errors, 'ENGLISH_HINT_LANGUAGE_AR_REQUIRED', hp + '.language',
+              'English-subject Learning hints must explicitly use Arabic explanation language (ar).');
+          }
+          if (bulletLines.length === 3 && bulletLines.some(line => arabicWordCount(line) < 3)) {
+            issue(errors, 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED', hp + '.content',
+              'Each English-subject hint bullet must contain meaningful Arabic teaching alongside essential original English terms.');
+          }
+        }
+        if (genericHintOnly(bulletLines)) {
+          issue(errors, 'HINT_GENERIC_INSTRUCTION_ONLY', hp + '.content',
+            'Generic read/think/compare instructions cannot substitute for a specific teachable hint.');
+        }
         if (learnerHintContent && wordCount(learnerHintContent) < 30) {
           issue(errors, 'HINT_MIN_WORDS', hp + '.content', 'Every learner-visible Learning hint must contain at least 30 lexical words.');
         }
