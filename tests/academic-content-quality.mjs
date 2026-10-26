@@ -12,6 +12,116 @@ const valid = validateAcademicPackage(read('valid-package.json'));
 assert.equal(valid.ok, true, JSON.stringify(valid, null, 2));
 assert.deepEqual(valid.errors, []);
 
+// FLH-039: source English remains assessed, Arabic is the support/explanation language.
+const englishHelp = read('valid-package.json');
+const englishContext = englishHelp.academic_context;
+englishContext.student_ref = 'synthetic-g5-english';
+englishContext.grade = '5';
+englishContext.subject = 'English';
+englishContext.book_code = 'TR-ENGLISH-G5-2026-2027';
+englishContext.confirmed_scope = 'People at school: roles and places; original PDF pages 32–33';
+englishContext.next_target = 'Understand English words for school staff responsibilities';
+englishContext.concept_targets.forEach((target, i) => { target.concept_code = ['school-staff-responsibility','school-coach-location','school-library-purpose'][i]; });
+englishContext.concept_targets[0].recurring_misconception_code = 'explain-versus-perform';
+englishContext.coverage_plan.ordered_scope_ref = 'TR-ENGLISH-G5-2026-2027:PDF-32-33';
+englishContext.coverage_plan.coverage_cursor = 'School people and school places';
+englishContext.coverage_plan.next_sequential_target = englishContext.next_target;
+englishContext.coverage_plan.primary_target_concepts = ['school-staff-responsibility'];
+englishHelp.blueprint.forEach((row, i) => {
+  row.concept_code = englishContext.concept_targets[i].concept_code;
+  row.source_ref = 'TR-ENGLISH-G5-2026-2027:PDF_PAGE=' + (i === 0 ? 32 : 33);
+  row.reasoning_signature = ['meaning-of-explains','school-coach-location','school-library-purpose'][i];
+});
+englishHelp.blueprint[0].misconception_target = 'explain-versus-perform';
+const learningEnglish = englishHelp.questions[0];
+learningEnglish.prompt = "The headmaster's assistant explains school rules to visitors. What does the verb 'explains' tell us?";
+learningEnglish.prompt_language = 'en';
+learningEnglish.source_ref = englishHelp.blueprint[0].source_ref;
+learningEnglish.concept_code = englishHelp.blueprint[0].concept_code;
+learningEnglish.decomposable = false;
+learningEnglish.option_count_justification = 'One synthetic five-option English comprehension case tests distinct roles and the help-language gate.';
+learningEnglish.options = [
+  { position: 1, content: 'The assistant tells visitors they must leave at once.', is_correct: false, distractor_rationale: 'Confuses explaining rules with imposing an unrelated instruction.' },
+  { position: 2, content: 'The assistant makes the rules clear to visitors.', is_correct: true },
+  { position: 3, content: 'The assistant checks whether visitors follow the rules.', is_correct: false, misconception_code: 'explain-versus-perform', distractor_rationale: 'Confuses clarifying rules with policing compliance.' },
+  { position: 4, content: 'The assistant writes a new set of school rules.', is_correct: false, distractor_rationale: 'Confuses clarifying the established rules with authoring them.' },
+  { position: 5, content: 'The assistant asks visitors to repeat the rules.', is_correct: false, distractor_rationale: 'Confuses explaining with testing recall.' }
+];
+const schoolHints = [
+  [
+    '• في هذا السؤال المطلوب فهم وظيفة الفعل explains ضمن حديث عن قواعد المدرسة، وليس حفظ اسم الشخص الذي يؤدي الوظيفة.',
+    '• لاحظ أن rules تعني القواعد، وأن الاختيارات كلها تتعلق بطريقة تعامل المساعد مع القواعد؛ ابحث عن الفرق بين تلك الطرق.',
+    '• قبل الاختيار فكّر هل فعل المساعد يطلب من الزائر تنفيذ أمر أم يصف طريقة جعل المعلومات واضحة، دون تحديد أي جملة صحيحة الآن.'
+  ],
+  [
+    '• انتبه إلى الفرق بين معنى فعل يوضح معلومة موجودة، وفعل يغيّرها أو يراقب الالتزام بها؛ فهذه أعمال قريبة لكنها مختلفة.',
+    '• عندما تقرأ checks فهذا مرتبط بالتحقق، وwrites مرتبط بالكتابة؛ لا تخلط بين طبيعة كل فعل ومعنى الكلمة المطلوبة في السؤال.',
+    '• استعمل هذه المقارنة لتفسير ما يفعله المساعد مع school rules، ثم اقرأ كل اختيار كاملًا بدل الاعتماد على كلمة مشتركة فقط.'
+  ],
+  [
+    '• جرّب مثالًا موازيًا: يسأل طالب عن معنى كلمة timetable، فيصف المعلم كيفية قراءة الجدول بدل صنع جدول جديد أو اختبار الطالب.',
+    '• في هذا المثال نفرق بين توصيل معنى شيء معروف وإجراء آخر يتعلق بالشيء نفسه؛ وهذا هو التمييز اللغوي المطلوب منك الآن.',
+    '• ارجع إلى الزائر وقواعد المدرسة، وميّز فعل إيضاح المعلومات من أفعال إصدار الأمر أو مراقبة السلوك أو كتابة قواعد جديدة.'
+  ],
+  [
+    '• حلّل العلاقة بين الشخص والفعل والمستفيد: المساعد يتعامل مع قواعد موجودة والزائر يحتاج معلومات، فلا تنشغل باسم مكان المدرسة.',
+    '• طبّق اختبارًا نهائيًا: لو غادر الزائر وقد فهم القواعد دون أن تُكتب قواعد جديدة ودون اختبار أو عقوبة، فأي وصف للفعل يناسب؟',
+    '• طابق هذا الاختبار مع جميع الاختيارات بنفسك؛ ابحث عن معنى الفعل في الجملة لا عن أول عبارة تذكر كلمة rules فقط.'
+  ]
+];
+learningEnglish.hints = learningEnglish.hints.map((h, i) => ({level:i+1,role:h.role,decomposable:false,language:'ar',content:schoolHints[i].join('\n')}));
+learningEnglish.correct_explanation = 'الفعل الإنجليزي explains يعني يشرح أو يوضح. في القصة يوصل المساعد معنى القواعد للزائر. كتابة قواعد جديدة تختلف عن الشرح، وكذلك مراقبة الالتزام أو اختبار التذكر؛ لذلك نختار وصف توضيح القواعد بدل هذه الأعمال.';
+learningEnglish.final_incorrect_explanation = 'إذا اخترت فعلًا مثل checks أو writes فقد خلطت بين مراقبة الالتزام أو كتابة القواعد وبين توضيح معناها. الفعل explains يتصل بجعل معلومات موجودة مفهومة للآخرين؛ جرّب مقارنة هذه الأفعال بجملة جديدة بعد إكمال السؤال.';
+const examEnglish = englishHelp.questions[1];
+examEnglish.prompt = 'Where does the school coach usually work?';
+examEnglish.prompt_language = 'en';
+examEnglish.source_ref = englishHelp.blueprint[1].source_ref;
+examEnglish.concept_code = englishHelp.blueprint[1].concept_code;
+examEnglish.options = [
+  {position:1,content:'In the science lab',is_correct:false,distractor_rationale:'Confuses science and sports school places.'},
+  {position:2,content:'In the sports field',is_correct:true},
+  {position:3,content:'In the library',is_correct:false,distractor_rationale:'Confuses sports practice with reading spaces.'},
+  {position:4,content:'In the canteen',is_correct:false,distractor_rationale:'Confuses sports training and food service.'},
+  {position:5,content:'In the administration department',is_correct:false,distractor_rationale:'Confuses coaching with administration.'}
+];
+const paperEnglish = englishHelp.questions[2];
+paperEnglish.prompt = 'Which school place helps students borrow books?';
+paperEnglish.prompt_language = 'en';
+paperEnglish.source_ref = englishHelp.blueprint[2].source_ref;
+paperEnglish.concept_code = englishHelp.blueprint[2].concept_code;
+paperEnglish.options = [
+  {position:1,content:'The school library',is_correct:true},
+  {position:2,content:'The sports field',is_correct:false,distractor_rationale:'Confuses reading resources with sports space.'},
+  {position:3,content:'The canteen',is_correct:false,distractor_rationale:'Confuses food service with book lending.'},
+  {position:4,content:'The science lab',is_correct:false,distractor_rationale:'Confuses practical experiments with borrowing reading materials.'},
+  {position:5,content:'The conference hall',is_correct:false,distractor_rationale:'Confuses assemblies with book borrowing.'}
+];
+const englishHelpValid = validateAcademicPackage(englishHelp);
+assert.equal(englishHelpValid.ok, true, JSON.stringify(englishHelpValid.errors, null, 2));
+const mislabeledHelp = structuredClone(englishHelp);
+mislabeledHelp.questions[0].hints[0].language = 'en';
+assert.ok(validateAcademicPackage(mislabeledHelp).errors.some(e => e.code === 'ENGLISH_HINT_LANGUAGE_AR_REQUIRED'));
+const englishOnlyHelp = structuredClone(englishHelp);
+englishOnlyHelp.questions[0].hints[0].content = [
+  '• Find the important clue in the situation. Read it twice before looking at any answer choice.',
+  '• Decide what information the question needs: someone, somewhere, an activity, or a school instruction.',
+  '• Say the idea in your own words first. Do not select an option only because its English looks familiar.'
+].join('\n');
+const englishOnlyErrors = validateAcademicPackage(englishOnlyHelp).errors;
+assert.ok(englishOnlyErrors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'), 'English-only help is inaccessible to an Arabic-first English learner');
+assert.ok(englishOnlyErrors.some(e => e.code === 'HINT_GENERIC_INSTRUCTION_ONLY'), 'Aya screenshot-style generic instructions must not count as teaching');
+const englishOnlyExplanation = structuredClone(englishHelp);
+englishOnlyExplanation.questions[0].correct_explanation = 'The answer is correct because the correct option matches the question.';
+assert.ok(validateAcademicPackage(englishOnlyExplanation).errors.some(e => e.code === 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED'));
+const englishOnlyFinalIncorrect = structuredClone(englishHelp);
+englishOnlyFinalIncorrect.questions[0].final_incorrect_explanation = 'Try reading the question again and thinking about the correct option.';
+assert.ok(validateAcademicPackage(englishOnlyFinalIncorrect).errors.some(e => e.code === 'ENGLISH_EXPLANATION_ARABIC_SUPPORT_REQUIRED'));
+const weakArabicBullet = structuredClone(englishHelp);
+weakArabicBullet.questions[0].hints[0].content = '• نعم okay.\n' + englishHelp.questions[0].hints[0].content.split('\n').slice(1).join('\n');
+assert.ok(validateAcademicPackage(weakArabicBullet).errors.some(e => e.code === 'ENGLISH_HINT_ARABIC_SUPPORT_REQUIRED'));
+// Arabic/Turkish teaching remains free to use its established source vocabulary.
+assert.equal(validateAcademicPackage(read('valid-package.json')).ok, true);
+
 // Real official Grade 7 English Unit 1 (PDF 13–14) academic-QA candidate;
 // synthetic learner only, no publication or real student evidence.
 const sourceGrounded20 = validateAcademicPackage(read('english-unit1-source-grounded-20.json'));

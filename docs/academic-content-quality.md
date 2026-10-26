@@ -130,6 +130,18 @@ Learner-facing authored strings are plain text. Store apostrophes and symbols di
 The Arabic application shell remains RTL. Question prose direction follows `prompt_language`: Arabic is RTL, Turkish and English are LTR, while mathematical runs remain logical LTR with bidi isolation.
 
 
+## FLH-039 v1.1 — Language and instructional quality for hints AND explanations
+
+[Feature Spec](https://docs.google.com/document/d/1_PGME1LDyL7QafkKSPTHpHq8hiot4bF47EACtob_FTI/edit) • [Current Academic SOP §37](https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit)
+
+For English as the taught subject, source prompts and answers remain English, but new authored Learning hints are marked `language: "ar"` and each bullet gives readable Arabic instructional support while retaining the English vocabulary/grammar being taught. Authored `explanation`, `correct_explanation`, `final_incorrect_explanation`, and `feedback` when present must likewise explain in accessible Arabic. Turkish and Arabic subjects retain their ordinary source-language teaching defaults; documented learner-specific language bridging is handled at authoring review, not guessed from UI localization. No hints or answer cues appear during an in-progress Exam; finalized feedback may use Arabic.
+
+The deterministic gate rejects English-subject Learning hints with non-Arabic language metadata or Arabic-empty bullets, and authored explanation fields with no meaningful Arabic prose. It also rejects narrow high-confidence three-bullet read/think/compare boilerplate. These simple checks **cannot** determine whether an Arabic explanation is pedagogically substantive, whether it teaches the actual assigned book concept, or whether hints add new learning value. A passing validator is not a semantic-review PASS. It checks present authored content only and does not certify runtime misconception-feedback sets.
+
+Perform an **independent exact-candidate semantic review** across every Learning question (four hints), existing authored explanations, plausible options, learner grade/language, intended skill and Project Book source. For each question identify the concrete teaching contribution of each progressive level, the WHY explanation for right/wrong answers, and where the child must still reason. Record per-question evidence under the existing Evidence Manifest or linked review, with candidate hash. Never substitute a metadata-only `semantic_review: PASS`. One full package review and at most two targeted repairs; otherwise `QUALITY_BLOCKED`. Preserve immutable past versions. No extra live AI runtime or new database service.
+
+Regression tests in `tests/academic-content-quality.mjs` must cover screenshot-like generic English hints, an English-only explanation and good Arabic-supported instruction, without breaking pre-existing Arabic/Turkish fixtures. Actual learner help language after wrong answers also depends on existing misconception-specific runtime feedback; QA must separately inspect that path when enabled.
+
 ## Progressive hint contract
 
 The existing four-level hint contract remains authoritative:
