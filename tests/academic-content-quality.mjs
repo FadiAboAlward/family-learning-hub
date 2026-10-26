@@ -14,13 +14,88 @@ assert.deepEqual(valid.errors, []);
 
 // FLH-039: source English remains assessed, Arabic is the support/explanation language.
 const englishHelp = read('valid-package.json');
-englishHelp.academic_context.subject = 'English';
-englishHelp.academic_context.book_code = 'TR-ENGLISH-G7-2026-2027';
-for (const q of englishHelp.questions.filter(q => q.delivery_surface === 'learning')) {
-  q.prompt_language = 'en';
-  for (const h of q.hints) h.language = 'ar';
-  q.correct_explanation = 'الكلمة الإنجليزية left تعني اليسار، وهي تدل على اتجاه الحركة، ثم نربط هذا الاتجاه بالموضع على خط الأعداد.';
-}
+const englishContext = englishHelp.academic_context;
+englishContext.student_ref = 'synthetic-g5-english';
+englishContext.grade = '5';
+englishContext.subject = 'English';
+englishContext.book_code = 'TR-ENGLISH-G5-2026-2027';
+englishContext.confirmed_scope = 'People at school: roles and places; original PDF pages 32–33';
+englishContext.next_target = 'Understand English words for school staff responsibilities';
+englishContext.concept_targets.forEach((target, i) => { target.concept_code = ['school-staff-responsibility','school-coach-location','school-library-purpose'][i]; });
+englishContext.concept_targets[0].recurring_misconception_code = 'explain-versus-perform';
+englishContext.coverage_plan.ordered_scope_ref = 'TR-ENGLISH-G5-2026-2027:PDF-32-33';
+englishContext.coverage_plan.coverage_cursor = 'School people and school places';
+englishContext.coverage_plan.next_sequential_target = englishContext.next_target;
+englishContext.coverage_plan.primary_target_concepts = ['school-staff-responsibility'];
+englishHelp.blueprint.forEach((row, i) => {
+  row.concept_code = englishContext.concept_targets[i].concept_code;
+  row.source_ref = 'TR-ENGLISH-G5-2026-2027:PDF_PAGE=' + (i === 0 ? 32 : 33);
+  row.reasoning_signature = ['meaning-of-explains','school-coach-location','school-library-purpose'][i];
+});
+englishHelp.blueprint[0].misconception_target = 'explain-versus-perform';
+const learningEnglish = englishHelp.questions[0];
+learningEnglish.prompt = 'The headmaster\'s assistant explains school rules to visitors. What does the verb 'explains' tell us?";
+learningEnglish.prompt_language = 'en';
+learningEnglish.source_ref = englishHelp.blueprint[0].source_ref;
+learningEnglish.concept_code = englishHelp.blueprint[0].concept_code;
+learningEnglish.decomposable = false;
+learningEnglish.option_count_justification = 'One synthetic five-option English comprehension case tests distinct roles and the help-language gate.';
+learningEnglish.options = [
+  { position: 1, content: 'The assistant creates a new weekly timetable.', is_correct: false, distractor_rationale: 'Confuses clarifying an existing rule with scheduling.' },
+  { position: 2, content: 'The assistant helps people understand the rules.', is_correct: true },
+  { position: 3, content: 'The assistant checks whether students are absent.', is_correct: false, misconception_code: 'explain-versus-perform', distractor_rationale: 'Mistakes explaining a policy for tracking attendance.' },
+  { position: 4, content: 'The assistant delivers the rules to a printing room.', is_correct: false, distractor_rationale: 'Mistakes oral explanation for reproduction of documents.' },
+  { position: 5, content: 'The assistant changes all classroom furniture.', is_correct: false, distractor_rationale: 'Substitutes a physical school task for communicating meaning.' }
+];
+const schoolHints = [
+  [
+    '• ابحث عن الفعل الإنجليزي الذي يصف عمل المساعد في الجملة، فالسؤال يريد فهم معنى فعل وليس تحديد مكان الشخص في المدرسة.',
+    '• انتبه إلى كلمة explains واترك أسماء الأشخاص مؤقتًا؛ حاول معرفة هل الفعل يتحدث عن كلام وتوضيح أم عن نشاط بدني.',
+    '• أعد قراءة سياق school rules؛ وهي قواعد المدرسة، وفكر لماذا قد يحتاج الزائر إلى سماع كلام من شخص يعرف هذه القواعد.'
+  ],
+  [
+    '• الفعل الإنجليزي explain يرتبط بفكرة الشرح والتوضيح باللغة العربية، وليس بمجرد صنع شيء جديد أو نقله من مكان إلى آخر.',
+    '• تذكّر أن كلمة rules تعني قواعد؛ عندما نسمع فعلًا يصف التعامل مع القواعد يجب أن نميز الشرح من الكتابة أو التعديل.',
+    '• قارن الأفعال الموجودة في الاختيارات بمهمة المساعد، وابحث عن الفعل الذي يوصل المعلومات لشخص آخر دون تغيير قواعد المدرسة نفسها.'
+  ],
+  [
+    '• جرّب موقفًا آخر: يسأل زائر عن معنى كلمة library؛ فيجيب طالب بالعربية شارحًا ما يحدث في المكتبة، وهذا نوع من التواصل المفيد.',
+    '• في المثال لم يصنع الطالب مكتبة جديدة ولم ينقل الكتب، بل جعل المعلومة أوضح لمن يسأل؛ احتفظ بهذا الفرق عند العودة إلى السؤال.',
+    '• طبّق التمييز نفسه على فعل explains في الجملة الأصلية؛ فكر هل يتضمن السلوك تفسير شيء موجود أم تنظيم مهمة إدارية أخرى.'
+  ],
+  [
+    '• اجمع ما توصلت إليه: يوجد زائر لا يعرف قواعد المدرسة، وشخص مسؤول يتعامل مع هذه القواعد باستخدام فعل إنجليزي له معنى تعليمي.',
+    '• افحص كل اختيار واسأل: هل تصف العبارة مشاركة معنى القواعد مع الزائر، أم عملًا آخر يمكن أن يفعله شخص داخل المدرسة؟',
+    '• استبعد الأعمال التي لا ترتبط بالتواصل حول القواعد، ثم حدد بنفسك الجملة الأقرب لمعنى الفعل من دون أن تعتمد على تشابه الكلمات فقط.'
+  ]
+];
+learningEnglish.hints = learningEnglish.hints.map((h, i) => ({level:i+1,role:h.role,decomposable:false,language:'ar',content:schoolHints[i].join('\n')}));
+learningEnglish.correct_explanation = 'الفعل الإنجليزي explains يعني يشرح، أي يجعل معنى قواعد المدرسة واضحًا لشخص آخر. لا يعني وضع جدول أو تغيير أثاث المدرسة.';
+learningEnglish.final_incorrect_explanation = 'إذا خلطت بين الشرح والعمل الإداري، تذكر أن explain يصف توصيل معنى شيء موجود، مثل قاعدة مدرسة، بدل إنشاء مهمة جديدة.';
+const examEnglish = englishHelp.questions[1];
+examEnglish.prompt = 'Where does the school coach usually work?';
+examEnglish.prompt_language = 'en';
+examEnglish.source_ref = englishHelp.blueprint[1].source_ref;
+examEnglish.concept_code = englishHelp.blueprint[1].concept_code;
+examEnglish.options = [
+  {position:1,content:'In the science lab',is_correct:false,distractor_rationale:'Confuses science and sports school places.'},
+  {position:2,content:'In the sports field',is_correct:true},
+  {position:3,content:'In the library',is_correct:false,distractor_rationale:'Confuses sports practice with reading spaces.'},
+  {position:4,content:'In the canteen',is_correct:false,distractor_rationale:'Confuses sports training and food service.'},
+  {position:5,content:'In the administration department',is_correct:false,distractor_rationale:'Confuses coaching with administration.'}
+];
+const paperEnglish = englishHelp.questions[2];
+paperEnglish.prompt = 'Which school place helps students borrow books?';
+paperEnglish.prompt_language = 'en';
+paperEnglish.source_ref = englishHelp.blueprint[2].source_ref;
+paperEnglish.concept_code = englishHelp.blueprint[2].concept_code;
+paperEnglish.options = [
+  {position:1,content:'The school library',is_correct:true},
+  {position:2,content:'The sports field',is_correct:false,distractor_rationale:'Confuses reading resources with sports space.'},
+  {position:3,content:'The canteen',is_correct:false,distractor_rationale:'Confuses food service with book lending.'},
+  {position:4,content:'The science lab',is_correct:false,distractor_rationale:'Confuses practical experiments with borrowing reading materials.'},
+  {position:5,content:'The conference hall',is_correct:false,distractor_rationale:'Confuses assemblies with book borrowing.'}
+];
 const englishHelpValid = validateAcademicPackage(englishHelp);
 assert.equal(englishHelpValid.ok, true, JSON.stringify(englishHelpValid.errors, null, 2));
 const mislabeledHelp = structuredClone(englishHelp);
