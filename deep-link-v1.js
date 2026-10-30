@@ -15,6 +15,7 @@
 
   let launched = false;
   let learnerPreselected = false;
+  let failedForToken = '';
   const token = () => localStorage.getItem('learner_session') || sessionStorage.getItem('learner_session') || '';
 
   function cleanUrl() {
@@ -38,7 +39,13 @@
   }
 
   function tryLaunch() {
-    if (launched) return;
+    if (launched) {
+      // Do not retry a failed start on every error-screen DOM mutation.
+      // A new authenticated session may safely try again.
+      if (!failedForToken || token() === failedForToken) return;
+      launched = false;
+      failedForToken = '';
+    }
     if (location.hash !== '#student') {
       location.hash = 'student';
       return;
@@ -70,17 +77,15 @@
     const starter = videoRoute ? window.FLH?.openLearningVideos : (mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz);
     if (typeof starter !== 'function') return;
     launched = true;
+    const launchToken = token();
     try {
       Promise.resolve(starter(quizSlug))
         .then(opened => {
-          if (opened === false) {
-            launched = false;
-            return;
-          }
-          cleanUrl();
+          if (opened === true) cleanUrl();
+          else failedForToken = launchToken;
         })
-        .catch(() => { launched = false; });
-    } catch { launched = false; }
+        .catch(() => { failedForToken = launchToken; });
+    } catch { failedForToken = launchToken; }
   }
 
   const observer = new MutationObserver(tryLaunch);
