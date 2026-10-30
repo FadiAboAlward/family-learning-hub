@@ -57,6 +57,11 @@
     // Wait for the existing student route to validate the saved session.
     // Otherwise a stale session can launch and consume the link before login finishes.
     if (typeof state !== "undefined" && !state.learnerProfile?.learner) return;
+    // An emailed learner hint must never launch on another real learner's session.
+    // The isolated Testing identity is intentionally allowed to preview learner routes.
+    const activeLearner = typeof state !== "undefined" ? state.learnerProfile?.learner : null;
+    if (learner && activeLearner && activeLearner.is_test !== true &&
+        String(activeLearner.slug || '').trim().toLowerCase() !== learner) return;
 
     if (attemptRoute) {
       const opener = window.FLH?.openAttemptHistoryAttempt;
