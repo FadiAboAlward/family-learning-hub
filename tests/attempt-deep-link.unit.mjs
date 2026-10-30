@@ -67,7 +67,7 @@ assert.equal(invalid.calls.length, 0, 'invalid attempt IDs must not launch histo
 
 const exam = await runDeepLink(
   'https://example.test/?quiz=qa-automation-core&mode=exam&learner=test#student',
-  { startExamQuiz: () => {} },
+  { startExamQuiz: () => true },
 );
 assert.deepEqual(exam.calls, [['exam', 'qa-automation-core']], 'existing quiz deep links must keep working');
 assert.equal(exam.replaced, '/#student', 'quiz route parameters should still be cleaned');
