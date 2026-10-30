@@ -239,6 +239,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/optional-learning-video-browser.mjs
+      - name: Verify email deep-link login to exact quiz (synthetic mobile and desktop)
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/quiz-deep-link-browser.mjs
       - name: Verify student dashboard, library and attempt-history preservation
         env:
           APP_URL: http://127.0.0.1:4173/

@@ -15,6 +15,7 @@
 
   let launched = false;
   let learnerPreselected = false;
+  let failedForToken = '';
   const token = () => localStorage.getItem('learner_session') || sessionStorage.getItem('learner_session') || '';
 
   function cleanUrl() {
@@ -30,7 +31,7 @@
   function preselectLearner() {
     if (token() || learnerPreselected || !learner) return;
     const selectorValue = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(learner) : learner.replace(/[^a-z0-9_-]/g, '');
-    const card = document.querySelector(`[data-slug="${selectorValue}"]`);
+    const card = document.querySelector(`[data-dynamic-learner="${selectorValue}"], [data-slug="${selectorValue}"]`);
     if (!card) return;
     learnerPreselected = true;
     card.click();
@@ -38,7 +39,13 @@
   }
 
   function tryLaunch() {
-    if (launched) return;
+    if (launched) {
+      // Do not retry a failed start on every error-screen DOM mutation.
+      // A new authenticated session may safely try again.
+      if (!failedForToken || token() === failedForToken) return;
+      launched = false;
+      failedForToken = '';
+    }
     if (location.hash !== '#student') {
       location.hash = 'student';
       return;
@@ -47,6 +54,14 @@
       preselectLearner();
       return;
     }
+    // Wait for the existing student route to validate the saved session.
+    // Otherwise a stale session can launch and consume the link before login finishes.
+    if (typeof state !== "undefined" && !state.learnerProfile?.learner) return;
+    // An emailed learner hint must never launch on another real learner's session.
+    // The isolated Testing identity is intentionally allowed to preview learner routes.
+    const activeLearner = typeof state !== "undefined" ? state.learnerProfile?.learner : null;
+    if (learner && activeLearner && activeLearner.is_test !== true &&
+        String(activeLearner.slug || '').trim().toLowerCase() !== learner) return;
 
     if (attemptRoute) {
       const opener = window.FLH?.openAttemptHistoryAttempt;
@@ -67,8 +82,15 @@
     const starter = videoRoute ? window.FLH?.openLearningVideos : (mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz);
     if (typeof starter !== 'function') return;
     launched = true;
-    cleanUrl();
-    starter(quizSlug);
+    const launchToken = token();
+    try {
+      Promise.resolve(starter(quizSlug))
+        .then(opened => {
+          if (opened === true) cleanUrl();
+          else failedForToken = launchToken;
+        })
+        .catch(() => { failedForToken = launchToken; });
+    } catch { failedForToken = launchToken; }
   }
 
   const observer = new MutationObserver(tryLaunch);

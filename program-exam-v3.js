@@ -26,10 +26,10 @@
   }
 
   async function startExam(slug){
-    if(typeof shell!=='function')return;
+    if(!slug||typeof shell!=='function')return false;
     globalThis.FLHElapsedTimer?.dispose();
     shell('📝 جاري تجهيز الامتحان','إجاباتك تُحفظ تلقائيًا.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
-    let session;try{session=await examApi('start_exam',{quiz_slug:slug});}catch{shell('تعذر فتح الامتحان','هذا الامتحان غير متاح لهذا الطالب.','<section class="panel"><button class="btn btn-primary" id="examBack">رجوع</button></section>');document.getElementById('examBack')?.addEventListener('click',home);return;}
+    let session;try{session=await examApi('start_exam',{quiz_slug:slug});}catch{shell('تعذر فتح الامتحان','هذا الامتحان غير متاح لهذا الطالب.','<section class="panel"><button class="btn btn-primary" id="examBack">رجوع</button></section>');document.getElementById('examBack')?.addEventListener('click',home);return false;}
     globalThis.FLHTelemetry?.capture?.('flh_exam_started',{mode:'exam',quiz_slug:slug,attempt_id:session.attempt_id,resumed:Boolean(session.resumed),question_count:(session.questions||[]).length});
     const attemptTimer=globalThis.FLHElapsedTimer?.create();
     attemptTimer?.activate(session.attempt_id,session.started_at??null);
@@ -148,6 +148,7 @@
       catch{submitting=false;shell('تعذر تسليم الامتحان','في إجابة ما اكتمل حفظها. ارجع للامتحان وحاول مرة ثانية.','<section class="panel"><button class="btn btn-primary" id="examRetry">رجوع للامتحان</button></section>');document.getElementById('examRetry')?.addEventListener('click',render);}
     }
     render();
+    return true;
   }
   window.FLH=window.FLH||{};window.FLH.startExamQuiz=startExam;window.FLH.warmExamApi=warmExamApi;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(warmExamApi,250));else setTimeout(warmExamApi,250);
