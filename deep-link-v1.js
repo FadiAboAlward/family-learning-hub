@@ -30,7 +30,7 @@
   function preselectLearner() {
     if (token() || learnerPreselected || !learner) return;
     const selectorValue = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(learner) : learner.replace(/[^a-z0-9_-]/g, '');
-    const card = document.querySelector(`[data-slug="${selectorValue}"]`);
+    const card = document.querySelector(`[data-dynamic-learner="${selectorValue}"], [data-slug="${selectorValue}"]`);
     if (!card) return;
     learnerPreselected = true;
     card.click();
@@ -47,6 +47,9 @@
       preselectLearner();
       return;
     }
+    // Wait for the existing student route to validate the saved session.
+    // Otherwise a stale session can launch and consume the link before login finishes.
+    if (typeof state !== "undefined" && !state.learnerProfile?.learner) return;
 
     if (attemptRoute) {
       const opener = window.FLH?.openAttemptHistoryAttempt;
@@ -67,8 +70,17 @@
     const starter = videoRoute ? window.FLH?.openLearningVideos : (mode === 'learning' ? window.FLH?.startLearningQuiz : window.FLH?.startExamQuiz);
     if (typeof starter !== 'function') return;
     launched = true;
-    cleanUrl();
-    starter(quizSlug);
+    try {
+      Promise.resolve(starter(quizSlug))
+        .then(opened => {
+          if (opened === false) {
+            launched = false;
+            return;
+          }
+          cleanUrl();
+        })
+        .catch(() => { launched = false; });
+    } catch { launched = false; }
   }
 
   const observer = new MutationObserver(tryLaunch);
