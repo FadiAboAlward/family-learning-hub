@@ -80,6 +80,8 @@ assert.ok(indexSource.includes(`deep-link-v1.js?v=${build}`),'deep-link asset mu
 assert.ok(indexSource.includes(`attempt-history-v1.js?v=${build}`),'attempt-history asset must use the unified cache-bust key');
 
 
+// FLH-FEAT-2026-040 v1.0: https://docs.google.com/document/d/1fXyTrIMQCgZWLMpuKXixqZj16hgMq75UcMaFOwEtP78/edit
+// DRIVE_REVISION_ID: AHj4eMRkoQupak-TxzQkdZpcV53G0sdV5wFJPDHYuL1h-iuZAvfIZQ8qU1VtWImGMd7y5W0xJ_93OB6ziaJqxCz5k3x_sLuAwunEmwWFDOA
 async function simulateQuizLink({ initialToken = 'valid.session', profile = { learner: { slug: 'mohammad' } }, starts = [true] } = {}) {
   const url = new URL('https://example.test/index.html?quiz=moh-english-review&mode=learning&learner=mohammad#student');
   let storedToken = initialToken, currentProfile = profile, observer = null, cleaned = null, selected = 0, calls = 0;
@@ -134,5 +136,13 @@ await declined.switchSession();
 assert.equal(declined.calls, 2, 'fresh authenticated session may retry');
 assert.equal(declined.cleaned, '/index.html#student', 'successful retry cleans link');
 
+
+const wrongLearner = await simulateQuizLink({ profile: { learner: { slug: 'aya', is_test: false } } });
+assert.equal(wrongLearner.calls, 0, 'email link cannot launch under a different real learner');
+assert.equal(wrongLearner.cleaned, null, 'mismatched learner must retain the target URL');
+
+const testingPreview = await simulateQuizLink({ profile: { learner: { slug: 'test', is_test: true } } });
+assert.equal(testingPreview.calls, 1, 'isolated Testing identity retains its preview capability');
+assert.equal(testingPreview.cleaned, '/index.html#student');
 
 console.log('Attempt deep-link unit tests passed.');
