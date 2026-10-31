@@ -45,7 +45,7 @@ begin
  response:=jsonb_build_object('eligible',true,'eligible_until',item->>'verification_expires_at','revision',coalesce(saved.revision,0),'position_seconds',coalesce(saved.position_seconds,0),'ended',coalesce(saved.ended,false),'has_progress',saved.revision is not null and not saved.cleared);
  if p_operation='read' then return response; end if;
  if saved.request_id=p_request_id then
-   if saved.cleared<>(p_operation='clear') or saved.position_seconds<>case when p_operation='clear' then 0 else p_position_seconds end or saved.ended<>case when p_operation='clear' then false else p_ended end then
+   if saved.cleared<>(p_operation='clear') or saved.position_seconds<>(case when p_operation='clear' then 0 else p_position_seconds end) or saved.ended<>(case when p_operation='clear' then false else p_ended end) then
      return jsonb_build_object('error','VIDEO_PROGRESS_REQUEST_CONFLICT');
    end if;
    return response;
