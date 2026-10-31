@@ -1,6 +1,6 @@
 // FLH-FEAT-2026-012 v1.1: references and explicit FLH self-report only.
 export const VIDEO_SELF_REPORTS = Object.freeze(['not_reported', 'not_watched', 'watched_part', 'watched_full']);
-export const VIDEO_VALIDATION_DAYS = 7;
+export const VIDEO_VALIDATION_DAYS = 29;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 function invalid() { throw new Error('INVALID_VIDEO_INPUT'); }
