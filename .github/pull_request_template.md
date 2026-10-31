@@ -34,10 +34,14 @@ For non-trivial changes, pin the exact Drive Feature Spec revision this PR imple
 Classify the risk changed by this PR and declare the test layer(s) selected. Use N/A with a short reason instead of adding meaningless tests.
 
 - Change type(s): pure/business logic / API-contract / database-RLS / UI-browser / bug-regression / docs-copy / other
+- Execution path: GitHub cloud-first (default) / specific local fallback — reason if fallback:
+- Cloud preview/real UI evidence: isolated URL + backend proof / approved Testing browser / N/A — reason:
+- CI Runner-local Supabase/Docker (when applicable) is **GitHub-hosted**, not the owner's desktop. No requirement to run desktop Docker before opening PR.
 - Unit tests: added / updated / existing coverage sufficient / N/A — reason:
 - Integration/contract tests: added / updated / existing coverage sufficient / N/A — reason:
 - Playwright/browser tests: added / updated / existing coverage sufficient / N/A — reason:
 - Regression test for a bug: added / existing test reproduced it / N/A — reason:
+- Generalizable defect learning: root cause, prevention, existing Continuous Improvement Log OBS_ID/link, or N/A — no reusable pattern (avoid recording routine intermediate errors):
 - TestSprite exploratory run: required / completed / optional / N/A — reason:
 - TestSprite requirement source used: pinned Feature Spec / N/A — reason:
 - TestSprite run ID / link:
