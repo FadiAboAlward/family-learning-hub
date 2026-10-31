@@ -132,8 +132,9 @@ const assertions=`
   result:=public.flh_learner_journey_progress('${w}','${learner}',null);
   perform pg_temp.check_assessment(result->>'error' is null and position('${ids.version}' in result::text)>0,'default assignment discovery includes released versions');
   result:=public.flh_learning_start('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released Learning accessible');
-  result:=public.flh_exam_start('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released independent Exam accessible');
   result:=public.flh_learning_video_preview('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released verified video preview accessible');
+  result:=public.flh_exam_start('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error' is null,'released independent Exam accessible');
+  result:=public.flh_learning_video_preview('${w}','${learner}','qa-assessment-publication');perform pg_temp.check_assessment(result->>'error'='VIDEO_NOT_AVAILABLE','active Exam blocks video preview');
   begin delete from public.quiz_question_hints where question_id in(select id from public.quiz_questions where quiz_version_id='${ids.version}');raise exception 'published hints deleted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_HELD_OR_IMMUTABLE' then raise;end if;end;
   perform pg_temp.check_assessment((select video_receipt is not null and delivery_state='pending' from public.assessment_publications where quiz_version_id='${ids.version}'),'durable release evidence; no mail sent');
   perform pg_temp.check_assessment(not has_function_privilege('authenticated','public.flh_assessment_delivery_command(uuid,uuid,text,jsonb)','EXECUTE'),'delivery RPC service only');

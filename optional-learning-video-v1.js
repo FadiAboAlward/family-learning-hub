@@ -272,6 +272,7 @@
     card.querySelectorAll('.flh-video-sequence-item').forEach(button => button.addEventListener('click', () => {
       const next = Number(button.getAttribute('data-video-index'));
       if (!Number.isInteger(next) || next < 0 || next >= videos.length || next === activeIndex) return;
+      states[activeIndex].consent = false;
       activeIndex = next;
       renderActive();
     }));

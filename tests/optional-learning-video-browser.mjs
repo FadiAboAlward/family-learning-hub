@@ -863,10 +863,62 @@ async function eligibleResume(browser,device){
   }catch(error){await other?.context.close();await test.context.close();throw error;}
 }
 
+
+async function lessonSwitchClearsConsent(browser, device) {
+  const store = new Map();
+  const secondId = '11111111-1111-4111-8111-111111111114';
+  const first = videoFixture({ position: 1, language: 'ar', title: 'الدرس الأول — علم بلادي' });
+  const second = videoFixture({ id: secondId, position: 2, video_ref: 'qaVideo0002', language: 'ar', title: 'الدرس الثاني — المجرد والمزيد' });
+  const sequence = { ...clone(first), videos: [first, second] };
+  const test = await setup(browser, device, { video: sequence, language: 'ar', progressStore: store, providerMode: 'resume' });
+  const { page } = test;
+  const open = p => p.evaluate(() => window.FLH.openLearningVideos('qa-video', { inPlace: true }));
+  const fire = (p, time, state = 2) => p.evaluate(({ time, state }) => { window.__qaVideoProvider.time = time; window.__qaVideoProvider.fire('onStateChange', state); }, { time, state });
+  const waitSave = (p) => p.waitForResponse(r => r.url().endsWith('/learning-api') && r.request().postDataJSON()?.action === 'save_video_progress');
+  const enable = async p => { await p.locator('[data-progress-enable]').click(); await p.waitForFunction(() => window.__qaVideoProvider.instances.at(-1)?.options.events.onStateChange && window.__qaVideoProvider.seek !== undefined); };
+  try {
+    await open(page);
+    await page.locator('[data-progress-enable]').waitFor();
+    await enable(page);
+    await fire(page, 42, 1);
+    const saved = waitSave(page);
+    await fire(page, 42);
+    await saved;
+    assert.equal(store.get('qaVideo0001').position_seconds, 42);
+
+    await page.locator('.flh-video-sequence-item').nth(1).click();
+    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 2);
+
+    await page.locator('.flh-video-sequence-item').nth(0).click();
+    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 3);
+
+    await page.locator('[data-progress-enable]').waitFor();
+    assert.match(await page.locator('#flhVideoResume').innerText(), /آخر موضع محفوظ|متابعة/, 'marker progress preserved while consent was cleared');
+
+    let saveTriggered = false;
+    const saveListener = r => {
+      if (r.url().endsWith('/learning-api') && r.request().postDataJSON()?.action === 'save_video_progress') saveTriggered = true;
+    };
+    page.on('request', saveListener);
+    await fire(page, 55, 1);
+    await fire(page, 55);
+    await page.waitForTimeout(100);
+    page.off('request', saveListener);
+    assert.equal(saveTriggered, false, 'no save request sent after lesson switch before opting in again');
+    assert.equal(store.get('qaVideo0001').position_seconds, 42, 'saved position remains 42 until new opt-in');
+
+    await test.verifyAndClose(device.name + ' lesson switch clears consent');
+  } catch (error) {
+    await test.context.close();
+    throw error;
+  }
+}
+
 const browser = await launchMockQaBrowser(chromium,APP_URL);
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
     await eligibleResume(browser,device);
+    await lessonSwitchClearsConsent(browser, device);
     await lessonAccessStages(browser,device);
     await lessonTypedDraft(browser,device);
     await libraryAndHistoryVideos(browser,device);
