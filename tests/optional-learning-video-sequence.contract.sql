@@ -32,6 +32,9 @@ begin
       (question_two,w,version,2,'single_choice','Question two','generated','core','en');
     insert into public.quiz_question_options(workspace_id,question_id,position,content) values
       (w,question_one,1,'One'),(w,question_two,1,'Two');
+    insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation,grading_config) values
+      (question_one,w,'{"option_position":1}','base','correct','incorrect','{}'),
+      (question_two,w,'{"option_position":1}','base','correct','incorrect','{}');
     insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary) values
       (w,question_one,concept_one,true),(w,question_two,concept_two,true);
 
@@ -114,8 +117,20 @@ begin
     perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt)->>'error'='VIDEO_NOT_AVAILABLE','active Exam blocks old submitted review route');
     perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',exam_attempt)->>'error'='VIDEO_NOT_AVAILABLE','active Exam cannot masquerade as submitted review');
     reset role;
-    update public.quiz_attempts set status='submitted',submitted_at=now() where workspace_id=w and id=exam_attempt;
+    -- Submit a complete synthetic Exam through the existing grading path. An
+    -- empty attempt cannot bypass the academic completeness/mastery invariant.
+    insert into public.quiz_attempt_question_queue(workspace_id,quiz_attempt_id,sequence_no,question_id,difficulty_level,status,source_role) values
+      (w,exam_attempt,1,question_one,2,'active','core'),
+      (w,exam_attempt,2,question_two,2,'active','core');
+    insert into public.quiz_attempt_answers(workspace_id,attempt_id,question_id,response,evaluation,is_correct,points_awarded,attempts_used,hints_used,first_try_correct,mastery_result,quiz_version_id) values
+      (w,exam_attempt,question_one,'{"option_position":1}','ungraded',null,null,1,0,null,null,version),
+      (w,exam_attempt,question_two,'{"option_position":1}','ungraded',null,null,1,0,null,null,version);
     set local role service_role;
+    result:=public.flh_exam_submit(w,l,exam_attempt);
+    perform pg_temp.sequence_assert(result->>'error' is null and (select status='submitted' from public.quiz_attempts where id=exam_attempt),'synthetic Exam submits through the authoritative path');
+    -- Academic submission may award rewards; subsequent video operations must
+    -- leave that post-submission balance unchanged.
+    counts_before:=jsonb_set(counts_before,'{rewards}',to_jsonb((select count(*) from public.gamification_events where workspace_id=w)));
     preview:=public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',exam_attempt);
     perform pg_temp.sequence_assert(preview->>'quiz_version_id'=version::text and preview->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid003','submitted Exam uses its exact version assignments');
     reset role;

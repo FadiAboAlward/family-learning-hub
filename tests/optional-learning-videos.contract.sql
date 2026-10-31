@@ -132,7 +132,7 @@ begin
   perform pg_temp.video_assert(resumed->'optional_video'='null'::jsonb,'active Exam suppresses optional Learning entry for the same quiz');
   reset role;
   -- End the synthetic Exam before exercising ordinary persistent-video semantics.
-  update public.quiz_attempts set status='submitted',submitted_at=now() where id=exam_attempt and workspace_id=w;
+  update public.quiz_attempts set status='abandoned' where id=exam_attempt and workspace_id=w;
   insert into public.quiz_versions(id,workspace_id,quiz_id,version_no,state) values(next_version,w,quiz,2,'published');
   set local role service_role;
   resumed:=public.flh_learning_start(w,l,'qa-optional-video');
