@@ -24,6 +24,12 @@ The approved local interactive-browser layer is capability-based rather than bou
 
 This rule does **not** reduce automated Playwright coverage in GitHub Actions. The repository's deterministic Playwright browser smoke remains part of the required QA Gate and is a separate layer from the connected interactive browser tools. If live browser interaction is truly required for Family Learning Hub, use the approved local connector set above rather than Browserbase or a generic browser service.
 
+## Cloud-first execution default (FLH-042)
+
+Prefer Codex development on a scoped GitHub branch/PR and the existing GitHub Actions **Isolated QA Gate** for routine changes. The owner's desktop Docker, Supabase CLI/database, and GitHub Desktop are optional debugging tools, **not** required before a PR. CI's “Runner-local” Supabase/Docker means disposable services on the GitHub-hosted runner, not the owner's computer; keep database/RLS/contracts, unit/static and Playwright smoke gates unchanged. Use an isolated cloud preview for acceptance evidence only after verifying its backend and test-data isolation. Invoke approved local interactive browser or owner's local Docker only for a specific uncovered need; record why. Cloud-first never waives actual rendered UI verification where necessary or Production checks after an authorized deploy.
+
+Codex should document verified, repeatable or generalizable root causes in the existing Family Learning Hub **Continuous Improvement Log** (symptom, cause, fix, preventive test/rule, PR/evidence) and deduplicate before adding an observation. Do **not** log every compiler retry, expose secrets, or promote a one-off finding to a project rule without the periodic review. Significant reproducible defects still get deterministic regression coverage when practical.
+
 ## Feature specification and Codex/TestSprite handoff
 
 For every non-trivial feature, behavior/workflow change, data/security change, meaningful bug fix, or engineering/QA/review configuration change that materially changes delivery gates, use a versioned Feature Spec before implementation. Only documentation-only, copy-only, metadata-only, or genuinely trivial pass-through changes may be marked N/A with a reason.
