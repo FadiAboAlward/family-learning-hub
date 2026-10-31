@@ -127,7 +127,12 @@ begin
   set local role service_role;
   report:=public.flh_learning_video_report(w,l,exam_attempt,video,'watched_full',0,gen_random_uuid());
   perform pg_temp.video_assert(report->>'error'='ATTEMPT_NOT_ACTIVE','Exam independent from video evidence');
+  perform pg_temp.video_assert(public.flh_learning_video_preview(w,l,'qa-optional-video')->>'error'='VIDEO_NOT_AVAILABLE','active Exam denies alternate video preview');
+  resumed:=public.flh_learning_start(w,l,'qa-optional-video');
+  perform pg_temp.video_assert(resumed->'optional_video'='null'::jsonb,'active Exam suppresses optional Learning entry for the same quiz');
   reset role;
+  -- End the synthetic Exam before exercising ordinary persistent-video semantics.
+  update public.quiz_attempts set status='abandoned' where id=exam_attempt and workspace_id=w;
   insert into public.quiz_versions(id,workspace_id,quiz_id,version_no,state) values(next_version,w,quiz,2,'published');
   set local role service_role;
   resumed:=public.flh_learning_start(w,l,'qa-optional-video');

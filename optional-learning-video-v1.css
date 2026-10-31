@@ -1,4 +1,7 @@
 .flh-optional-video h2{margin-top:0}
+.flh-video-dialog{box-sizing:border-box;width:min(760px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:12px;border:1px solid var(--border,#d5cbd7);border-radius:16px;background:var(--bg,#fff);color:inherit;overflow:auto}
+.flh-video-dialog::backdrop{background:rgb(20 15 25 / 65%)}
+.flh-video-dialog .panel{margin:0;min-width:0}
 .flh-optional-video h3,.flh-optional-video p{overflow-wrap:anywhere}
 .flh-optional-video .actions{margin:1rem 0}
 .flh-optional-video button{min-height:44px}
