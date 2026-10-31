@@ -1,6 +1,6 @@
 # Optional Learning videos
 
-> **FLH-FEAT-2026-041 v1.1, Drive revision 3** extends access and adds opt-in approximate resume for eligible videos. [Pinned spec](https://docs.google.com/document/d/1TN58_YhGEUSKrtcDVcT--Dx2FDV3ZTwy2HP08KRNjVY/edit), [Issue #194](https://github.com/FadiAboAlward/family-learning-hub/issues/194). Implementation and isolated QA only; no Production authorization. It supersedes earlier playback-clock prohibitions only within the eligible, opt-in boundary below.
+> **FLH-FEAT-2026-041 v1.2, Drive revision ID AHj4eMRlku7YQo8w3wxgzk_gzhhrJHgwpP-pksfBk6Q7NpSktdyFV9YJW4uaypdp4wu5cTHeXHRsz1H1c_htyeb_dRaZhP8Gs5atXseG9Tc** extends access and adds opt-in approximate resume for eligible videos. [Pinned spec](https://docs.google.com/document/d/1TN58_YhGEUSKrtcDVcT--Dx2FDV3ZTwy2HP08KRNjVY/edit), [Issue #194](https://github.com/FadiAboAlward/family-learning-hub/issues/194). Implementation and isolated QA evidence only; Production release is separately gated. It supersedes earlier playback-clock prohibitions only within the eligible, opt-in boundary below.
 
 > Feature identity: **FLH-036** is the persistent optional-video decision ([PR #183](https://github.com/FadiAboAlward/family-learning-hub/pull/183)); **FLH-037** is the separate PostHog academic-analytics decision ([PR #184](https://github.com/FadiAboAlward/family-learning-hub/pull/184)). Their Spec versions are unrelated. Do not interpret the FLH-037 v1.1 contract as superseding FLH-036 video v1.0.
 
