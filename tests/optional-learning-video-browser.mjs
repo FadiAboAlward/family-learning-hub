@@ -25,7 +25,7 @@ function videoFixture(overrides = {}) {
   };
 }
 
-function createFixture({ video = videoFixture(), previewVideo = video, language = 'tr', resumed = false, progressed = false, typedDraft = null } = {}) {
+function createFixture({ video = videoFixture(), previewVideo = video, language = 'tr', resumed = false, progressed = false, typedDraft = null, catalog = null, history = null, progressStore = null } = {}) {
   const calls = [];
   const reportResults = new Map();
   let failure = null;
@@ -57,7 +57,8 @@ function createFixture({ video = videoFixture(), previewVideo = video, language 
         if (body.action === 'learner_choices') return { body: { learners: [LEARNER] } };
         return { body: { ok: true } };
       }
-      if (endpoint === 'student-library-api') return { body: { programs: [], standalone_books: [] } };
+      if (endpoint === 'student-library-api') return { body: catalog || { programs: [], standalone_books: [] } };
+      if (endpoint === 'attempt-history-api') return {body:body.action==='attempt_detail'?history:{items:history?[history.attempt]:[],has_more:false}};
       if (endpoint === 'activity-api') return { body: { ok: true } };
       if (endpoint === 'question-reference-api') return { body: { codes: {} } };
       if (endpoint === 'exam-v2-api') {
@@ -66,6 +67,23 @@ function createFixture({ video = videoFixture(), previewVideo = video, language 
         return { body: { ok: true } };
       }
       assert.equal(endpoint, 'learning-api', 'mock never forwards an unrecognized API to a live backend');
+      if(['get_video_progress','save_video_progress','clear_video_progress'].includes(body.action)){
+        if(!progressStore)return {body:{eligible:false}};
+        const item=(Array.isArray(previewVideo.videos)?previewVideo.videos:[previewVideo]).find(item=>item.id===body.video_id);
+        if(!item||item.made_for_kids!==false||Date.parse(item.verification_expires_at)<Date.now())return {body:{eligible:false}};
+        let saved=progressStore.get(item.video_ref)||{eligible:true,eligible_until:item.verification_expires_at,revision:0,position_seconds:0,ended:false,has_progress:false};
+        if(body.action==='get_video_progress')return {body:clone(saved)};
+        if(delayPromise)await delayPromise;
+        const injected=failure;failure=null;
+        if(injected?.kind==='before')return {body:{error:injected.error},status:injected.status};
+        if(saved.request_id!==body.request_id){
+          if(saved.revision!==body.expected_revision)return {body:{error:'VIDEO_PROGRESS_CONFLICT'},status:409};
+          saved={...saved,revision:saved.revision+1,request_id:body.request_id,position_seconds:body.position_seconds||0,ended:body.ended||false,has_progress:body.action!=='clear_video_progress'};
+          progressStore.set(item.video_ref,saved);
+        }
+        if(injected?.kind==='after')return {body:{error:injected.error},status:injected.status};
+        return {body:clone(saved)};
+      }
       if (body.action === 'preview_videos') {
         return { body: { quiz_version_id: '11111111-1111-4111-8111-111111111115', resumable_attempt_id: started ? ATTEMPT_ID : null, quiz: { slug: 'qa-video', title: 'تدريب الاختبار' }, optional_video: clone(previewVideo) } };
       }
@@ -98,6 +116,7 @@ function createFixture({ video = videoFixture(), previewVideo = video, language 
         return { body: clone(result) };
       }
       if (body.action === 'save_draft') { row.draft_option_position = body.option_position; return { body: { ok: true } }; }
+      if (body.action === 'request_hint') { row.hint_level_requested=1;return {body:{hint_level:1,hint:{hint_level:1,content:'فكّر في خط الأعداد',language:'ar'}}}; }
       if (body.action === 'save_response_draft') { row.draft_response = clone(body.response); return { body: { ok: true, response: clone(body.response) } }; }
       if (body.action === 'clear_response_draft') { row.draft_response = null; return { body: { ok: true, cleared: true } }; }
       if (body.action === 'answer') { row.status = 'completed'; return { body: { is_correct: true, finalized: true, explanation: '19 - (-7) = 26' } }; }
@@ -123,6 +142,10 @@ const PROVIDER_SCRIPT = `(() => {
     for (const name of ['getCurrentTime', 'getDuration', 'getPlayerState', 'getVideoLoadedFraction', 'getVideoData']) {
       player[name] = () => { fixture.metrics.push(name); throw new Error('Player-derived telemetry is forbidden'); };
     }
+    if(fixture.mode==='resume'){
+      player.getCurrentTime=()=>{fixture.metrics.push('getCurrentTime');return fixture.time||0;};
+      player.seekTo=value=>{fixture.metrics.push('seekTo');fixture.seek=value;};
+    }
     player.addEventListener = name => { fixture.events.push(name); if (!['onReady', 'onError'].includes(name)) throw new Error('Player tracking is forbidden'); };
     fixture.fire = (event, data) => { if (!player.destroyed) options.events?.[event]?.({ target: player, data }); };
     if (fixture.mode === 'sync-error') fixture.fire('onError', 150);
@@ -146,7 +169,7 @@ async function setup(browser, device, options = {}) {
   page.on('requestfailed', request => failedRequests.push({ pathname: new URL(request.url()).pathname, reason: request.failure()?.errorText }));
   page.on('response', response => { if (response.status() >= 400) failedResponses.push({ pathname: new URL(response.url()).pathname, status: response.status() }); });
   await page.addInitScript(mode => {
-    localStorage.setItem('learner_session', 'mock-optional-video-testing-session');
+    localStorage.setItem('learner_session', 'mock.optional-video-testing-session');
     window.__qaVideoProvider = { mode, instances: [], events: [], metrics: [], destroyed: 0 };
   }, options.providerMode || 'ready');
   await context.route('**/functions/v1/*', async route => {
@@ -178,8 +201,10 @@ async function setup(browser, device, options = {}) {
       assert.deepEqual(failedRequests.filter(request => request.reason !== 'net::ERR_ABORTED' && !(options.providerMode === 'network-error' && request.pathname === '/iframe_api')), [], `${label}: no unexpected failed network requests`);
       assert.deepEqual(failedResponses.filter(response => response.pathname !== '/functions/v1/learning-api' || !injectedFailures.includes(response.status)), [], `${label}: HTTP failures match only injected report cases`);
       const tracking = await page.evaluate(() => ({ events: window.__qaVideoProvider.events, metrics: window.__qaVideoProvider.metrics }));
-      assert.deepEqual(tracking.metrics, [], `${label}: no player-derived metric access`);
-      assert.ok(tracking.events.every(event => ['onReady', 'onError'].includes(event)), `${label}: no player-state/seek/ended tracking listeners`);
+      if(options.providerMode!=='resume'){
+        assert.deepEqual(tracking.metrics, [], `${label}: no player-derived metric access without eligible opt-in`);
+        assert.ok(tracking.events.every(event => ['onReady', 'onError'].includes(event)), `${label}: no player-state/seek/ended tracking listeners`);
+      }else assert.ok(tracking.metrics.every(metric=>['getCurrentTime','seekTo'].includes(metric)),'resume reads no unrelated player metrics');
       assert.deepEqual(fixture.calls.filter(call => call.endpoint === 'family-api' && !['student_profile', 'learner_choices'].includes(call.action)), [], `${label}: video flow never sends reward or balance commands`);
       await context.close();
     },
@@ -685,9 +710,154 @@ async function examIndependence(browser, device) {
   } catch (error) { await test.context.close(); throw error; }
 }
 
+
+async function lessonAccessStages(browser,device){
+  const test=await setup(browser,device,{progressed:true,resumed:true,language:'ar'});
+  const {page,fixture}=test;
+  try{
+    await start(page);await questionReady(page);
+    await page.locator('#flhHelp').click();await page.locator('.flh-hint-card').waitFor();
+    await page.evaluate(()=>{window.__qaQuestionNode=document.querySelector('.flh-touch-quiz');});
+    const academic=()=>fixture.calls.filter(x=>['start_quiz','answer','finish_quiz','save_draft','request_hint'].includes(x.action)).length;
+    const before=academic();
+    await page.locator('#flhLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoFrame').waitFor();
+    assert.equal(fixture.last('preview_videos').attempt_id,ATTEMPT_ID,'Learning preview carries exact owned attempt context');
+    assert.equal(await page.locator('.flh-video-dialog').evaluate(el=>el.matches(':modal')),true,'Native modal makes the underlying academic screen inert');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'mobile/desktop overlay has no overflow');
+    assert.ok(await page.locator('#flhVideoFrame').evaluate(el=>el.getBoundingClientRect().width>=200&&el.getBoundingClientRect().height>=200),'official player minimum retained');
+    await screenshot(page,'lesson-video-'+device.name+'-learning');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(()=>document.querySelector('.flh-touch-quiz')===window.__qaQuestionNode),true,'Returning preserves the exact question DOM');
+    assert.equal(await page.locator('.flh-learn-answer.selected').getAttribute('data-pos'),'1');
+    assert.match(await page.locator('.flh-hint-card').innerText(),/خط الأعداد/);
+    assert.equal(fixture.row.hint_level_requested,1);assert.equal(academic(),before,'Opening/closing makes zero academic requests');
+    assert.equal(await page.locator('#flhLessonVideo').evaluate(el=>el===document.activeElement),true,'Escape restores focus to video action');
+    await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();
+    await page.locator('#flhLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    await page.locator('#flhLearnNext').click();await page.locator('#learnHome').waitFor();
+    const finished=academic();
+    await page.locator('#flhLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    assert.equal(academic(),finished,'Learning result video never finishes again or starts a retake');
+    assert.equal(fixture.count('finish_quiz'),1);await page.locator('#learnHome').waitFor();
+    await screenshot(page,'lesson-video-'+device.name+'-learning-result');
+    await page.evaluate(()=>window.FLH.startExamQuiz('qa-video'));await page.locator('.exam-v3-answer').first().waitFor();
+    assert.equal(await page.getByRole('button',{name:/فيديو الدرس/}).count(),0,'Active Exam has no video control');
+    await page.locator('.exam-v3-answer').first().click();await page.locator('#examSubmit').click();await page.locator('#examHome').waitFor();
+    await page.locator('#examLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    assert.equal(fixture.count('submit_exam'),1,'Submitted Exam review is not submitted again');
+    assert.equal(fixture.count('start_exam'),1,'Submitted Exam video does not start another Exam');
+    await screenshot(page,'lesson-video-'+device.name+'-exam-result');
+    await test.verifyAndClose(device.name+' lesson access stages');
+  }catch(error){await test.context.close();throw error;}
+}
+
+async function lessonTypedDraft(browser,device){
+  const test=await setup(browser,device,{typedDraft:'2,5',resumed:true});const {page,fixture}=test;
+  try{
+    await start(page);await page.locator('#flhTypedResponse').fill('19 - (-7)');
+    await page.evaluate(()=>{window.__qaTypedNode=document.getElementById('flhTypedResponse');});
+    await page.locator('#flhLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    assert.equal(await page.locator('#flhTypedResponse').inputValue(),'19 - (-7)','Draft survives opening and closing');
+    assert.equal(await page.evaluate(()=>document.getElementById('flhTypedResponse')===window.__qaTypedNode),true,'The input is never reconstructed');
+    assert.equal(fixture.count('start_quiz'),1);assert.equal(fixture.count('answer_response'),0);assert.equal(fixture.count('finish_quiz'),0);
+    await page.locator('#flhLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoFrame').waitFor();
+    await page.evaluate(()=>{localStorage.removeItem('learner_session');dispatchEvent(new StorageEvent('storage',{key:'learner_session'}));});
+    assert.equal(await page.locator('.flh-video-dialog').count(),0,'Session change removes the old learner player');
+    await test.verifyAndClose(device.name+' lesson typed draft/session');
+  }catch(error){await test.context.close();throw error;}
+}
+
+async function libraryAndHistoryVideos(browser,device){
+  const j=(state,action)=>({state,primary_action:action,learning:{available:true,resumed:state==='CONTINUE_LEARNING'},exam:{available:true,resumed:false},...(state==='COMPLETE'?{result_attempt_id:ATTEMPT_ID}:{})});
+  const catalog={programs:[],standalone_books:[],standalone_assessments:[
+    {id:'new',slug:'qa-video',title:'نشاط جديد',journey:j('NEW','learning')},
+    {id:'ongoing',slug:'qa-ongoing',title:'نشاط مستمر',journey:j('CONTINUE_LEARNING','learning')},
+    {id:'complete',slug:'qa-complete',title:'نشاط مكتمل',journey:j('COMPLETE','results')},
+    {id:'exam',slug:'qa-active-exam',title:'امتحان نشط',journey:{...j('START_EXAM','exam'),exam:{available:true,resumed:true}}},
+  ]};
+  const history={attempt:{id:ATTEMPT_ID,delivery_mode:'exam',percentage:50,wrong_count:1,submitted_at:'2026-10-30T10:00:00Z',context:{quiz:{slug:'qa-video',title:'نتيجة الاختبار'}}},review:[{prompt:'19 - (-7)',is_correct:false,selected_text_fallback:'-26',explanation:'راجع خط الأعداد'}]};
+  const test=await setup(browser,device,{catalog,history});const {page,fixture}=test;
+  try{
+    await page.locator('[data-student-library] [data-lesson-video="qa-video"]').first().waitFor();
+    for(const slug of ['qa-video','qa-ongoing','qa-complete'])assert.ok(await page.locator('[data-lesson-video="'+slug+'"]').count()>0,'Video offered for '+slug);
+    assert.equal(await page.locator('[data-lesson-video="qa-active-exam"]').count(),0,'Authoritative active Exam hides library button');
+    await page.locator('[data-lesson-video="qa-video"]').first().click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    assert.equal(fixture.count('start_quiz'),0,'Library video does not start Learning');
+    await page.evaluate(id=>window.FLH.openAttemptHistoryAttempt(id),ATTEMPT_ID);await page.locator('#ahLessonVideo').waitFor();
+    await page.locator('#ahLessonVideo').click();await page.locator('.flh-video-dialog #flhVideoStart').click();
+    assert.equal(fixture.last('preview_videos').attempt_id,ATTEMPT_ID,'Historical review passes exact submitted attempt');
+    assert.equal(fixture.count('start_exam')+fixture.count('start_quiz'),0,'History video cannot create attempts');
+    assert.match(await page.locator('.flh-history-review-list').innerText(),/خط الأعداد/,'Mistake review survives video');
+    await screenshot(page,'lesson-video-'+device.name+'-history');
+    await test.verifyAndClose(device.name+' library and history');
+  }catch(error){await test.context.close();throw error;}
+}
+
+async function eligibleResume(browser,device){
+  const store=new Map();
+  const test=await setup(browser,device,{progressStore:store,providerMode:'resume'});
+  const {page,fixture}=test;
+  const open=p=>p.evaluate(()=>window.FLH.openLearningVideos('qa-video',{inPlace:true}));
+  const fire=(p,time,state=2)=>p.evaluate(({time,state})=>{window.__qaVideoProvider.time=time;window.__qaVideoProvider.fire('onStateChange',state);},{time,state});
+  const waitSave=(p)=>p.waitForResponse(r=>r.url().endsWith('/learning-api')&&r.request().postDataJSON()?.action==='save_video_progress');
+  const enable=async p=>{await p.locator('[data-progress-enable]').click();await p.waitForFunction(()=>window.__qaVideoProvider.instances.at(-1)?.options.events.onStateChange&&window.__qaVideoProvider.seek!==undefined);};
+  let other;
+  try{
+    await open(page);await page.locator('[data-progress-enable]').waitFor();
+    assert.equal(store.size,0,'opening unstarted video creates no timing row');
+    assert.deepEqual(await page.evaluate(()=>window.__qaVideoProvider.metrics),[],'no timing read before opt-in');
+    await enable(page);await fire(page,83,1);
+    let saved=waitSave(page);await fire(page,83);await saved;
+    await page.locator('[data-progress-clear]').waitFor();
+    assert.equal(store.get('qaVideo0001').position_seconds,83);
+    // A lost response must retry the same mutation rather than overwrite a new revision.
+    fixture.fail('after',500,'VIDEO_PROGRESS_UNAVAILABLE');
+    saved=waitSave(page);await fire(page,88);await saved;
+    await page.getByText('تعذر التأكد من الحفظ.',{exact:false}).waitFor();
+    const lost=fixture.last('save_video_progress');saved=waitSave(page);await fire(page,90);await saved;
+    assert.equal(fixture.last('save_video_progress').request_id,lost.request_id,'uncertain save retried idempotently');
+    assert.equal(store.get('qaVideo0001').revision,2);
+    await page.locator('#flhVideoStart').click();
+    await page.reload({waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>typeof window.FLH?.openLearningVideos==='function');
+    await open(page);await page.getByRole('button',{name:'متابعة من الدقيقة السابقة'}).waitFor();
+    await screenshot(page,'lesson-video-'+device.name+'-resume-choice');
+    const before=store.get('qaVideo0001').position_seconds;
+    await enable(page);assert.equal(await page.evaluate(()=>window.__qaVideoProvider.seek),before,'reload and re-login restore server marker');
+    other=await setup(browser,device,{progressStore:store,providerMode:'resume'});
+    await open(other.page);await enable(other.page);
+    assert.equal(await other.page.evaluate(()=>window.__qaVideoProvider.seek),before,'another device restores same marker');
+    await fire(page,101,1);saved=waitSave(page);await fire(page,101);await saved;
+    await fire(other.page,150,1);saved=waitSave(other.page);await fire(other.page,150);await saved;
+    await other.page.getByText('تغيّر الحفظ أو إتاحة الفيديو.',{exact:false}).waitFor();
+    assert.equal(store.get('qaVideo0001').position_seconds,101,'stale device cannot overwrite current position');
+    await other.page.locator('[data-progress-reload]').click();await enable(other.page);
+    assert.equal(await other.page.evaluate(()=>window.__qaVideoProvider.seek),101);
+    await fire(other.page,180,1);saved=waitSave(other.page);await fire(other.page,180,0);await saved;
+    assert.equal(store.get('qaVideo0001').ended,true);
+    await other.page.locator('#flhVideoStart').click();await open(other.page);
+    await other.page.getByText('وصل التشغيل سابقًا إلى النهاية.',{exact:false}).waitFor();
+    await other.page.locator('[data-progress-restart]').click();
+    await other.page.waitForFunction(()=>window.__qaVideoProvider.seek===0);
+    assert.equal(store.get('qaVideo0001').has_progress,false,'restart erases previous marker');
+    await fire(other.page,24,1);saved=waitSave(other.page);await fire(other.page,24);await saved;
+    await other.page.locator('[data-progress-clear]').click();
+    await other.page.locator('[data-progress-enable]').waitFor();
+    assert.equal(store.get('qaVideo0001').has_progress,false,'learner can erase marker and disable saving');
+    assert.equal(fixture.count('start_quiz')+fixture.count('answer')+fixture.count('finish_quiz')+fixture.count('start_exam'),0,'resume has no academic mutations');
+    await screenshot(other.page,'lesson-video-'+device.name+'-resume-cleared');
+    await other.verifyAndClose(device.name+' resume other session');other=null;
+    await test.verifyAndClose(device.name+' resume');
+  }catch(error){await other?.context.close();await test.context.close();throw error;}
+}
+
 const browser = await launchMockQaBrowser(chromium,APP_URL);
 try {
   for (const device of [{ name: 'mobile', viewport: { width: 390, height: 844 } }, { name: 'desktop', viewport: { width: 1365, height: 900 } }]) {
+    await eligibleResume(browser,device);
+    await lessonAccessStages(browser,device);
+    await lessonTypedDraft(browser,device);
+    await libraryAndHistoryVideos(browser,device);
     await authoredOutcomes(browser, device);
     await previewThenFrozenOutcomes(browser, device);
     await explicitReports(browser, device);
@@ -704,5 +874,5 @@ try {
     await examIndependence(browser, device);
     console.log(`Optional-video real-runtime regression PASS (${device.name}; synthetic Testing data; no live provider/device claim).`);
   }
-  fs.writeFileSync(`${OUTPUT_DIR}/optional-video-outcomes-manifest.json`,JSON.stringify({feature_id:'FLH-FEAT-2026-024',spec_version:'1.1',drive_revision_id:'2',child_feature_id:'FLH-FEAT-2026-022',child_spec_version:'1.1',child_drive_revision_id:'3',source:'guarded isolated mocked Testing runtime; no live provider/device claim',head_sha:process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,retention_days:7,files:screenshotFiles},null,2));
+  fs.writeFileSync(`${OUTPUT_DIR}/optional-video-outcomes-manifest.json`,JSON.stringify({feature_id:'FLH-FEAT-2026-041',spec_version:'1.1',drive_revision_id:'3',outcomes_feature_id:'FLH-FEAT-2026-024',outcomes_drive_revision_id:'2',child_feature_id:'FLH-FEAT-2026-022',child_spec_version:'1.1',child_drive_revision_id:'3',source:'guarded isolated mocked Testing runtime; no live provider/device claim',head_sha:process.env.FLH_QA_HEAD_SHA||process.env.GITHUB_SHA||null,run_id:process.env.GITHUB_RUN_ID||null,retention_days:7,files:screenshotFiles},null,2));
 } finally { await browser.close(); }

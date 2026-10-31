@@ -4,7 +4,7 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let apiPromise, disposeCurrent = () => {};
 
-  // Only readiness/errors are observed. Playback state and time are never read.
+  // Playback state/time are used only for server-eligible, explicitly opted-in resume.
   function loadPlayerApi() {
     if (globalThis.YT?.Player) return Promise.resolve(globalThis.YT);
     if (apiPromise) return apiPromise;
@@ -35,7 +35,7 @@
     return outcomes;
   }
 
-  function show({video, attemptId, call, renderShell, onStart, onExit, reportEnabled=true, startLabel='ابدأ التدريب الآن بدون انتظار'}) {
+  function show({video, attemptId, call, progressCall, isSessionCurrent=()=>true, renderShell, onStart, onExit, onDispose=()=>{}, reportEnabled=true, startLabel='ابدأ التدريب الآن بدون انتظار', exitLabel='رجوع لمكتبتي', description='يمكنك مشاهدة درس واحد أو أكثر، أو بدء التدريب الآن. المشاهدة ليست شرطًا ولا تؤثر على نقاطك.'}) {
     dispose();
     const raw = Array.isArray(video?.videos) && video.videos.length ? video.videos : [video];
     const videos = raw
@@ -50,17 +50,17 @@
       pendingRequest:null,
       saving:false,
     }));
-    let activeIndex = 0, alive = true, player, playerTimeout, renderGeneration = 0;
+    let activeIndex = 0, alive = true, player, playerTimeout, renderGeneration = 0, resume;
 
     renderShell(`<section class="panel flh-optional-video" id="flhOptionalVideo" aria-labelledby="flhVideoHeading">
       <h2 id="flhVideoHeading">فيديوهات تعليمية اختيارية</h2>
-      <p>يمكنك مشاهدة درس واحد أو أكثر، أو بدء التدريب الآن. المشاهدة ليست شرطًا ولا تؤثر على نقاطك.</p>
+      <p>${escape(description)}</p>
       <div class="actions"><button class="btn btn-primary" id="flhVideoStart">${escape(startLabel)}</button></div>
       ${videos.length > 1 ? `<div class="flh-video-sequence" role="navigation" aria-label="دروس الفيديو">
         ${videos.map((item,index)=>`<button class="btn btn-soft flh-video-sequence-item" type="button" data-video-index="${index}" aria-current="${index===0?'true':'false'}">الدرس ${escape(item.position || index+1)}</button>`).join('')}
       </div>` : ''}
       <div id="flhVideoLesson"></div>
-      <div class="actions"><button class="btn btn-soft" id="flhVideoExit">رجوع لمكتبتي</button></div>
+      <div class="actions"><button class="btn btn-soft" id="flhVideoExit">${escape(exitLabel)}</button></div>
     </section>`);
 
     const card = document.getElementById('flhOptionalVideo');
@@ -68,6 +68,7 @@
     if (!card || !lesson) return false;
 
     function stopPlayer() {
+      resume?.dispose(); resume = null;
       renderGeneration += 1;
       clearTimeout(playerTimeout);
       playerTimeout = null;
@@ -75,7 +76,7 @@
       player = null;
       card.querySelector('#flhVideoFrame')?.remove();
     }
-    function cleanup() { if (!alive) return; alive = false; observer.disconnect(); stopPlayer(); }
+    function cleanup() { if (!alive) return; alive = false; observer.disconnect(); stopPlayer(); onDispose(); }
     function available(item) {
       return item.availability === 'available' && /^[A-Za-z0-9_-]{11}$/.test(item.video_ref || '');
     }
@@ -92,6 +93,82 @@
       const unavailable = card.querySelector('#flhVideoUnavailable');
       if (unavailable) unavailable.hidden = true;
     }
+    function createResume(state,index,generation) {
+      const area=lesson.querySelector('#flhVideoResume'), item=state.video;
+      const current=()=>alive&&isSessionCurrent()&&generation===renderGeneration&&index===activeIndex;
+      const fresh=()=>state.progress?.eligible===true&&Date.parse(state.progress.eligible_until)>Date.now();
+      let enabled=state.consent===true&&fresh(), started=false, ended=false, timer, disposed=false, pending=null, busy=null;
+      const message=text=>{if(current()&&area?.isConnected){const status=area.querySelector('[data-progress-status]');if(status)status.textContent=text;}};
+      const canTrack=()=>!disposed&&enabled&&fresh()&&isSessionCurrent();
+      function controls(){
+        if(!current()||!area)return;
+        if(!fresh()) {area.innerHTML='<p class="muted" data-progress-status role="status">المشاهدة متاحة دون حفظ موضع التشغيل لهذا الفيديو.</p>';return;}
+        const marker=state.progress,seconds=Number(marker.position_seconds)||0;
+        area.innerHTML=`<p class="muted">حفظ الموضع اختياري لمدة ٢٩ يومًا، ويعمل عبر أجهزتك. الموضع تقريبي ولا يثبت المشاهدة أو الإتقان. <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">شروط YouTube</a> · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">خصوصية Google</a></p>
+          <p data-progress-status role="status">${enabled?'حفظ الموضع مفعّل لهذا العرض.':marker.ended?'وصل التشغيل سابقًا إلى النهاية. يمكنك البدء من جديد.':marker.has_progress?`آخر موضع محفوظ: ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`:'يمكنك المشاهدة دون حفظ، أو تفعيل الحفظ.'}</p>
+          <div class="actions">${!enabled?`<button class="btn btn-soft" data-progress-enable>${marker.has_progress&&!marker.ended?'متابعة من الدقيقة السابقة':'تفعيل حفظ الموضع'}</button>`:''}
+          ${marker.has_progress?'<button class="btn btn-soft" data-progress-restart>المشاهدة من البداية</button><button class="btn btn-soft" data-progress-clear>حذف الموضع وإيقاف الحفظ</button>':''}
+          <button class="btn btn-soft" data-progress-reload>إعادة تحميل الموضع المحفوظ</button></div>`;
+        area.querySelector('[data-progress-enable]')?.addEventListener('click',()=>{state.consent=true;state.seek=true;renderActive();});
+        area.querySelector('[data-progress-restart]')?.addEventListener('click',()=>clear(true));
+        area.querySelector('[data-progress-clear]')?.addEventListener('click',()=>clear(false));
+        area.querySelector('[data-progress-reload]')?.addEventListener('click',()=>{enabled=false;state.consent=false;state.progress=null;renderActive();});
+      }
+      async function write(){
+        if(busy)return busy;
+        if(!pending||!isSessionCurrent())return false;
+        const request=pending;
+        busy=(async()=>{
+          try{
+            const result=await progressCall(request.clear?'clear_video_progress':'save_video_progress',request.payload);
+            if(!result?.eligible||!Number.isSafeInteger(result.revision))throw new Error('VIDEO_PROGRESS_INELIGIBLE');
+            state.progress=result;pending=null;
+            controls();message('تم حفظ الموضع التقريبي.');return true;
+          }catch(error){
+            if(['VIDEO_PROGRESS_CONFLICT','VIDEO_PROGRESS_REQUEST_CONFLICT','VIDEO_PROGRESS_INELIGIBLE','VIDEO_NOT_AVAILABLE'].includes(error.message)){
+              enabled=false;state.consent=false;pending=null;clearInterval(timer);
+              message('تغيّر الحفظ أو إتاحة الفيديو. أعد تحميل الموضع قبل تفعيل الحفظ.');
+            }else message('تعذر التأكد من الحفظ. سنعيد المحاولة؛ يمكنك متابعة دراستك.');
+            return false;
+          }finally{busy=null;}
+        })();
+        return busy;
+      }
+      function sample(){
+        if(!canTrack()||!started||!player)return;
+        if(!pending){
+          let seconds;try{seconds=Math.round(player.getCurrentTime());}catch{return;}
+          if(!Number.isFinite(seconds)||seconds<0||seconds>86400)return;
+          pending={payload:{video_id:item.id,position_seconds:seconds,ended,expected_revision:state.progress.revision,request_id:crypto.randomUUID()}};
+        }
+        void write();
+      }
+      async function clear(restart){
+        enabled=false;clearInterval(timer);
+        if(busy)await busy;
+        if(pending&&!(await write()))return;
+        if(!current())return;
+        pending={clear:true,payload:{video_id:item.id,expected_revision:state.progress.revision,request_id:crypto.randomUUID()}};
+        if(await write()){state.consent=restart;state.seek=restart;if(current())renderActive();}
+      }
+      function leaving(){sample();}
+      function visibility(){if(document.visibilityState==='hidden')sample();}
+      controls();
+      if(progressCall&&!state.progress&&item.made_for_kids===false&&Date.parse(item.verification_expires_at)>Date.now()){
+        progressCall('get_video_progress',{video_id:item.id}).then(result=>{if(current()){state.progress=result;controls();}}).catch(()=>message('تعذر تحميل الموضع. المشاهدة متاحة دون حفظ.'));
+      }
+      window.addEventListener('pagehide',leaving);document.addEventListener('visibilitychange',visibility);
+      return {
+        get enabled(){return canTrack();},
+        ready(target){
+          if(!canTrack())return;
+          if(state.seek){state.seek=false;try{target.seekTo(state.progress.ended?0:state.progress.position_seconds,true);}catch{}}
+          timer=setInterval(()=>{if(!fresh()){enabled=false;state.consent=false;clearInterval(timer);controls();}else sample();},12000);
+        },
+        changed(event){if(!canTrack())return;if(event.data===1){started=true;ended=false;}if(event.data===0||event.data===2){ended=event.data===0;sample();}},
+        dispose(){sample();disposed=true;clearInterval(timer);window.removeEventListener('pagehide',leaving);document.removeEventListener('visibilitychange',visibility);},
+      };
+    }
     function activatePlayer(item, index, generation) {
       if (!available(item)) return;
       const params = new URLSearchParams({autoplay:'0',rel:'0',controls:'1',playsinline:'1',enablejsapi:'1',origin:location.origin});
@@ -103,8 +180,9 @@
       loadPlayerApi().then(YT => {
         if (!isCurrentRender(generation, index, frame)) return;
         const created = new YT.Player(frame, {events:{
-          onReady:() => { if (isCurrentRender(generation, index, frame)) clearTimeout(playerTimeout); },
+          onReady:event => { if (isCurrentRender(generation, index, frame)) {clearTimeout(playerTimeout);resume?.ready(event.target);} },
           onError:() => fallback(generation, index),
+          ...(resume?.enabled?{onStateChange:event=>{if(isCurrentRender(generation,index,frame))resume?.changed(event);}}:{}),
         }});
         if (!isCurrentRender(generation, index, frame)) { try { created.destroy(); } catch {} }
         else player = created;
@@ -125,6 +203,7 @@
         ${isAvailable ? `<div class="flh-video-player"><iframe id="flhVideoFrame" title="${escape('فيديو YouTube اختياري: ' + (item.title || 'شرح للمهارة الحالية'))}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
         <p id="flhVideoFallback" role="status" ${isAvailable ? 'hidden' : ''}>هذا الفيديو غير متاح الآن. يمكنك اختيار درس آخر أو بدء التدريب مباشرة.</p>
         <button class="btn btn-soft" id="flhVideoUnavailable" ${isAvailable ? '' : 'hidden'}>الفيديو لا يعمل</button>
+        ${isAvailable&&progressCall?'<section id="flhVideoResume" aria-label="استئناف الفيديو"></section>':''}
         ${reportEnabled ? `<fieldset class="flh-video-report"><legend>إفادتك عن مشاهدة هذا الدرس — اختيارية</legend>
           <p class="muted" id="flhVideoReportHelp">هذه إفادتك أنت في Family Learning Hub؛ لم نقِس مشاهدتك من YouTube. يمكنك تركها فارغة.</p>
           <label for="flhVideoReport">ماذا شاهدت؟ (اختياري)</label>
@@ -167,6 +246,7 @@
           }
         });
       }
+      resume=createResume(state,index,generation);
       activatePlayer(item, index, generation);
     }
 

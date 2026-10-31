@@ -95,7 +95,9 @@ function candidate(conceptId,videoRef,position) {
 const call = value => `set role service_role; select public.flh_learning_video_attach('${workspaceId}'::uuid,'${ownerId}'::uuid,${quoteJson(value)})::text; reset role;`;
 
 let children=[];
+const originalFlags=await psql(`select value::text from public.workspace_settings where workspace_id='${workspaceId}' and key='optional_learning_videos'`);
 try {
+  await psql(`update public.workspace_settings set value='{"enabled":true,"test_only":true}'::jsonb where workspace_id='${workspaceId}' and key='optional_learning_videos'`);
   const firstSlot = JSON.parse(await psql(call(candidate(conceptOne,'qaSeqCon001',1))));
   assert.equal(firstSlot.ok,true,'position 1 fixture attaches before concurrency race');
 
@@ -141,9 +143,21 @@ try {
   assert.equal(await psql(`select video_ref from public.learning_video_assignments where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}' and position=2`),'qaSeqCon002','explicit slot 2 survives the race');
   assert.equal(Number(await psql(`select count(*) from public.learning_video_assignments where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}'`)),2);
   console.log('Optional-video sequence concurrent explicit/omitted position serialization passed.');
+  const progress=(revision,request,position,operation='save')=>`set role service_role; select public.flh_learning_video_progress('${workspaceId}','${learnerId}','qa-optional-video-sequence-concurrency',null,'${firstSlot.video_id}','${operation}',${revision},'${request}',${position},false)::text; reset role;`;
+  const requests=['a5000000-0000-4000-8000-000000000021','a5000000-0000-4000-8000-000000000022'];
+  const results=await Promise.all(requests.map((request,i)=>psql(progress(0,request,30+i)).then(JSON.parse)));
+  assert.equal(results.filter(result=>result.revision===1).length,1,'two devices racing first insert have exactly one winner');
+  assert.equal(results.filter(result=>result.error==='VIDEO_PROGRESS_CONFLICT').length,1,'stale device must get a conflict');
+  const winner=results.findIndex(result=>result.revision===1);
+  assert.equal(JSON.parse(await psql(progress(0,requests[winner],30+winner))).revision,1,'lost response retries same mutation idempotently');
+  assert.equal(JSON.parse(await psql(progress(1,'a5000000-0000-4000-8000-000000000023',0,'clear'))).revision,2);
+  assert.equal(JSON.parse(await psql(progress(1,'a5000000-0000-4000-8000-000000000024',99))).error,'VIDEO_PROGRESS_CONFLICT','old writer cannot restore cleared marker');
+  console.log('Resume concurrent first-insert, lost-response retry and deletion race passed.');
 } finally {
   await Promise.allSettled(children.map(child=>child.done));
   await psql(`
+    update public.workspace_settings set value=${quoteJson(JSON.parse(originalFlags))} where workspace_id='${workspaceId}' and key='optional_learning_videos';
+    delete from public.learning_video_progress where workspace_id='${workspaceId}' and learner_id='${learnerId}' and video_ref in ('qaSeqCon001','qaSeqCon002');
     delete from public.learning_video_assignments where workspace_id='${workspaceId}' and learner_id='${learnerId}' and quiz_version_id='${versionId}';
     delete from public.quiz_question_concepts where workspace_id='${workspaceId}' and question_id in ('${questionOne}','${questionTwo}');
     delete from public.quiz_question_options where workspace_id='${workspaceId}' and question_id in ('${questionOne}','${questionTwo}');

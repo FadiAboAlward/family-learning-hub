@@ -37,6 +37,41 @@ export function validateVideoReport(value) {
   return {attempt_id:uuid(value.attempt_id),video_id:uuid(value.video_id),self_report:value.self_report,expected_revision:value.expected_revision,request_id:uuid(value.request_id)};
 }
 
+/** Read-only current or exact-attempt preview; identity always comes from the session. */
+export async function previewOptionalVideos(admin, workspaceId, learnerId, body, trace) {
+  const allowed = new Set(['action', 'quiz_slug', 'attempt_id']);
+  if (!body || Object.keys(body).some(key => !allowed.has(key))) invalid();
+  const slug = text(body.quiz_slug, 121);
+  const attemptId = Object.hasOwn(body, 'attempt_id') ? uuid(body.attempt_id) : null;
+  const {data,error} = await trace.measure('video.preview.rpc', {dbOperations:1}, () => admin.rpc('flh_learning_video_preview', {
+    p_workspace_id:workspaceId, p_learner_id:learnerId, p_quiz_slug:slug, p_attempt_id:attemptId,
+  }));
+  if (error) throw new Error('VIDEO_NOT_AVAILABLE');
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+// FLH-041: an approximate resume marker, never an academic viewing assertion.
+export async function optionalVideoProgress(admin, workspaceId, learnerId, body, trace) {
+  const read = body?.action === 'get_video_progress';
+  const clear = body?.action === 'clear_video_progress';
+  const allowed = new Set(['action','quiz_slug','attempt_id','video_id', ...(!read ? ['expected_revision','request_id', ...(!clear ? ['position_seconds','ended'] : [])] : [])]);
+  if (!body || !['get_video_progress','save_video_progress','clear_video_progress'].includes(body.action) || Object.keys(body).some(key=>!allowed.has(key))) invalid();
+  const params = {p_workspace_id:workspaceId,p_learner_id:learnerId,p_quiz_slug:text(body.quiz_slug,121),p_attempt_id:Object.hasOwn(body,'attempt_id')?uuid(body.attempt_id):null,p_video_id:uuid(body.video_id),p_operation:read?'read':clear?'clear':'save',p_expected_revision:0,p_request_id:null,p_position_seconds:0,p_ended:false};
+  if (!read) {
+    if (!Number.isSafeInteger(body.expected_revision) || body.expected_revision<0) invalid();
+    params.p_expected_revision=body.expected_revision;params.p_request_id=uuid(body.request_id);
+    if (!clear) {
+      if (!Number.isInteger(body.position_seconds) || body.position_seconds<0 || body.position_seconds>86400 || typeof body.ended!=='boolean') invalid();
+      params.p_position_seconds=body.position_seconds;params.p_ended=body.ended;
+    }
+  }
+  const {data,error}=await trace.measure('video.progress.rpc',{dbOperations:1},()=>admin.rpc('flh_learning_video_progress',params));
+  if(error)throw new Error('VIDEO_PROGRESS_UNAVAILABLE');
+  if(data?.error){const failure=new Error(data.error);failure.data=data;throw failure;}
+  return data;
+}
+
 /** Retrieve only required provider status. Credentials/payloads never leave this boundary. */
 export async function validateYouTubeStatus(videoRef, {apiKey, fetchImpl=fetch, now=Date.now()} = {}) {
   if (!VIDEO_ID.test(videoRef || '') || typeof apiKey !== 'string' || !apiKey.trim()) throw new Error('VIDEO_PROVIDER_UNAVAILABLE');

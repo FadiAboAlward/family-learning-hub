@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
-import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport } from "../_shared/optional-learning-videos.mjs";
+import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport, previewOptionalVideos, optionalVideoProgress } from "../_shared/optional-learning-videos.mjs";
 import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
 import { AUTHORING_ACTIONS, assessmentAuthoringCommand } from "../_shared/assessment-authoring.mjs";
 import { assessmentParent } from "../_shared/assessment-parent-auth.mjs";
@@ -22,17 +22,6 @@ async function startQuiz(learnerId:string,slug:string,trace:any){
   if(error){
     console.error("Learning start RPC failed",{code:error.code,message:error.message});
     throw new Error("START_QUIZ_FAILED");
-  }
-  if((data as any)?.error)throw new Error(String((data as any).error));
-  return data;
-}
-
-async function previewVideos(learnerId:string,slug:string,trace:any){
-  if(!slug)throw new Error("QUIZ_NOT_FOUND");
-  const{data,error}=await trace.measure("video.preview.rpc",{dbOperations:1},()=>admin.rpc("flh_learning_video_preview",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_quiz_slug:slug}));
-  if(error){
-    console.error("Learning video preview RPC failed",{code:error.code,message:error.message});
-    throw new Error("VIDEO_NOT_AVAILABLE");
   }
   if((data as any)?.error)throw new Error(String((data as any).error));
   return data;
@@ -110,7 +99,7 @@ Deno.serve(async(req:Request)=>{
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
     const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
-    const allowed=new Set(["start_quiz","preview_videos","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
+    const allowed=new Set(["start_quiz","preview_videos","get_video_progress","save_video_progress","clear_video_progress","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
     let output;
@@ -121,21 +110,22 @@ Deno.serve(async(req:Request)=>{
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
-      else if(action==="preview_videos")output=await previewVideos(lid,String(b.quiz_slug||""),trace);
+      else if(action==="preview_videos")output=await previewOptionalVideos(admin,WORKSPACE_ID,lid,b,trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
       else if(action==="save_response_draft")output=await saveResponseDraft(lid,b,trace);
       else if(action==="clear_response_draft")output=await clearResponseDraft(lid,b,trace);
       else if(action==="request_hint")output=await requestHint(lid,b,trace);
       else if(action==="answer")output=await answerQuestion(lid,b,trace);
       else if(action==="answer_response")output=await answerResponse(lid,b,trace);
+      else if(["get_video_progress","save_video_progress","clear_video_progress"].includes(action))output=await optionalVideoProgress(admin,WORKSPACE_ID,lid,b,trace);
       else if(action==="save_video_report")output=await saveOptionalVideoReport(admin,WORKSPACE_ID,lid,b,trace);
       else output=await finishQuiz(lid,b,trace);
     }
     return performanceJsonResponse(trace,output,200,cors(origin));
   }catch(e){
     const m=e instanceof Error?e.message:"SERVER_ERROR";
-    const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
-    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"||m==="ASSESSMENT_FORBIDDEN"?403:m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"||/ASSESSMENT_(RETRY_CONFLICT|CONTENT_DRIFT|STATE_CONFLICT|FRESH_DRAFT_REQUIRED|HELD_OR_IMMUTABLE|DELIVERY_CONFLICT|DELIVERY_STATE_CONFLICT)/.test(m)?409:nf.includes(m)?404:bad.includes(m)||/^ASSESSMENT_(TARGET_INVALID|INPUT_INVALID|SEMANTIC_REVIEW_REQUIRED|ACADEMIC_REJECTED|CONTEXT_MISMATCH|VIDEO_GATE_FAILED|DELIVERY_INPUT_INVALID|DELIVERY_EVIDENCE_INVALID)$/.test(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
+    const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE","VIDEO_PROGRESS_INELIGIBLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
+    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"||m==="ASSESSMENT_FORBIDDEN"?403:m==="VIDEO_PROGRESS_CONFLICT"||m==="VIDEO_PROGRESS_REQUEST_CONFLICT"||m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"||/ASSESSMENT_(RETRY_CONFLICT|CONTENT_DRIFT|STATE_CONFLICT|FRESH_DRAFT_REQUIRED|HELD_OR_IMMUTABLE|DELIVERY_CONFLICT|DELIVERY_STATE_CONFLICT)/.test(m)?409:nf.includes(m)?404:bad.includes(m)||/^ASSESSMENT_(TARGET_INVALID|INPUT_INVALID|SEMANTIC_REVIEW_REQUIRED|ACADEMIC_REJECTED|CONTEXT_MISMATCH|VIDEO_GATE_FAILED|DELIVERY_INPUT_INVALID|DELIVERY_EVIDENCE_INVALID)$/.test(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
     const details=(e as any)?.data;
     const payload=m==="REPORT_CONFLICT"?{error:m,self_report:details?.self_report,report_revision:details?.report_revision}:{error:m};
     return performanceJsonResponse(trace,payload,status,cors(origin));
