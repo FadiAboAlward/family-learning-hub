@@ -5,6 +5,8 @@ declare
   w uuid; l uuid; owner_id uuid:=gen_random_uuid();
   curriculum uuid:=gen_random_uuid(); program uuid:=gen_random_uuid(); quiz uuid:=gen_random_uuid(); version uuid:=gen_random_uuid();
   concept_one uuid:=gen_random_uuid(); concept_two uuid:=gen_random_uuid(); question_one uuid:=gen_random_uuid(); question_two uuid:=gen_random_uuid();
+  other_learner uuid:=gen_random_uuid(); exam_attempt uuid:=gen_random_uuid(); counts_before jsonb;
+  progress_request uuid:=gen_random_uuid();
   subject bigint; base jsonb; result jsonb; resumed jsonb; preview jsonb; report jsonb; attempt uuid; video_one uuid; video_two uuid;
 begin
   execute $definition$create or replace function pg_temp.sequence_assert(ok boolean,message text) returns void language plpgsql as $assert$begin if ok is distinct from true then raise exception 'Optional video sequence contract: %',message; end if; end$assert$$definition$;
@@ -30,6 +32,9 @@ begin
       (question_two,w,version,2,'single_choice','Question two','generated','core','en');
     insert into public.quiz_question_options(workspace_id,question_id,position,content) values
       (w,question_one,1,'One'),(w,question_two,1,'Two');
+    insert into public.quiz_question_answer_keys(question_id,workspace_id,correct_answer,explanation,correct_explanation,final_incorrect_explanation,grading_config) values
+      (question_one,w,'{"option_position":1}','base','correct','incorrect','{}'),
+      (question_two,w,'{"option_position":1}','base','correct','incorrect','{}');
     insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary) values
       (w,question_one,concept_one,true),(w,question_two,concept_two,true);
 
@@ -82,6 +87,96 @@ begin
     result:=public.flh_learning_video_attach(w,owner_id,base||jsonb_build_object('concept_id',concept_two,'position',3,'video_ref','qaSeqVid002'));
     perform pg_temp.sequence_assert(result->>'error'='INVALID_VIDEO_INPUT','same provider reference cannot be duplicated in another position');
 
+    -- FLH-041: exact owned Learning history retains its pinned ordered videos.
+    perform pg_temp.sequence_assert(not has_function_privilege('anon','public.flh_learning_video_preview(uuid,uuid,text,uuid)','EXECUTE')
+      and not has_function_privilege('authenticated','public.flh_learning_video_preview(uuid,uuid,text,uuid)','EXECUTE'),'exact-attempt preview remains service-only');
+    select jsonb_build_object('attempts',(select count(*) from public.quiz_attempts where workspace_id=w),
+      'answers',(select count(*) from public.quiz_answer_attempts where workspace_id=w),
+      'rewards',(select count(*) from public.gamification_events where workspace_id=w)) into counts_before;
+    preview:=public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt);
+    perform pg_temp.sequence_assert(preview->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid001','in-Learning preview uses its original snapshot');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',gen_random_uuid())->>'error'='VIDEO_NOT_AVAILABLE','foreign/missing attempt denied');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(gen_random_uuid(),l,'qa-optional-video-sequence',attempt)->>'error'='QUIZ_NOT_FOUND','cross-workspace attempt denied');
+    reset role;
+    insert into public.learners(id,workspace_id,display_name,slug,metadata) values(other_learner,w,'Synthetic other learner','qa-041-other','{"is_test":true}');
+    insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values(w,other_learner,program,'active');
+    update public.quiz_attempts set status='submitted',submitted_at=now() where workspace_id=w and id=attempt;
+    set local role service_role;
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,other_learner,'qa-optional-video-sequence',attempt)->>'error'='VIDEO_NOT_AVAILABLE','another enrolled learner cannot read a foreign snapshot');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,other_learner,'qa-optional-video-sequence')->>'error'='VIDEO_NOT_AVAILABLE','program enrollment does not expose another learner video assignment');
+    preview:=public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt);
+    perform pg_temp.sequence_assert(preview->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid001','submitted Learning history keeps its immutable video');
+    perform pg_temp.sequence_assert(jsonb_build_object('attempts',(select count(*) from public.quiz_attempts where workspace_id=w),
+      'answers',(select count(*) from public.quiz_answer_attempts where workspace_id=w),
+      'rewards',(select count(*) from public.gamification_events where workspace_id=w))=counts_before,'preview never creates attempts, answers or rewards');
+    reset role;
+    insert into public.quiz_attempts(id,workspace_id,learner_id,quiz_version_id,status,delivery_mode)
+      values(exam_attempt,w,l,version,'in_progress','exam');
+    set local role service_role;
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence')->>'error'='VIDEO_NOT_AVAILABLE','active Exam blocks library route');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt)->>'error'='VIDEO_NOT_AVAILABLE','active Exam blocks old submitted review route');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',exam_attempt)->>'error'='VIDEO_NOT_AVAILABLE','active Exam cannot masquerade as submitted review');
+    reset role;
+    -- Submit a complete synthetic Exam through the existing grading path. An
+    -- empty attempt cannot bypass the academic completeness/mastery invariant.
+    insert into public.quiz_attempt_question_queue(workspace_id,quiz_attempt_id,sequence_no,question_id,difficulty_level,status,source_role) values
+      (w,exam_attempt,1,question_one,2,'active','core'),
+      (w,exam_attempt,2,question_two,2,'active','core');
+    insert into public.quiz_attempt_answers(workspace_id,attempt_id,question_id,response,evaluation,is_correct,points_awarded,attempts_used,hints_used,first_try_correct,mastery_result,quiz_version_id) values
+      (w,exam_attempt,question_one,'{"option_position":1}','ungraded',null,null,1,0,null,null,version),
+      (w,exam_attempt,question_two,'{"option_position":1}','ungraded',null,null,1,0,null,null,version);
+    set local role service_role;
+    result:=public.flh_exam_submit(w,l,exam_attempt);
+    perform pg_temp.sequence_assert(result->>'error' is null and (select status='submitted' from public.quiz_attempts where id=exam_attempt),'synthetic Exam submits through the authoritative path');
+    -- Academic submission may award rewards; subsequent video operations must
+    -- leave that post-submission balance unchanged.
+    counts_before:=jsonb_set(counts_before,'{rewards}',to_jsonb((select count(*) from public.gamification_events where workspace_id=w)));
+    preview:=public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',exam_attempt);
+    perform pg_temp.sequence_assert(preview->>'quiz_version_id'=version::text and preview->'optional_video'->'videos'->0->>'video_ref'='qaSeqVid003','submitted Exam uses its exact version assignments');
+    reset role;
+    -- FLH-041: isolated persistence, eligibility, optimistic revisions and deletion.
+    perform pg_temp.sequence_assert((select relrowsecurity from pg_class where oid='public.learning_video_progress'::regclass),'progress has RLS');
+    perform pg_temp.sequence_assert(not has_table_privilege('anon','public.learning_video_progress','SELECT') and not has_table_privilege('authenticated','public.learning_video_progress','UPDATE'),'direct client access forbidden');
+    perform pg_temp.sequence_assert(not has_function_privilege('authenticated','public.flh_learning_video_progress(uuid,uuid,text,uuid,uuid,text,bigint,uuid,integer,boolean)','EXECUTE'),'progress RPC service-only');
+    set local role service_role;
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'read',0,null,0,false);
+    perform pg_temp.sequence_assert(result->>'eligible'='true' and result->>'has_progress'='false','unstarted video has no marker');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',0,progress_request,83,false);
+    perform pg_temp.sequence_assert(result->>'position_seconds'='83' and result->>'revision'='1','save stores per learner provider marker');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',0,progress_request,83,false);
+    perform pg_temp.sequence_assert(result->>'revision'='1','lost-response retry idempotent');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',0,progress_request,90,false)->>'error'='VIDEO_PROGRESS_REQUEST_CONFLICT','mutation ID cannot change payload');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',0,gen_random_uuid(),99,false)->>'error'='VIDEO_PROGRESS_CONFLICT','stale device cannot overwrite');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,other_learner,'qa-optional-video-sequence',attempt,video_one,'read',0,null,0,false)->>'error'='VIDEO_NOT_AVAILABLE','synthetic other-learner video denied');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(gen_random_uuid(),l,'qa-optional-video-sequence',attempt,video_one,'read',0,null,0,false)->>'error'='VIDEO_NOT_AVAILABLE','cross-workspace denied');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_two,'read',0,null,0,false);
+    perform pg_temp.sequence_assert(result->>'has_progress'='false','second video independent');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',1,gen_random_uuid(),180,true);
+    perform pg_temp.sequence_assert(result->>'ended'='true','ended is approximate state only');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'clear',2,gen_random_uuid(),0,false);
+    perform pg_temp.sequence_assert(result->>'has_progress'='false' and result->>'position_seconds'='0','clear erases timing');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',2,gen_random_uuid(),99,false)->>'error'='VIDEO_PROGRESS_CONFLICT','tombstone prevents old save restoring deleted timing');
+    reset role;
+    update public.learning_video_attempts set made_for_kids=true where workspace_id=w and attempt_id=attempt and video_id=video_one;
+    set local role service_role;
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'read',0,null,0,false)->>'eligible'='false','MFK never exposes timing');
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'save',0,gen_random_uuid(),99,false)->>'error'='VIDEO_PROGRESS_INELIGIBLE','MFK saves denied');
+    perform pg_temp.sequence_assert((select count(*)=0 from public.learning_video_progress where workspace_id=w and learner_id=l and video_ref='qaSeqVid001'),'ineligible marker removed');
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt)->'optional_video'->'videos'->0->>'availability'='available','MFK playback remains available');
+    reset role;
+    update public.learning_video_attempts set made_for_kids=false,verification_expires_at=now()-interval '1 second' where workspace_id=w and attempt_id=attempt and video_id=video_one;
+    set local role service_role;
+    perform pg_temp.sequence_assert(public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_one,'read',0,null,0,false)->>'eligible'='false','expired eligibility disables timing only');
+    result:=public.flh_learning_video_progress(w,l,'qa-optional-video-sequence',attempt,video_two,'save',0,gen_random_uuid(),44,false);
+    perform pg_temp.sequence_assert(result->>'revision'='1','second video can be saved independently');
+    reset role;
+    update public.learning_video_progress set updated_at=now()-interval '30 days' where workspace_id=w and learner_id=l;
+    perform public.flh_learning_video_prune_status(w);
+    perform pg_temp.sequence_assert((select count(*)=0 from public.learning_video_progress where workspace_id=w and learner_id=l),'daily maintenance erases expired timing');
+    perform pg_temp.sequence_assert((select count(*) from public.gamification_events where workspace_id=w)=(counts_before->>'rewards')::bigint,'resume never changes rewards');
+    update public.learner_program_enrollments set status='paused' where workspace_id=w and learner_id=l and program_id=program;
+    set local role service_role;
+    perform pg_temp.sequence_assert(public.flh_learning_video_preview(w,l,'qa-optional-video-sequence',attempt)->>'error'='QUIZ_NOT_AVAILABLE','revoked enrollment cannot use a historical video snapshot');
     reset role;
     raise exception 'Optional video sequence success rollback' using errcode='P0S12';
   exception when sqlstate 'P0S12' then

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import {optionalVideoProgress} from '../supabase/functions/_shared/optional-learning-videos.mjs';
 import fs from 'node:fs';
-import {validateVideoCandidate,validateLearningOutcomes,validateVideoReport,validateYouTubeStatus,saveOptionalVideoReport,attachOptionalVideo,maintainOptionalVideos} from '../supabase/functions/_shared/optional-learning-videos.mjs';
+import {validateVideoCandidate,validateLearningOutcomes,validateVideoReport,validateYouTubeStatus,saveOptionalVideoReport,attachOptionalVideo,maintainOptionalVideos,previewOptionalVideos} from '../supabase/functions/_shared/optional-learning-videos.mjs';
 
 const id = 'a1000000-0000-4000-8000-000000000001';
 const candidate={learner_id:id,quiz_version_id:id,program_id:id,curriculum_id:id,grade_level:7,subject_id:1,concept_id:id,position:1,video_ref:'qaVideo0001',title:'Vetted explanation',language:'tr',rationale:'Matches the exact target concept.'};
@@ -26,7 +27,7 @@ let requested;
 const verified=await validateYouTubeStatus(candidate.video_ref,{apiKey:'synthetic-test-key',now,fetchImpl:async(url,options)=>{requested={url,options};return response();}});
 assert.equal(verified.embeddable,true);
 assert.equal(verified.made_for_kids,true);
-assert.equal(Date.parse(verified.verification_expires_at)-now,7*86400000);
+assert.equal(Date.parse(verified.verification_expires_at)-now,29*86400000);
 assert.equal(new URL(requested.url).searchParams.get('part'),'id,status');
 assert.equal(new URL(requested.url).searchParams.get('id'),candidate.video_ref);
 assert.ok(!requested.url.includes('synthetic-test-key'));
@@ -39,6 +40,14 @@ await assert.rejects(validateYouTubeStatus(candidate.video_ref,{}),/VIDEO_PROVID
 let calls=[];
 const trace={measure:async(_label,_options,fn)=>fn()};
 const admin={rpc:async(name,params)=>{calls.push({name,params});return {data:{ok:true,self_report:'watched_part',report_revision:1}};}};
+await previewOptionalVideos(admin,'verified-workspace','verified-learner',{action:'preview_videos',quiz_slug:'qa-video',attempt_id:id},trace);
+assert.deepEqual(calls.pop(),{name:'flh_learning_video_preview',params:{p_workspace_id:'verified-workspace',p_learner_id:'verified-learner',p_quiz_slug:'qa-video',p_attempt_id:id}});
+await previewOptionalVideos(admin,'verified-workspace','verified-learner',{quiz_slug:'qa-video'},trace);
+assert.equal(calls.pop().params.p_attempt_id,null);
+for(const extra of [{learner_id:id},{workspace_id:id},{attempt_id:'bad'},{attempt_id:null},{video_ref:'qaVideo0001'}])await assert.rejects(previewOptionalVideos(admin,'w','l',{quiz_slug:'qa-video',...extra},trace),/INVALID_VIDEO_INPUT/);
+assert.equal(calls.length,0,'Forged identity/context is rejected before any preview RPC');
+await assert.rejects(previewOptionalVideos({rpc:async()=>({data:{error:'VIDEO_NOT_AVAILABLE'}})},'w','l',{quiz_slug:'qa-video'},trace),/VIDEO_NOT_AVAILABLE/);
+await assert.rejects(previewOptionalVideos({rpc:async()=>({error:{message:'private SQL detail'}})},'w','l',{quiz_slug:'qa-video'},trace),/^Error: VIDEO_NOT_AVAILABLE$/);
 await saveOptionalVideoReport(admin,'verified-workspace','verified-learner',report,trace);
 assert.equal(calls[0].params.p_learner_id,'verified-learner');
 assert.equal(calls[0].params.p_workspace_id,'verified-workspace');
@@ -100,3 +109,19 @@ const featureSources=[migration,sequenceMigration,fs.readFileSync('supabase/func
 assert.doesNotMatch(featureSources,/getCurrentTime|getDuration|onStateChange|played_seconds|watch_percentage|watch_seconds/);
 assert.doesNotMatch(migration,/insert into public\.(gamification_events|learner_gamification_state)/i);
 console.log('Optional video candidate/outcomes/provider-status/self-report tests passed; no readiness, formal keys, player evidence or reward coupling.');
+
+const progressInput={action:'save_video_progress',quiz_slug:'qa-video',attempt_id:id,video_id:id,position_seconds:82,ended:false,expected_revision:0,request_id:id};
+calls=[];
+await optionalVideoProgress(admin,'trusted-workspace','trusted-learner',progressInput,trace);
+assert.equal(calls[0].params.p_learner_id,'trusted-learner');
+assert.equal(calls[0].params.p_workspace_id,'trusted-workspace');
+assert.equal(calls[0].params.p_position_seconds,82);
+for(const patch of [{learner_id:id},{workspace_id:id},{video_ref:'qaSeqVid001'},{position_seconds:-1},{position_seconds:NaN},{position_seconds:86401},{position_seconds:1.5},{ended:'true'},{expected_revision:-1},{request_id:'bad'},{attempt_id:null}])
+  await assert.rejects(optionalVideoProgress(admin,'w','l',{...progressInput,...patch},trace),/INVALID_VIDEO_INPUT/);
+calls=[];
+await optionalVideoProgress(admin,'w','l',{action:'get_video_progress',quiz_slug:'qa-video',video_id:id},trace);
+assert.equal(calls[0].params.p_operation,'read');assert.equal(calls[0].params.p_attempt_id,null);
+await assert.rejects(optionalVideoProgress(admin,'w','l',{action:'get_video_progress',quiz_slug:'qa-video',video_id:id,position_seconds:9},trace),/INVALID_VIDEO_INPUT/);
+await assert.rejects(optionalVideoProgress({rpc:async()=>({error:{message:'sensitive SQL'}})},'w','l',progressInput,trace),/^Error: VIDEO_PROGRESS_UNAVAILABLE$/);
+await assert.rejects(optionalVideoProgress({rpc:async()=>({data:{error:'VIDEO_PROGRESS_CONFLICT'}})},'w','l',progressInput,trace),/VIDEO_PROGRESS_CONFLICT/);
+console.log('Resume identity, input bounds, action boundaries and opaque errors passed.');

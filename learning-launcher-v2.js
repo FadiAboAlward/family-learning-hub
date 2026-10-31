@@ -12,14 +12,23 @@
   const hintContentHtml=(s='')=>{const lines=String(s).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return lines.length===3&&lines.every(x=>/^•\s+\S/u.test(x))?`<ul class="flh-hint-list">${lines.map(x=>`<li>${renderMath(x.replace(/^•\s+/u,''))}</li>`).join('')}</ul>`:renderMath(s);};
   const token=()=>localStorage.getItem('learner_session')||sessionStorage.getItem('learner_session')||'';
   const optionLabel=pos=>{const i=Math.max(0,Number(pos)-1);return OPTION_LABELS[i]||(i<26?String.fromCharCode(65+i):String(pos));};
-  async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok){const error=new Error(d.error||'SERVER_ERROR');error.data=d;throw error;}return d;}
+  async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(['save_video_progress','clear_video_progress'].includes(action)?{keepalive:true}:{}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok){const error=new Error(d.error||'SERVER_ERROR');error.data=d;throw error;}return d;}
   async function refreshProfile(){try{if(typeof api==='function'&&typeof state!=='undefined')state.learnerProfile=await api('student_profile',{},token());}catch{}}
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
   function assetsHtml(q){return(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   function home(){globalThis.FLHElapsedTimer?.dispose();if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile);}
 
-  async function openLearningVideos(slug){
+  function resumeOptions(slug,attemptId){
+    const original=token();
+    return {isSessionCurrent:()=>token()===original,progressCall:(action,payload)=>{
+      if(!original||token()!==original)return Promise.reject(new Error('AUTH_REQUIRED'));
+      return call(action,{...payload,quiz_slug:slug,...(attemptId?{attempt_id:attemptId}:{})});
+    }};
+  }
+
+  async function openLearningVideos(slug,{inPlace=false,attemptId=null}={}){
     if(!slug||typeof shell!=='function')return false;
+    if(inPlace)return openVideoDialog(slug,attemptId);
     globalThis.FLHElapsedTimer?.dispose();
     globalThis.FLHOptionalVideo?.dispose();
     shell('🎬 جاري تجهيز فيديوهات الدرس','لن نغيّر أي إجابة أو تقدّم محفوظ.','<section class="panel"><div class="loading-card">لحظة…</div></section>');
@@ -36,6 +45,7 @@
     try{
       if(globalThis.FLHOptionalVideo?.show({
         video:preview.optional_video,
+        ...resumeOptions(slug,null),
         attemptId:null,
         call,
         renderShell:vshell,
@@ -48,6 +58,50 @@
     shell('الفيديوهات غير متاحة الآن','يمكنك متابعة التدريب من نفس المكان الذي توقفت عنده.','<section class="panel"><div class="actions"><button class="btn btn-primary" id="flhVideoContinueFallback">متابعة التدريب</button><button class="btn btn-soft" id="flhVideoBackFallback">رجوع لمكتبتي</button></div></section>');
     document.getElementById('flhVideoContinueFallback')?.addEventListener('click',()=>startLearningQuiz(slug));
     document.getElementById('flhVideoBackFallback')?.addEventListener('click',home);
+    return true;
+  }
+
+  // Keep the question/review DOM alive: no start/resume, re-render or academic write.
+  async function openVideoDialog(slug,attemptId){
+    globalThis.FLHOptionalVideo?.dispose();
+    document.querySelector('.flh-video-dialog')?.remove();
+    const app=document.getElementById('app'),sessionToken=token(),focus=document.activeElement;
+    if(!app||!sessionToken)return false;
+    const dialog=document.createElement('dialog');
+    dialog.className='flh-video-dialog';dialog.dir='rtl';
+    dialog.setAttribute('aria-label','فيديو الدرس');
+    dialog.innerHTML='<p role="status">جارٍ تحميل فيديو الدرس…</p><button class="btn btn-soft" data-video-close>رجوع</button>';
+    let closed=false;
+    const observer=new MutationObserver(()=>{if(!dialog.isConnected)close();});
+    function close(){
+      if(closed)return;closed=true;observer.disconnect();
+      window.removeEventListener('storage',sessionChanged);
+      globalThis.FLHOptionalVideo?.dispose();dialog.remove();
+      if(focus?.isConnected&&token()===sessionToken)focus.focus();
+    }
+    function sessionChanged(){if(token()!==sessionToken)close();}
+    dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
+    dialog.querySelector('[data-video-close]').addEventListener('click',close);
+    app.append(dialog);dialog.showModal();
+    observer.observe(app,{childList:true});
+    window.addEventListener('storage',sessionChanged);
+    const current=()=>!closed&&dialog.isConnected&&token()===sessionToken;
+    try{
+      const preview=await call('preview_videos',{quiz_slug:slug,...(attemptId?{attempt_id:attemptId}:{})});
+      if(!current()){close();return false;}
+      const shown=globalThis.FLHOptionalVideo?.show({
+        video:preview.optional_video,call,attemptId:null,reportEnabled:false,
+        ...resumeOptions(slug,attemptId),
+        renderShell:html=>{dialog.innerHTML=html;},
+        startLabel:'رجوع إلى نفس المكان',exitLabel:'إغلاق الفيديو',
+        description:'شاهد الفيديو متى شئت. إجاباتك ومراجعتك باقية كما تركتها.',
+        onStart:close,onExit:close,onDispose:close,
+      });
+      if(shown){dialog.querySelector('#flhVideoStart')?.focus();return true;}
+    }catch{ /* Availability and authorization failures never change the underlying screen. */ }
+    if(!current()){close();return false;}
+    dialog.innerHTML='<h2>فيديو الدرس</h2><p role="status">الفيديو غير متاح الآن. أثناء الامتحان يبقى مغلقًا حتى التسليم. يمكنك الرجوع دون فقدان تقدّمك.</p><button class="btn btn-primary" data-video-close>رجوع إلى نفس المكان</button>';
+    const back=dialog.querySelector('[data-video-close]');back.addEventListener('click',close);back.focus();
     return true;
   }
 
@@ -72,6 +126,8 @@
     const remaining=()=>queue.some(x=>!['completed','skipped'].includes(x.status));
     const nextIndex=()=>queue.findIndex((x,i)=>i>index&&!['completed','skipped'].includes(x.status));
     const qshell=html=>shell(`🧠 ${safe(session.quiz.title)}`,'وضع التعلّم — اختَر، فكّر، واستعمل المساعدة وقت الحاجة.',html);
+    const videoButton='<button class="btn btn-soft" type="button" id="flhLessonVideo">🎬 فيديو الدرس</button>';
+    function bindLessonVideo(){document.getElementById('flhLessonVideo')?.addEventListener('click',()=>openLearningVideos(slug,{inPlace:true,attemptId:session.attempt_id}));}
 
     async function finish(){
       questionTimer?.dispose();
@@ -82,8 +138,8 @@
         globalThis.FLHTelemetry?.capture?.('flh_learning_completed',{mode:'learning',quiz_slug:slug,attempt_id:session.attempt_id,percentage:Number(d.percentage||0),first_try_correct:Number(d.first_try_correct||0),hints_used:Number(d.hints_used||0),xp:Number(d.award?.xp||0),reward_points:Number(d.award?.reward_points||0),duration_seconds:Math.max(1,Math.round((Date.now()-started)/1000))});
         const review=(d.review||[]).map((r,i)=>`<details class="exam-review"><summary>${r.is_correct===true?'✅':r.is_correct===false?'❌':'📝'} السؤال ${i+1}</summary><div class="question" ${questionAttrs(r)}>${renderMath(r.prompt||'')}</div>${r.explanation?`<div class="muted" dir="auto">${renderMath(r.explanation)}</div>`:''}</details>`).join('');
         const award=d.award?.already_awarded?'<div class="muted">مكافأة هذا التدريب محسوبة سابقًا.</div>':`<div class="award-pop">🎉 +${Number(d.award?.xp||0)} XP &nbsp; 🪙 +${Number(d.award?.reward_points||0)} نقطة</div>`;
-        qshell(`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">من أول مرة<b>${Number(d.first_try_correct||0)}</b></div><div class="stat">التلميحات<b>${Number(d.hints_used||0)}</b></div></div>${award}<div class="section-title">مراجعة</div>${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="flh-sticky-action"><button class="btn btn-primary" id="learnHome">رجوع لمكتبتي</button></div></section>`);
-        document.getElementById('learnHome')?.addEventListener('click',home);
+        qshell(`<section class="panel"><div class="stats"><div class="stat">الدرجة<b>${Number(d.percentage||0)}%</b></div><div class="stat">من أول مرة<b>${Number(d.first_try_correct||0)}</b></div><div class="stat">التلميحات<b>${Number(d.hints_used||0)}</b></div></div>${award}${videoButton}<div class="section-title">مراجعة</div>${review||'<div class="empty">لا توجد مراجعة.</div>'}<div class="flh-sticky-action"><button class="btn btn-primary" id="learnHome">رجوع لمكتبتي</button></div></section>`);
+        bindLessonVideo();document.getElementById('learnHome')?.addEventListener('click',home);
       }catch{qshell('<section class="panel"><div class="error">تعذر إنهاء التدريب، لكن إجاباتك المحفوظة لم تضِع.</div><div class="flh-sticky-action"><button class="btn btn-primary" id="learnRetryFinish">إعادة المحاولة</button></div></section>');document.getElementById('learnRetryFinish')?.addEventListener('click',finish);}
     }
 
@@ -158,9 +214,9 @@
       const ready=typed?Boolean(typedDraft.trim()):Boolean(selected);
       const status=row.typed_draft_error?'تعذر حفظ المسودة الآن. اضغط «رجوع لمكتبتي» لإعادة محاولة الحفظ، أو أكّد الإجابة.':busy?'جارٍ إرسال الإجابة…':ready?(typed?'الإجابة جاهزة. اضغط «تأكيد الإجابة» عندما تتأكد.':'تم اختيار الإجابة. اضغط «تأكيد الإجابة» عندما تتأكد.'):(typed?'اكتب إجابتك.':'اختر إجابتك.');
       const sourceNote=q.source_metadata?.support_source_derived?'<div class="muted flh-source-note">📚 سؤال من مصدر MEB الداعم الرسمي؛ التلميحات والشرح من Family Learning Hub.</div>':'';
-      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted" role="status" aria-live="polite">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools"><button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
+      qshell(`<section class="panel flh-touch-quiz">${restored}<div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">${row.source_role==='remediation'?'تدريب مساعد':'أساسي'}</span></div>${assetsHtml(q)}<div class="question" ${questionAttrs(q)}><b>${renderMath(q.prompt)}</b></div>${sourceNote}<div class="flh-instruction">${typed?'اكتب إجابتك كما يطلب السؤال، ثم أكّدها.':'اختر جوابك، ثم أكّده عندما تتأكد.'}</div>${responseControl}<div id="flhLearnStatus" class="muted" role="status" aria-live="polite">${status}</div><div class="flh-sticky-action"><button class="btn btn-primary" id="flhConfirmAnswer" ${(!ready||busy)?'disabled':''}>تأكيد الإجابة</button></div><div id="flhLearnHint">${hintBox}${misconceptionBox}${hintNotice}</div><div id="flhLearnFeedback"></div><div class="flh-learning-tools">${busy?'':videoButton}<button class="btn btn-soft flh-help-btn" id="flhHelp" ${busy||Number(row.hint_level_requested||0)>=4||row.hint_unavailable_local?'disabled':''}>💡 ساعدني</button><button class="btn btn-soft" id="flhLearnExit" ${busy?'disabled':''}>رجوع لمكتبتي</button></div></section>`);
       attachTimer();
-      document.getElementById('flhLearnExit')?.addEventListener('click',exitLearning);
+      bindLessonVideo();document.getElementById('flhLearnExit')?.addEventListener('click',exitLearning);
       document.getElementById('flhHelp')?.addEventListener('click',help);
       document.getElementById('flhConfirmAnswer')?.addEventListener('click',confirmAnswer);
       document.querySelectorAll('.flh-learn-answer').forEach(b=>b.addEventListener('click',()=>choose(b)));
@@ -228,9 +284,9 @@
         busy=false;
         const ni=nextIndex();
         const feedback=`${d.ungraded?'<div class="award-pop">📝 تم حفظ إجابتك.</div>':d.is_correct?'<div class="award-pop">✅ ممتاز!</div>':'<div class="error">خلصت المحاولات لهذا السؤال.</div>'}${d.explanation?`<div class="flh-explanation"><b>الشرح</b><div dir="auto">${renderMath(d.explanation)}</div></div>`:''}<div class="flh-sticky-action"><button class="btn btn-primary flh-next-big" id="flhLearnNext">${ni>=0?'السؤال التالي':'إنهاء التدريب'}</button></div>`;
-        qshell(`<section class="panel flh-touch-quiz"><div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">تم</span></div><div class="question" ${questionAttrs(row.question)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}</section>`);
+        qshell(`<section class="panel flh-touch-quiz"><div class="topline flh-learner-status"><b>السؤال ${index+1}</b>${timerHtml}<span class="mode-tag">تم</span></div><div class="question" ${questionAttrs(row.question)}><b>${renderMath(row.question?.prompt||'')}</b></div>${feedback}${videoButton}</section>`);
         attachTimer();
-        document.getElementById('flhLearnNext')?.addEventListener('click',()=>{if(ni>=0){index=ni;render();}else finish();});
+        bindLessonVideo();document.getElementById('flhLearnNext')?.addEventListener('click',()=>{if(ni>=0){index=ni;render();}else finish();});
         if(ni>=0)preloadQuestion(queue[ni]?.question);
       }catch{busy=false;render();const f=document.getElementById('flhLearnFeedback');if(f)f.innerHTML='<div class="error">صار خطأ بالحفظ. جرّب مرة ثانية.</div>';}
     }
@@ -256,7 +312,7 @@
 
     // A resumed question with existing interaction goes straight back to learning.
     const untouched=session.optional_video?.only_before_first_question!==false&&index===0&&queue.length>0&&queue.every(row=>!['completed','skipped'].includes(row.status)&&!row.draft_option_position&&!row.draft_response&&!Number(row.hint_level_requested||0));
-    try{if(untouched&&globalThis.FLHOptionalVideo?.show({video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:()=>{started=Date.now();render();},onExit:home}))return true;}catch{globalThis.FLHOptionalVideo?.dispose();}
+    try{if(untouched&&globalThis.FLHOptionalVideo?.show({...resumeOptions(slug,session.attempt_id),video:session.optional_video,attemptId:session.attempt_id,call,renderShell:qshell,onStart:()=>{started=Date.now();render();},onExit:home}))return true;}catch{globalThis.FLHOptionalVideo?.dispose();}
     render();
     return true;
   }
