@@ -111,7 +111,16 @@
           <div class="actions">${!enabled?`<button class="btn btn-soft" data-progress-enable>${marker.has_progress&&!marker.ended?'متابعة من الدقيقة السابقة':'تفعيل حفظ الموضع'}</button>`:''}
           ${marker.has_progress?'<button class="btn btn-soft" data-progress-restart>المشاهدة من البداية</button><button class="btn btn-soft" data-progress-clear>حذف الموضع وإيقاف الحفظ</button>':''}
           <button class="btn btn-soft" data-progress-reload>إعادة تحميل الموضع المحفوظ</button></div>`;
-        area.querySelector('[data-progress-enable]')?.addEventListener('click',()=>{state.consent=true;state.seek=true;renderActive();});
+        area.querySelector('[data-progress-enable]')?.addEventListener('click',async event=>{
+          event.currentTarget.disabled=true;
+          try{
+            const latest=await progressCall('get_video_progress',{video_id:item.id});
+            if(!current())return;
+            state.progress=latest;
+            if(!fresh()){controls();return;}
+            state.consent=true;state.seek=true;renderActive();
+          }catch{if(current()){controls();message('تعذر تفعيل الحفظ. يمكنك المشاهدة دون حفظ.');}}
+        });
         area.querySelector('[data-progress-restart]')?.addEventListener('click',()=>clear(true));
         area.querySelector('[data-progress-clear]')?.addEventListener('click',()=>clear(false));
         area.querySelector('[data-progress-reload]')?.addEventListener('click',()=>{enabled=false;state.consent=false;state.progress=null;renderActive();});

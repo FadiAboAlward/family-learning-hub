@@ -851,6 +851,11 @@ async function eligibleResume(browser,device){
     await other.page.locator('[data-progress-clear]').click();
     await other.page.locator('[data-progress-enable]').waitFor();
     assert.equal(store.get('qaVideo0001').has_progress,false,'learner can erase marker and disable saving');
+    store.set('qaVideo0001',{...store.get('qaVideo0001'),eligible:false});
+    const instancesBefore=await other.page.evaluate(()=>window.__qaVideoProvider.instances.length);
+    await other.page.locator('[data-progress-enable]').click();
+    await other.page.getByText('المشاهدة متاحة دون حفظ موضع التشغيل لهذا الفيديو.',{exact:true}).waitFor();
+    assert.equal(await other.page.evaluate(()=>window.__qaVideoProvider.instances.length),instancesBefore,'opt-in rechecks server eligibility before tracking');
     assert.equal(fixture.count('start_quiz')+fixture.count('answer')+fixture.count('finish_quiz')+fixture.count('start_exam'),0,'resume has no academic mutations');
     await screenshot(other.page,'lesson-video-'+device.name+'-resume-cleared');
     await other.verifyAndClose(device.name+' resume other session');other=null;
