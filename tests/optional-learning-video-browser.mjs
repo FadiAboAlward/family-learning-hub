@@ -886,11 +886,12 @@ async function lessonSwitchClearsConsent(browser, device) {
     await saved;
     assert.equal(store.get('qaVideo0001').position_seconds, 42);
 
+    const instancesBefore = await page.evaluate(() => window.__qaVideoProvider.instances.length);
     await page.locator('.flh-video-sequence-item').nth(1).click();
-    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 2);
+    await page.waitForFunction((prev) => window.__qaVideoProvider.instances.length === prev + 1, instancesBefore);
 
     await page.locator('.flh-video-sequence-item').nth(0).click();
-    await page.waitForFunction(() => window.__qaVideoProvider.instances.length === 3);
+    await page.waitForFunction((prev) => window.__qaVideoProvider.instances.length === prev + 2, instancesBefore);
 
     await page.locator('[data-progress-enable]').waitFor();
     assert.match(await page.locator('#flhVideoResume').innerText(), /آخر موضع محفوظ|متابعة/, 'marker progress preserved while consent was cleared');
