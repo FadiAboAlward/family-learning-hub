@@ -27,7 +27,7 @@ let requested;
 const verified=await validateYouTubeStatus(candidate.video_ref,{apiKey:'synthetic-test-key',now,fetchImpl:async(url,options)=>{requested={url,options};return response();}});
 assert.equal(verified.embeddable,true);
 assert.equal(verified.made_for_kids,true);
-assert.equal(Date.parse(verified.verification_expires_at)-now,7*86400000);
+assert.equal(Date.parse(verified.verification_expires_at)-now,29*86400000);
 assert.equal(new URL(requested.url).searchParams.get('part'),'id,status');
 assert.equal(new URL(requested.url).searchParams.get('id'),candidate.video_ref);
 assert.ok(!requested.url.includes('synthetic-test-key'));
