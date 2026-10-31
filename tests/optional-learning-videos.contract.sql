@@ -27,7 +27,7 @@ begin
   insert into public.quiz_question_options(workspace_id,question_id,position,content) values(w,question,1,'One');
   insert into public.quiz_question_concepts(workspace_id,question_id,concept_id,is_primary) values(w,question,concept,true);
   insert into public.quiz_question_answer_keys(workspace_id,question_id,correct_answer,explanation) values(w,question,'{"option_position":1,"sentinel":"VIDEO_SECRET_ANSWER_SENTINEL"}','VIDEO_SECRET_EXPLANATION');
-  candidate:=jsonb_build_object('learner_id',l,'quiz_version_id',version,'program_id',program,'curriculum_id',curriculum,'grade_level',7,'subject_id',subject,'concept_id',concept,'video_ref','qaVideo0001','title','Author-vetted exact target','language','en','rationale','Synthetic reviewed exact concept match','embeddable',true,'made_for_kids',true,'verified_at',now(),'verification_expires_at',now()+interval '7 days');
+  candidate:=jsonb_build_object('learner_id',l,'quiz_version_id',version,'program_id',program,'curriculum_id',curriculum,'grade_level',7,'subject_id',subject,'concept_id',concept,'video_ref','qaVideo0001','title','Author-vetted exact target','language','en','rationale','Synthetic reviewed exact concept match','embeddable',true,'made_for_kids',true,'verified_at',now(),'verification_expires_at',now()+interval '29 days');
   perform pg_temp.video_assert(not has_function_privilege('authenticated','public.flh_learning_video_attach(uuid,uuid,jsonb)','EXECUTE') and not has_function_privilege('anon','public.flh_learning_video_report(uuid,uuid,uuid,uuid,text,integer,uuid)','EXECUTE') and not has_function_privilege('authenticated','public.flh_learning_video_refresh(uuid,uuid,uuid,uuid,jsonb)','EXECUTE'),'RPCs service-only');
   perform pg_temp.video_assert(not has_table_privilege('authenticated','public.learning_video_assignments','INSERT') and not has_table_privilege('authenticated','public.learning_video_attempts','SELECT') and not has_table_privilege('anon','public.learning_video_report_requests','SELECT'),'browser roles cannot directly access learner video state');
   perform pg_temp.video_assert((select bool_and(relrowsecurity) from pg_class where oid in ('public.learning_video_assignments'::regclass,'public.learning_video_attempts'::regclass,'public.learning_video_report_requests'::regclass)),'RLS enabled on every new table');
@@ -47,8 +47,10 @@ begin
   perform pg_temp.video_assert(result->>'error'='VIDEO_CONTEXT_MISMATCH','grade mismatch rejected');
   result:=public.flh_learning_video_attach(w,owner_id,candidate||jsonb_build_object('learner_id',other_l));
   perform pg_temp.video_assert(result->>'error'='VIDEO_CONTEXT_MISMATCH','unassigned learner rejected');
+  result:=public.flh_learning_video_attach(w,owner_id,candidate||jsonb_build_object('verification_expires_at',now()+interval '30 days'));
+  perform pg_temp.video_assert(result->>'error'='VIDEO_CONTEXT_MISMATCH','metadata beyond the 29-day official provider window rejected on attach');
   result:=public.flh_learning_video_attach(w,owner_id,candidate);
-  perform pg_temp.video_assert(result->>'ok'='true','trusted author attachment accepted even while disabled');
+  perform pg_temp.video_assert(result->>'ok'='true','trusted author attachment accepted with exactly 29 days of provider verification');
   video:=(result->>'video_id')::uuid; assignment:=(result->>'assignment_id')::uuid;
   reset role;
   update public.workspace_settings set value='{"enabled":false,"test_only":true}' where workspace_id=w and key='optional_learning_videos';
@@ -88,6 +90,8 @@ begin
   perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='verified' and made_for_kids=false and status_revision=newer_status_token from public.learning_video_assignments where id=assignment),'stale failed refresh cannot clear a newer reattachment');
   result:=public.flh_learning_video_refresh(w,assignment,video,status_token,candidate);
   perform pg_temp.video_assert(result->>'error'='VIDEO_STATUS_CONFLICT' and (select verification_state='verified' and made_for_kids=false and self_report='watched_full' and report_revision=2 from public.learning_video_attempts where attempt_id=attempt),'stale successful refresh cannot overwrite newer status or learner report');
+  result:=public.flh_learning_video_refresh(w,assignment,video,newer_status_token,candidate||jsonb_build_object('verification_expires_at',now()+interval '30 days'));
+  perform pg_temp.video_assert(result->>'error'='INVALID_VIDEO_INPUT' and (select status_revision=newer_status_token from public.learning_video_assignments where id=assignment),'refresh metadata over 29 days rejected without rotating provider status');
   result:=public.flh_learning_video_refresh(w,assignment,video,newer_status_token,candidate);
   select status_revision into status_token from public.learning_video_assignments where id=assignment;
   perform pg_temp.video_assert(result->>'availability'='available' and status_token<>newer_status_token,'accepted successful refresh rotates status token');
