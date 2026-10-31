@@ -74,7 +74,7 @@ The official iframe uses `youtube-nocookie.com`, `autoplay=0`, native controls, 
 
 Readiness is not proof of successful playback. Error, network/API initialization timeout and the learner's “video does not work” action remove the failed player and display a short message while preserving Start. No technical errors or provider payloads appear in learner copy. Leaving the card destroys the player and its pending work.
 
-MadeForKids metadata never grants permission to track. Player watch tracking is off for every video. Google child-directed site designation is a separate operational step using [Google's supported tools](https://support.google.com/policies/answer/9664901?hl=en); an iframe query parameter or privacy-enhanced hostname is not designation evidence.
+MadeForKids metadata never grants permission to track. Only FLH-041 opt-in approximate resume on server-eligible, freshly verified `made_for_kids=false` videos reads time/state. All other videos remain untracked. Google child-directed site designation is a separate operational step using [Google's supported tools](https://support.google.com/policies/answer/9664901?hl=en); an iframe query parameter or privacy-enhanced hostname is not designation evidence.
 
 Privacy-enhanced mode may still show non-personalized ads. `rel=0` may still show same-channel recommendations. Native player links can lead outside the application. See [embedding help](https://support.google.com/youtube/answer/171780?hl=en), [player parameters](https://developers.google.com/youtube/player_parameters), and [IFrame API](https://developers.google.com/youtube/iframe_api_reference). Never overlay or alter the player to hide those behaviors.
 

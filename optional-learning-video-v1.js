@@ -93,6 +93,7 @@
       const unavailable = card.querySelector('#flhVideoUnavailable');
       if (unavailable) unavailable.hidden = true;
     }
+    /** Own one opted-in player view; keep timing separate from academic/self-report state. */
     function createResume(state,index,generation) {
       const area=lesson.querySelector('#flhVideoResume'), item=state.video;
       const current=()=>alive&&isSessionCurrent()&&generation===renderGeneration&&index===activeIndex;
@@ -100,6 +101,7 @@
       let enabled=state.consent===true&&fresh(), started=false, ended=false, timer, disposed=false, pending=null, busy=null;
       const message=text=>{if(current()&&area?.isConnected){const status=area.querySelector('[data-progress-status]');if(status)status.textContent=text;}};
       const canTrack=()=>!disposed&&enabled&&fresh()&&isSessionCurrent();
+      /** Render only server-approved marker data inside the replay-private region. */
       function controls(){
         if(!current()||!area)return;
         if(!fresh()) {area.innerHTML='<p class="muted" data-progress-status role="status">المشاهدة متاحة دون حفظ موضع التشغيل لهذا الفيديو.</p>';return;}
@@ -114,6 +116,7 @@
         area.querySelector('[data-progress-clear]')?.addEventListener('click',()=>clear(false));
         area.querySelector('[data-progress-reload]')?.addEventListener('click',()=>{enabled=false;state.consent=false;state.progress=null;renderActive();});
       }
+      /** Serialize this view's writes and retain the mutation ID after an uncertain response. */
       async function write(){
         if(busy)return busy;
         if(!pending||!isSessionCurrent())return false;
@@ -128,12 +131,13 @@
             if(['VIDEO_PROGRESS_CONFLICT','VIDEO_PROGRESS_REQUEST_CONFLICT','VIDEO_PROGRESS_INELIGIBLE','VIDEO_NOT_AVAILABLE'].includes(error.message)){
               enabled=false;state.consent=false;pending=null;clearInterval(timer);
               message('تغيّر الحفظ أو إتاحة الفيديو. أعد تحميل الموضع قبل تفعيل الحفظ.');
-            }else message('تعذر التأكد من الحفظ. سنعيد المحاولة؛ يمكنك متابعة دراستك.');
+            }else message('تعذر التأكد من الحفظ. أعد المحاولة أو تابع دراستك.');
             return false;
           }finally{busy=null;}
         })();
         return busy;
       }
+      /** Read the official clock only after opt-in, eligibility and actual playback start. */
       function sample(){
         if(!canTrack()||!started||!player)return;
         if(!pending){
@@ -143,6 +147,7 @@
         }
         void write();
       }
+      /** Resolve any uncertain save before erasing its marker with a newer revision. */
       async function clear(restart){
         enabled=false;clearInterval(timer);
         if(busy)await busy;
@@ -203,7 +208,7 @@
         ${isAvailable ? `<div class="flh-video-player"><iframe id="flhVideoFrame" title="${escape('فيديو YouTube اختياري: ' + (item.title || 'شرح للمهارة الحالية'))}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
         <p id="flhVideoFallback" role="status" ${isAvailable ? 'hidden' : ''}>هذا الفيديو غير متاح الآن. يمكنك اختيار درس آخر أو بدء التدريب مباشرة.</p>
         <button class="btn btn-soft" id="flhVideoUnavailable" ${isAvailable ? '' : 'hidden'}>الفيديو لا يعمل</button>
-        ${isAvailable&&progressCall?'<section id="flhVideoResume" aria-label="استئناف الفيديو"></section>':''}
+        ${isAvailable&&progressCall?'<section id="flhVideoResume" data-flh-private class="ph-no-capture" aria-label="استئناف الفيديو"></section>':''}
         ${reportEnabled ? `<fieldset class="flh-video-report"><legend>إفادتك عن مشاهدة هذا الدرس — اختيارية</legend>
           <p class="muted" id="flhVideoReportHelp">هذه إفادتك أنت في Family Learning Hub؛ لم نقِس مشاهدتك من YouTube. يمكنك تركها فارغة.</p>
           <label for="flhVideoReport">ماذا شاهدت؟ (اختياري)</label>

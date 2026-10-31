@@ -2,7 +2,7 @@
 -- Approximate opt-in resume only. No academic tables/triggers or provider calls.
 create table public.learning_video_progress (
  workspace_id uuid not null references public.workspaces(id) on delete cascade,
- learner_id uuid not null references public.learners(id) on delete cascade,
+ learner_id uuid not null,
  video_ref text not null check (video_ref ~ '^[A-Za-z0-9_-]{11}$'),
  position_seconds integer not null check (position_seconds between 0 and 86400),
  ended boolean not null default false,
@@ -10,7 +10,8 @@ create table public.learning_video_progress (
  request_id uuid not null,
  cleared boolean not null default false,
  updated_at timestamptz not null default now(),
- primary key (workspace_id,learner_id,video_ref)
+ primary key (workspace_id,learner_id,video_ref),
+ foreign key (learner_id,workspace_id) references public.learners(id,workspace_id) on delete cascade
 );
 alter table public.learning_video_progress enable row level security;
 revoke all on public.learning_video_progress from public,anon,authenticated;
@@ -30,7 +31,7 @@ begin
  then return jsonb_build_object('error','INVALID_VIDEO_INPUT'); end if;
  preview:=public.flh_learning_video_preview(p_workspace_id,p_learner_id,p_quiz_slug,p_attempt_id);
  if preview ? 'error' then return jsonb_build_object('error','VIDEO_NOT_AVAILABLE'); end if;
- select value into item from jsonb_array_elements(preview->'optional_video'->'videos') where value->>'id'=p_video_id::text;
+ select value into item from jsonb_array_elements(coalesce(preview->'optional_video'->'videos',jsonb_build_array(preview->'optional_video'))) where value->>'id'=p_video_id::text;
  if item is null then return jsonb_build_object('error','VIDEO_NOT_AVAILABLE'); end if;
  eligible:=item->'made_for_kids'='false'::jsonb and (item->>'verification_expires_at')::timestamptz>now() and item->>'availability'='available';
  -- Serialize first insert, saves and clears across devices. This lock never touches academic rows.

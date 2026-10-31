@@ -804,19 +804,26 @@ async function eligibleResume(browser,device){
   let other;
   try{
     await open(page);await page.locator('[data-progress-enable]').waitFor();
+    assert.equal(await page.locator('#flhVideoResume').getAttribute('data-flh-private'),'','resume timing excluded from replay capture');
+    assert.match(await page.locator('#flhVideoResume').getAttribute('class'),/ph-no-capture/,'resume controls excluded from autocapture');
     assert.equal(store.size,0,'opening unstarted video creates no timing row');
     assert.deepEqual(await page.evaluate(()=>window.__qaVideoProvider.metrics),[],'no timing read before opt-in');
     await enable(page);await fire(page,83,1);
     let saved=waitSave(page);await fire(page,83);await saved;
     await page.locator('[data-progress-clear]').waitFor();
     assert.equal(store.get('qaVideo0001').position_seconds,83);
+    if(device.name==='mobile'){
+      saved=waitSave(page);await fire(page,84,1);await saved;
+      assert.equal(store.get('qaVideo0001').position_seconds,84,'periodic timer saves during continued playback');
+    }
     // A lost response must retry the same mutation rather than overwrite a new revision.
     fixture.fail('after',500,'VIDEO_PROGRESS_UNAVAILABLE');
+    const revisionBeforeFailure=store.get('qaVideo0001').revision;
     saved=waitSave(page);await fire(page,88);await saved;
     await page.getByText('تعذر التأكد من الحفظ.',{exact:false}).waitFor();
     const lost=fixture.last('save_video_progress');saved=waitSave(page);await fire(page,90);await saved;
     assert.equal(fixture.last('save_video_progress').request_id,lost.request_id,'uncertain save retried idempotently');
-    assert.equal(store.get('qaVideo0001').revision,2);
+    assert.equal(store.get('qaVideo0001').revision,revisionBeforeFailure+1);
     await page.locator('#flhVideoStart').click();
     await page.reload({waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>typeof window.FLH?.openLearningVideos==='function');

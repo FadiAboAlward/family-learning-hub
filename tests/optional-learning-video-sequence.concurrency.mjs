@@ -100,6 +100,9 @@ try {
   await psql(`update public.workspace_settings set value='{"enabled":true,"test_only":true}'::jsonb where workspace_id='${workspaceId}' and key='optional_learning_videos'`);
   const firstSlot = JSON.parse(await psql(call(candidate(conceptOne,'qaSeqCon001',1))));
   assert.equal(firstSlot.ok,true,'position 1 fixture attaches before concurrency race');
+  const single=JSON.parse(await psql(`set role service_role; select public.flh_learning_video_progress('${workspaceId}','${learnerId}','qa-optional-video-sequence-concurrency',null,'${firstSlot.video_id}','read',0,null,0,false)::text; reset role;`));
+  assert.equal(single.eligible,true,'single-video preview without a videos array supports resume');
+  assert.equal(single.has_progress,false,'single-video read does not create a marker');
 
   const lockExpression = `hashtextextended('${workspaceId}:${learnerId}:${versionId}:optional-video-sequence',0)`;
   const blocker = spawnPsql(`begin; select pg_advisory_xact_lock(${lockExpression}); select pg_advisory_xact_lock(91500101); select pg_sleep(8); commit;`);
@@ -145,7 +148,25 @@ try {
   console.log('Optional-video sequence concurrent explicit/omitted position serialization passed.');
   const progress=(revision,request,position,operation='save')=>`set role service_role; select public.flh_learning_video_progress('${workspaceId}','${learnerId}','qa-optional-video-sequence-concurrency',null,'${firstSlot.video_id}','${operation}',${revision},'${request}',${position},false)::text; reset role;`;
   const requests=['a5000000-0000-4000-8000-000000000021','a5000000-0000-4000-8000-000000000022'];
-  const results=await Promise.all(requests.map((request,i)=>psql(progress(0,request,30+i)).then(JSON.parse)));
+  const progressBlocker=spawnPsql(`begin; select pg_advisory_xact_lock(hashtextextended('${workspaceId}${learnerId}qaSeqCon001',0)); select pg_advisory_xact_lock(91500102); select pg_sleep(8); commit;`);
+  children.push(progressBlocker);
+  const progressDeadline=Date.now()+5000;
+  let progressLocked=false;
+  while(!progressLocked&&Date.now()<progressDeadline){
+    progressLocked=await psql("select count(*)::text from pg_locks where locktype='advisory' and objid=91500102 and granted")==='1';
+    if(!progressLocked)await new Promise(resolve=>setTimeout(resolve,25));
+  }
+  assert.ok(progressLocked,'blocker owns the exact progress lock before either writer');
+  const writers=requests.map((request,i)=>spawnPsql(progress(0,request,30+i)));children.push(...writers);
+  const waitDeadline=Date.now()+4000;
+  let waiting=0;
+  while(waiting<2&&Date.now()<waitDeadline){
+    waiting=Number(await psql("select count(*)::text from pg_stat_activity where wait_event_type='Lock' and wait_event='advisory' and query like '%select public.flh_learning_video_progress(%'"));
+    if(waiting<2)await new Promise(resolve=>setTimeout(resolve,25));
+  }
+  assert.equal(waiting,2,'both first-insert writers must be observed waiting on the progress lock');
+  await progressBlocker.done;
+  const results=(await Promise.all(writers.map(writer=>writer.done))).map(JSON.parse);
   assert.equal(results.filter(result=>result.revision===1).length,1,'two devices racing first insert have exactly one winner');
   assert.equal(results.filter(result=>result.error==='VIDEO_PROGRESS_CONFLICT').length,1,'stale device must get a conflict');
   const winner=results.findIndex(result=>result.revision===1);
