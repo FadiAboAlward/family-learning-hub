@@ -36,12 +36,14 @@ Classify the risk changed by this PR and declare the test layer(s) selected. Use
 - Change type(s): pure/business logic / API-contract / database-RLS / UI-browser / bug-regression / docs-copy / other
 - Execution path: GitHub cloud-first (default) / specific local fallback — reason if fallback:
 - Cloud preview/real UI evidence: isolated URL + backend proof / approved Testing browser / N/A — reason:
+- Exact PR-head SHA validated for merge: `<sha>`
+- Exact-head gate results on that SAME SHA (completed, not pending): Static quality PASS / FAIL / NOT RUN; Browser smoke PASS / FAIL / NOT RUN; CodeRabbit APPROVED / CHANGES_REQUESTED / NOT RUN — links or evidence:
 - CI Runner-local Supabase/Docker (when applicable) is **GitHub-hosted**, not the owner's desktop. No requirement to run desktop Docker before opening PR.
 - Unit tests: added / updated / existing coverage sufficient / N/A — reason:
 - Integration/contract tests: added / updated / existing coverage sufficient / N/A — reason:
 - Playwright/browser tests: added / updated / existing coverage sufficient / N/A — reason:
 - Regression test for a bug: added / existing test reproduced it / N/A — reason:
-- Generalizable defect learning: root cause, prevention, existing Continuous Improvement Log OBS_ID/link, or N/A — no reusable pattern (avoid recording routine intermediate errors):
+- Generalizable defect learning (if reusable): symptom/trigger, verified root cause, correction, preventive regression test or rule, PR/evidence link, existing Continuous Improvement Log OBS_ID/link; or N/A — no reusable pattern (do not log routine intermediate errors):
 - TestSprite exploratory run: required / completed / optional / N/A — reason:
 - TestSprite requirement source used: pinned Feature Spec / N/A — reason:
 - TestSprite run ID / link:
