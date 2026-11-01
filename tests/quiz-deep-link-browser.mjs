@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { launchMockQaBrowser } from './qa-isolation.mjs';
 
-// FLH-FEAT-2026-040 v1.0: email deep-link flow, browser-backed + synthetic APIs.
+// FLH-FEAT-2026-040 v1.0 and FLH-FEAT-2026-043 v1.0: email deep-link flow, browser-backed + synthetic APIs.
+// FLH-043 DRIVE_REVISION_ID: AHj4eMR2Zhci4BO57YU842wtzoTMGiolPp9Jmb7vkb_ZSyV7aqQ_31xEcP2trM6aN_mMaVclTwoEZ7uAZvjiaRQzRODLRVtRtxp5agOcBRQ
 // DRIVE_REVISION_ID: AHj4eMRkoQupak-TxzQkdZpcV53G0sdV5wFJPDHYuL1h-iuZAvfIZQ8qU1VtWImGMd7y5W0xJ_93OB6ziaJqxCz5k3x_sLuAwunEmwWFDOA
 // All API calls are fulfilled locally; the shared QA isolation guard blocks Production.
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:4173/';
@@ -81,6 +82,44 @@ async function check({ device, mode, initialLearner = null, expectedStarts = 1 }
     }
     const starts = calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam'));
     assert.equal(starts.length, expectedStarts, 'exact quiz starts once, only for authorized learner');
+    // FLH-FEAT-2026-043 v1.0 — an actual browser executes the production
+    // build-check helper while an emailed route is cleaned during its fetch.
+    const refreshRaces = await page.evaluate(async (requestedMode) => {
+      const resultRows = [];
+      for (const requestedLearner of ['mohammad', 'aya']) {
+      const original = new URL('index.html', location.href);
+      original.searchParams.set('quiz', 'qa-email-direct-route');
+      original.searchParams.set('mode', requestedMode);
+      original.searchParams.set('learner', requestedLearner);
+      original.hash = '#student';
+      const locationLike = { href: original.href };
+      const saved = new Map();
+      const storage = { getItem: key => saved.get(key) || null,
+        setItem: (key, value) => saved.set(key, String(value)),
+        removeItem: key => saved.delete(key) };
+      let resolveFetch, target = null;
+      const pending = FLHAppVersion.checkNow({
+        locationLike, storage,
+        documentLike: { querySelector: () => ({ content: 'old-build' }),
+          body: { dataset: { build: 'old-build' } } },
+        fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+        navigate: href => { target = href; }
+      });
+      locationLike.href = new URL('index.html#student', location.href).href;
+      resolveFetch({ ok: true, text: async () => '<meta name="app-build" content="new-build">' });
+      const result = await pending;
+      resultRows.push({ learner: requestedLearner, status: result.status, target });
+      }
+      return resultRows;
+    }, mode);
+    for (const refreshRace of refreshRaces) {
+      assert.equal(refreshRace.status, 'refreshing', 'stale build schedules one refresh');
+      const preserved = new URL(refreshRace.target);
+      assert.equal(preserved.searchParams.get('quiz'), QUIZ, 'email quiz survives build refresh');
+      assert.equal(preserved.searchParams.get('mode'), mode, 'Learning/Exam mode survives build refresh');
+      assert.equal(preserved.searchParams.get('learner'), refreshRace.learner, 'all student hints survive');
+      assert.equal(preserved.searchParams.get('_flh_build'), 'new-build', 'refresh targets the latest build');
+    }
     assert.deepEqual(errors, [], 'no unexpected page errors');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'no horizontal overflow');
   } finally {

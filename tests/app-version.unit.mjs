@@ -258,4 +258,53 @@ assert.equal(api.extractBuild('<body data-build="build-3">'), 'build-3');
   assert.equal(fetchCount, 2);
 }
 
+
+// FLH-FEAT-2026-043 v1.0: https://docs.google.com/document/d/1b-KgbPIafaUVfb_V-f-jb88AxWm8jQ_KK1clJy59OTY/edit
+// DRIVE_REVISION_ID: AHj4eMR2Zhci4BO57YU842wtzoTMGiolPp9Jmb7vkb_ZSyV7aqQ_31xEcP2trM6aN_mMaVclTwoEZ7uAZvjiaRQzRODLRVtRtxp5agOcBRQ
+// Regression: deep-link launch cleans history while the build-check fetch is pending.
+for (const mode of ['learning', 'exam']) {
+  for (const studentSlug of ['mohammad', 'aya', 'another-student']) {
+  const quiz = 'qa-email-direct-route';
+  const source = `https://example.test/family-learning-hub/index.html?quiz=${quiz}&mode=${mode}&learner=${studentSlug}#student`;
+  const loc = { href: source };
+  let resolveFetch, navigated = null;
+  const started = api.checkNow({
+    documentLike: doc('build-1'),
+    locationLike: loc,
+    storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: href => { navigated = href; }
+  });
+  assert.equal(typeof resolveFetch, 'function', 'build check must begin before deep-link cleanup');
+  loc.href = 'https://example.test/family-learning-hub/index.html#student';
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await started;
+  assert.equal(result.status, 'refreshing', 'older build must reload once');
+  assert.ok(navigated, 'refresh target must exist');
+  const refreshed = new URL(navigated);
+  assert.equal(refreshed.searchParams.get('quiz'), quiz, 'email target must survive an async build refresh');
+  assert.equal(refreshed.searchParams.get('mode'), mode, 'email Learning/Exam mode must survive');
+  assert.equal(refreshed.searchParams.get('learner'), studentSlug, 'every student hint must survive');
+  assert.equal(refreshed.searchParams.get('_flh_build'), 'build-2');
+  assert.equal(refreshed.hash, '#student');
+  }
+}
+
+{
+  const loc = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=mohammad#student' };
+  let resolveFetch, navigations = 0;
+  const started = api.checkNow({
+    documentLike: doc('build-1'),
+    locationLike: loc,
+    storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  loc.href = 'https://example.test/family-learning-hub/index.html#student';
+  resolveFetch(await response('<meta name="app-build" content="build-1">'));
+  const result = await started;
+  assert.equal(result.status, 'current', 'matching build does not restore an already-opened route');
+  assert.equal(navigations, 0, 'no accidental reload or duplicate quiz start on matching build');
+}
+
 console.log('App version tests passed: stale-refresh persistence, storage failure safety, automatic readiness/visibility/focus checks, overlap coalescing, route preservation, loop guard, and failure safety are intact.');
