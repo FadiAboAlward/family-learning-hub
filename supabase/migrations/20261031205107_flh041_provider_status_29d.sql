@@ -8,22 +8,25 @@
 do $flh041_constraint$
 declare
   existing_check text;
+  existing_validated boolean;
+  -- Exact canonical pg_get_constraintdef captured from Production preflight.
+  -- Fail closed on any added, removed or changed predicate, not just the interval.
+  expected_old_check constant text := $expected_constraint$CHECK (((verification_state <> 'verified'::text) OR ((embeddable IS TRUE) AND (made_for_kids IS NOT NULL) AND (verified_at IS NOT NULL) AND (verification_expires_at > verified_at) AND (verification_expires_at <= (verified_at + '7 days'::interval)))))$expected_constraint$;
+  expected_new_check constant text := replace(
+    expected_old_check, '''7 days''::interval', '''29 days''::interval'
+  );
 begin
-  select pg_get_constraintdef(c.oid) into existing_check
+  select pg_get_constraintdef(c.oid), c.convalidated
+    into existing_check, existing_validated
   from pg_constraint c
-  where c.conrelid='public.learning_video_assignments'::regclass
-    and c.conname='learning_video_assignments_check';
-  if existing_check is null
-     or position('verification_expires_at' in existing_check)=0
-     or position('made_for_kids' in existing_check)=0
-     or position('embeddable' in existing_check)=0 then
-    raise exception 'FLH-041 assignment verification check missing or changed';
+  where c.conrelid = 'public.learning_video_assignments'::regclass
+    and c.conname = 'learning_video_assignments_check';
+  if existing_validated is distinct from true then
+    raise exception 'FLH-041 assignment check missing or not validated';
   end if;
-  if position('''29 days''::interval' in existing_check)>0
-     and position('''7 days''::interval' in existing_check)=0 then
-    null; -- Already reconciled.
-  elsif position('''7 days''::interval' in existing_check)>0
-     and position('''29 days''::interval' in existing_check)=0 then
+  if existing_check = expected_new_check then
+    null; -- Exact approved target: idempotent reapplication.
+  elsif existing_check = expected_old_check then
     alter table public.learning_video_assignments
       drop constraint learning_video_assignments_check;
     alter table public.learning_video_assignments
@@ -33,8 +36,17 @@ begin
         and verification_expires_at > verified_at
         and verification_expires_at <= verified_at + interval '29 days'
       ));
+    select pg_get_constraintdef(c.oid), c.convalidated
+      into existing_check, existing_validated
+    from pg_constraint c
+    where c.conrelid = 'public.learning_video_assignments'::regclass
+      and c.conname = 'learning_video_assignments_check';
+    if existing_check is distinct from expected_new_check
+       or existing_validated is distinct from true then
+      raise exception 'FLH-041 replacement assignment check differs from approved predicate';
+    end if;
   else
-    raise exception 'FLH-041 unexpected assignment verification check: %',existing_check;
+    raise exception 'FLH-041 assignment check drift: unexpected predicate';
   end if;
 end
 $flh041_constraint$;
