@@ -16,7 +16,7 @@ GitHub remains the source of truth for code and reproducible infrastructure.
 
 Default to a scoped GitHub branch/PR with Codex implementation and GitHub-hosted isolated QA. Local development on the owner's computer (Docker, PostgreSQL, Supabase CLI, GitHub Desktop) is optional, not a standard prerequisite. The existing runner-local Supabase in GitHub Actions is **cloud-hosted disposable infrastructure** and must remain active. Real UI/interaction evidence may use a verified isolated cloud preview; use approved local live browser tooling or desktop Docker when a specific requirement cannot be proven reliably otherwise, with reason recorded in PR. No change to CI gates, CodeRabbit, TestSprite contract pinning, real-data isolation or authorized Production rollout.
 
-For reusable Codex mistakes: verify the actual root cause and add regression tests for reproducible significant defects. Record recurring/generalizable errors with prevention and PR/evidence references in the existing Continuous Improvement Log; do not log every trial or declare an observation an immediately binding SOP amendment. Review and promote using the existing monthly improvement process.
+For reusable Codex mistakes: verify the actual root cause and add regression tests for reproducible significant defects. Before recording recurring/generalizable errors, check the existing Continuous Improvement Log for duplicates. Each retained observation must contain the symptom/trigger, verified root cause, correction, preventive regression test or rule, and a related PR/evidence reference. Do not log every trial or declare an observation an immediately binding SOP amendment. Review and promote using the existing monthly improvement process.
 
 ## 1. When a Feature Spec is required
 
