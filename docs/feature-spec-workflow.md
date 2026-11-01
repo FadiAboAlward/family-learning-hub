@@ -4,13 +4,19 @@ This document is the repository-side handoff protocol. The detailed process poli
 
 `My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP`
 
-Living Platform SOP canonical URL: https://docs.google.com/document/d/1X1L7AkxcQFtM6QTp3LW9x4AWods8ZM-ZEX-syE3u9eY/edit. Read its current in-document version (v1.7 at the 24 October 2026 review); its ID stays stable as the operating policy evolves. This does not replace immutable Feature Spec pins for each Issue/PR.
+Living Platform SOP canonical URL: https://docs.google.com/document/d/1X1L7AkxcQFtM6QTp3LW9x4AWods8ZM-ZEX-syE3u9eY/edit. Read its current in-document version (v1.8 effective 31 October 2026); its ID stays stable as the operating policy evolves. This does not replace immutable Feature Spec pins for each Issue/PR.
 
 The canonical product requirement itself lives under:
 
 `My Drive / Family Learning Hub / System & SOP / Feature Specs`
 
 GitHub remains the source of truth for code and reproducible infrastructure.
+
+## 0. Execution environment — cloud-first
+
+Default to a scoped GitHub branch/PR with Codex implementation and GitHub-hosted isolated QA. Local development on the owner's computer (Docker, PostgreSQL, Supabase CLI, GitHub Desktop) is optional, not a standard prerequisite. The existing runner-local Supabase in GitHub Actions is **cloud-hosted disposable infrastructure** and must remain active. Real UI/interaction evidence may use a verified isolated cloud preview; use approved local live browser tooling or desktop Docker when a specific requirement cannot be proven reliably otherwise, with reason recorded in PR. No change to CI gates, CodeRabbit, TestSprite contract pinning, real-data isolation or authorized Production rollout.
+
+For reusable Codex mistakes: verify the actual root cause and add regression tests for reproducible significant defects. Before recording recurring/generalizable errors, check the existing Continuous Improvement Log for duplicates. Each retained observation must contain the symptom/trigger, verified root cause, correction, preventive regression test or rule, and a related PR/evidence reference. Do not log every trial or declare an observation an immediately binding SOP amendment. Review and promote using the existing monthly improvement process.
 
 ## 1. When a Feature Spec is required
 

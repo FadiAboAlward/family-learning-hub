@@ -2,6 +2,11 @@
 
 ## Canonical delivery workflow
 
+**Cloud-first default — FLH-FEAT-2026-042 v1.0:** Codex implements on a dedicated GitHub branch and opens a PR; run the existing required GitHub Actions checks in independent hosted runners and complete exact-head review. Running Docker/PostgreSQL/Supabase on the owner's computer is **not** a prerequisite for routine PR development. “Runner-local” refers to short-lived Docker/Supabase started by GitHub Actions on its own isolated runner; retain fresh-database rebuild, RLS/auth/contract tests, static/unit checks and Playwright smoke. A change without a database migration still requires the test layers appropriate to its actual risk. Optional quick local or Codex-sandbox checks may shorten iteration but are not an extra merge gate.
+
+Use an isolated preview for meaningful UI/behavior verification when available and verified to have no Production backend, real learner data or secrets. Mocked CI success alone must not be called proof of actual authenticated/provider-specific or visual behavior. When preview/CI cannot supply necessary acceptance evidence, use the already-approved Testing browser or the owner's local Docker as a **documented exception**, never as an automatic duplicated stage. Preserve all existing PR SHA, CodeRabbit, TestSprite, authorization and post-deployment Production verification controls. No deployment is authorized by choosing cloud-first.
+
+
 For any non-trivial change that can affect learner behavior, content delivery, authentication, security, data, database schema, quizzes, exams, parent reporting, or production runtime, the default workflow is:
 
 1. Create a dedicated branch and Pull Request. Do not make the change directly on `main` unless it is a true emergency recovery action.
@@ -176,7 +181,7 @@ Use the dedicated `test` learner for TestSprite activity. A reproducible defect 
 
 ## CodeRabbit policy-as-code and Change Stack
 
-The cross-tool canonical process for this policy is **My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.7**, section 21. This repository section is the executable/review-facing mirror and must stay aligned with that SOP when the policy changes.
+The cross-tool canonical process for this policy is **My Drive / Family Learning Hub / System & SOP / Family Learning Hub — Platform Development & QA SOP — v1.8**, section 21. This repository section is the executable/review-facing mirror and must stay aligned with that SOP when the policy changes.
 
 CodeRabbit remains an additive review/governance layer on top of deterministic repository QA. It must not become the sole proof for invariants that can be tested deterministically.
 
