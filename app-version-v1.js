@@ -84,6 +84,9 @@
     }
 
     try {
+      // Snapshot the emailed route before the asynchronous build check; quiz launch may
+      // replaceState() its query while this request is in flight.
+      const sourceHref = locationLike.href;
       const remote = await remoteBuild(fetchFn, locationLike);
       if (!remote) return { status: 'remote-build-missing', local_build: local };
 
@@ -109,7 +112,7 @@
         return { status: 'unavailable', local_build: local, remote_build: remote };
       }
 
-      const href = refreshUrl(remote, locationLike);
+      const href = refreshUrl(remote, { href: sourceHref });
       navigate(href);
       return { status: 'refreshing', local_build: local, remote_build: remote, href };
     } catch {
