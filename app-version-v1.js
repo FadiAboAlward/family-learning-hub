@@ -1,6 +1,11 @@
 (() => {
   const BUILD_META = 'app-build';
   const RELOAD_GUARD_KEY = 'flh-app-version-target';
+  // UI navigation can remain on the same hash/query (e.g. quiz => library).
+  // Track explicit exits separately from address-bar route changes.
+  let explicitNavigation = 0;
+  function markRouteChanged() { explicitNavigation++; }
+
 
   /** Read the build identifier from the loaded document. */
   function currentBuild(doc = globalThis.document) {
@@ -104,6 +109,7 @@
       // Snapshot the emailed route before the asynchronous build check; quiz launch may
       // replaceState() its query while this request is in flight.
       const sourceHref = locationLike.href;
+      const sourceNavigation = explicitNavigation;
       const remote = await remoteBuild(fetchFn, locationLike);
       if (!remote) return { status: 'remote-build-missing', local_build: local };
 
@@ -122,7 +128,7 @@
 
       // A real user may have navigated while the fetch was pending. Never undo it.
       // The expected email-link transition to #student and cleanUrl() is allowed.
-      if (routeChangedByUser(sourceHref, locationLike.href)) {
+      if (explicitNavigation !== sourceNavigation || routeChangedByUser(sourceHref, locationLike.href)) {
         return { status: 'route-changed', local_build: local, remote_build: remote };
       }
 
@@ -180,7 +186,7 @@
     return { runCheck, checkWhenVisible };
   }
 
-  globalThis.FLHAppVersion = { currentBuild, extractBuild, refreshUrl, remoteBuild, checkNow, startWatcher };
+  globalThis.FLHAppVersion = { currentBuild, extractBuild, refreshUrl, remoteBuild, checkNow, startWatcher, markRouteChanged };
 
   if (typeof globalThis.document !== 'undefined' && typeof globalThis.window !== 'undefined') startWatcher();
 })();
