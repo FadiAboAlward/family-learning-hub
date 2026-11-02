@@ -50,6 +50,23 @@
     return url.href;
   }
 
+  /** Only an automatic email-link route transition may use the captured source URL. */
+  function routeChangedByUser(sourceHref, currentHref) {
+    const source = new URL(sourceHref), current = new URL(currentHref);
+    if (source.origin !== current.origin || source.pathname !== current.pathname) return true;
+
+    const emailRoute = source.searchParams.has('quiz') || source.searchParams.has('attempt');
+    const hashAllowed = current.hash === source.hash ||
+      (emailRoute && !source.hash && current.hash === '#student');
+    if (!hashAllowed) return true;
+
+    if (current.search === source.search) return false;
+    if (!emailRoute) return true;
+    const cleaned = new URL(source.href);
+    for (const key of ['quiz', 'mode', 'learner', 'attempt', 'videos']) cleaned.searchParams.delete(key);
+    return current.search !== cleaned.search;
+  }
+
   /** Fetch the deployed index without cache and return its build identifier. */
   async function remoteBuild(fetchFn = globalThis.fetch, locationLike = globalThis.location) {
     const url = new URL('index.html', locationLike.href);
@@ -101,6 +118,12 @@
       if (guard.value === remote) {
         console.warn('[FLH] New build still detected after refresh attempt; suppressing reload loop.');
         return { status: 'loop-guarded', local_build: local, remote_build: remote };
+      }
+
+      // A real user may have navigated while the fetch was pending. Never undo it.
+      // The expected email-link transition to #student and cleanUrl() is allowed.
+      if (routeChangedByUser(sourceHref, locationLike.href)) {
+        return { status: 'route-changed', local_build: local, remote_build: remote };
       }
 
       if (!guardedSet(resolvedStorage, RELOAD_GUARD_KEY, remote)) {
