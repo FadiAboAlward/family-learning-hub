@@ -56,7 +56,10 @@ function loadBrowserRuntime({ readyState = 'loading', hidden = false, fetchFn, s
     querySelector: selector => selector === 'meta[name="app-build"]' ? { content: 'build-1' } : null,
     body: { dataset: { build: 'build-1' } }
   });
-  const window = eventTarget();
+  const queuedTimers = [];
+  const window = eventTarget({
+    setTimeout(fn) { queuedTimers.push(fn); return queuedTimers.length; }
+  });
   const navigations = [];
   const runtime = {
     URL,
@@ -75,7 +78,7 @@ function loadBrowserRuntime({ readyState = 'loading', hidden = false, fetchFn, s
   };
   runtime.globalThis = runtime;
   vm.runInNewContext(source, runtime, { filename: 'app-version-v1.js' });
-  return { runtime, document, window, navigations };
+  return { runtime, document, window, navigations, queuedTimers };
 }
 
 assert.equal(api.extractBuild('<meta name="app-build" content="build-2">'), 'build-2');
@@ -363,6 +366,60 @@ for (const cleanQuery of [false, true]) {
   resolveFetch(await response('<meta name="app-build" content="build-1">'));
   assert.equal((await checking).status, 'current');
   assert.equal(navigations, 0);
+}
+
+
+// FLH-043: a user route change must defer (not lose) an in-flight update.
+// The watcher schedules one bounded retry using the *current* URL after
+// navigation settles; it may then safely refresh without restoring old state.
+{
+  let calls = 0;
+  let completeFirst;
+  const browser = loadBrowserRuntime({
+    readyState: 'loading',
+    fetchFn: () => {
+      calls++;
+      if (calls === 1) return new Promise(resolve => { completeFirst = resolve; });
+      return response('<meta name="app-build" content="build-2">');
+    }
+  });
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html?quiz=qa-email-link&mode=exam&learner=aya#student';
+  browser.document.emit('DOMContentLoaded');
+  await tick();
+  assert.equal(calls, 1);
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  completeFirst(await response('<meta name="app-build" content="build-2">'));
+  await tick();
+  assert.deepEqual(browser.navigations, [], 'no stale route restoration during user navigation');
+  assert.equal(browser.queuedTimers.length, 1, 'route change schedules a later build check');
+  browser.queuedTimers.shift()();
+  await tick();
+  assert.equal(calls, 2, 'the newer build is checked again from current route');
+  assert.equal(browser.navigations.length, 1, 'one safe follow-up refresh');
+  const target = new URL(browser.navigations[0]);
+  assert.equal(target.hash, '#parents', 'follow-up preserves the new user route');
+  assert.equal(target.searchParams.has('quiz'), false, 'old emailed quiz not restored');
+  assert.equal(target.searchParams.get('_flh_build'), 'build-2');
+  assert.equal(browser.queuedTimers.length, 0, 'no unbounded retry loop');
+}
+
+// Hidden documents skip the retry until a later visibility event, preventing
+// background navigations while retaining the normal visibility watcher.
+{
+  let completeFirst;
+  const browser = loadBrowserRuntime({
+    readyState: 'loading',
+    fetchFn: () => new Promise(resolve => { completeFirst = resolve; })
+  });
+  browser.document.emit('DOMContentLoaded');
+  await tick();
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  completeFirst(await response('<meta name="app-build" content="build-2">'));
+  await tick();
+  browser.document.hidden = true;
+  browser.queuedTimers.shift()();
+  await tick();
+  assert.deepEqual(browser.navigations, [], 'hidden page does not reload');
 }
 
 console.log('App version tests passed: stale-refresh persistence, storage failure safety, automatic readiness/visibility/focus checks, overlap coalescing, route preservation, loop guard, and failure safety are intact.');
