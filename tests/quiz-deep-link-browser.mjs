@@ -19,7 +19,7 @@ const question = { id: ID, question_code: 'QA-EMAIL-01', question_type: 'single_
 const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 const browser = await launchMockQaBrowser(chromium, APP_URL);
 
-async function check({ device, mode, learner = 'mohammad', initialLearner = null, expectedStarts = 1, refreshAfterLaunch = false }) {
+async function check({ device, mode, learner = 'mohammad', initialLearner = null, expectedStarts = 1, refreshAfterLaunch = false, exitDuringRefresh = false }) {
   const context = await browser.newContext({ viewport: device.viewport });
   const page = await context.newPage(), calls = [], errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -141,20 +141,34 @@ async function check({ device, mode, learner = 'mohammad', initialLearner = null
       assert.equal(await page.evaluate(() => location.search.includes('quiz=')), false);
       assert.equal(calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam')).length, 1);
       assert.equal(typeof releaseBuildFetch, 'function');
+      if (exitDuringRefresh) {
+        // Student deliberately exits on the SAME #student hash while the old
+        // watcher is waiting. The explicit navigation signal must win.
+        await page.locator(mode === 'learning' ? '#flhLearnExit' : '#examExit').click();
+        await page.waitForFunction(() => !document.querySelector('.question'));
+      }
       await releaseBuildFetch();
-      await page.waitForFunction(() =>
+      await page.waitForFunction((exited) =>
         document.querySelector('meta[name="app-build"]')?.content === 'qa-new-build' &&
-        !!document.querySelector('.question') && !location.search.includes('quiz='), null,
-        { timeout: 20000 });
+        !location.search.includes('quiz=') &&
+        (exited ? !document.querySelector('.question') : !!document.querySelector('.question')),
+        exitDuringRefresh, { timeout: 20000 });
       const resumedRoutes = navigations.filter(href =>
         new URL(href).searchParams.get('_flh_build') === 'qa-new-build');
       assert.ok(resumedRoutes.length >= 1, 'production watcher must cause a real browser navigation');
       const preservedRoute = new URL(resumedRoutes[0]);
-      assert.equal(preservedRoute.searchParams.get('quiz'), QUIZ, 'real reload preserves emailed quiz');
-      assert.equal(preservedRoute.searchParams.get('mode'), mode, 'real reload preserves mode');
-      assert.equal(preservedRoute.searchParams.get('learner'), learner, 'real reload preserves requested learner');
-      assert.equal(calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam')).length,
-        2, 'after one real reload, the same synthetic attempt resumes once');
+      if (exitDuringRefresh) {
+        assert.equal(preservedRoute.searchParams.has('quiz'), false, 'explicit exit prevents stale quiz reopening');
+        assert.equal(preservedRoute.hash, '#student', 'library hash remains current');
+        assert.equal(calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam')).length,
+          1, 'explicit exit must not restart the quiz after refresh');
+      } else {
+        assert.equal(preservedRoute.searchParams.get('quiz'), QUIZ, 'real reload preserves emailed quiz');
+        assert.equal(preservedRoute.searchParams.get('mode'), mode, 'real reload preserves mode');
+        assert.equal(preservedRoute.searchParams.get('learner'), learner, 'real reload preserves requested learner');
+        assert.equal(calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam')).length,
+          2, 'after one real reload, the same synthetic attempt resumes once');
+      }
     }
     assert.deepEqual(errors, [], 'no unexpected page errors');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'no horizontal overflow');
@@ -177,6 +191,10 @@ try {
       // Also cover first PIN login and the newer-build race in one real browser flow.
       await check({ device, mode: 'learning', learner, refreshAfterLaunch: true });
       await check({ device, mode: 'exam', learner, refreshAfterLaunch: true });
+      await check({ device, mode: 'learning', learner, initialLearner: learner,
+        refreshAfterLaunch: true, exitDuringRefresh: true });
+      await check({ device, mode: 'exam', learner, initialLearner: learner,
+        refreshAfterLaunch: true, exitDuringRefresh: true });
     }
     await check({ device, mode: 'learning', learner: 'mohammad', initialLearner: 'aya', expectedStarts: 0 });
     await check({ device, mode: 'learning', learner: 'aya', initialLearner: 'mohammad', expectedStarts: 0 });
