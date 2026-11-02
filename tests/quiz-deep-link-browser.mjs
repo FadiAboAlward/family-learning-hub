@@ -124,7 +124,20 @@ async function check({ device, mode, learner = 'mohammad', initialLearner = null
       assert.equal(expectedStarts, 1, 'refresh test must have an authorized start');
       // The first real quiz launch has cleaned the URL while the first
       // real app-build fetch remains held. Only now release the newer build.
-      await buildFetchStarted;
+      // Fail fast if the production watcher no longer emits the build check.
+      let buildRequestTimeout;
+      try {
+        await Promise.race([
+          buildFetchStarted,
+          new Promise((_, reject) => {
+            buildRequestTimeout = setTimeout(() => reject(new Error(
+              'Timed out waiting for real _flh_build_check network request'
+            )), 7000);
+          })
+        ]);
+      } finally {
+        clearTimeout(buildRequestTimeout);
+      }
       assert.equal(await page.evaluate(() => location.search.includes('quiz=')), false);
       assert.equal(calls.filter(c => c.action === (mode === 'learning' ? 'start_quiz' : 'start_exam')).length, 1);
       assert.equal(typeof releaseBuildFetch, 'function');
@@ -161,6 +174,9 @@ try {
       await check({ device, mode: 'learning', learner, initialLearner: learner });
       await check({ device, mode: 'learning', learner, initialLearner: learner, refreshAfterLaunch: true });
       await check({ device, mode: 'exam', learner, initialLearner: learner, refreshAfterLaunch: true });
+      // Also cover first PIN login and the newer-build race in one real browser flow.
+      await check({ device, mode: 'learning', learner, refreshAfterLaunch: true });
+      await check({ device, mode: 'exam', learner, refreshAfterLaunch: true });
     }
     await check({ device, mode: 'learning', learner: 'mohammad', initialLearner: 'aya', expectedStarts: 0 });
     await check({ device, mode: 'learning', learner: 'aya', initialLearner: 'mohammad', expectedStarts: 0 });
