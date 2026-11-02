@@ -56,7 +56,10 @@ function loadBrowserRuntime({ readyState = 'loading', hidden = false, fetchFn, s
     querySelector: selector => selector === 'meta[name="app-build"]' ? { content: 'build-1' } : null,
     body: { dataset: { build: 'build-1' } }
   });
-  const window = eventTarget();
+  const queuedTimers = [];
+  const window = eventTarget({
+    setTimeout(fn) { queuedTimers.push(fn); return queuedTimers.length; }
+  });
   const navigations = [];
   const runtime = {
     URL,
@@ -75,7 +78,7 @@ function loadBrowserRuntime({ readyState = 'loading', hidden = false, fetchFn, s
   };
   runtime.globalThis = runtime;
   vm.runInNewContext(source, runtime, { filename: 'app-version-v1.js' });
-  return { runtime, document, window, navigations };
+  return { runtime, document, window, navigations, queuedTimers };
 }
 
 assert.equal(api.extractBuild('<meta name="app-build" content="build-2">'), 'build-2');
@@ -256,6 +259,186 @@ assert.equal(api.extractBuild('<body data-build="build-3">'), 'build-3');
 
   await browser.window.dispatch('focus');
   assert.equal(fetchCount, 2);
+}
+
+
+// FLH-FEAT-2026-043 v1.0: https://docs.google.com/document/d/1b-KgbPIafaUVfb_V-f-jb88AxWm8jQ_KK1clJy59OTY/edit
+// DRIVE_REVISION_ID: AHj4eMR2Zhci4BO57YU842wtzoTMGiolPp9Jmb7vkb_ZSyV7aqQ_31xEcP2trM6aN_mMaVclTwoEZ7uAZvjiaRQzRODLRVtRtxp5agOcBRQ
+// Regression: deep-link launch cleans history while the build-check fetch is pending.
+for (const mode of ['learning', 'exam']) {
+  for (const studentSlug of ['mohammad', 'aya', 'another-student']) {
+  const quiz = 'qa-email-direct-route';
+  const source = `https://example.test/family-learning-hub/index.html?quiz=${quiz}&mode=${mode}&learner=${studentSlug}#student`;
+  const loc = { href: source };
+  let resolveFetch, navigated = null;
+  const started = api.checkNow({
+    documentLike: doc('build-1'),
+    locationLike: loc,
+    storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: href => { navigated = href; }
+  });
+  assert.equal(typeof resolveFetch, 'function', 'build check must begin before deep-link cleanup');
+  loc.href = 'https://example.test/family-learning-hub/index.html#student';
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await started;
+  assert.equal(result.status, 'refreshing', 'older build must reload once');
+  assert.ok(navigated, 'refresh target must exist');
+  const refreshed = new URL(navigated);
+  assert.equal(refreshed.searchParams.get('quiz'), quiz, 'email target must survive an async build refresh');
+  assert.equal(refreshed.searchParams.get('mode'), mode, 'email Learning/Exam mode must survive');
+  assert.equal(refreshed.searchParams.get('learner'), studentSlug, 'every student hint must survive');
+  assert.equal(refreshed.searchParams.get('_flh_build'), 'build-2');
+  assert.equal(refreshed.hash, '#student');
+  }
+}
+
+{
+  const loc = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=mohammad#student' };
+  let resolveFetch, navigations = 0;
+  const started = api.checkNow({
+    documentLike: doc('build-1'),
+    locationLike: loc,
+    storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  loc.href = 'https://example.test/family-learning-hub/index.html#student';
+  resolveFetch(await response('<meta name="app-build" content="build-1">'));
+  const result = await started;
+  assert.equal(result.status, 'current', 'matching build does not restore an already-opened route');
+  assert.equal(navigations, 0, 'no accidental reload or duplicate quiz start on matching build');
+}
+
+
+// CodeRabbit regression: never undo a user's genuine navigation during a delayed check.
+for (const changedHref of [
+  'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=aya#parents',
+  'https://example.test/family-learning-hub/index.html#parents',
+  'https://example.test/family-learning-hub/index.html?filter=other#student'
+]) {
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=aya#student' };
+  const saved = makeStorage();
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: saved,
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = changedHref;
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await checking;
+  assert.equal(result.status, 'route-changed', 'real user navigation must not be undone');
+  assert.equal(navigations, 0);
+  assert.equal(saved.getItem('flh-app-version-target'), null, 'navigation skip must not install a loop guard');
+}
+
+// Direct links without an initial hash may automatically transition to #student
+// while a build check is pending, before cleaning the email query.
+for (const cleanQuery of [false, true]) {
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=exam&learner=aya' };
+  let resolveFetch, navigated = '';
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: href => { navigated = href; }
+  });
+  location.href = cleanQuery
+    ? 'https://example.test/family-learning-hub/index.html#student'
+    : 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=exam&learner=aya#student';
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await checking;
+  assert.equal(result.status, 'refreshing', 'automatic email transition must permit refresh');
+  assert.equal(new URL(navigated).searchParams.get('learner'), 'aya');
+  assert.equal(new URL(navigated).hash, '', 'original source hash must remain unchanged');
+}
+
+// The same-build result takes precedence even if a real navigation occurred.
+{
+  const location = { href: 'https://example.test/family-learning-hub/index.html#student' };
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  resolveFetch(await response('<meta name="app-build" content="build-1">'));
+  assert.equal((await checking).status, 'current');
+  assert.equal(navigations, 0);
+}
+
+
+// FLH-043: a user route change must defer (not lose) an in-flight update.
+// The watcher schedules one bounded retry using the *current* URL after
+// navigation settles; it may then safely refresh without restoring old state.
+{
+  let calls = 0;
+  let completeFirst;
+  const browser = loadBrowserRuntime({
+    readyState: 'loading',
+    fetchFn: () => {
+      calls++;
+      if (calls === 1) return new Promise(resolve => { completeFirst = resolve; });
+      return response('<meta name="app-build" content="build-2">');
+    }
+  });
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html?quiz=qa-email-link&mode=exam&learner=aya#student';
+  browser.document.emit('DOMContentLoaded');
+  await tick();
+  assert.equal(calls, 1);
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  completeFirst(await response('<meta name="app-build" content="build-2">'));
+  await tick();
+  assert.deepEqual(browser.navigations, [], 'no stale route restoration during user navigation');
+  assert.equal(browser.queuedTimers.length, 1, 'route change schedules a later build check');
+  browser.queuedTimers.shift()();
+  await tick();
+  assert.equal(calls, 2, 'the newer build is checked again from current route');
+  assert.equal(browser.navigations.length, 1, 'one safe follow-up refresh');
+  const target = new URL(browser.navigations[0]);
+  assert.equal(target.hash, '#parents', 'follow-up preserves the new user route');
+  assert.equal(target.searchParams.has('quiz'), false, 'old emailed quiz not restored');
+  assert.equal(target.searchParams.get('_flh_build'), 'build-2');
+  assert.equal(browser.queuedTimers.length, 0, 'no unbounded retry loop');
+}
+
+// An explicit learner exit can leave the same hash and clean URL.
+// Do not use the stale email link to reopen a quiz after an exit click.
+{
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-link&mode=learning&learner=aya#student' };
+  const store = makeStorage();
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: store,
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = 'https://example.test/family-learning-hub/index.html#student';
+  api.markRouteChanged(); // Real quiz Home/Exit handler signals explicit user intent.
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  assert.equal((await checking).status, 'route-changed');
+  assert.equal(navigations, 0, 'explicit learner exit never reopens a stale quiz');
+  assert.equal(store.getItem('flh-app-version-target'), null);
+}
+
+// Hidden documents skip the retry until a later visibility event, preventing
+// background navigations while retaining the normal visibility watcher.
+{
+  let completeFirst;
+  const browser = loadBrowserRuntime({
+    readyState: 'loading',
+    fetchFn: () => new Promise(resolve => { completeFirst = resolve; })
+  });
+  browser.document.emit('DOMContentLoaded');
+  await tick();
+  browser.runtime.location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  completeFirst(await response('<meta name="app-build" content="build-2">'));
+  await tick();
+  browser.document.hidden = true;
+  browser.queuedTimers.shift()();
+  await tick();
+  assert.deepEqual(browser.navigations, [], 'hidden page does not reload');
 }
 
 console.log('App version tests passed: stale-refresh persistence, storage failure safety, automatic readiness/visibility/focus checks, overlap coalescing, route preservation, loop guard, and failure safety are intact.');

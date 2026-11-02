@@ -1,6 +1,11 @@
 (() => {
   const BUILD_META = 'app-build';
   const RELOAD_GUARD_KEY = 'flh-app-version-target';
+  // UI navigation can remain on the same hash/query (e.g. quiz => library).
+  // Track explicit exits separately from address-bar route changes.
+  let explicitNavigation = 0;
+  function markRouteChanged() { explicitNavigation++; }
+
 
   /** Read the build identifier from the loaded document. */
   function currentBuild(doc = globalThis.document) {
@@ -50,6 +55,23 @@
     return url.href;
   }
 
+  /** Only an automatic email-link route transition may use the captured source URL. */
+  function routeChangedByUser(sourceHref, currentHref) {
+    const source = new URL(sourceHref), current = new URL(currentHref);
+    if (source.origin !== current.origin || source.pathname !== current.pathname) return true;
+
+    const emailRoute = source.searchParams.has('quiz') || source.searchParams.has('attempt');
+    const hashAllowed = current.hash === source.hash ||
+      (emailRoute && !source.hash && current.hash === '#student');
+    if (!hashAllowed) return true;
+
+    if (current.search === source.search) return false;
+    if (!emailRoute) return true;
+    const cleaned = new URL(source.href);
+    for (const key of ['quiz', 'mode', 'learner', 'attempt', 'videos']) cleaned.searchParams.delete(key);
+    return current.search !== cleaned.search;
+  }
+
   /** Fetch the deployed index without cache and return its build identifier. */
   async function remoteBuild(fetchFn = globalThis.fetch, locationLike = globalThis.location) {
     const url = new URL('index.html', locationLike.href);
@@ -84,6 +106,10 @@
     }
 
     try {
+      // Snapshot the emailed route before the asynchronous build check; quiz launch may
+      // replaceState() its query while this request is in flight.
+      const sourceHref = locationLike.href;
+      const sourceNavigation = explicitNavigation;
       const remote = await remoteBuild(fetchFn, locationLike);
       if (!remote) return { status: 'remote-build-missing', local_build: local };
 
@@ -100,6 +126,12 @@
         return { status: 'loop-guarded', local_build: local, remote_build: remote };
       }
 
+      // A real user may have navigated while the fetch was pending. Never undo it.
+      // The expected email-link transition to #student and cleanUrl() is allowed.
+      if (explicitNavigation !== sourceNavigation || routeChangedByUser(sourceHref, locationLike.href)) {
+        return { status: 'route-changed', local_build: local, remote_build: remote };
+      }
+
       if (!guardedSet(resolvedStorage, RELOAD_GUARD_KEY, remote)) {
         return { status: 'unavailable', local_build: local, remote_build: remote };
       }
@@ -109,7 +141,7 @@
         return { status: 'unavailable', local_build: local, remote_build: remote };
       }
 
-      const href = refreshUrl(remote, locationLike);
+      const href = refreshUrl(remote, { href: sourceHref });
       navigate(href);
       return { status: 'refreshing', local_build: local, remote_build: remote, href };
     } catch {
@@ -126,9 +158,22 @@
     if (!documentLike || !windowLike) return null;
 
     let activeCheck = null;
+    let retryScheduled = false;
     const runCheck = () => {
       if (activeCheck) return activeCheck;
-      activeCheck = Promise.resolve().then(() => check()).finally(() => { activeCheck = null; });
+      activeCheck = Promise.resolve().then(() => check()).then(result => {
+        // A real route change must not be overwritten by a stale refresh.
+        // Retry later from the new route instead of losing the detected update.
+        if (result?.status === 'route-changed' && !retryScheduled &&
+            typeof windowLike.setTimeout === 'function') {
+          retryScheduled = true;
+          windowLike.setTimeout(() => {
+            retryScheduled = false;
+            if (!documentLike.hidden) void runCheck();
+          }, 800);
+        }
+        return result;
+      }).finally(() => { activeCheck = null; });
       return activeCheck;
     };
     const checkWhenVisible = () => { if (!documentLike.hidden) void runCheck(); };
@@ -141,7 +186,7 @@
     return { runCheck, checkWhenVisible };
   }
 
-  globalThis.FLHAppVersion = { currentBuild, extractBuild, refreshUrl, remoteBuild, checkNow, startWatcher };
+  globalThis.FLHAppVersion = { currentBuild, extractBuild, refreshUrl, remoteBuild, checkNow, startWatcher, markRouteChanged };
 
   if (typeof globalThis.document !== 'undefined' && typeof globalThis.window !== 'undefined') startWatcher();
 })();
