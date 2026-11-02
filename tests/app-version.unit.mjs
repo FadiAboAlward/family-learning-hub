@@ -403,6 +403,25 @@ for (const cleanQuery of [false, true]) {
   assert.equal(browser.queuedTimers.length, 0, 'no unbounded retry loop');
 }
 
+// An explicit learner exit can leave the same hash and clean URL.
+// Do not use the stale email link to reopen a quiz after an exit click.
+{
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-link&mode=learning&learner=aya#student' };
+  const store = makeStorage();
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: store,
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = 'https://example.test/family-learning-hub/index.html#student';
+  api.markRouteChanged(); // Real quiz Home/Exit handler signals explicit user intent.
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  assert.equal((await checking).status, 'route-changed');
+  assert.equal(navigations, 0, 'explicit learner exit never reopens a stale quiz');
+  assert.equal(store.getItem('flh-app-version-target'), null);
+}
+
 // Hidden documents skip the retry until a later visibility event, preventing
 // background navigations while retaining the normal visibility watcher.
 {
