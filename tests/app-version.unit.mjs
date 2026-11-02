@@ -307,4 +307,62 @@ for (const mode of ['learning', 'exam']) {
   assert.equal(navigations, 0, 'no accidental reload or duplicate quiz start on matching build');
 }
 
+
+// CodeRabbit regression: never undo a user's genuine navigation during a delayed check.
+for (const changedHref of [
+  'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=aya#parents',
+  'https://example.test/family-learning-hub/index.html#parents',
+  'https://example.test/family-learning-hub/index.html?filter=other#student'
+]) {
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=learning&learner=aya#student' };
+  const saved = makeStorage();
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: saved,
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = changedHref;
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await checking;
+  assert.equal(result.status, 'route-changed', 'real user navigation must not be undone');
+  assert.equal(navigations, 0);
+  assert.equal(saved.getItem('flh-app-version-target'), null, 'navigation skip must not install a loop guard');
+}
+
+// Direct links without an initial hash may automatically transition to #student
+// while a build check is pending, before cleaning the email query.
+for (const cleanQuery of [false, true]) {
+  const location = { href: 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=exam&learner=aya' };
+  let resolveFetch, navigated = '';
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: href => { navigated = href; }
+  });
+  location.href = cleanQuery
+    ? 'https://example.test/family-learning-hub/index.html#student'
+    : 'https://example.test/family-learning-hub/index.html?quiz=qa-email-direct-route&mode=exam&learner=aya#student';
+  resolveFetch(await response('<meta name="app-build" content="build-2">'));
+  const result = await checking;
+  assert.equal(result.status, 'refreshing', 'automatic email transition must permit refresh');
+  assert.equal(new URL(navigated).searchParams.get('learner'), 'aya');
+  assert.equal(new URL(navigated).hash, '', 'original source hash must remain unchanged');
+}
+
+// The same-build result takes precedence even if a real navigation occurred.
+{
+  const location = { href: 'https://example.test/family-learning-hub/index.html#student' };
+  let resolveFetch, navigations = 0;
+  const checking = api.checkNow({
+    documentLike: doc('build-1'), locationLike: location, storage: makeStorage(),
+    fetchFn: () => new Promise(resolve => { resolveFetch = resolve; }),
+    navigate: () => { navigations++; }
+  });
+  location.href = 'https://example.test/family-learning-hub/index.html#parents';
+  resolveFetch(await response('<meta name="app-build" content="build-1">'));
+  assert.equal((await checking).status, 'current');
+  assert.equal(navigations, 0);
+}
+
 console.log('App version tests passed: stale-refresh persistence, storage failure safety, automatic readiness/visibility/focus checks, overlap coalescing, route preservation, loop guard, and failure safety are intact.');
