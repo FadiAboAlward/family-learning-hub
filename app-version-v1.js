@@ -152,9 +152,22 @@
     if (!documentLike || !windowLike) return null;
 
     let activeCheck = null;
+    let retryScheduled = false;
     const runCheck = () => {
       if (activeCheck) return activeCheck;
-      activeCheck = Promise.resolve().then(() => check()).finally(() => { activeCheck = null; });
+      activeCheck = Promise.resolve().then(() => check()).then(result => {
+        // A real route change must not be overwritten by a stale refresh.
+        // Retry later from the new route instead of losing the detected update.
+        if (result?.status === 'route-changed' && !retryScheduled &&
+            typeof windowLike.setTimeout === 'function') {
+          retryScheduled = true;
+          windowLike.setTimeout(() => {
+            retryScheduled = false;
+            if (!documentLike.hidden) void runCheck();
+          }, 800);
+        }
+        return result;
+      }).finally(() => { activeCheck = null; });
       return activeCheck;
     };
     const checkWhenVisible = () => { if (!documentLike.hidden) void runCheck(); };
