@@ -60,12 +60,10 @@ do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; s
  update public.quiz_questions set source_metadata=saved where id=qid;
  insert into storage.objects(bucket_id,name,metadata,created_at,updated_at) values('assessment-assets','${w}/${v}/old-orphan.png','{"size":1024}',now()-interval '8 days',now()-interval '8 days'),('assessment-assets','${w}/${v}/fresh-orphan.png','{"size":1024}',now(),now());
  context:=public.flh_assessment_upload_maintenance('${w}','${ids.parent}');perform pg_temp.verify(context->'paths'=jsonb_build_array('${w}/${v}/old-orphan.png'),'sweep selects old unlinked file, preserves linked old and recent uploads');
- delete from storage.objects where bucket_id='assessment-assets' and name in ('${w}/${v}/old-orphan.png','${w}/${v}/fresh-orphan.png');
  for i in 1..12 loop insert into storage.objects(bucket_id,name,metadata) values('assessment-assets','${w}/04410000-0000-4000-8000-000000000300/quota-'||i,'{"size":4194304}');end loop;
  begin perform private.flh_visual_upload_budget('${w}','04410000-0000-4000-8000-000000000300',1);raise exception 'upload quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
  begin perform public.flh_assessment_upload_maintenance('${w}','${ids.parent}','04410000-0000-4000-8000-000000000300','${w}/04410000-0000-4000-8000-000000000300/new.png');raise exception 'allocation quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
  begin insert into storage.objects(bucket_id,name,metadata) values('assessment-assets','${w}/04410000-0000-4000-8000-000000000300/over-quota','{"size":1}');raise exception 'Storage quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
- delete from storage.objects where bucket_id='assessment-assets' and name like '${w}/04410000-0000-4000-8000-000000000300/%';
  update public.quiz_questions set source_metadata=source_metadata||'{"drift":true}' where id=qid;
  begin perform ${cmd('publish')};raise exception 'graph drift accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_CONTENT_DRIFT' then raise;end if;end;
  update public.quiz_questions set source_metadata=saved where id=qid;
