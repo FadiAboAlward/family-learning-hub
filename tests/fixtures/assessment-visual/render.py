@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parent
 font='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 f=ImageFont.truetype(font,28)
 blue='#115b85';orange='#9d4300'
-spec={'rectangle':{'width':600,'height':360,'vertices':[[160,100],[400,100],[400,260],[160,260]],'unit_pixels':40,'side_cm':[6,4]},'triangle':{'width':600,'height':360,'vertices':[[160,260],[400,260],[160,100]],'unit_pixels':40,'base_cm':6,'height_cm':4},'composite':{'width':720,'height':480,'panels':{'A':[[90,165],[230,165],[90,45]],'B':[[450,165],[590,165],[550,65]],'C':[[90,405],[230,405],[30,315]],'D':[[450,405],[590,405],[310,405]]},'correct_label':'A'}}
+spec={'rectangle':{'width':600,'height':360,'vertices':[[160,100],[400,100],[400,260],[160,260]],'unit_pixels':40,'side_cm':[6,4]},'triangle':{'width':600,'height':360,'vertices':[[160,260],[400,260],[160,100]],'unit_pixels':40,'base_cm':6,'height_cm':4},'composite':{'width':720,'height':480,'panels':{'A':[[90,165],[230,165],[90,45]],'B':[[450,165],[590,165],[550,65]],'C':[[90,405],[230,405],[30,315]],'D':[[450,405],[590,405],[390,405]]},'correct_label':'A'}}
 for name,s in spec.items():
  im=Image.new('RGB',(s['width'],s['height']),'white');d=ImageDraw.Draw(im)
  if name=='rectangle':
@@ -17,7 +17,7 @@ for name,s in spec.items():
   # Use independent panels with vectors meeting at the first listed point.
   # C's left endpoint stays inside its own panel; D represents a straight angle.
   for label,pts in s['panels'].items():
-   o,a,b=map(tuple,pts);d.line([a,o,b],fill=blue,width=4);x=(ord(label)-65)%2*360+16;y=(ord(label)-65)//2*240+12;d.text((x,y),label,font=f,fill='black')
+   o,a,b=map(tuple,pts);d.line([a,o,b],fill=blue,width=4);d.ellipse((o[0]-5,o[1]-5,o[0]+5,o[1]+5),fill=blue);x=(ord(label)-65)%2*360+16;y=(ord(label)-65)//2*240+12;d.text((x,y),label,font=f,fill='black')
  im.save(root/(name+'.png'))
  if name=='rectangle':im.save(root/'rectangle.jpg',quality=95);im.save(root/'rectangle.webp',lossless=True)
 (root/'geometry-source.json').write_text(json.dumps(spec,indent=2)+'\n')

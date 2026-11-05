@@ -70,7 +70,7 @@ begin
    or coalesce(a->>'mime_type','') not in ('image/png','image/jpeg','image/webp')
    or jsonb_typeof(a->'width') is distinct from 'number' or jsonb_typeof(a->'height') is distinct from 'number'
    or coalesce(a->'provenance'->>'origin','') not in ('generated','book_crop')
-   or a->>'storage_path' is distinct from w::text||'/'||v::text||'/'||(a->>'checksum_sha256')||case a->>'mime_type' when 'image/png' then '.png' when 'image/jpeg' then '.jpg' when 'image/webp' then '.webp' else '.invalid' end
+   or a->>'storage_path' is distinct from (w::text||'/'||v::text||'/'||(a->>'checksum_sha256')||(case a->>'mime_type' when 'image/png' then '.png' when 'image/jpeg' then '.jpg' when 'image/webp' then '.webp' else '.invalid' end))
    or (a->>'checksum_sha256' ~ '^[a-f0-9]{64}$') is not true or (a->>'position')::integer is distinct from ordinal
    or jsonb_typeof(a->'required') is distinct from 'boolean' or nullif(btrim(a->>'alt_text'),'') is null
    or (a->>'width')::integer not between 16 and 4096 or (a->>'height')::integer not between 16 and 4096
