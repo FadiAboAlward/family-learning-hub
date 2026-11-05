@@ -42,7 +42,9 @@ export function validateVisualContract(pkg,errors,warnings) {
   const questions=Array.isArray(pkg.questions)?pkg.questions:[];
   const blueprints=Array.isArray(pkg.blueprint)?pkg.blueprint:[];
   const learning=questions.filter(q=>q?.delivery_surface==='learning'),exam=questions.filter(q=>q?.delivery_surface==='exam');
-  if(questions.length!==40 || learning.length!==20 || exam.length!==20)issue('VISUAL_10_10_20_REQUIRED','questions','Requires 10 Foundation + 10 Bridge + 20 independent Exam items.');
+  const paperOnly=questions.length===20&&questions.every(q=>q?.delivery_surface==='paper');
+  if(!paperOnly&&(questions.length!==40 || learning.length!==20 || exam.length!==20))issue('VISUAL_10_10_20_REQUIRED','questions','Interactive packages require 10 Foundation + 10 Bridge + 20 independent Exam items; the separate optional Paper has 20 NEW items.');
+  if(/\/storage\/v1\/object\/(?:sign|upload\/sign)\/|[?&](?:token|sig|signature|expires|x-amz-[^=\s"&]+|x-goog-[^=\s"&]+)=/i.test(JSON.stringify(pkg)))issue('ASSET_TRANSIENT_URL_FORBIDDEN','$','Temporary media credentials/URLs cannot enter the immutable candidate or its hash.');
   const files=new Map();
   for(const [i,q] of questions.entries()) {
     if(!object(q)){issue('VISUAL_QUESTION_INVALID','questions['+i+']','Question must be an object.');continue;}

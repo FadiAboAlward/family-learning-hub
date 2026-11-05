@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { visualCandidate,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
 import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
-import { assetContractErrors,conceptGuidance } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
+import { assetContractErrors,conceptGuidance,validateVisualContract } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
 import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
@@ -13,6 +13,8 @@ assert.deepEqual(fs.readFileSync(new URL('../supabase/functions/_shared/vendor/w
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
 for(const malformed of [{...pkg,questions:{}},{...pkg,blueprint:{}},{...pkg,questions:[null]},{...pkg,questions:[{...pkg.questions[0],assets:[null,null]}]}])assert.equal(validateAcademicPackage(malformed).ok,false,'Malformed containers must return a validation report instead of throwing');
 const reordered=structuredClone(pkg);reordered.questions[10].assets[0]=Object.fromEntries(Object.entries(reordered.questions[10].assets[0]).reverse());assert.equal(validateAcademicPackage(reordered).ok,true,'Object key order must not invent conflicting file identities');
+const transient=structuredClone(pkg);transient.questions[0].assets[0].provenance.source_ref='https://example.invalid/storage/v1/object/sign/file?token=private';assert.ok(validateAcademicPackage(transient).errors.some(e=>e.code==='ASSET_TRANSIENT_URL_FORBIDDEN'));
+const paperErrors=[];validateVisualContract({assessment_profile:pkg.assessment_profile,questions:Array.from({length:20},(_,i)=>({question_code:'P-'+i,delivery_surface:'paper',assets:[]}))},paperErrors,[]);assert.deepEqual(paperErrors,[],'The separate Paper contract is 20 items, never a 60-item interactive candidate; full academic/source QA remains separate');
 assert.equal(pkg.questions.filter(q=>q.learning_stage==='FOUNDATION').length,10);assert.equal(pkg.questions.filter(q=>q.learning_stage==='BRIDGE').length,10);
 for(const mutate of [p=>p.questions[0].learning_stage='BRIDGE',p=>delete p.blueprint[0].learning_stage,p=>p.questions[20].learning_stage='FOUNDATION',p=>p.questions.pop(),p=>p.questions[0].assets[0].position=2,p=>p.questions[10].assets.reverse(),p=>p.questions[0].assets[0].purpose='solution',p=>p.questions[0].assets[0].provenance.rights_status='unknown',p=>p.questions[0].assets[0].url='https://hotlink.invalid/image']){
  const bad=structuredClone(pkg);mutate(bad);assert.equal(validateAcademicPackage(bad).ok,false,'Invalid visual candidate must fail the official gate');

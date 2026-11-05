@@ -9,6 +9,30 @@ do $$ begin
 end $$;
 -- No anon/authenticated object policies: custom learner tokens are not Auth JWTs.
 
+-- An existing published/attempted version can never be reinterpreted as this profile.
+create or replace function private.flh_visual_version_guard() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ if tg_op='UPDATE' and old.settings->>'assessment_profile' is distinct from new.settings->>'assessment_profile'
+  and (old.settings->>'assessment_profile'='visual-foundation-bridge-v1' or new.settings->>'assessment_profile'='visual-foundation-bridge-v1') then
+  if old.state<>'draft' or exists(select 1 from public.quiz_questions where workspace_id=old.workspace_id and quiz_version_id=old.id)
+   or exists(select 1 from public.quiz_attempts where workspace_id=old.workspace_id and quiz_version_id=old.id)
+   or exists(select 1 from public.quiz_assignments where workspace_id=old.workspace_id and quiz_version_id=old.id)
+   or exists(select 1 from public.assessment_publications where workspace_id=old.workspace_id and quiz_version_id=old.id)
+  then raise exception 'ASSESSMENT_VISUAL_NEW_VERSION_REQUIRED';end if;
+ end if;
+ if new.settings->>'assessment_profile'='visual-foundation-bridge-v1'
+  and (tg_op='INSERT' or (tg_op='UPDATE' and (old.settings->>'assessment_profile' is distinct from new.settings->>'assessment_profile' or (old.state is distinct from new.state and new.state='published')))) then
+  perform 1 from public.workspace_settings where workspace_id=new.workspace_id and key='visual_assessments' for share;
+  if not exists(select 1 from public.workspace_settings where workspace_id=new.workspace_id and key='visual_assessments' and value->'enabled'='true'::jsonb) then raise exception 'ASSESSMENT_VISUAL_DISABLED';end if;
+ end if;
+ return new;
+end;
+$$;
+revoke all on function private.flh_visual_version_guard() from public,anon,authenticated;
+drop trigger if exists visual_version_guard on public.quiz_versions;
+create trigger visual_version_guard before insert or update on public.quiz_versions for each row execute function private.flh_visual_version_guard();
+
 create or replace function public.flh_assessment_media_parent(p_workspace_id uuid,p_parent_id uuid,p_version_id uuid,p_upload boolean default false)
 returns boolean language sql stable security invoker set search_path='' as $$
  select exists(select 1 from public.workspace_members where workspace_id=p_workspace_id and user_id=p_parent_id and role in ('owner','admin'))
@@ -179,6 +203,13 @@ create or replace function private.flh_visual_media_guard() returns trigger
 language plpgsql security definer set search_path='' as $$
 declare r jsonb; version_id uuid;
 begin
+ if tg_table_name='quiz_question_assets' and tg_op in ('INSERT','UPDATE') then
+  if exists(
+   select 1 from public.assets a join public.quiz_questions q on q.id=new.question_id and q.workspace_id=new.workspace_id
+   where a.id=new.asset_id and a.workspace_id=new.workspace_id and a.storage_bucket='assessment-assets'
+    and a.metadata->>'quiz_version_id' is distinct from q.quiz_version_id::text
+  ) then raise exception 'ASSESSMENT_MEDIA_SCOPE_INVALID';end if;
+ end if;
  for r in select value from jsonb_array_elements(jsonb_build_array(case when tg_op<>'INSERT' then to_jsonb(old) end,case when tg_op<>'DELETE' then to_jsonb(new) end)) where value<>'null'::jsonb loop
   if tg_table_schema='storage' then
    if tg_op='UPDATE' and (to_jsonb(old)-'last_accessed_at') is not distinct from (to_jsonb(new)-'last_accessed_at') then continue; end if;
