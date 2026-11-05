@@ -40,6 +40,37 @@ $$;
 revoke all on function private.flh_visual_assets(uuid,uuid) from public,anon,authenticated;
 grant execute on function private.flh_visual_assets(uuid,uuid) to service_role;
 
+create or replace function public.flh_assessment_media_preview(p_workspace_id uuid,p_parent_id uuid,p_version_id uuid,p_question_id uuid)
+returns jsonb language plpgsql stable security invoker set search_path='' as $$
+declare assets jsonb;
+begin
+ if not public.flh_assessment_media_parent(p_workspace_id,p_parent_id,p_version_id,false)
+  or not exists(select 1 from public.quiz_questions q join public.quiz_versions v on v.id=q.quiz_version_id and v.workspace_id=q.workspace_id
+   where q.workspace_id=p_workspace_id and q.id=p_question_id and v.id=p_version_id and v.settings->>'assessment_profile'='visual-foundation-bridge-v1')
+ then raise exception 'ASSESSMENT_MEDIA_FORBIDDEN';end if;
+ select coalesce(jsonb_agg(asset-'provenance'-'storage_bucket' order by (asset->>'position')::integer),'[]'::jsonb)
+ into assets from jsonb_array_elements(private.flh_visual_assets(p_workspace_id,p_question_id)) asset where asset->>'purpose'='prompt';
+ return jsonb_build_object('assessment_profile','visual-foundation-bridge-v1','questions',jsonb_build_array(jsonb_build_object('question_id',p_question_id,'assets',assets)));
+end;
+$$;
+revoke all on function public.flh_assessment_media_preview(uuid,uuid,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.flh_assessment_media_preview(uuid,uuid,uuid,uuid) to service_role;
+
+-- Enforce the opt-in creation flag at the existing service-only draft transaction too.
+do $$ declare definition text; anchor text:=' if request_uuid is null or p_action not in'; begin
+ select pg_get_functiondef('public.flh_assessment_authoring_command(uuid,uuid,text,jsonb)'::regprocedure) into definition;
+ if position('FLH044_CREATE_FLAG' in definition)=0 then
+  if position(anchor in definition)=0 then raise exception 'ASSESSMENT_AUTHORING_CONTRACT_DRIFT';end if;
+  definition:=replace(definition,anchor,
+   ' -- FLH044_CREATE_FLAG'||chr(10)||
+   ' if p_action=''create'' and p_payload->''candidate''->>''assessment_profile''=''visual-foundation-bridge-v1'' then'||chr(10)||
+   '  perform 1 from public.workspace_settings where workspace_id=p_workspace_id and key=''visual_assessments'' for share;'||chr(10)||
+   '  if not exists(select 1 from public.workspace_settings where workspace_id=p_workspace_id and key=''visual_assessments'' and value->''enabled''=''true''::jsonb) then raise exception ''ASSESSMENT_VISUAL_DISABLED'';end if;'||chr(10)||
+   ' end if;'||chr(10)||anchor);
+  execute definition;
+ end if;
+end $$;
+
 do $$ begin
  if to_regprocedure('private.flh_assessment_graph_before_flh044(uuid,uuid)') is null then
   alter function private.flh_assessment_graph(uuid,uuid) rename to flh_assessment_graph_before_flh044;

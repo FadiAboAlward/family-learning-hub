@@ -9,7 +9,12 @@ export async function prepareAssessmentUpload(admin,w,parent,body) {
   const {data:allowed,error}=await admin.rpc('flh_assessment_media_parent',{p_workspace_id:w,p_parent_id:parent,p_version_id:v,p_upload:true});
   if(error||allowed!==true)deny('ASSESSMENT_FORBIDDEN');
   const {data,error:uploadError}=await admin.storage.from(MEDIA_BUCKET).createSignedUploadUrl(a.storage_path,{upsert:false});
-  if(uploadError||!data?.signedUrl)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+  if(uploadError||!data?.signedUrl){
+    const stored=await admin.storage.from(MEDIA_BUCKET).download(a.storage_path);
+    if(stored.error||!stored.data||stored.data.size>MEDIA_LIMITS.bytes)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+    await verifyRaster(new Uint8Array(await stored.data.arrayBuffer()),a);
+    return {ok:true,asset_id:a.asset_id,storage_path:a.storage_path,already_uploaded:true};
+  }
   return {ok:true,asset_id:a.asset_id,storage_path:a.storage_path,signed_upload_url:data.signedUrl};
 }
 
@@ -35,6 +40,10 @@ export async function assessmentMediaContext(admin,w,learner,attemptId,questionI
   const {data,error}=await admin.rpc('flh_assessment_media_context',{p_workspace_id:w,p_learner_id:learner,p_attempt_id:attemptId,p_question_id:questionId});
   if(error||data?.error)deny('ASSESSMENT_MEDIA_FORBIDDEN');
   if(!data)return null;
+  return signContext(admin,data);
+}
+
+async function signContext(admin,data){
   // Never copy arbitrary asset metadata, provenance or private review data to a learner.
   for(const q of data.questions) for(const a of q.assets) {
     const {data:signed,error:signError}=await admin.storage.from(MEDIA_BUCKET).createSignedUrl(a.storage_path,MEDIA_LIMITS.readTtl);
@@ -44,6 +53,13 @@ export async function assessmentMediaContext(admin,w,learner,attemptId,questionI
     if(!a.url)a.error='MEDIA_UNAVAILABLE';
   }
   return data;
+}
+
+export async function previewAssessmentMedia(admin,w,parent,body){
+  if(!UUID_PATTERN.test(body.quiz_version_id||'')||!UUID_PATTERN.test(body.question_id||''))deny('ASSESSMENT_MEDIA_FORBIDDEN');
+  const {data,error}=await admin.rpc('flh_assessment_media_preview',{p_workspace_id:w,p_parent_id:parent,p_version_id:body.quiz_version_id,p_question_id:body.question_id});
+  if(error||!data)deny('ASSESSMENT_MEDIA_FORBIDDEN');
+  return signContext(admin,data);
 }
 
 export async function hydrateAssessmentMedia(admin,w,learner,attemptId,payload) {

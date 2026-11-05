@@ -8,7 +8,7 @@
     current();if(!visual(q))return null;
     return(q.assets||[]).map(a=>{
       states.set(key(q,a),false);
-      return `<figure class="flh-visual-asset" data-vquestion="${safe(q.id||q.question_id)}" data-vasset="${safe(a.asset_id)}"><figcaption>${safe(a.label||'الرسم '+a.position)}</figcaption><button type="button" class="flh-visual-enlarge" aria-label="تكبير ${safe(a.label||'الرسم '+a.position)}" disabled><img ${a.url?`src="${safe(a.url)}"`:''} alt="${safe(a.alt_text)}" width="${Number(a.width)}" height="${Number(a.height)}" decoding="async"></button><p class="flh-visual-status" role="status" aria-live="polite">جارٍ تحميل الرسم…</p><button class="btn btn-soft flh-visual-retry" type="button" hidden>إعادة تحميل الرسم</button></figure>`;
+      return `<figure class="flh-visual-asset" data-vquestion="${safe(q.id||q.question_id)}" data-vasset="${safe(a.asset_id)}"><figcaption dir="auto">${safe(a.label||'الرسم '+a.position)}</figcaption><button type="button" class="flh-visual-enlarge" aria-label="تكبير ${safe(a.label||'الرسم '+a.position)}" disabled><img ${a.url?`src="${safe(a.url)}"`:''} alt="${safe(a.alt_text)}" width="${Number(a.width)}" height="${Number(a.height)}" decoding="async"></button><p class="flh-visual-status" role="status" aria-live="polite">جارٍ تحميل الرسم…</p><button class="btn btn-soft flh-visual-retry" type="button" hidden>إعادة تحميل الرسم</button></figure>`;
     }).join('');
   }
   function ready(q){current();return !visual(q)||(q.assets||[]).filter(a=>a.required).every(a=>states.get(key(q,a))===true);}

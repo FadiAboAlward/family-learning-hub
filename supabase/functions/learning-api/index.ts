@@ -4,7 +4,7 @@ import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport, p
 import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
 import { AUTHORING_ACTIONS, assessmentAuthoringCommand } from "../_shared/assessment-authoring.mjs";
 import { assessmentParent } from "../_shared/assessment-parent-auth.mjs";
-import { prepareAssessmentUpload, assessmentMediaContext, hydrateAssessmentMedia } from "../_shared/assessment-media.mjs";
+import { prepareAssessmentUpload, previewAssessmentMedia, assessmentMediaContext, hydrateAssessmentMedia } from "../_shared/assessment-media.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -99,7 +99,7 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
-    const parentActions=new Set(["prepare_assessment_upload","attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
+    const parentActions=new Set(["prepare_assessment_upload","preview_assessment_assets","attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
     const allowed=new Set(["refresh_question_assets","start_quiz","preview_videos","get_video_progress","save_video_progress","clear_video_progress","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
@@ -107,7 +107,7 @@ Deno.serve(async(req:Request)=>{
     if(parentActions.has(action)){
       const parentId=await trace.measure("authentication",{},()=>videoAuthor(req));
       const providerOptions={apiKey:Deno.env.get("YOUTUBE_API_KEY")};
-      output=action==="prepare_assessment_upload"?await prepareAssessmentUpload(admin,WORKSPACE_ID,parentId,b):AUTHORING_ACTIONS.includes(action)?await assessmentAuthoringCommand(admin,WORKSPACE_ID,parentId,b,trace):ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
+      output=action==="prepare_assessment_upload"?await prepareAssessmentUpload(admin,WORKSPACE_ID,parentId,b):action==="preview_assessment_assets"?await previewAssessmentMedia(admin,WORKSPACE_ID,parentId,b):AUTHORING_ACTIONS.includes(action)?await assessmentAuthoringCommand(admin,WORKSPACE_ID,parentId,b,trace):ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
       if(action==="refresh_question_assets")output=await assessmentMediaContext(admin,WORKSPACE_ID,lid,String(b.attempt_id||""),String(b.question_id||""));
