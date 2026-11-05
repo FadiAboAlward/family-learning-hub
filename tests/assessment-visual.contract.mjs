@@ -33,6 +33,7 @@ insert into public.quizzes(id,workspace_id,subject_id,curriculum_id,slug,title,s
 insert into public.quiz_versions(id,workspace_id,quiz_id,version_no,state) values('04410000-0000-4000-8000-000000000299','${w}','04410000-0000-4000-8000-000000000298',1,'published');
 insert into public.quiz_questions(id,workspace_id,quiz_version_id,position,question_code,question_type,prompt) values('04410000-0000-4000-8000-000000000297','${w}','04410000-0000-4000-8000-000000000299',1,'Q-449999999999','single_choice','Synthetic historical text-only sentinel');
 insert into public.program_quizzes(workspace_id,program_id,quiz_id,availability) values('${w}','${ids.program}','${ids.quiz}','available');
+${proof.media_verification.files.map(f=>`insert into storage.objects(bucket_id,name,metadata,created_at,updated_at) values('assessment-assets','${['rectangle','triangle','composite'].map(n=>diagram(n)).find(a=>a.asset_id===f.asset_id).storage_path}',jsonb_build_object('size',${f.bytes}),now()-interval '8 days',now()-interval '8 days');`).join('\n')}
 ${[...new Set(candidate.questions.map(q=>q.concept_code))].map(code=>`insert into public.learning_concepts(workspace_id,subject_id,curriculum_id,grade_level,code,title) values('${w}',(select id from public.subjects where code='qa-visual'),'${ids.curriculum}',7,'${code}','Synthetic geometry concept');`).join('\n')}
 do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; saved jsonb; qid uuid; pos integer; i integer; begin
  perform pg_temp.verify((select not public from storage.buckets where id='assessment-assets'),'private bucket');
@@ -54,6 +55,17 @@ do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; s
  perform pg_temp.verify(not exists(select 1 from public.quiz_questions q cross join lateral jsonb_array_elements(q.source_metadata->'visual_assessment'->'assets') a where q.quiz_version_id='${v}' and (a ? 'provenance' or a ? 'checksum_sha256' or a ? 'storage_path')),'private provenance and file metadata do not enter learner-visible question source metadata');
  perform pg_temp.verify((select count(*)=20 from public.quiz_questions where quiz_version_id='${v}' and delivery_role='core') and (select count(*)=20 from public.quiz_questions where quiz_version_id='${v}' and delivery_role='exam_pool'),'native 20/20 without third scoring engine');
  select id,source_metadata into qid,saved from public.quiz_questions where quiz_version_id='${v}' and position=1;
+ update public.quiz_questions set source_metadata=jsonb_set(source_metadata,'{visual_assessment,assets}','[]') where id=qid;
+ context:=private.flh_visual_assets('${w}',qid);perform pg_temp.verify(jsonb_array_length(context)=1 and context->0->>'required'='true' and context->0->>'error'='MEDIA_METADATA_INVALID','missing metadata preserves required linked asset instead of silently dropping it');
+ update public.quiz_questions set source_metadata=saved where id=qid;
+ insert into storage.objects(bucket_id,name,metadata,created_at,updated_at) values('assessment-assets','${w}/${v}/old-orphan.png','{"size":1024}',now()-interval '8 days',now()-interval '8 days'),('assessment-assets','${w}/${v}/fresh-orphan.png','{"size":1024}',now(),now());
+ context:=public.flh_assessment_upload_maintenance('${w}','${ids.parent}');perform pg_temp.verify(context->'paths'=jsonb_build_array('${w}/${v}/old-orphan.png'),'sweep selects old unlinked file, preserves linked old and recent uploads');
+ delete from storage.objects where bucket_id='assessment-assets' and name in ('${w}/${v}/old-orphan.png','${w}/${v}/fresh-orphan.png');
+ for i in 1..12 loop insert into storage.objects(bucket_id,name,metadata) values('assessment-assets','${w}/04410000-0000-4000-8000-000000000300/quota-'||i,'{"size":4194304}');end loop;
+ begin perform private.flh_visual_upload_budget('${w}','04410000-0000-4000-8000-000000000300',1);raise exception 'upload quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
+ begin perform public.flh_assessment_upload_maintenance('${w}','${ids.parent}','04410000-0000-4000-8000-000000000300','${w}/04410000-0000-4000-8000-000000000300/new.png');raise exception 'allocation quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
+ begin insert into storage.objects(bucket_id,name,metadata) values('assessment-assets','${w}/04410000-0000-4000-8000-000000000300/over-quota','{"size":1}');raise exception 'Storage quota accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_UPLOAD_LIMIT' then raise;end if;end;
+ delete from storage.objects where bucket_id='assessment-assets' and name like '${w}/04410000-0000-4000-8000-000000000300/%';
  update public.quiz_questions set source_metadata=source_metadata||'{"drift":true}' where id=qid;
  begin perform ${cmd('publish')};raise exception 'graph drift accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_CONTENT_DRIFT' then raise;end if;end;
  update public.quiz_questions set source_metadata=saved where id=qid;
@@ -72,6 +84,7 @@ do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; s
  perform pg_temp.verify(jsonb_array_length(context->'questions'->0->'assets')=1 and jsonb_array_length(context->'questions'->10->'assets')=2,'ordered one/two image projection');
  perform pg_temp.verify(not exists(select 1 from jsonb_array_elements(context->'learning_evidence') e where e->>'explanation' is not null or e->>'is_correct' is not null),'no unanswered feedback leak');
  begin perform public.flh_assessment_media_context('${w}','${ids.parent}',(first_start->>'attempt_id')::uuid,qid);raise exception 'wrong learner accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_MEDIA_FORBIDDEN' then raise;end if;end;
+ begin perform public.flh_assessment_media_context('${w}','${learner}',(first_start->>'attempt_id')::uuid,'04410000-0000-4000-8000-000000000297');raise exception 'outside question accepted';exception when raise_exception then if sqlerrm<>'ASSESSMENT_MEDIA_FORBIDDEN' then raise;end if;end;
  for i in 1..10 loop
   select q.id,(k.correct_answer->>'option_position')::integer into qid,pos from public.quiz_questions q join public.quiz_question_answer_keys k on k.question_id=q.id where q.quiz_version_id='${v}' and q.position=i;
   if i=1 then perform public.flh_learning_answer('${w}','${learner}',(first_start->>'attempt_id')::uuid,qid,2);end if;

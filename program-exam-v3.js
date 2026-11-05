@@ -12,8 +12,9 @@
   async function examApi(action,payload={}){const t=learnerToken();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(EXAM_API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok)throw new Error(d.error||'SERVER_ERROR');return d;}
   async function refreshProfile(){try{if(typeof state==='undefined')return false;const session=learnerToken();let fresh=null;try{fresh=await globalThis.FLHPerformance?.refreshStudentProfile?.(session);}catch{}if(fresh){state.learnerProfile=fresh;return true;}if(typeof api!=='function')return false;globalThis.FLHPerformance?.invalidateStudentProfile?.(session);state.learnerProfile=await api('student_profile',{},session);return true;}catch{return false;}}
   const home=()=>{globalThis.FLHAppVersion?.markRouteChanged?.();globalThis.FLHElapsedTimer?.dispose();if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile)};
+  const mediaReady=q=>typeof globalThis.FLHAssessmentAssets?.ready==='function'?globalThis.FLHAssessmentAssets.ready(q):!(q?.assets||[]).some(a=>a.required);
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
-  function assetsHtml(q){return globalThis.FLHAssessmentAssets?.html(q)??(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
+  function assetsHtml(q){if(typeof globalThis.FLHAssessmentAssets?.ready!=='function'&&(q.assets||[]).some(a=>a.required))return '<div class="error" role="status">تعذر تحميل عرض الرسم الضروري. أعد تحميل الصفحة أو ارجع؛ لم تُسجّل إجابة.</div>';return globalThis.FLHAssessmentAssets?.html(q)??(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   let warmPromise=null,warmAt=0;
   function warmExamApi(){
     if(location.origin!==LIVE_ORIGIN)return Promise.resolve(false);
@@ -66,7 +67,7 @@
         seenQuestions.add(row.question_id);
         globalThis.FLHTelemetry?.capture?.('flh_exam_question_viewed',{mode:'exam',attempt_id:session.attempt_id,question_id:row.question_id,question_index:index+1,question_type:q.question_type,question_text:q.prompt});
       }
-      const opts=(q.options||[]).map(o=>{const pos=Number(o.position),sel=pos===selected;return`<button class="answer exam-v3-answer ${sel?'selected':''}" data-pos="${pos}" ${submitting?'disabled':''}><span class="answer-number">${sel?'✓':pos}</span><span>${renderMath(o.content)}</span></button>`}).join('');
+      const opts=(q.options||[]).map(o=>{const pos=Number(o.position),sel=pos===selected;return`<button class="answer exam-v3-answer ${sel?'selected':''}" data-pos="${pos}" ${submitting||!mediaReady(q)?'disabled':''}><span class="answer-number">${sel?'✓':pos}</span><span>${renderMath(o.content)}</span></button>`}).join('');
       const nav=questions.map((x,i)=>`<button class="${statusClass(x.question_id,i)}" data-i="${i}" ${saving||submitting?'disabled':''}>${flagged.has(x.question_id)?'🚩 ':answers.has(x.question_id)?'✓ ':''}${i+1}</button>`).join('');
       const resume=session.resumed?'<div class="flh-resume-note">↩️ رجعناك لامتحانك، وإجاباتك المحفوظة موجودة.</div>':'';
       const saveStatus=saveError?'⚠️ تعذر حفظ آخر اختيار. اختره مرة ثانية.':pending?'✓ تم اختيار الإجابة — يتم حفظها بالخلفية…':selected?'✓ الإجابة محفوظة تلقائيًا.':'اختر إجابتك.';
@@ -88,7 +89,7 @@
 
     function saveAnswer(btn){
       if(submitting)return;
-      if(globalThis.FLHAssessmentAssets?.ready(questions[index]?.question)===false)return;
+      if(!mediaReady(questions[index]?.question))return;
       const row=questions[index],qid=row.question_id,questionNo=index+1,pos=Number(btn.getAttribute('data-pos')),previous=answers.get(qid);
       answers.set(qid,pos);
       answerSaveErrors.delete(qid);

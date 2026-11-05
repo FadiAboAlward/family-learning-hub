@@ -15,7 +15,7 @@
   async function call(action,payload={},signal){const t=token();if(!t)throw new Error('AUTH_REQUIRED');const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${t}`},body:JSON.stringify({action,...payload}),...(['save_video_progress','clear_video_progress'].includes(action)?{keepalive:true}:{}),...(signal?{signal}:{})});const d=await r.json().catch(()=>({error:'SERVER_ERROR'}));if(!r.ok){const error=new Error(d.error||'SERVER_ERROR');error.data=d;throw error;}return d;}
   async function refreshProfile(){try{if(typeof api==='function'&&typeof state!=='undefined')state.learnerProfile=await api('student_profile',{},token());}catch{}}
   function preloadQuestion(q){if(!q)return;(q.assets||[]).forEach(a=>{if(a?.url){const img=new Image();img.decoding='async';img.src=a.url;}});}
-  function assetsHtml(q){return globalThis.FLHAssessmentAssets?.html(q)??(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
+  function assetsHtml(q){if(typeof globalThis.FLHAssessmentAssets?.ready!=='function'&&(q.assets||[]).some(a=>a.required))return '<div class="error" role="status">تعذر تحميل عرض الرسم الضروري. أعد تحميل الصفحة أو ارجع؛ لم تُسجّل إجابة.</div>';return globalThis.FLHAssessmentAssets?.html(q)??(q.assets||[]).filter(a=>a?.url).map(a=>`<figure class="flh-q-asset"><img src="${safe(a.url)}" alt="${safe(a.alt_text||'صورة السؤال')}" loading="eager" decoding="async"></figure>`).join('');}
   function home(){globalThis.FLHAppVersion?.markRouteChanged?.();globalThis.FLHElapsedTimer?.dispose();if(typeof renderStudentHome==='function'&&typeof state!=='undefined')renderStudentHome(state.learnerProfile);}
 
   function resumeOptions(slug,attemptId){
@@ -125,19 +125,21 @@
     let busy=false,currentHint=queue[index]?.last_hint?.content?queue[index].last_hint:null,draftController=null,draftVersion=0;
     const remaining=()=>queue.some(x=>!['completed','skipped'].includes(x.status));
     const nextIndex=()=>queue.findIndex((x,i)=>i>index&&!['completed','skipped'].includes(x.status));
-    const mediaReady=q=>globalThis.FLHAssessmentAssets?.ready(q)!==false;
+    const mediaReady=q=>typeof globalThis.FLHAssessmentAssets?.ready==='function'?globalThis.FLHAssessmentAssets.ready(q):!(q?.assets||[]).some(a=>a.required);
     const qshell=html=>{
       shell(`🧠 ${safe(session.quiz.title)}`,'وضع التعلّم — اختَر، فكّر، واستعمل المساعدة وقت الحاجة.',html);
-      globalThis.FLHAssessmentAssets?.mount(document.getElementById('app'),{questions:queue.map(r=>r.question).filter(Boolean),refresh:question_id=>call('refresh_question_assets',{attempt_id:session.attempt_id,question_id}),onChange:()=>{
+      const updateMedia=()=>{
         const row=queue[index],q=row?.question,blocked=!mediaReady(q);
         document.querySelectorAll('.flh-learn-answer').forEach(b=>{b.disabled=busy||blocked;});
         const confirm=document.getElementById('flhConfirmAnswer');if(confirm)confirm.disabled=busy||blocked||!(['numeric','short_answer'].includes(q?.question_type)?typedValue(row).trim():row?.draft_option_position);
-      }});
+      };
+      globalThis.FLHAssessmentAssets?.mount(document.getElementById('app'),{questions:queue.map(r=>r.question).filter(Boolean),refresh:question_id=>call('refresh_question_assets',{attempt_id:session.attempt_id,question_id}),onChange:updateMedia});
+      updateMedia();
     };
     let bridgeSummaryDismissed=false;
     function guidanceHtml(stage,evidence=session.learning_evidence||[],guidance=session.learning_guidance||{}){
       const groups=guidance[stage]||[],review=groups.filter(g=>g.recommend_review),completed=evidence.filter(r=>r.learning_stage===stage&&r.status==='completed');
-      return `<section class="flh-stage-summary"><h2>${stage==='FOUNDATION'?'خلاصة التأسيس':'خلاصة الجسر'}</h2><p>${review.length?'يمكنك مراجعة هذه الأفكار باختصار، أو متابعة التعلّم الآن.':groups.some(g=>g.status==='NOT_YET_ASSESSED')?'بعض الأفكار لم تُقيّم بعد.':'أنهيت هذه المجموعة. يمكنك المتابعة.'}</p>${review.map(g=>`<details><summary>راجع باختصار · ${safe(g.concept_label||g.question_codes.join('، '))}</summary>${completed.filter(r=>r.concept_id===g.concept_id).map(r=>`<p><b>${safe(r.question_code)}</b></p><div dir="auto">${renderMath(r.explanation||'')}</div>`).join('')}</details>`).join('')}</section>`;
+      return `<section class="flh-stage-summary"><h2>${stage==='FOUNDATION'?'خلاصة التأسيس':'خلاصة الجسر'}</h2><p>${review.length?'يمكنك مراجعة هذه الأفكار باختصار، أو متابعة التعلّم الآن.':groups.some(g=>g.status==='NOT_YET_ASSESSED')?'بعض الأفكار لم تُقيّم بعد.':'أنهيت هذه المجموعة. يمكنك المتابعة.'}</p>${review.map(g=>`<details><summary>راجع باختصار · ${renderMath(g.concept_label||g.question_codes.join('، '))}</summary>${completed.filter(r=>r.concept_id===g.concept_id).map(r=>`<p><b>${safe(r.question_code)}</b></p><div dir="auto">${renderMath(r.explanation||'')}</div>`).join('')}</details>`).join('')}</section>`;
     }
     const videoButton='<button class="btn btn-soft" type="button" id="flhLessonVideo">🎬 فيديو الدرس</button>';
     function bindLessonVideo(){document.getElementById('flhLessonVideo')?.addEventListener('click',()=>openLearningVideos(slug,{inPlace:true,attemptId:session.attempt_id}));}
@@ -250,7 +252,7 @@
     }
 
     function choose(btn){
-      if(busy)return;
+      if(busy||!mediaReady(queue[index]?.question))return;
       const row=queue[index],pos=Number(btn.getAttribute('data-pos'));
       row.draft_option_position=pos;
       render();

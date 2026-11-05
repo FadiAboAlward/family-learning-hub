@@ -272,7 +272,6 @@ async function main() {
     mark(stage);
     stage = 'direct_assessment_authoring_api';
     await verifyAssessmentAuthoringApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source)});
-    await verifyAssessmentVisualApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source)});
     mark(stage);
     stage = 'local_application';
     const app = ownedProcess('python3', ['-m', 'http.server', '4173', '--bind', '127.0.0.1', '--directory', path.resolve('.')], process.env);
@@ -286,6 +285,7 @@ async function main() {
     }
     if (!ready) throw new Error('QA_LOCAL_APP_START_FAILED'); mark(stage);
     stage = 'unmocked_authenticated_browser'; authentication = 'FAIL';
+    await verifyAssessmentVisualApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source),appUrl:config.appUrl});
     const childEnv = { ...process.env, FLH_QA_PUBLISHABLE_KEY: runtime.publishableKey, FLH_QA_PARENT_EMAIL: email, FLH_QA_PARENT_PASSWORD: password };
     readQaTestingConfig(childEnv); // Publishable/anon only; service key never reaches the browser child.
     await command(process.execPath, ['tests/authenticated-e2e.mjs'], { env: childEnv, timeout: 240000 });

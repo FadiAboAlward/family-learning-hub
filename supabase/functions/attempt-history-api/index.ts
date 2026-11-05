@@ -379,6 +379,6 @@ Deno.serve(async (req: Request) => {
     const authErrors = ["AUTH_REQUIRED", "INVALID_SESSION", "SESSION_EXPIRED"];
     const notFound = ["ATTEMPT_NOT_FOUND"];
     const bad = ["INVALID_ATTEMPT", "UNKNOWN_ACTION"];
-    return json({ error: message }, authErrors.includes(message) ? 401 : notFound.includes(message) ? 404 : bad.includes(message) ? 400 : 500, origin);
+    return json({ error: message }, authErrors.includes(message) ? 401 : message === "ASSESSMENT_MEDIA_FORBIDDEN" ? 403 : notFound.includes(message) ? 404 : bad.includes(message) ? 400 : 500, origin);
   }
 });

@@ -46,19 +46,64 @@ $$;
 revoke all on function public.flh_assessment_media_parent(uuid,uuid,uuid,boolean) from public,anon,authenticated;
 grant execute on function public.flh_assessment_media_parent(uuid,uuid,uuid,boolean) to service_role;
 
+-- Bound abandoned uploads by bytes, without imposing a per-question image count.
+-- The Storage INSERT trigger repeats this under the same lock: concurrent signed
+-- allocations cannot exceed the actual byte budget when their objects arrive.
+create or replace function private.flh_visual_upload_budget(w uuid,v uuid,additional bigint) returns void
+language plpgsql security invoker set search_path='' as $$
+declare version_bytes bigint; workspace_bytes bigint;
+begin
+ perform pg_advisory_xact_lock(hashtextextended('flh044:'||w::text,0));
+ select coalesce(sum(coalesce((o.metadata->>'size')::bigint,4194304)),0),
+  coalesce(sum(coalesce((o.metadata->>'size')::bigint,4194304)) filter(where split_part(o.name,'/',2)=v::text),0)
+ into workspace_bytes,version_bytes from storage.objects o
+ where o.bucket_id='assessment-assets' and split_part(o.name,'/',1)=w::text
+ and not exists(select 1 from public.assets a join public.quiz_question_assets l on l.asset_id=a.id and l.workspace_id=a.workspace_id
+  where a.storage_bucket=o.bucket_id and a.storage_path=o.name);
+ if additional not between 0 and 4194304 or version_bytes+additional>50331648 or workspace_bytes+additional>201326592
+ then raise exception 'ASSESSMENT_UPLOAD_LIMIT';end if;
+end;
+$$;
+revoke all on function private.flh_visual_upload_budget(uuid,uuid,bigint) from public,anon,authenticated;
+grant execute on function private.flh_visual_upload_budget(uuid,uuid,bigint) to service_role;
+
+/** Parent-authorized maintenance selects only old, unlinked workspace objects. */
+create or replace function public.flh_assessment_upload_maintenance(p_workspace_id uuid,p_parent_id uuid,p_version_id uuid default null,p_path text default null)
+returns jsonb language plpgsql security invoker set search_path='' as $$
+declare paths jsonb;
+begin
+ if not exists(select 1 from public.workspace_members where workspace_id=p_workspace_id and user_id=p_parent_id and role in ('owner','admin')) then raise exception 'ASSESSMENT_FORBIDDEN';end if;
+ if p_version_id is not null then
+  if not public.flh_assessment_media_parent(p_workspace_id,p_parent_id,p_version_id,true) then raise exception 'ASSESSMENT_FORBIDDEN';end if;
+  if p_path is null or split_part(p_path,'/',1)<>p_workspace_id::text or split_part(p_path,'/',2)<>p_version_id::text then raise exception 'ASSESSMENT_MEDIA_INVALID';end if;
+  if not exists(select 1 from storage.objects where bucket_id='assessment-assets' and name=p_path) then perform private.flh_visual_upload_budget(p_workspace_id,p_version_id,4194304);end if;
+ end if;
+ select coalesce(jsonb_agg(name),'[]'::jsonb) into paths from (
+  select o.name from storage.objects o where o.bucket_id='assessment-assets' and split_part(o.name,'/',1)=p_workspace_id::text
+   and o.created_at<now()-interval '7 days' and greatest(o.created_at,o.updated_at)<now()-interval '7 days'
+   and not exists(select 1 from public.assets a join public.quiz_question_assets l on l.asset_id=a.id and l.workspace_id=a.workspace_id
+    where a.storage_bucket=o.bucket_id and a.storage_path=o.name)
+  order by o.created_at,o.name limit 100
+ ) expired;
+ return jsonb_build_object('paths',paths);
+end;
+$$;
+revoke all on function public.flh_assessment_upload_maintenance(uuid,uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.flh_assessment_upload_maintenance(uuid,uuid,uuid,text) to service_role;
+
 -- One canonical projection shared by graph/paper and the authorized runtime read.
 create or replace function private.flh_visual_assets(w uuid,qid uuid) returns jsonb
 language sql stable security invoker set search_path='' as $$
  select coalesce(jsonb_agg(jsonb_build_object(
   'asset_id',a.id,'position',link.position,'purpose',link.purpose,'alt_text',link.alt_text,
-  'label',ctx->'label','required',ctx->'required','mime_type',a.mime_type,
+  'label',ctx->'label','required',case when jsonb_typeof(ctx->'required')='boolean' then ctx->'required' else 'true'::jsonb end,'mime_type',a.mime_type,
   'width',a.metadata->'width','height',a.metadata->'height','checksum_sha256',a.checksum_sha256,
   'storage_bucket',a.storage_bucket,'storage_path',a.storage_path,'provenance',a.metadata->'provenance'
- ) order by link.position),'[]'::jsonb)
+ ) || case when ctx is null or jsonb_typeof(ctx->'required') is distinct from 'boolean' then '{"error":"MEDIA_METADATA_INVALID"}'::jsonb else '{}'::jsonb end order by link.position),'[]'::jsonb)
  from public.quiz_question_assets link
  join public.assets a on a.id=link.asset_id and a.workspace_id=link.workspace_id
  join public.quiz_questions q on q.id=link.question_id and q.workspace_id=link.workspace_id
- cross join lateral (select value as ctx from jsonb_array_elements(coalesce(q.source_metadata->'visual_assessment'->'assets','[]')) where value->>'asset_id'=a.id::text) context
+ left join lateral (select value as ctx from jsonb_array_elements(case when jsonb_typeof(q.source_metadata->'visual_assessment'->'assets')='array' then q.source_metadata->'visual_assessment'->'assets' else '[]'::jsonb end) where value->>'asset_id'=a.id::text limit 1) context on true
  where link.workspace_id=w and link.question_id=qid;
 $$;
 revoke all on function private.flh_visual_assets(uuid,uuid) from public,anon,authenticated;
@@ -135,6 +180,8 @@ begin
    or (a->'provenance'->>'origin'='book_crop' and (a->'provenance'->>'rights_status' is distinct from 'authorized' or nullif(a->'provenance'->>'rights_ref','') is null))
   then raise exception 'ASSESSMENT_MEDIA_INVALID'; end if;
   expected_meta:=jsonb_build_object('quiz_version_id',v,'width',a->'width','height',a->'height','provenance',a->'provenance');
+  perform 1 from storage.objects where bucket_id='assessment-assets' and name=a->>'storage_path' for share;
+  if not found then raise exception 'ASSESSMENT_MEDIA_UNAVAILABLE';end if;
   insert into public.assets(id,workspace_id,kind,storage_bucket,storage_path,mime_type,checksum_sha256,metadata)
   values((a->>'asset_id')::uuid,w,'image','assessment-assets',a->>'storage_path',a->>'mime_type',a->>'checksum_sha256',expected_meta) on conflict(id) do nothing;
   select * into existing from public.assets where id=(a->>'asset_id')::uuid for update;
@@ -203,6 +250,20 @@ create or replace function private.flh_visual_media_guard() returns trigger
 language plpgsql security definer set search_path='' as $$
 declare r jsonb; version_id uuid;
 begin
+ if tg_table_schema='storage' then
+  if tg_op='INSERT' then
+   if new.bucket_id='assessment-assets' then
+    perform private.flh_visual_upload_budget(split_part(new.name,'/',1)::uuid,split_part(new.name,'/',2)::uuid,coalesce((new.metadata->>'size')::bigint,4194304));
+   end if;
+  elsif old.bucket_id='assessment-assets' then
+   if tg_op='UPDATE' then
+    if new.bucket_id is distinct from old.bucket_id or new.name is distinct from old.name then raise exception 'ASSESSMENT_MEDIA_IMMUTABLE';end if;
+    if coalesce((new.metadata->>'size')::bigint,4194304)>coalesce((old.metadata->>'size')::bigint,4194304) then
+     perform private.flh_visual_upload_budget(split_part(new.name,'/',1)::uuid,split_part(new.name,'/',2)::uuid,coalesce((new.metadata->>'size')::bigint,4194304)-coalesce((old.metadata->>'size')::bigint,4194304));
+    end if;
+   end if;
+  end if;
+ end if;
  if tg_table_name='quiz_question_assets' and tg_op in ('INSERT','UPDATE') then
   if exists(
    select 1 from public.assets a join public.quiz_questions q on q.id=new.question_id and q.workspace_id=new.workspace_id
@@ -235,7 +296,7 @@ create trigger visual_media_guard before update or delete on public.assets for e
 drop trigger if exists visual_media_guard on public.quiz_question_assets;
 create trigger visual_media_guard before insert or update or delete on public.quiz_question_assets for each row execute function private.flh_visual_media_guard();
 drop trigger if exists visual_media_guard on storage.objects;
-create trigger visual_media_guard before update or delete on storage.objects for each row execute function private.flh_visual_media_guard();
+create trigger visual_media_guard before insert or update or delete on storage.objects for each row execute function private.flh_visual_media_guard();
 
 /** Service-only, read-only resolver. No attempt creation, scoring, keys or early feedback. */
 create or replace function public.flh_assessment_media_context(p_workspace_id uuid,p_learner_id uuid,p_attempt_id uuid,p_question_id uuid default null)

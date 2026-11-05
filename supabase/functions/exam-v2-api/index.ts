@@ -90,7 +90,7 @@ Deno.serve(async(req:Request)=>{
         submitExam
       }));
 
-    const hydrated=["start_exam","submit_exam"].includes(action)?await hydrateAssessmentMedia(admin,WORKSPACE_ID,learnerId,String((output as any)?.attempt_id||body.attempt_id||""),output):output;
+    const hydrated=["start_exam","submit_exam"].includes(action)?await hydrateAssessmentMedia(admin,WORKSPACE_ID,learnerId,String((output as any)?.attempt_id||body.attempt_id||""),output,{committed:action==="submit_exam"}):output;
     return performanceJsonResponse(trace,hydrated,200,cors(origin));
   }catch(error){
     const message=error instanceof Error?error.message:"SERVER_ERROR";

@@ -1,7 +1,7 @@
 import { assessmentStagePayload, assessmentCommand, academicCandidateHash } from './assessment-publication.mjs';
 import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { attachOptionalVideo } from './optional-learning-videos.mjs';
-import { prepareAssessmentUpload, previewAssessmentMedia, verifyAssessmentMedia } from './assessment-media.mjs';
+import { prepareAssessmentUpload, pruneAssessmentUploads, previewAssessmentMedia, verifyAssessmentMedia } from './assessment-media.mjs';
 import { isVisualPackage } from './assessment-visual-contract.mjs';
 
 export const AUTHORING_ACTIONS = Object.freeze(['create_assessment_draft','read_assessment_authoring']);
@@ -82,6 +82,7 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
 export async function assessmentAuthoringTool(admin,workspaceId,parentId,name,args,trace,providerOptions={}) {
   args=authoringInput(args);
   if(name==='prepare_assessment_upload')return prepareAssessmentUpload(admin,workspaceId,parentId,args);
+  if(name==='prune_assessment_uploads')return pruneAssessmentUploads(admin,workspaceId,parentId);
   if(name==='preview_assessment_assets')return previewAssessmentMedia(admin,workspaceId,parentId,args);
   if(name==='validate_assessment_candidate') return validateAuthoringCandidate(args.candidate);
   if(AUTHORING_ACTIONS.includes(name)) return assessmentAuthoringCommand(admin,workspaceId,parentId,{...args,action:name},trace);

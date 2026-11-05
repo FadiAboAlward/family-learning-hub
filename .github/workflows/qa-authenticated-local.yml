@@ -74,6 +74,8 @@ jobs:
             qa-authenticated-evidence/student-rewards-mobile.png
             qa-authenticated-evidence/student-rewards-desktop.png
             qa-authenticated-evidence/parent-rewards-mobile.png
+            qa-authenticated-evidence/flh-044-auth-*.png
+            qa-authenticated-evidence/flh-044-auth-manifest.json
             qa-authenticated-evidence/parent-rewards-desktop.png
           retention-days: 7
           if-no-files-found: warn
