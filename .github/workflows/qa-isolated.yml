@@ -147,6 +147,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify assessment transactional staging and held publication
         run: node tests/assessment-publication.contract.mjs
+      - name: Verify visual exact-candidate publication and private media contract
+        run: node tests/assessment-visual.contract.mjs
       - name: Verify direct assessment authoring transaction and concurrency
         run: node tests/assessment-authoring.contract.mjs
       - name: Verify support-workbook paper ingestion
