@@ -6,7 +6,7 @@ import {installQaBrowserIsolation,qaBrowserLaunchOptions,readQaTestingConfig} fr
 /** Actual app, learner bearer, Edge APIs and private Storage on the owned Runner. */
 export async function visualAuthenticatedBrowser(runtime,appUrl,bearer,candidateHash){
  const config=readQaTestingConfig({FLH_QA_ISOLATION_MODE:runtime.mode,FLH_QA_BACKEND_URL:runtime.backendUrl,FLH_QA_PROJECT_REF:runtime.projectRef,FLH_QA_PUBLISHABLE_KEY:runtime.publishableKey,APP_URL:appUrl});
- const {chromium}=await import('playwright'),browser=await chromium.launch(qaBrowserLaunchOptions()),files=[];
+ const {chromium}=await import('playwright'),browser=await chromium.launch(qaBrowserLaunchOptions()),files=[];let phase='launch';
  try{
   for(const [device,viewport]of [['mobile',{width:390,height:844}],['desktop',{width:1365,height:900}]]){
    const context=await browser.newContext({viewport,isMobile:device==='mobile',hasTouch:device==='mobile',serviceWorkers:'block'});
@@ -24,7 +24,9 @@ export async function visualAuthenticatedBrowser(runtime,appUrl,bearer,candidate
     const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.name));
     await page.goto(appUrl+'#student',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');
     for(const [mode,entry,selector]of [['learning','startLearningQuiz','.flh-learn-answer'],['exam','startExamQuiz','.exam-v3-answer']]){
+     phase=device+'_'+mode;console.log('Authenticated visual browser checkpoint: '+phase+' START');
      await page.evaluate(fn=>window.FLH[fn]('qa-visual-api'),entry);
+     if(mode==='learning'&&await page.locator('#flhVideoStart').count())await page.locator('#flhVideoStart').click();
      await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
      assert.equal(await page.locator(selector+':enabled').count(),4,'Authorized actual runtime shows answer controls after the required bytes load');
      assert.equal(await page.locator('.flh-visual-asset img').count(),1);
@@ -33,11 +35,13 @@ export async function visualAuthenticatedBrowser(runtime,appUrl,bearer,candidate
      if(mode==='exam')assert.equal(await page.locator('#flhHelp').count(),0);
      const file='flh-044-auth-'+device+'-'+mode+'.png',path='qa-authenticated-evidence/'+file;
      await fs.mkdir('qa-authenticated-evidence',{recursive:true});await page.screenshot({path,fullPage:true});files.push({file,sha256:createHash('sha256').update(await fs.readFile(path)).digest('hex')});
+     console.log('Authenticated visual browser checkpoint: '+phase+' PASS');
     }
     assert.deepEqual(errors,[]);guard.assertNoUnexpectedRequests();
    }finally{await context.close();}
   }
   await fs.writeFile('qa-authenticated-evidence/flh-044-auth-manifest.json',JSON.stringify({feature_id:'FLH-FEAT-2026-044',spec_version:'1.1',drive_revision_id:'4',head_sha:process.env.FLH_QA_HEAD_SHA,run_id:process.env.GITHUB_RUN_ID,candidate_sha256:candidateHash,retention_days:7,source:'Actual disposable Auth/Edge/Storage and app; synthetic provider record, not independent academic/provider approval',files},null,2));
   console.log('Authenticated visual40 fixture: actual Learning and Exam, private bytes, mobile/desktop, keyboard-ready controls and no overflow PASS (synthetic provider; no academic approval)');
- }finally{await browser.close();}
+ }catch(error){console.error('Authenticated visual browser failed: '+phase+' '+(error?.name==='TimeoutError'?'TIMEOUT':'ASSERTION_OR_RUNTIME'));throw new Error('QA_VISUAL_BROWSER_FAILED');}
+ finally{await browser.close();}
 }

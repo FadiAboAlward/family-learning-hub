@@ -53,6 +53,7 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
    const a={...diagram('rectangle',1,ids.version),...bad};await upload(a,png);assert.equal((await api({action:'prepare_assessment_upload',quiz_version_id:ids.version,asset:a})).result.error,'ASSESSMENT_MEDIA_INVALID');
   }
   assert.equal((await api(create)).result.state,'draft');
+  console.log('Authenticated visual checkpoint: private upload/codecs and byte verification PASS');
   assert.equal((await api({action:'stage_assessment',target,candidate,semantic_review:create.semantic_review})).result.state,'staged');
   const pointer={quiz_version_id:ids.version,candidate_sha256:create.semantic_review.candidate_sha256};
   assert.equal((await api({action:'publish_assessment',...pointer})).result.state,'held');
@@ -71,11 +72,16 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
   const overwrite=await fetch(firstUpload,{method:'PUT',redirect:'error',headers:{'content-type':'image/png','x-upsert':'true'},body:png});assert.ok(!overwrite.ok,'issued upload token cannot overwrite a linked file');
   assert.equal((await api({action:'release_assessment',...pointer})).result.error,'ASSESSMENT_VIDEO_GATE_FAILED','real provider gate preserved');
   assert.equal((await query(`select count(*) from public.quiz_attempts where quiz_version_id='${ids.version}';`)).trim(),'0','upload/preview/retry creates no attempts');
+  console.log('Authenticated visual checkpoint: stage/HELD/preview/expiry and absent-provider release denial PASS');
   // Technical runtime fixture only: seed the same synthetic provider evidence
   // used by the DB contract AFTER proving real release fails without it.
   await query(`begin;insert into public.workspace_settings(workspace_id,key,value) values('${w}','optional_learning_videos','{"enabled":true,"test_only":true}') on conflict(workspace_id,key) do update set value=excluded.value;
    select public.flh_learning_video_attach('${w}','${parentId}',jsonb_build_object('learner_id','${learner}','quiz_version_id','${ids.version}','program_id','${ids.program}','curriculum_id','${catalog.curriculum_id}','grade_level',7,'subject_id','${catalog.subject_id}'::bigint,'concept_id',(select concept_id from public.quiz_question_concepts where question_id='${qid}' and is_primary),'position',1,'video_ref','qaVideo0001','title','Synthetic geometry video','language','tr','rationale','Disposable transport fixture only','embeddable',true,'made_for_kids',true,'verified_at',now(),'verification_expires_at',now()+interval '1 hour'));commit;`);
   assert.equal((await api({action:'release_assessment',...pointer})).result.state,'released','Real release RPC with explicit synthetic provider fixture');
+  // Provider playback is outside this visual-media smoke. Use the existing
+  // rollout control, rather than allowing external YouTube traffic or mocking it.
+  await query(`update public.workspace_settings set value='{"enabled":false}' where workspace_id='${w}' and key='optional_learning_videos';`);
+  console.log('Authenticated visual checkpoint: isolated synthetic-provider release PASS; playback rollout OFF');
   const learnerToken=id=>{const data=Buffer.from(JSON.stringify({typ:'learner',workspace_id:w,learner_id:id,exp:Math.floor(Date.now()/1000)+600})).toString('base64url');return data+'.'+createHmac('sha256',runtime.serviceRoleKey).update(data).digest('base64url');};
   const ownToken=learnerToken(learner),otherToken=learnerToken('02610000-0000-4000-8000-000000000102');
   const started=await api({action:'start_quiz',quiz_slug:'qa-visual-api'},ownToken);assert.equal(started.status,200);assert.equal(started.result.queue.length,20);
@@ -84,6 +90,7 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
    const denied=await api({action:'refresh_question_assets',attempt_id:started.result.attempt_id,question_id},bearer,endpoint);assert.equal(denied.status,403,endpoint+' wrong learner/outside question');assert.equal(denied.result.error,'ASSESSMENT_MEDIA_FORBIDDEN');
   }
   assert.equal((await api({action:'prune_assessment_uploads'})).status,200,'Parent maintenance preserves all linked images');
+  console.log('Authenticated visual checkpoint: real learner sessions and all three cross-learner/outside-question denials PASS');
   await visualAuthenticatedBrowser(runtime,appUrl,ownToken,create.semantic_review.candidate_sha256);
   console.log('Authenticated visual Edge/Auth/Storage: private upload/read, PNG/JPEG/WebP decode, retry, bad bytes/MIME/hash/path, teacher/session negatives, immutable stage/HELD preview and missing-provider release gate PASS');
  }finally{
