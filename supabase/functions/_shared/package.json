@@ -1,0 +1,10 @@
+{
+  "name": "flh-assessment-raster-verification",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@jsquash/webp": "1.5.0",
+    "jpeg-js": "0.4.4",
+    "pngjs": "7.0.0"
+  }
+}

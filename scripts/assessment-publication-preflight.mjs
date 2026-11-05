@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateAcademicPackage } from './academic-content-quality.mjs';
+import { isVisualPackage } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 
 const fail = (errors, code, message) => errors.push({ code, message });
 const sha = value => crypto.createHash('sha256').update(JSON.stringify(value) ?? 'null').digest('hex');
@@ -27,9 +28,10 @@ function canonical(value) {
 export const assessmentCandidateHash = candidate => sha(canonical(candidate));
 
 /** Project the reviewed candidate into the independently exported database shape. */
-function projectedCandidateQuestion(q) {
+function projectedCandidateQuestion(q,visual=false) {
   const correct = array(q.options).find(o => o?.is_correct === true);
   return {
+    ...(visual?{learning_stage:q.learning_stage??null,assets:canonical(array(q.assets))}:{}),
     code: q.question_code,
     type: q.question_type,
     language: q.prompt_language,
@@ -47,8 +49,9 @@ function projectedCandidateQuestion(q) {
 }
 
 /** Compare source text, option labels, answer position, hint metadata and exact concept. */
-function projectedSnapshotQuestion(q) {
+function projectedSnapshotQuestion(q,visual=false) {
   return {
+    ...(visual?{learning_stage:q.source_metadata?.visual_assessment?.learning_stage??null,assets:canonical(array(q.assets).map(a=>Object.fromEntries(Object.entries(a).filter(([,v])=>v!==null))))}:{}),
     code: q.question_code,
     type: q.question_type,
     language: q.prompt_language,
@@ -114,7 +117,7 @@ export function inspectAssessmentPublication(candidate, snapshot, expectedTarget
       const row = actual[i];
       if (row.position!==i+1 || seen.has(row.question_code)) fail(errors,'ROW_IDENTITY_INVALID','Invalid or repeated question position/code at position '+(i+1));
       seen.add(row.question_code);
-      if (sha(projectedSnapshotQuestion(row))!==sha(projectedCandidateQuestion(expected[i]))) {
+      if (sha(projectedSnapshotQuestion(row,isVisualPackage(candidate)))!==sha(projectedCandidateQuestion(expected[i],isVisualPackage(candidate)))) {
         fail(errors,'CANDIDATE_STAGING_DRIFT','Published payload differs from reviewed candidate at position '+(i+1));
       }
       if (row.primary_concept_count!==1 || array(row.primary_concept_codes).length!==1 || row.primary_concept_codes[0]!==expected[i].concept_code) {

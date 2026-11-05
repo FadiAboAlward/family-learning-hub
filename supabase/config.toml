@@ -8,6 +8,7 @@ project_id = "family-learning-hub"
 # Deployment is separate; the endpoint fails closed unless explicitly configured.
 [functions.assessment-mcp]
 verify_jwt = false
+static_files = ["./functions/_shared/vendor/webp_dec.wasm"]
 
 [api]
 enabled = true
@@ -390,6 +391,7 @@ deno_version = 2
 # function code. Keep the platform JWT gateway disabled to match Production.
 [functions.learning-api]
 verify_jwt = false
+static_files = ["./functions/_shared/vendor/webp_dec.wasm"]
 
 [functions.student-library-api]
 verify_jwt = false

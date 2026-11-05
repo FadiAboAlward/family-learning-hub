@@ -928,6 +928,7 @@ try {
   const invalidPackage = path.join(cliDir, 'invalid package.json');
   fs.copyFileSync(new URL('../scripts/academic-content-quality.mjs', import.meta.url), cliScript);
   fs.copyFileSync(new URL('../supabase/functions/_shared/academic-content-quality.mjs', import.meta.url), path.join(cliDir, 'supabase/functions/_shared/academic-content-quality.mjs'));
+  fs.copyFileSync(new URL('../supabase/functions/_shared/assessment-visual-contract.mjs', import.meta.url), path.join(cliDir, 'supabase/functions/_shared/assessment-visual-contract.mjs'));
   fs.writeFileSync(invalidPackage, '{}\n', 'utf8');
   const cliRun = spawnSync(process.execPath, [cliScript, invalidPackage], { encoding: 'utf8' });
   assert.equal(cliRun.status, 1, 'CLI must execute validation and fail invalid packages even when its path contains spaces');

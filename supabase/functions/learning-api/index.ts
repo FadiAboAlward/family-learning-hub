@@ -4,6 +4,7 @@ import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport, p
 import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
 import { AUTHORING_ACTIONS, assessmentAuthoringCommand } from "../_shared/assessment-authoring.mjs";
 import { assessmentParent } from "../_shared/assessment-parent-auth.mjs";
+import { prepareAssessmentUpload, assessmentMediaContext, hydrateAssessmentMedia } from "../_shared/assessment-media.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -98,18 +99,19 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return performanceJsonResponse(trace,{error:"METHOD_NOT_ALLOWED"},405,cors(origin));
   try{
     const b=await req.json().catch(()=>({})),action=String(b.action||"");
-    const parentActions=new Set(["attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
-    const allowed=new Set(["start_quiz","preview_videos","get_video_progress","save_video_progress","clear_video_progress","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
+    const parentActions=new Set(["prepare_assessment_upload","attach_optional_video","refresh_optional_video","prune_optional_video_status",...ASSESSMENT_ACTIONS,...AUTHORING_ACTIONS]);
+    const allowed=new Set(["refresh_question_assets","start_quiz","preview_videos","get_video_progress","save_video_progress","clear_video_progress","save_draft","save_response_draft","clear_response_draft","request_hint","answer","answer_response","finish_quiz","save_video_report",...parentActions]);
     if(!allowed.has(action))return performanceJsonResponse(trace,{error:"UNKNOWN_ACTION"},400,cors(origin));
     trace.setAction(action);
     let output;
     if(parentActions.has(action)){
       const parentId=await trace.measure("authentication",{},()=>videoAuthor(req));
       const providerOptions={apiKey:Deno.env.get("YOUTUBE_API_KEY")};
-      output=AUTHORING_ACTIONS.includes(action)?await assessmentAuthoringCommand(admin,WORKSPACE_ID,parentId,b,trace):ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
+      output=action==="prepare_assessment_upload"?await prepareAssessmentUpload(admin,WORKSPACE_ID,parentId,b):AUTHORING_ACTIONS.includes(action)?await assessmentAuthoringCommand(admin,WORKSPACE_ID,parentId,b,trace):ASSESSMENT_ACTIONS.includes(action)?await assessmentCommand(admin,WORKSPACE_ID,parentId,b,trace):action==="attach_optional_video"?await attachOptionalVideo(admin,WORKSPACE_ID,parentId,b,trace,providerOptions):await maintainOptionalVideos(admin,WORKSPACE_ID,b,trace,providerOptions);
     }else{
       const lid=await trace.measure("authentication",{},()=>learner(req));
-      if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
+      if(action==="refresh_question_assets")output=await assessmentMediaContext(admin,WORKSPACE_ID,lid,String(b.attempt_id||""),String(b.question_id||""));
+      else if(action==="start_quiz")output=await startQuiz(lid,String(b.quiz_slug||""),trace);
       else if(action==="preview_videos")output=await previewOptionalVideos(admin,WORKSPACE_ID,lid,b,trace);
       else if(action==="save_draft")output=await saveDraft(lid,b,trace);
       else if(action==="save_response_draft")output=await saveResponseDraft(lid,b,trace);
@@ -120,12 +122,13 @@ Deno.serve(async(req:Request)=>{
       else if(["get_video_progress","save_video_progress","clear_video_progress"].includes(action))output=await optionalVideoProgress(admin,WORKSPACE_ID,lid,b,trace);
       else if(action==="save_video_report")output=await saveOptionalVideoReport(admin,WORKSPACE_ID,lid,b,trace);
       else output=await finishQuiz(lid,b,trace);
+      if(["start_quiz","answer","answer_response","finish_quiz"].includes(action))output=await hydrateAssessmentMedia(admin,WORKSPACE_ID,lid,String((output as any)?.attempt_id||b.attempt_id||""),output);
     }
     return performanceJsonResponse(trace,output,200,cors(origin));
   }catch(e){
     const m=e instanceof Error?e.message:"SERVER_ERROR";
     const auth=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED","INVALID_PARENT_SESSION"],nf=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","VIDEO_NOT_AVAILABLE","VIDEO_PROGRESS_INELIGIBLE"],bad=["INVALID_ANSWER","INVALID_HINT_REQUEST","UNSUPPORTED_QUESTION_TYPE","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_ACTIVE","MAX_ATTEMPTS_REACHED","QUIZ_NOT_COMPLETE","INVALID_VIDEO_INPUT","VIDEO_CONTEXT_MISMATCH"];
-    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"||m==="ASSESSMENT_FORBIDDEN"?403:m==="VIDEO_PROGRESS_CONFLICT"||m==="VIDEO_PROGRESS_REQUEST_CONFLICT"||m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"||/ASSESSMENT_(RETRY_CONFLICT|CONTENT_DRIFT|STATE_CONFLICT|FRESH_DRAFT_REQUIRED|HELD_OR_IMMUTABLE|DELIVERY_CONFLICT|DELIVERY_STATE_CONFLICT)/.test(m)?409:nf.includes(m)?404:bad.includes(m)||/^ASSESSMENT_(TARGET_INVALID|INPUT_INVALID|SEMANTIC_REVIEW_REQUIRED|ACADEMIC_REJECTED|CONTEXT_MISMATCH|VIDEO_GATE_FAILED|DELIVERY_INPUT_INVALID|DELIVERY_EVIDENCE_INVALID)$/.test(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
+    const status=auth.includes(m)?401:m==="VIDEO_ATTACHMENT_FORBIDDEN"||m==="ASSESSMENT_FORBIDDEN"||m==="ASSESSMENT_MEDIA_FORBIDDEN"?403:m==="ASSESSMENT_MEDIA_INVALID"?400:m==="ASSESSMENT_MEDIA_UNAVAILABLE"?422:m==="ASSESSMENT_VISUAL_DISABLED"?409:m==="VIDEO_PROGRESS_CONFLICT"||m==="VIDEO_PROGRESS_REQUEST_CONFLICT"||m==="REPORT_CONFLICT"||m==="VIDEO_REPORT_REQUEST_CONFLICT"||m==="VIDEO_STATUS_CONFLICT"||/ASSESSMENT_(RETRY_CONFLICT|CONTENT_DRIFT|STATE_CONFLICT|FRESH_DRAFT_REQUIRED|HELD_OR_IMMUTABLE|DELIVERY_CONFLICT|DELIVERY_STATE_CONFLICT)/.test(m)?409:nf.includes(m)?404:bad.includes(m)||/^ASSESSMENT_(TARGET_INVALID|INPUT_INVALID|SEMANTIC_REVIEW_REQUIRED|ACADEMIC_REJECTED|CONTEXT_MISMATCH|VIDEO_GATE_FAILED|DELIVERY_INPUT_INVALID|DELIVERY_EVIDENCE_INVALID)$/.test(m)?400:m==="VIDEO_PROVIDER_UNAVAILABLE"?422:500;
     const details=(e as any)?.data;
     const payload=m==="REPORT_CONFLICT"?{error:m,self_report:details?.self_report,report_revision:details?.report_revision}:{error:m};
     return performanceJsonResponse(trace,payload,status,cors(origin));

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { hydrateAssessmentMedia, assessmentMediaContext } from "../_shared/assessment-media.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -370,7 +371,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
     if (action === "list_attempts") return json(await listAttempts(learnerId, body), 200, origin);
-    if (action === "attempt_detail") return json(await attemptDetail(learnerId, body), 200, origin);
+    if (action === "attempt_detail") return json(await hydrateAssessmentMedia(admin,WORKSPACE_ID,learnerId,String(body.attempt_id||""),await attemptDetail(learnerId, body)), 200, origin);
+    if (action === "refresh_question_assets") return json(await assessmentMediaContext(admin,WORKSPACE_ID,learnerId,String(body.attempt_id||""),String(body.question_id||"")),200,origin);
     return json({ error: "UNKNOWN_ACTION" }, 400, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "SERVER_ERROR";

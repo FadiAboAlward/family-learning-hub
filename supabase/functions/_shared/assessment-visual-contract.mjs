@@ -1,0 +1,78 @@
+// FLH-FEAT-2026-044 v1.1, Drive revision 4. Legacy packages are not reinterpreted.
+export const VISUAL_PROFILE = 'visual-foundation-bridge-v1';
+export const MEDIA_BUCKET = 'assessment-assets';
+export const MEDIA_LIMITS = Object.freeze({bytes:4*1024*1024,dimension:4096,pixels:8*1024*1024,packageBytes:24*1024*1024,readTtl:120});
+export const UUID_PATTERN = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
+const hash = /^[a-f0-9]{64}$/;
+const formats = {'image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
+const plain = (v,max=600) => typeof v==='string' && v.trim().length>0 && v.length<=max && !/[<>\u0000-\u001f]/u.test(v);
+const object = v => v!==null && typeof v==='object' && !Array.isArray(v);
+export const isVisualPackage = pkg => pkg?.assessment_profile===VISUAL_PROFILE;
+
+/** Closed file/link contract: neither solutions nor URLs belong in canonical media. */
+export function assetContractErrors(a,index,workspaceId,versionId) {
+  const errors=[];
+  if(!object(a))return ['ASSET_INVALID'];
+  const allowed=['asset_id','position','purpose','label','alt_text','required','mime_type','width','height','checksum_sha256','storage_bucket','storage_path','provenance'];
+  if(Object.keys(a).some(k=>!allowed.includes(k)))errors.push('ASSET_FIELD_INVALID');
+  if(!UUID_PATTERN.test(a.asset_id||'') || a.position!==index+1 || a.purpose!=='prompt' || typeof a.required!=='boolean')errors.push('ASSET_IDENTITY_INVALID');
+  if(!plain(a.alt_text) || (a.label!==undefined && !plain(a.label,120)))errors.push('ASSET_ACCESSIBILITY_INVALID');
+  if(!formats[a.mime_type] || !hash.test(a.checksum_sha256||'') || a.storage_bucket!==MEDIA_BUCKET)errors.push('ASSET_FILE_INVALID');
+  if(![a.width,a.height].every(n=>Number.isInteger(n)&&n>=16&&n<=MEDIA_LIMITS.dimension) || a.width*a.height>MEDIA_LIMITS.pixels)errors.push('ASSET_DIMENSIONS_INVALID');
+  const pieces=typeof a.storage_path==='string'?a.storage_path.split('/'):[];
+  if(pieces.length!==3 || !UUID_PATTERN.test(pieces[0]||'') || !UUID_PATTERN.test(pieces[1]||'')
+    || pieces[2]!==a.checksum_sha256+'.'+formats[a.mime_type]
+    || (workspaceId && pieces[0]!==workspaceId) || (versionId && pieces[1]!==versionId))errors.push('ASSET_SCOPE_INVALID');
+  const p=a.provenance;
+  if(!object(p)||Object.keys(p).some(k=>!['origin','source_ref','rights_status','rights_ref','book_code','book_part','pdf_page','source_sha256','crop'].includes(k))
+    ||!plain(p.source_ref)||!['generated','book_crop'].includes(p.origin)
+    ||!(p.origin==='generated'?p.rights_status==='owned':p.rights_status==='authorized'&&plain(p.rights_ref)&&plain(p.book_code)&&plain(p.book_part)&&Number.isInteger(p.pdf_page)&&p.pdf_page>0&&hash.test(p.source_sha256||'')))errors.push('ASSET_RIGHTS_INVALID');
+  return errors;
+}
+
+/** Extends the official gate; never replaces its difficulty, hints or uniqueness checks. */
+export function validateVisualContract(pkg,errors,warnings) {
+  const issue=(code,path,message)=>errors.push({code,path,message});
+  if(!isVisualPackage(pkg)) {
+    if(pkg?.assessment_profile!==undefined || pkg?.questions?.some(q=>q?.learning_stage!==undefined || (Array.isArray(q?.assets)&&q.assets.length)))issue('VISUAL_PROFILE_REQUIRED','assessment_profile','New visual/staged content requires the explicit opt-in profile.');
+    return;
+  }
+  const questions=Array.isArray(pkg.questions)?pkg.questions:[];
+  const learning=questions.filter(q=>q?.delivery_surface==='learning'),exam=questions.filter(q=>q?.delivery_surface==='exam');
+  if(questions.length!==40 || learning.length!==20 || exam.length!==20)issue('VISUAL_10_10_20_REQUIRED','questions','Requires 10 Foundation + 10 Bridge + 20 independent Exam items.');
+  const files=new Map();
+  for(const [i,q] of questions.entries()) {
+    const path='questions['+i+']',stage=learning.indexOf(q)<10?'FOUNDATION':'BRIDGE';
+    const blueprint=pkg.blueprint?.find(b=>b.question_code===q.question_code);
+    if(q.delivery_surface==='learning' ? q.learning_stage!==stage||blueprint?.learning_stage!==stage : q.learning_stage!==undefined||blueprint?.learning_stage!==undefined)issue('LEARNING_STAGE_INVALID',path+'.learning_stage','Explicit stage must match authored Learning order and blueprint; Exam has no stage.');
+    if(q.delivery_role==='remediation_pool')issue('VISUAL_REMEDIATION_FORBIDDEN',path,'No extra remediation pool for this profile.');
+    const assets=q.assets===undefined?[]:q.assets;
+    if(!Array.isArray(assets)){issue('ASSET_ARRAY_REQUIRED',path+'.assets','Assets must be an ordered array.');continue;}
+    const ids=new Set();
+    for(const [j,a]of assets.entries()) {
+      for(const code of assetContractErrors(a,j))issue(code,path+'.assets['+j+']','Invalid immutable prompt asset contract.');
+      if(ids.has(a?.asset_id))issue('ASSET_DUPLICATE',path+'.assets['+j+']','A question may not link the same asset twice.');
+      ids.add(a?.asset_id);
+      const file=a&&Object.fromEntries(Object.entries(a).filter(([k])=>!['position','label','alt_text','required','purpose'].includes(k)));
+      const identity=JSON.stringify(file);
+      if(files.has(a?.asset_id)&&files.get(a.asset_id)!==identity)issue('ASSET_IDENTITY_CONFLICT',path+'.assets['+j+']','One UUID must identify the same immutable file and provenance.');
+      files.set(a?.asset_id,identity);
+    }
+  }
+  if(questions.some(q=>q.assets?.length))warnings.push({code:'VISUAL_SEMANTIC_REVIEW_REQUIRED',path:'questions',message:'Independently verify exact raster/source geometry, all labels, option mapping, solution-neutral alt text and rights against this candidate hash.'});
+}
+
+/** Read-only guidance from completed authoritative answers; never claims mastery. */
+export function conceptGuidance(rows,stage) {
+  const groups=new Map();
+  for(const row of rows.filter(r=>r.learning_stage===stage)) {
+    const key=row.concept_id;
+    const group=groups.get(key)||{concept_id:key,question_codes:[],recommend_review:false,assessed:false};
+    if(row.status==='completed' && typeof row.is_correct==='boolean') {
+      group.assessed=true;group.question_codes.push(row.question_code);
+      group.recommend_review ||= !row.is_correct || Number(row.attempts_used)>1 || Number(row.hints_used)>0;
+    }
+    groups.set(key,group);
+  }
+  return [...groups.values()].map(g=>({...g,status:!g.assessed?'NOT_YET_ASSESSED':g.recommend_review?'OPTIONAL_REVIEW':'ASSESSED'}));
+}

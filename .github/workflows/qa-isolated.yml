@@ -77,7 +77,9 @@ jobs:
         # No install hooks and no credentials are used.
         # Installation has its own unconditional step before the discovered suite.
         shell: bash
-        run: npm ci --prefix supabase/functions/assessment-mcp --ignore-scripts --no-audit --no-fund
+        run: |
+          npm ci --prefix supabase/functions/assessment-mcp --ignore-scripts --no-audit --no-fund
+          npm ci --prefix supabase/functions/_shared --ignore-scripts --no-audit --no-fund
       - name: Convention-based unit test suite
         shell: bash
         run: |

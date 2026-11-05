@@ -1,4 +1,4 @@
-
+import { validateVisualContract } from './assessment-visual-contract.mjs';
 const SURFACES = new Set(['learning', 'exam', 'paper']);
 const ORIGINS = new Set(['BOOK_DERIVED', 'GENERATED_SIMILAR']);
 const PROMPT_LANGUAGES = new Set(['ar', 'tr', 'en']);
@@ -877,6 +877,7 @@ export function validateAcademicPackage(pkg) {
   }
 
   validateAssessmentDesign(ctx, questions, blueByCode, errors, warnings);
+  validateVisualContract(pkg, errors, warnings);
 
   return { ok: errors.length === 0, errors, warnings };
 }
