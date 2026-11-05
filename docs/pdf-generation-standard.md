@@ -101,6 +101,16 @@ For curriculum artifacts, inspect representative source-book pages before finali
 
 ## Render-first QA
 
+FLH-FEAT-2026-044 v1.1 authorizes color for NEW explicitly requested visual-profile
+papers only, preserving grayscale readability and distinguishing information by
+labels/geometry as well as color. Preserve the existing requested A4 page/count
+constraints, keep each diagram with its prompt/options, and inspect the actual
+source-bound raster and every rendered page for readable measurement marks,
+multiple-image order and exact option mapping. The version/hash-bound image
+manifest belongs to the same canonical paper package. No automatic PDF service
+or regeneration of old artifacts is introduced; the ordinary high-contrast
+black-and-white default outside this opt-in profile is unchanged.
+
 Every final PDF must be rendered to page images and inspected visually.
 
 Minimum checks per page:

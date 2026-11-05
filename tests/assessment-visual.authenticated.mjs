@@ -54,9 +54,16 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
   assert.equal((await api({action:'stage_assessment',target,candidate,semantic_review:create.semantic_review})).result.state,'staged');
   const pointer={quiz_version_id:ids.version,candidate_sha256:create.semantic_review.candidate_sha256};
   assert.equal((await api({action:'publish_assessment',...pointer})).result.state,'held');
+  assert.equal((await api(create)).result.duplicate,true,'Create retry converges after immutable staging and HELD');
+  await query(`update public.workspace_settings set value='{"enabled":false}' where workspace_id='${w}' and key='visual_assessments';`);
+  assert.equal((await api(create)).result.duplicate,true,'Disabling new publishing preserves existing request retry/readback');
+  await query(`update public.workspace_settings set value='{"enabled":true}' where workspace_id='${w}' and key='visual_assessments';`);
   const qid=(await query(`select id from public.quiz_questions where quiz_version_id='${ids.version}' and position=1;`)).trim();
   const preview=await api({action:'preview_assessment_assets',quiz_version_id:ids.version,question_id:qid});assert.equal(preview.status,200);
   const image=await fetch(publicUrl(preview.result.questions[0].assets[0].url),{redirect:'error'});assert.equal(image.status,200);assert.equal(createHash('sha256').update(new Uint8Array(await image.arrayBuffer())).digest('hex'),diagram('rectangle').checksum_sha256);
+  const expiry=await fetch(config.backendUrl+'/storage/v1/object/sign/assessment-assets/'+diagram('rectangle',1,ids.version).storage_path,{method:'POST',redirect:'error',headers:{apikey:runtime.serviceRoleKey,authorization:'Bearer '+runtime.serviceRoleKey,'content-type':'application/json'},body:JSON.stringify({expiresIn:1})});assert.ok(expiry.ok);
+  const temporary=await expiry.json(),shortUrl=config.backendUrl+'/storage/v1'+temporary.signedURL;
+  assert.equal((await fetch(shortUrl,{redirect:'error'})).status,200);await new Promise(resolve=>setTimeout(resolve,2100));assert.notEqual((await fetch(shortUrl,{redirect:'error'})).status,200,'Real Storage URL expiration is enforced');
   const privateRead=await fetch(config.backendUrl+'/storage/v1/object/public/assessment-assets/'+diagram('rectangle',1,ids.version).storage_path,{redirect:'error'});assert.notEqual(privateRead.status,200,'private object cannot become a public hotlink');
   assert.equal((await api({action:'preview_assessment_assets',quiz_version_id:ids.version,question_id:ids.quiz})).status,403);
   const overwrite=await fetch(firstUpload,{method:'PUT',redirect:'error',headers:{'content-type':'image/png','x-upsert':'true'},body:png});assert.ok(!overwrite.ok,'issued upload token cannot overwrite a linked file');

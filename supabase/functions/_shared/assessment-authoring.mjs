@@ -56,8 +56,16 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
     const staged=await assessmentStagePayload(workspaceId,parentId,body);
     if(isVisualPackage(body.candidate)) {
       const {data:allowed,error}=await admin.rpc('flh_assessment_media_parent',{p_workspace_id:workspaceId,p_parent_id:parentId,p_version_id:body.target.quiz_version_id,p_upload:true});
-      if(error||allowed!==true)deny('ASSESSMENT_VISUAL_DISABLED');
-      await verifyAssessmentMedia(admin,workspaceId,body.target.quiz_version_id,body.candidate,staged.candidate_sha256);
+      if(error)deny('ASSESSMENT_UNAVAILABLE');
+      if(allowed===true)await verifyAssessmentMedia(admin,workspaceId,body.target.quiz_version_id,body.candidate,staged.candidate_sha256);
+      else {
+        // A known immutable request retry only reads its existing state, including
+        // after HELD/release or disabling NEW publishing. The DB rechecks its fingerprint.
+        const previous=await admin.rpc('flh_assessment_authoring_command',{p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',p_payload:{request_id:body.request_id}});
+        if(previous.error?.message==='ASSESSMENT_TARGET_INVALID')deny('ASSESSMENT_VISUAL_DISABLED');
+        if(previous.error||previous.data?.ok!==true)deny('ASSESSMENT_UNAVAILABLE');
+        if(previous.data.candidate_sha256!==staged.candidate_sha256||targetKeys.some(k=>previous.data.target?.[k]!==body.target[k]))deny('ASSESSMENT_RETRY_CONFLICT');
+      }
     }
     await verifyAssessmentConceptRegistry(admin,workspaceId,body.candidate,m);
     payload={...staged,request_id:body.request_id,quiz:m};

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import vm from 'node:vm';
 import { visualCandidate,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
 import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
@@ -8,6 +9,7 @@ import { assetContractErrors,conceptGuidance } from '../supabase/functions/_shar
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
 import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
+assert.deepEqual(fs.readFileSync(new URL('../supabase/functions/_shared/vendor/webp_dec.wasm',import.meta.url)),fs.readFileSync(new URL('../supabase/functions/_shared/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm',import.meta.url)),'Vendored WebP decoder must match the locked upstream package exactly');
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
 for(const malformed of [{...pkg,questions:{}},{...pkg,blueprint:{}},{...pkg,questions:[null]},{...pkg,questions:[{...pkg.questions[0],assets:[null,null]}]}])assert.equal(validateAcademicPackage(malformed).ok,false,'Malformed containers must return a validation report instead of throwing');
 const reordered=structuredClone(pkg);reordered.questions[10].assets[0]=Object.fromEntries(Object.entries(reordered.questions[10].assets[0]).reverse());assert.equal(validateAcademicPackage(reordered).ok,true,'Object key order must not invent conflicting file identities');
@@ -47,4 +49,10 @@ const context=await assessmentMediaContext(runtime,workspace,learner,attempt,qid
 assert.deepEqual(actions,['flh_assessment_media_context'],'URL refresh must call only the read RPC');
 await assert.rejects(()=>assessmentMediaContext({rpc:async()=>({error:{message:'private body'}})},workspace,learner,attempt,qid),/MEDIA_FORBIDDEN/);
 const old={queue:[]};assert.equal(await hydrateAssessmentMedia({rpc:async()=>({data:null})},workspace,learner,attempt,old),old,'Legacy payload object/fields remain identical');
+const browserContext={localStorage:{getItem:()=> 'synthetic-session'},sessionStorage:{getItem:()=>null}};
+vm.runInNewContext(fs.readFileSync(new URL('../assessment-assets-v1.js',import.meta.url),'utf8'),browserContext);
+const render=browserContext.FLHAssessmentAssets;
+assert.equal(render.ready({assessment_profile:pkg.assessment_profile,id:qid,assets:[]}),true);
+assert.equal(render.ready({assessment_profile:pkg.assessment_profile,id:qid,assets:[{...diagram('rectangle'),required:false}]}),true,'An independently answerable optional-image failure cannot lock the learner');
+assert.equal(render.ready({assessment_profile:pkg.assessment_profile,id:qid,assets:[diagram('rectangle')]}),false,'Required content is unavailable until actually loaded');
 console.log('Visual exact candidate, 0/1/2 assets, three actual raster codecs, integrity/rights/path negatives, deterministic geometry and read-only guidance/refresh: PASS (synthetic; independent academic pilot still required)');

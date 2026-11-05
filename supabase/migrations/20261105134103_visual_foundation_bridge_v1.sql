@@ -63,7 +63,7 @@ do $$ declare definition text; anchor text:=' if request_uuid is null or p_actio
   if position(anchor in definition)=0 then raise exception 'ASSESSMENT_AUTHORING_CONTRACT_DRIFT';end if;
   definition:=replace(definition,anchor,
    ' -- FLH044_CREATE_FLAG'||chr(10)||
-   ' if p_action=''create'' and p_payload->''candidate''->>''assessment_profile''=''visual-foundation-bridge-v1'' then'||chr(10)||
+   ' if p_action=''create'' and p_payload->''candidate''->>''assessment_profile''=''visual-foundation-bridge-v1'' and not exists(select 1 from private.assessment_authoring_requests where workspace_id=p_workspace_id and request_id=request_uuid and created_by=p_parent_id) then'||chr(10)||
    '  perform 1 from public.workspace_settings where workspace_id=p_workspace_id and key=''visual_assessments'' for share;'||chr(10)||
    '  if not exists(select 1 from public.workspace_settings where workspace_id=p_workspace_id and key=''visual_assessments'' and value->''enabled''=''true''::jsonb) then raise exception ''ASSESSMENT_VISUAL_DISABLED'';end if;'||chr(10)||
    ' end if;'||chr(10)||anchor);
@@ -211,11 +211,11 @@ create or replace function public.flh_assessment_media_context(p_workspace_id uu
 returns jsonb language plpgsql stable security invoker set search_path='' as $$
 declare a public.quiz_attempts%rowtype; profile text; questions jsonb; evidence jsonb;
 begin
- select * into a from public.quiz_attempts where workspace_id=p_workspace_id and learner_id=p_learner_id and id=p_attempt_id
-  and exists(select 1 from public.learners where workspace_id=p_workspace_id and id=p_learner_id and is_active);
+ select * into a from public.quiz_attempts where workspace_id=p_workspace_id and learner_id=p_learner_id and id=p_attempt_id;
  if not found then raise exception 'ASSESSMENT_MEDIA_FORBIDDEN'; end if;
  select settings->>'assessment_profile' into profile from public.quiz_versions where workspace_id=p_workspace_id and id=a.quiz_version_id;
  if profile is distinct from 'visual-foundation-bridge-v1' then return null; end if;
+ if not exists(select 1 from public.learners where workspace_id=p_workspace_id and id=p_learner_id and is_active) then raise exception 'ASSESSMENT_MEDIA_FORBIDDEN';end if;
  if exists(select 1 from public.assessment_publications where workspace_id=p_workspace_id and quiz_version_id=a.quiz_version_id and state<>'released') then raise exception 'ASSESSMENT_MEDIA_FORBIDDEN'; end if;
  if p_question_id is not null and not exists(select 1 from public.quiz_attempt_question_queue where workspace_id=p_workspace_id and quiz_attempt_id=a.id and question_id=p_question_id) then raise exception 'ASSESSMENT_MEDIA_FORBIDDEN'; end if;
  select coalesce(jsonb_agg(jsonb_build_object('question_id',q.id,'learning_stage',q.source_metadata->'visual_assessment'->'learning_stage','assets',

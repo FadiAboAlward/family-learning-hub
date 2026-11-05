@@ -83,6 +83,22 @@ The UI displays program grade/year metadata so grade mismatches are visible befo
 
 ## Learning Mode
 
+FLH-FEAT-2026-044 v1.1 (Drive revision 4, Issue #204) opts new packages into
+`visual-foundation-bridge-v1`: the same 20-question Learning attempt has ten
+FOUNDATION then ten BRIDGE items, followed by the independent existing 20-question
+Exam route. Completed authoritative answer/hint/retry evidence produces optional
+concept review at the boundary and finish; it never grants mastery, locks progress,
+creates stage attempts or falsifies incomplete Learning.
+
+The existing assets/link tables and JSON carry ordered private prompt images.
+Parent-authorized upload, full raster/hash verification, atomic stage links and
+image-aware publication guards bind each new version. Authenticated read resolvers
+issue short-lived URLs for own attempts or parent-owned HELD previews; required
+media failure prevents answer persistence without an academic penalty. File
+provenance remains private. Legacy graphs/paper projections delegate unchanged,
+and disabling new visual publishing preserves issued assets/resolvers. See
+[the feature evidence and rollout contract](flh-044-evidence.md).
+
 Learning Mode is server-authoritative:
 
 1. the server verifies learner access to the quiz,
