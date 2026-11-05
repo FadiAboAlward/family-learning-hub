@@ -153,13 +153,24 @@ const examFlag=page.locator('#examFlag');
 const examBottom=page.locator('.flh-exam-swipe-zone>.flh-sticky-action');
 const stickyMobile=await examBottom.evaluate(el=>getComputedStyle(el).position);
 if(stickyMobile!=='static')throw new Error('FLH-038: mobile Exam footer must not cover the review flag, got '+stickyMobile);
-await page.locator('#examFlag.flh-flag-on').waitFor({state:'visible',timeout:2000});
+await page.locator('#examFlag.flh-flag-on').and(page.getByRole('button',{name:'🚩 إزالة علامة المراجعة'})).waitFor({state:'visible',timeout:2000});
 await page.evaluate(()=>window.scrollTo(0,0));
-const flagHit=await examFlag.evaluate(el=>{
-  const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);
-  return {x,y,hit:hit===el||el.contains(hit),obstruction:hit?.id||hit?.className||'none',width:document.documentElement.scrollWidth};
+const inspectFlagHit=()=>examFlag.evaluate(el=>{
+  const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+  const inViewport=x>=0&&x<innerWidth&&y>=0&&y<innerHeight;
+  const hit=inViewport?document.elementFromPoint(x,y):null;
+  return {x,y,inViewport,hit:hit===el||el.contains(hit),obstruction:hit?.id||hit?.className||'none',width:document.documentElement.scrollWidth};
 });
-if(!flagHit.hit||flagHit.width>390)throw new Error('FLH-038: review flag is blocked or mobile overflows: '+JSON.stringify(flagHit));
+const initialFlagHit=await inspectFlagHit();
+let flagHit=initialFlagHit;
+// Keep the initial hit-test when the flag center is already on screen (#164).
+if(!initialFlagHit.inViewport){
+  await examFlag.scrollIntoViewIfNeeded();
+  flagHit=await inspectFlagHit();
+}
+if(Math.max(initialFlagHit.width,flagHit.width)>390)throw new Error('FLH-038: mobile horizontal overflow: '+JSON.stringify({initialFlagHit,flagHit}));
+if(!flagHit.inViewport)throw new Error('FLH-038: review flag center is outside the mobile viewport after scrolling: '+JSON.stringify(flagHit));
+if(!flagHit.hit)throw new Error('FLH-038: on-screen review flag is obstructed: '+JSON.stringify(flagHit));
 await examFlag.click();
 await page.waitForFunction(()=>{const el=document.getElementById('examFlag');return el&&!el.classList.contains('flh-flag-on')&&!el.disabled},{timeout:2000});
 await page.setViewportSize({width:1280,height:900});
