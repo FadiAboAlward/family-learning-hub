@@ -235,6 +235,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/academic-exact-candidate-browser.mjs
+      - name: Render exact visual candidate, stages, failure and history (390 and desktop)
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/assessment-visual-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/
