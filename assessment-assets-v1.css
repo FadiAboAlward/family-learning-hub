@@ -1,6 +1,6 @@
 .flh-visual-asset{margin:1rem 0;min-width:0;max-width:100%;overflow-wrap:anywhere}
 .flh-visual-asset figcaption{font-weight:700;margin-block-end:.4rem;unicode-bidi:plaintext}
-.flh-visual-enlarge{display:block;padding:0;border:1px solid #ccd7e2;border-radius:12px;background:#fff;width:100%;overflow:hidden;cursor:zoom-in}
+.flh-visual-enlarge{display:block;padding:0;border:1px solid #ccd7e2;border-radius:12px;background:#fff;color:#172f3f;width:100%;overflow:hidden;cursor:zoom-in}
 .flh-visual-enlarge img{display:block;max-width:100%;height:auto;object-fit:contain;width:100%}
 .flh-visual-enlarge:disabled{cursor:default;opacity:1}
 .flh-visual-status{margin:.4rem 0}.flh-visual-retry{min-height:44px}
@@ -8,3 +8,5 @@
 .flh-visual-dialog img{display:block;max-width:none;width:auto;height:auto}
 .flh-visual-dialog button{position:sticky;top:0;min-height:44px}
 .flh-stage-summary details{margin-block:1rem}.flh-stage-summary button{min-height:44px}
+.flh-touch-quiz:has(>.flh-visual-asset)>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
+.flh-touch-quiz:has(>.flh-visual-asset){padding-bottom:24px}

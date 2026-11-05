@@ -4,7 +4,7 @@ import { attachOptionalVideo, maintainOptionalVideos, saveOptionalVideoReport, p
 import { ASSESSMENT_ACTIONS, assessmentCommand } from "../_shared/assessment-publication.mjs";
 import { AUTHORING_ACTIONS, assessmentAuthoringCommand } from "../_shared/assessment-authoring.mjs";
 import { assessmentParent } from "../_shared/assessment-parent-auth.mjs";
-import { prepareAssessmentUpload, previewAssessmentMedia, assessmentMediaContext, hydrateAssessmentMedia } from "../_shared/assessment-media.mjs";
+import { prepareAssessmentUpload, previewAssessmentMedia, assessmentMediaContext, hydrateAssessmentMedia, requireAssessmentMediaForAnswer } from "../_shared/assessment-media.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -70,6 +70,7 @@ async function requestHint(learnerId:string,b:any,trace:any){const attemptId=Str
 async function answerQuestion(learnerId:string,b:any,trace:any){
   const attemptId=String(b.attempt_id||""),questionId=String(b.question_id||""),pos=Number(b.option_position);
   if(!attemptId||!questionId||!Number.isInteger(pos))throw new Error("INVALID_ANSWER");
+  await requireAssessmentMediaForAnswer(admin,WORKSPACE_ID,learnerId,attemptId,questionId);
   const{data,error}=await trace.measure("answer.rpc",{dbOperations:1},()=>admin.rpc("flh_learning_answer",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_option_position:pos}));
   if(error){
     console.error("Learning answer RPC failed",{code:error.code,message:error.message});

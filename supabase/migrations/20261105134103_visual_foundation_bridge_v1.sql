@@ -94,7 +94,8 @@ declare a jsonb; ordinal bigint; existing public.assets%rowtype; expected_meta j
 begin
  if not exists(select 1 from public.quiz_versions where workspace_id=w and id=v and settings->>'assessment_profile'='visual-foundation-bridge-v1') then return; end if;
  update public.quiz_questions set source_metadata=source_metadata||jsonb_build_object('visual_assessment',jsonb_build_object(
-   'profile','visual-foundation-bridge-v1','learning_stage',item->'learning_stage','assets',coalesce(item->'assets','[]'::jsonb)))
+   'profile','visual-foundation-bridge-v1','learning_stage',item->'learning_stage','assets',
+   (select coalesce(jsonb_agg(jsonb_build_object('asset_id',entry.value->'asset_id','label',entry.value->'label','required',entry.value->'required') order by (entry.value->>'position')::integer),'[]'::jsonb) from jsonb_array_elements(coalesce(item->'assets','[]')) entry(value))))
  where workspace_id=w and id=qid and quiz_version_id=v;
  for a,ordinal in select value,ordinality from jsonb_array_elements(coalesce(item->'assets','[]')) with ordinality loop
   if a->>'storage_bucket' is distinct from 'assessment-assets' or a->>'purpose' is distinct from 'prompt'
@@ -222,7 +223,7 @@ begin
  into questions from public.quiz_attempt_question_queue queue join public.quiz_questions q on q.workspace_id=queue.workspace_id and q.id=queue.question_id
  where queue.workspace_id=p_workspace_id and queue.quiz_attempt_id=a.id and (p_question_id is null or q.id=p_question_id);
  if a.delivery_mode='learning' then
-  select coalesce(jsonb_agg(jsonb_build_object('question_id',q.id,'question_code',q.question_code,'concept_id',queue.concept_id,
+  select coalesce(jsonb_agg(jsonb_build_object('question_id',q.id,'question_code',q.question_code,'concept_id',queue.concept_id,'concept_label',(select title from public.learning_concepts where workspace_id=queue.workspace_id and id=queue.concept_id),
    'learning_stage',q.source_metadata->'visual_assessment'->'learning_stage','status',queue.status,
    'is_correct',case when queue.status='completed' then answer.is_correct end,
    'attempts_used',case when queue.status='completed' then answer.attempts_used end,

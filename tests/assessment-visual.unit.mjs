@@ -6,9 +6,11 @@ import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs
 import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
 import { assetContractErrors,conceptGuidance } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
-import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia } from '../supabase/functions/_shared/assessment-media.mjs';
+import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
+for(const malformed of [{...pkg,questions:{}},{...pkg,blueprint:{}},{...pkg,questions:[null]},{...pkg,questions:[{...pkg.questions[0],assets:[null,null]}]}])assert.equal(validateAcademicPackage(malformed).ok,false,'Malformed containers must return a validation report instead of throwing');
+const reordered=structuredClone(pkg);reordered.questions[10].assets[0]=Object.fromEntries(Object.entries(reordered.questions[10].assets[0]).reverse());assert.equal(validateAcademicPackage(reordered).ok,true,'Object key order must not invent conflicting file identities');
 assert.equal(pkg.questions.filter(q=>q.learning_stage==='FOUNDATION').length,10);assert.equal(pkg.questions.filter(q=>q.learning_stage==='BRIDGE').length,10);
 for(const mutate of [p=>p.questions[0].learning_stage='BRIDGE',p=>delete p.blueprint[0].learning_stage,p=>p.questions[20].learning_stage='FOUNDATION',p=>p.questions.pop(),p=>p.questions[0].assets[0].position=2,p=>p.questions[10].assets.reverse(),p=>p.questions[0].assets[0].purpose='solution',p=>p.questions[0].assets[0].provenance.rights_status='unknown',p=>p.questions[0].assets[0].url='https://hotlink.invalid/image']){
  const bad=structuredClone(pkg);mutate(bad);assert.equal(validateAcademicPackage(bad).ok,false,'Invalid visual candidate must fail the official gate');
@@ -29,6 +31,10 @@ const hash=await academicCandidateHash(pkg),downloads=[];
 const storage={from:bucket=>{assert.equal(bucket,'assessment-assets');return {download:async path=>{downloads.push(path);const name=['rectangle','triangle','composite'].find(n=>diagram(n).storage_path===path);return {data:new Blob([fs.readFileSync(new URL('./fixtures/assessment-visual/'+name+'.png',import.meta.url))])};}};}};
 const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);assert.equal(proof.media_verification.files.length,3);assert.equal(downloads.length,3,'Same immutable file may be reused with question-specific order');
 assert.deepEqual(await verifyAssessmentMedia({},workspace,version,{}),{},'Legacy authoring has zero media side effects');
+let gradeCalls=0;
+const missingRuntime={rpc:async name=>{assert.equal(name,'flh_assessment_media_context');return {data:{questions:[{assets:[{...diagram('rectangle'),required:true}]}]}};},storage:{from:()=>({download:async()=>({error:{message:'storage outage'}})})}};
+await assert.rejects(async()=>{await requireAssessmentMediaForAnswer(missingRuntime,workspace,'learner','attempt','question');gradeCalls++;},/MEDIA_UNAVAILABLE/);assert.equal(gradeCalls,0,'Missing required stored data must fail before grading or answer persistence');
+await requireAssessmentMediaForAnswer({rpc:async()=>({data:null})},workspace,'learner','attempt','question');
 const source=JSON.parse(fs.readFileSync(new URL('./fixtures/assessment-visual/geometry-source.json',import.meta.url)));
 assert.equal(source.rectangle.side_cm.reduce((a,b)=>a+b)*2,20);assert.equal(source.rectangle.side_cm.reduce((a,b)=>a*b)+source.triangle.base_cm*source.triangle.height_cm/2,36);
 const orthogonal=Object.entries(source.composite.panels).filter(([,p])=>(p[1][0]-p[0][0])*(p[2][0]-p[0][0])+(p[1][1]-p[0][1])*(p[2][1]-p[0][1])===0).map(([label])=>label);

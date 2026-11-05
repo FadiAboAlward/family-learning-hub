@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { authenticateLearner, dispatchExamAction, parseRequest, setFlag } from "./logic.mjs";
 import { createBackendPerformanceTrace, performanceJsonResponse } from "../_shared/backend-performance.mjs";
-import { assessmentMediaContext, hydrateAssessmentMedia } from "../_shared/assessment-media.mjs";
+import { assessmentMediaContext, hydrateAssessmentMedia, requireAssessmentMediaForAnswer } from "../_shared/assessment-media.mjs";
 
 const SUPABASE_URL=Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,6 +41,7 @@ async function saveAnswer(learnerId:string,body:any){
   const questionId=String(body.question_id||"");
   const optionPosition=Number(body.option_position);
   if(!attemptId||!questionId||!Number.isInteger(optionPosition))throw new Error("INVALID_ANSWER");
+  await requireAssessmentMediaForAnswer(admin,WORKSPACE_ID,learnerId,attemptId,questionId);
   const{data,error}=await admin.rpc("flh_exam_save_answer",{p_workspace_id:WORKSPACE_ID,p_learner_id:learnerId,p_attempt_id:attemptId,p_question_id:questionId,p_option_position:optionPosition});
   if(error)throw new Error("ANSWER_SAVE_FAILED");
   if((data as any)?.error)throw new Error(String((data as any).error));
@@ -96,7 +97,7 @@ Deno.serve(async(req:Request)=>{
     const authErrors=["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED"];
     const notFoundErrors=["QUIZ_NOT_FOUND","QUIZ_NOT_AVAILABLE","VERSION_NOT_FOUND","NO_EXAM_QUESTIONS"];
     const badRequestErrors=["INVALID_ANSWER","INVALID_FLAG","ATTEMPT_NOT_ACTIVE","QUESTION_NOT_IN_EXAM","ATTEMPT_OR_QUESTION_NOT_ACTIVE","EXAM_NOT_COMPLETE","UNKNOWN_ACTION"];
-    const status=authErrors.includes(message)?401:message==="ASSESSMENT_MEDIA_FORBIDDEN"?403:notFoundErrors.includes(message)?404:badRequestErrors.includes(message)?400:500;
+    const status=authErrors.includes(message)?401:message==="ASSESSMENT_MEDIA_FORBIDDEN"?403:message==="ASSESSMENT_MEDIA_UNAVAILABLE"?422:notFoundErrors.includes(message)?404:badRequestErrors.includes(message)?400:500;
     return performanceJsonResponse(trace,{error:message},status,cors(origin));
   }
 });

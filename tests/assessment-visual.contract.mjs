@@ -10,6 +10,7 @@ function query(sql){return new Promise((resolve,reject)=>{const p=spawn('docker'
 const json=x=>"'"+JSON.stringify(x).replaceAll("'","''")+"'::jsonb";
 const ids=Object.fromEntries(['parent','quiz','program','curriculum'].map((k,i)=>[k,'04410000-0000-4000-8000-'+String(i+201).padStart(12,'0')]));
 const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and metadata->>'is_test'='true' and is_active;`);assert.match(learner,/^[a-f0-9-]{36}$/);
+await query('begin;'+fs.readFileSync(new URL('../supabase/migrations/20261105134103_visual_foundation_bridge_v1.sql',import.meta.url),'utf8')+'rollback;');
 const candidate=visualCandidate(),hash=await academicCandidateHash(candidate),report=validateAcademicPackage(candidate);assert.equal(report.ok,true);
 const target={quiz_id:ids.quiz,quiz_version_id:v,learner_id:learner,program_id:ids.program};
 const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:geometry-truth-contract',authority_ref:'Disposable technical fixture, no academic approval',source_review_ref:'Owned geometry-source.json',learner_scope_review_ref:'Synthetic Testing only',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic fixture only; real pilot remains pending independent review.'}))};
@@ -43,6 +44,7 @@ do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; s
  result:=${cmd('stage',payload)};perform pg_temp.verify(result->>'duplicate'='true','idempotent links');
  perform pg_temp.verify((select count(*)=4 from public.quiz_question_assets l join public.quiz_questions q on q.id=l.question_id where q.quiz_version_id='${v}'),'four links, three immutable files');
  perform pg_temp.verify((select count(*)=3 from public.assets where metadata->>'quiz_version_id'='${v}'),'no duplicate files');
+ perform pg_temp.verify(not exists(select 1 from public.quiz_questions q cross join lateral jsonb_array_elements(q.source_metadata->'visual_assessment'->'assets') a where q.quiz_version_id='${v}' and (a ? 'provenance' or a ? 'checksum_sha256' or a ? 'storage_path')),'private provenance and file metadata do not enter learner-visible question source metadata');
  perform pg_temp.verify((select count(*)=20 from public.quiz_questions where quiz_version_id='${v}' and delivery_role='core') and (select count(*)=20 from public.quiz_questions where quiz_version_id='${v}' and delivery_role='exam_pool'),'native 20/20 without third scoring engine');
  select id,source_metadata into qid,saved from public.quiz_questions where quiz_version_id='${v}' and position=1;
  update public.quiz_questions set source_metadata=source_metadata||'{"drift":true}' where id=qid;
@@ -67,13 +69,26 @@ do $$declare result jsonb; first_start jsonb; exam_start jsonb; context jsonb; s
   select q.id,(k.correct_answer->>'option_position')::integer into qid,pos from public.quiz_questions q join public.quiz_question_answer_keys k on k.question_id=q.id where q.quiz_version_id='${v}' and q.position=i;
   if i=1 then perform public.flh_learning_answer('${w}','${learner}',(first_start->>'attempt_id')::uuid,qid,2);end if;
   result:=public.flh_learning_answer('${w}','${learner}',(first_start->>'attempt_id')::uuid,qid,pos);perform pg_temp.verify(result->>'finalized'='true','real Learning answer persistence');
+  if i=9 then result:=public.flh_learning_start('${w}','${learner}','qa-visual');perform pg_temp.verify(result->>'attempt_id'=first_start->>'attempt_id','resume after nine uses same attempt');end if;
  end loop;
  result:=public.flh_learning_start('${w}','${learner}','qa-visual');perform pg_temp.verify(result->>'attempt_id'=first_start->>'attempt_id','resume same attempt at question eleven');
  context:=public.flh_assessment_media_context('${w}','${learner}',(first_start->>'attempt_id')::uuid,null);
  perform pg_temp.verify((select count(*)=10 from jsonb_array_elements(context->'learning_evidence') e where e->>'status'='completed'),'authoritative ten-question boundary');
  perform pg_temp.verify((context->'learning_evidence'->0->>'attempts_used')::integer>1 and (context->'learning_evidence'->0->>'hints_used')::integer>0,'retry/hint review evidence');
  result:=public.flh_learning_finish('${w}','${learner}',(first_start->>'attempt_id')::uuid,60);perform pg_temp.verify(result->>'error'='QUIZ_NOT_COMPLETE','never falsifies completion');
+ for i in 11..20 loop
+  select q.id,(k.correct_answer->>'option_position')::integer into qid,pos from public.quiz_questions q join public.quiz_question_answer_keys k on k.question_id=q.id where q.quiz_version_id='${v}' and q.position=i;
+  result:=public.flh_learning_answer('${w}','${learner}',(first_start->>'attempt_id')::uuid,qid,pos);perform pg_temp.verify(result->>'finalized'='true','Bridge persistence');
+  if i in (11,20) then result:=public.flh_learning_start('${w}','${learner}','qa-visual');perform pg_temp.verify(result->>'attempt_id'=first_start->>'attempt_id','resume at eleven/twenty keeps the same attempt');end if;
+ end loop;
+ result:=public.flh_learning_finish('${w}','${learner}',(first_start->>'attempt_id')::uuid,120);perform pg_temp.verify(jsonb_array_length(result->'review')=20,'native completed review');
+ context:=public.flh_assessment_media_context('${w}','${learner}',(first_start->>'attempt_id')::uuid,null);perform pg_temp.verify((select count(*)=20 from jsonb_array_elements(context->'learning_evidence') e where e->>'status'='completed'),'completed Learning media remains readable');
  context:=public.flh_assessment_media_context('${w}','${learner}',(exam_start->>'attempt_id')::uuid,null);perform pg_temp.verify(context->'learning_evidence'='null'::jsonb,'active Exam has no learning feedback');
+ for i in 21..40 loop
+  select q.id,(k.correct_answer->>'option_position')::integer into qid,pos from public.quiz_questions q join public.quiz_question_answer_keys k on k.question_id=q.id where q.quiz_version_id='${v}' and q.position=i;
+  result:=public.flh_exam_save_answer('${w}','${learner}',(exam_start->>'attempt_id')::uuid,qid,pos);perform pg_temp.verify(result->>'ok'='true','Exam save persistence');
+ end loop;
+ result:=public.flh_exam_submit('${w}','${learner}',(exam_start->>'attempt_id')::uuid);perform pg_temp.verify(jsonb_array_length(result->'review')=20,'independent native Exam scoring/review');
  update public.workspace_settings set value='{"enabled":false}' where workspace_id='${w}' and key='visual_assessments';
  context:=public.flh_assessment_media_context('${w}','${learner}',(exam_start->>'attempt_id')::uuid,null);perform pg_temp.verify(jsonb_array_length(context->'questions')=20,'rollback preserves issued media resolver');
  perform pg_temp.verify((select count(*)=2 from public.quiz_attempts where quiz_version_id='${v}'),'no stage attempts or refresh side effects');

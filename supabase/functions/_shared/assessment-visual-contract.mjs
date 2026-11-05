@@ -7,6 +7,7 @@ const hash = /^[a-f0-9]{64}$/;
 const formats = {'image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
 const plain = (v,max=600) => typeof v==='string' && v.trim().length>0 && v.length<=max && !/[<>\u0000-\u001f]/u.test(v);
 const object = v => v!==null && typeof v==='object' && !Array.isArray(v);
+const ordered = v => Array.isArray(v)?v.map(ordered):object(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,ordered(v[k])])):v;
 export const isVisualPackage = pkg => pkg?.assessment_profile===VISUAL_PROFILE;
 
 /** Closed file/link contract: neither solutions nor URLs belong in canonical media. */
@@ -27,6 +28,7 @@ export function assetContractErrors(a,index,workspaceId,versionId) {
   if(!object(p)||Object.keys(p).some(k=>!['origin','source_ref','rights_status','rights_ref','book_code','book_part','pdf_page','source_sha256','crop'].includes(k))
     ||!plain(p.source_ref)||!['generated','book_crop'].includes(p.origin)
     ||!(p.origin==='generated'?p.rights_status==='owned':p.rights_status==='authorized'&&plain(p.rights_ref)&&plain(p.book_code)&&plain(p.book_part)&&Number.isInteger(p.pdf_page)&&p.pdf_page>0&&hash.test(p.source_sha256||'')))errors.push('ASSET_RIGHTS_INVALID');
+  if(p?.crop!==undefined&&(!object(p.crop)||Object.keys(p.crop).sort().join(',')!=='height,width,x,y'||!['x','y','width','height'].every(k=>Number.isInteger(p.crop[k])&&p.crop[k]>=0)||p.crop.width===0||p.crop.height===0))errors.push('ASSET_SOURCE_CROP_INVALID');
   return errors;
 }
 
@@ -34,16 +36,18 @@ export function assetContractErrors(a,index,workspaceId,versionId) {
 export function validateVisualContract(pkg,errors,warnings) {
   const issue=(code,path,message)=>errors.push({code,path,message});
   if(!isVisualPackage(pkg)) {
-    if(pkg?.assessment_profile!==undefined || pkg?.questions?.some(q=>q?.learning_stage!==undefined || (Array.isArray(q?.assets)&&q.assets.length)))issue('VISUAL_PROFILE_REQUIRED','assessment_profile','New visual/staged content requires the explicit opt-in profile.');
+    if(pkg?.assessment_profile!==undefined || (Array.isArray(pkg?.questions)&&pkg.questions.some(q=>q?.learning_stage!==undefined || (Array.isArray(q?.assets)&&q.assets.length))))issue('VISUAL_PROFILE_REQUIRED','assessment_profile','New visual/staged content requires the explicit opt-in profile.');
     return;
   }
   const questions=Array.isArray(pkg.questions)?pkg.questions:[];
+  const blueprints=Array.isArray(pkg.blueprint)?pkg.blueprint:[];
   const learning=questions.filter(q=>q?.delivery_surface==='learning'),exam=questions.filter(q=>q?.delivery_surface==='exam');
   if(questions.length!==40 || learning.length!==20 || exam.length!==20)issue('VISUAL_10_10_20_REQUIRED','questions','Requires 10 Foundation + 10 Bridge + 20 independent Exam items.');
   const files=new Map();
   for(const [i,q] of questions.entries()) {
+    if(!object(q)){issue('VISUAL_QUESTION_INVALID','questions['+i+']','Question must be an object.');continue;}
     const path='questions['+i+']',stage=learning.indexOf(q)<10?'FOUNDATION':'BRIDGE';
-    const blueprint=pkg.blueprint?.find(b=>b.question_code===q.question_code);
+    const blueprint=blueprints.find(b=>b?.question_code===q.question_code);
     if(q.delivery_surface==='learning' ? q.learning_stage!==stage||blueprint?.learning_stage!==stage : q.learning_stage!==undefined||blueprint?.learning_stage!==undefined)issue('LEARNING_STAGE_INVALID',path+'.learning_stage','Explicit stage must match authored Learning order and blueprint; Exam has no stage.');
     if(q.delivery_role==='remediation_pool')issue('VISUAL_REMEDIATION_FORBIDDEN',path,'No extra remediation pool for this profile.');
     const assets=q.assets===undefined?[]:q.assets;
@@ -51,15 +55,16 @@ export function validateVisualContract(pkg,errors,warnings) {
     const ids=new Set();
     for(const [j,a]of assets.entries()) {
       for(const code of assetContractErrors(a,j))issue(code,path+'.assets['+j+']','Invalid immutable prompt asset contract.');
+      if(!object(a))continue;
       if(ids.has(a?.asset_id))issue('ASSET_DUPLICATE',path+'.assets['+j+']','A question may not link the same asset twice.');
       ids.add(a?.asset_id);
       const file=a&&Object.fromEntries(Object.entries(a).filter(([k])=>!['position','label','alt_text','required','purpose'].includes(k)));
-      const identity=JSON.stringify(file);
+      const identity=JSON.stringify(ordered(file));
       if(files.has(a?.asset_id)&&files.get(a.asset_id)!==identity)issue('ASSET_IDENTITY_CONFLICT',path+'.assets['+j+']','One UUID must identify the same immutable file and provenance.');
       files.set(a?.asset_id,identity);
     }
   }
-  if(questions.some(q=>q.assets?.length))warnings.push({code:'VISUAL_SEMANTIC_REVIEW_REQUIRED',path:'questions',message:'Independently verify exact raster/source geometry, all labels, option mapping, solution-neutral alt text and rights against this candidate hash.'});
+  if(questions.some(q=>q?.assets?.length))warnings.push({code:'VISUAL_SEMANTIC_REVIEW_REQUIRED',path:'questions',message:'Independently verify exact raster/source geometry, all labels, option mapping, solution-neutral alt text and rights against this candidate hash.'});
 }
 
 /** Read-only guidance from completed authoritative answers; never claims mastery. */
@@ -67,7 +72,7 @@ export function conceptGuidance(rows,stage) {
   const groups=new Map();
   for(const row of rows.filter(r=>r.learning_stage===stage)) {
     const key=row.concept_id;
-    const group=groups.get(key)||{concept_id:key,question_codes:[],recommend_review:false,assessed:false};
+    const group=groups.get(key)||{concept_id:key,...(row.concept_label?{concept_label:row.concept_label}:{}),question_codes:[],recommend_review:false,assessed:false};
     if(row.status==='completed' && typeof row.is_correct==='boolean') {
       group.assessed=true;group.question_codes.push(row.question_code);
       group.recommend_review ||= !row.is_correct || Number(row.attempts_used)>1 || Number(row.hints_used)>0;

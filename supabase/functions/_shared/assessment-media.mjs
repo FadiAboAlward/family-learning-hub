@@ -62,6 +62,19 @@ export async function previewAssessmentMedia(admin,w,parent,body){
   return signContext(admin,data);
 }
 
+/** A missing required stored prompt must fail before an answer can be persisted/graded. */
+export async function requireAssessmentMediaForAnswer(admin,w,learner,attemptId,questionId){
+  const {data,error}=await admin.rpc('flh_assessment_media_context',{p_workspace_id:w,p_learner_id:learner,p_attempt_id:attemptId,p_question_id:questionId});
+  if(error)deny('ASSESSMENT_MEDIA_FORBIDDEN');
+  if(!data)return; // Existing text-only versions keep their native answer semantics.
+  for(const q of data.questions)for(const a of q.assets.filter(a=>a.required)){
+    const file=await admin.storage.from(MEDIA_BUCKET).download(a.storage_path);
+    if(file.error||!file.data||file.data.size>MEDIA_LIMITS.bytes)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+    const bytes=await file.data.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+    if(digest!==a.checksum_sha256)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+  }
+}
+
 export async function hydrateAssessmentMedia(admin,w,learner,attemptId,payload) {
   const context=await assessmentMediaContext(admin,w,learner,attemptId);
   if(!context)return payload;
