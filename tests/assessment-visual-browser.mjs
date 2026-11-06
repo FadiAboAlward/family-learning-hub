@@ -52,7 +52,43 @@ async function run(device){
   async function start(){await page.goto(base+'#student',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');await page.evaluate(()=>window.FLH.startLearningQuiz('qa-visual'));}
   async function shot(name){fs.mkdirSync('playwright-screenshots',{recursive:true});const path='playwright-screenshots/flh-044-'+device.name+'-'+name+'.png';await page.screenshot({path,fullPage:true});shots.push({file:path.split('/').at(-1),sha256:createHash('sha256').update(fs.readFileSync(path)).digest('hex')});}
   async function layout(){assert.equal(await page.locator('html').getAttribute('dir'),'rtl');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2||document.body.scrollWidth>innerWidth+2),false);assert.ok(await page.locator('.question').first().evaluate(el=>el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0));}
-  async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
+  /**
+   * Verify actual mobile viewport hit testing and layout for a finished response or an answer.
+   * Protects against the #207 sticky action overlay without changing any assessment state.
+   * @param {string} targetSelector CSS selector of visible question or answer content.
+   * @param {string} actionButton CSS selector for the action enclosed in the footer.
+   * @param {string} caseName Regression scenario label for assertion diagnostics.
+   */
+  async function assertActionClear(targetSelector,actionButton,caseName){
+    const action=page.locator(actionButton).locator('xpath=..');
+    assert.equal(await action.evaluate(el=>getComputedStyle(el).position),'static',caseName+': action must participate in document flow');
+    await page.locator(targetSelector).last().scrollIntoViewIfNeeded();
+    const state=await page.evaluate(({targetSelector,actionButton})=>{
+      const target=[...document.querySelectorAll(targetSelector)].at(-1);
+      const footer=document.querySelector(actionButton)?.closest('.flh-sticky-action');
+      if(!target||!footer)return null;
+      const a=target.getBoundingClientRect(),b=footer.getBoundingClientRect();
+      const overlap=Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5;
+      const x=(a.left+a.right)/2,y=(a.top+a.bottom)/2;
+      const hit=document.elementFromPoint(x,y);
+      return {overlap,coveredByAction:!!hit?.closest('.flh-sticky-action'),visible:a.top>=-1&&a.bottom<=innerHeight+1,
+        targetHit:target.contains(hit),rtl:document.documentElement.dir==='rtl',
+        overflow:document.documentElement.scrollWidth>innerWidth+2};
+    },{targetSelector,actionButton});
+    assert.ok(state,caseName+': required review/answer or button missing');
+    assert.equal(state.rtl,true,caseName+': RTL direction');
+    assert.equal(state.overflow,false,caseName+': horizontal overflow');
+    assert.equal(state.visible,true,caseName+': target clipped');
+    assert.equal(state.overlap,false,caseName+': footer intersects target');
+    assert.equal(state.coveredByAction,false,caseName+': footer intercepts target center');
+    assert.equal(state.targetHit,true,caseName+': target not hit-testable');
+  }
+  /**
+   * Answer one synthetic Learning question, and regression-test a zero-image mobile item.
+   * All answer persistence remains handled by the existing student UI and synthetic API.
+   * @param {number} i Ordered zero-based Learning question index.
+   */
+  async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);if(i===1){assert.equal(q.assets.length,0,'Zero-image question fixture');assert.equal(await page.locator('.flh-learn-answer').count(),4,'Four answers render without media');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning initial');await shot('learning-no-image-mobile-clear');}}const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();if(i===1&&device.mobile)await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning selected');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
   await start();await page.locator('.flh-visual-asset img').waitFor();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);await layout();await shot('learning-one-image');
   await page.evaluate(async()=>{window.qaAssetHelper=window.FLHAssessmentAssets;delete window.FLHAssessmentAssets;await window.FLH.startLearningQuiz('qa-visual');});
   assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'Missing helper must fail closed in Learning');
@@ -75,7 +111,7 @@ async function run(device){
   await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startExamQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
   const zoom=page.locator('.flh-visual-enlarge');await zoom.focus();await page.keyboard.press('Enter');await page.locator('.flh-visual-dialog').waitFor();await page.keyboard.press('Escape');assert.equal(await zoom.evaluate(el=>el===document.activeElement),true,'Keyboard zoom returns focus');await layout();await shot('exam-composite');
   for(let i=0;i<20;i++){const pos=i===0?2:exam[i].options.find(o=>o.is_correct).position;await page.locator('.exam-v3-answer[data-pos="'+pos+'"]').click();if(i<19)await page.locator('#examNext').click();}
-  assert.equal(await page.locator('#flhHelp').count(),0,'Active Exam has no hints');await page.locator('#examSubmit').click();await page.locator('.exam-review-wrong .flh-visual-asset img').waitFor();await layout();await shot('exam-review');
+  assert.equal(await page.locator('#flhHelp').count(),0,'Active Exam has no hints');await page.locator('#examSubmit').click();await page.locator('.exam-review-wrong .flh-visual-asset img').waitFor();await layout();await shot('exam-review');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.exam-review-wrong .question','#examHome','Mobile submitted Exam question');await assertActionClear('.exam-review-wrong .flh-review-response','#examHome','Mobile submitted Exam selected answer');await page.locator('#examHome').focus();assert.equal(await page.locator('#examHome').evaluate(el=>el===document.activeElement),true,'Review return is keyboard focusable');await shot('exam-review-mobile-clear');}
   await page.locator('#examHome').click();await page.waitForFunction(()=>document.querySelector('.hero h1')?.textContent?.includes('أهلًا'));await page.evaluate(id=>window.FLH.openAttemptHistoryAttempt(id),examAttempt);await page.locator('.flh-history-review-list .flh-visual-asset img').waitFor();await layout();await shot('history');
   assert.deepEqual(errors,[]);assert.equal(calls.filter(x=>x==='submit_exam').length,1);console.log('FLH-044 exact candidate rendered Learning/Exam/history, 0/1/2 images, required failure/read-only refresh, keyboard/RTL and 9/10/11/20 resume: PASS '+device.name+' (synthetic APIs)');
  }finally{await page.close();}
