@@ -8,3 +8,11 @@
   .flh-exam-swipe-zone>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
   .flh-exam-swipe-zone.flh-touch-quiz{padding-bottom:24px}
 }
+
+/* FLH-044 #207: use normal document flow for active Learning (including 0 images)
+   and submitted Exam review; keep the separate active-Exam footer policy. */
+@media(max-width:640px){
+  .flh-touch-quiz:has(#flhConfirmAnswer)>.flh-sticky-action,
+  .panel:has(#examHome)>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
+  .flh-touch-quiz:has(#flhConfirmAnswer){padding-bottom:24px}
+}
