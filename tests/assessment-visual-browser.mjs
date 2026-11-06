@@ -52,7 +52,13 @@ async function run(device){
   async function start(){await page.goto(base+'#student',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');await page.evaluate(()=>window.FLH.startLearningQuiz('qa-visual'));}
   async function shot(name){fs.mkdirSync('playwright-screenshots',{recursive:true});const path='playwright-screenshots/flh-044-'+device.name+'-'+name+'.png';await page.screenshot({path,fullPage:true});shots.push({file:path.split('/').at(-1),sha256:createHash('sha256').update(fs.readFileSync(path)).digest('hex')});}
   async function layout(){assert.equal(await page.locator('html').getAttribute('dir'),'rtl');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2||document.body.scrollWidth>innerWidth+2),false);assert.ok(await page.locator('.question').first().evaluate(el=>el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0));}
-  // FLH-044 #207: inspect the actual rendered viewport, not just a class name.
+  /**
+   * Verify actual mobile viewport hit testing and layout for a finished response or an answer.
+   * Protects against the #207 sticky action overlay without changing any assessment state.
+   * @param {string} targetSelector CSS selector of visible question or answer content.
+   * @param {string} actionButton CSS selector for the action enclosed in the footer.
+   * @param {string} caseName Regression scenario label for assertion diagnostics.
+   */
   async function assertActionClear(targetSelector,actionButton,caseName){
     const action=page.locator(actionButton).locator('xpath=..');
     assert.equal(await action.evaluate(el=>getComputedStyle(el).position),'static',caseName+': action must participate in document flow');
@@ -77,6 +83,11 @@ async function run(device){
     assert.equal(state.coveredByAction,false,caseName+': footer intercepts target center');
     assert.equal(state.targetHit,true,caseName+': target not hit-testable');
   }
+  /**
+   * Answer one synthetic Learning question, and regression-test a zero-image mobile item.
+   * All answer persistence remains handled by the existing student UI and synthetic API.
+   * @param {number} i Ordered zero-based Learning question index.
+   */
   async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);if(i===1){assert.equal(q.assets.length,0,'Zero-image question fixture');assert.equal(await page.locator('.flh-learn-answer').count(),4,'Four answers render without media');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning initial');await shot('learning-no-image-mobile-clear');}}const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();if(i===1&&device.mobile)await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning selected');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
   await start();await page.locator('.flh-visual-asset img').waitFor();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);await layout();await shot('learning-one-image');
   await page.evaluate(async()=>{window.qaAssetHelper=window.FLHAssessmentAssets;delete window.FLHAssessmentAssets;await window.FLH.startLearningQuiz('qa-visual');});
