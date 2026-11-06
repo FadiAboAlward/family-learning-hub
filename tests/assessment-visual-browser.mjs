@@ -9,19 +9,32 @@ import {academicCandidateHash} from '../supabase/functions/_shared/assessment-pu
 import {conceptGuidance} from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 const base=process.env.APP_URL||'http://127.0.0.1:4173/',candidate=visualCandidate(),learning=candidate.questions.filter(q=>q.delivery_surface==='learning'),exam=candidate.questions.filter(q=>q.delivery_surface==='exam');
 const browser=await launchMockQaBrowser(chromium,base),shots=[];
+// Chromium 104 does not support :has(): the submitted-result override must
+// remain a plain class selector, separately from the live Chromium visual QA.
+const reviewStyle=fs.readFileSync(new URL('../mobile-quiz-ux-v1.css',import.meta.url),'utf8');
+assert.match(reviewStyle,/\.flh-sticky-action\.flh-exam-results-action\s*\{\s*position:static;bottom:auto;z-index:auto\}/,
+  'Submitted Exam footer must use class-only static CSS supported before Chromium 105');
+assert.doesNotMatch(reviewStyle,/(?:\.panel|\.flh-sticky-action):has\(#examHome\)/,
+  'Submitted Exam footer must not rely on unsupported :has() browser behavior');
 const attempt='04430000-0000-4000-8000-000000000001',examAttempt='04430000-0000-4000-8000-000000000002';
 const profile={learner:{id:'04430000-0000-4000-8000-000000000003',slug:'qa-visual',display_name:'متعلم الاختبار',grade_level:7,is_test:true},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}};
 const id=q=>'04430000-0000-4000-8000-'+String(candidate.questions.indexOf(q)+101).padStart(12,'0');
 const names=new Map(['rectangle','triangle','composite'].map((n,i)=>['04410000-0000-4000-8000-'+String(i+101).padStart(12,'0'),n]));
 const reply=(route,payload,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(payload)});
-/** Exercise the rendered Learning and Exam visual journey on an isolated browser viewport. */
+/** Exercise the rendered Learning and Exam visual journey on an isolated browser viewport.
+ * @param {{name: string, viewport: {width: number,height: number}, mobile: boolean}} device
+ */
 async function run(device){
  const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile});
  const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
  page.on('pageerror',e=>errors.push(e.name));
+ /** Build one strictly synthetic question response with ordered optional media. */
  const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href}))});
+ /** Map completed synthetic Learning questions into server-shaped concept evidence. */
  const evidence=()=>learning.map(q=>({question_id:id(q),question_code:q.question_code,concept_id:q.concept_code,concept_label:'مراجعة -26 و (-7) - 19 <img src=x>',learning_stage:q.learning_stage,status:completed.has(id(q))?'completed':'pending',is_correct:completed.has(id(q))?true:null,attempts_used:completed.has(id(q))?1:null,hints_used:completed.has(id(q))?hints.get(id(q))||0:null,explanation:completed.has(id(q))?q.explanation:null}));
+ /** Derive expected per-stage Learning guidance without changing the API contract. */
  const guidance=()=>({assessment_profile:candidate.assessment_profile,learning_evidence:evidence(),learning_guidance:Object.fromEntries(['FOUNDATION','BRIDGE'].map(stage=>[stage,conceptGuidance(evidence(),stage)]))});
+ /** Build the submitted Exam review containing a deliberately incorrect response. */
  const examReview=()=>exam.map(q=>({...question(q),question_id:id(q),response:{option_position:answers.get(id(q))},correct_answer:{option_position:q.options.find(o=>o.is_correct).position},is_correct:answers.get(id(q))===q.options.find(o=>o.is_correct).position,explanation:q.explanation}));
  try{
   await page.route('**/qa-visual-assets/**',route=>{const name=new URL(route.request().url()).pathname.split('/').at(-1);if(failComposite&&name==='composite.png')return route.fulfill({status:503,body:'Synthetic required-media outage'});return route.fulfill({status:200,contentType:'image/png',headers:{'cache-control':'no-store'},body:fs.readFileSync(new URL('./fixtures/assessment-visual/'+name,import.meta.url))});});
