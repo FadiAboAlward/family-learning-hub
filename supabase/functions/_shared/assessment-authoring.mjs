@@ -1,6 +1,8 @@
 import { assessmentStagePayload, assessmentCommand, academicCandidateHash } from './assessment-publication.mjs';
 import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { attachOptionalVideo } from './optional-learning-videos.mjs';
+import { prepareAssessmentUpload, pruneAssessmentUploads, previewAssessmentMedia, verifyAssessmentMedia } from './assessment-media.mjs';
+import { isVisualPackage } from './assessment-visual-contract.mjs';
 
 export const AUTHORING_ACTIONS = Object.freeze(['create_assessment_draft','read_assessment_authoring']);
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
@@ -52,6 +54,19 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
         || typeof m.title!=='string' || !m.title.trim() || m.title.length>300
         || !Number.isSafeInteger(m.subject_id) || m.subject_id<1 || !uuid(m.curriculum_id)) deny('ASSESSMENT_AUTHORING_INPUT_INVALID');
     const staged=await assessmentStagePayload(workspaceId,parentId,body);
+    if(isVisualPackage(body.candidate)) {
+      const {data:allowed,error}=await admin.rpc('flh_assessment_media_parent',{p_workspace_id:workspaceId,p_parent_id:parentId,p_version_id:body.target.quiz_version_id,p_upload:true});
+      if(error)deny('ASSESSMENT_UNAVAILABLE');
+      if(allowed===true)await verifyAssessmentMedia(admin,workspaceId,body.target.quiz_version_id,body.candidate,staged.candidate_sha256);
+      else {
+        // A known immutable request retry only reads its existing state, including
+        // after HELD/release or disabling NEW publishing. The DB rechecks its fingerprint.
+        const previous=await admin.rpc('flh_assessment_authoring_command',{p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',p_payload:{request_id:body.request_id}});
+        if(previous.error?.message==='ASSESSMENT_TARGET_INVALID')deny('ASSESSMENT_VISUAL_DISABLED');
+        if(previous.error||previous.data?.ok!==true)deny('ASSESSMENT_UNAVAILABLE');
+        if(previous.data.candidate_sha256!==staged.candidate_sha256||targetKeys.some(k=>previous.data.target?.[k]!==body.target[k]))deny('ASSESSMENT_RETRY_CONFLICT');
+      }
+    }
     await verifyAssessmentConceptRegistry(admin,workspaceId,body.candidate,m);
     payload={...staged,request_id:body.request_id,quiz:m};
   }
@@ -66,6 +81,9 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
 /** MCP may only advance fresh requests created by this integration and this parent. */
 export async function assessmentAuthoringTool(admin,workspaceId,parentId,name,args,trace,providerOptions={}) {
   args=authoringInput(args);
+  if(name==='prepare_assessment_upload')return prepareAssessmentUpload(admin,workspaceId,parentId,args);
+  if(name==='prune_assessment_uploads')return pruneAssessmentUploads(admin,workspaceId,parentId);
+  if(name==='preview_assessment_assets')return previewAssessmentMedia(admin,workspaceId,parentId,args);
   if(name==='validate_assessment_candidate') return validateAuthoringCandidate(args.candidate);
   if(AUTHORING_ACTIONS.includes(name)) return assessmentAuthoringCommand(admin,workspaceId,parentId,{...args,action:name},trace);
   if(!['stage_assessment','publish_assessment','attach_optional_video','release_assessment'].includes(name)) deny('ASSESSMENT_ACTION_INVALID');

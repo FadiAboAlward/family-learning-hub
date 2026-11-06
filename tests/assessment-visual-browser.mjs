@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {chromium} from 'playwright';
+import {launchMockQaBrowser} from './qa-isolation.mjs';
+import {visualCandidate} from './fixtures/assessment-visual/candidate.mjs';
+import {academicCandidateHash} from '../supabase/functions/_shared/assessment-publication.mjs';
+import {conceptGuidance} from '../supabase/functions/_shared/assessment-visual-contract.mjs';
+const base=process.env.APP_URL||'http://127.0.0.1:4173/',candidate=visualCandidate(),learning=candidate.questions.filter(q=>q.delivery_surface==='learning'),exam=candidate.questions.filter(q=>q.delivery_surface==='exam');
+const browser=await launchMockQaBrowser(chromium,base),shots=[];
+const attempt='04430000-0000-4000-8000-000000000001',examAttempt='04430000-0000-4000-8000-000000000002';
+const profile={learner:{id:'04430000-0000-4000-8000-000000000003',slug:'qa-visual',display_name:'متعلم الاختبار',grade_level:7,is_test:true},gamification:{xp:0,reward_points:0,current_level:1,current_streak:0,longest_streak:0,badges:[],rewards:[]}};
+const id=q=>'04430000-0000-4000-8000-'+String(candidate.questions.indexOf(q)+101).padStart(12,'0');
+const names=new Map(['rectangle','triangle','composite'].map((n,i)=>['04410000-0000-4000-8000-'+String(i+101).padStart(12,'0'),n]));
+const reply=(route,payload,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(payload)});
+async function run(device){
+ const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile});
+ const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
+ page.on('pageerror',e=>errors.push(e.name));
+ const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href}))});
+ const evidence=()=>learning.map(q=>({question_id:id(q),question_code:q.question_code,concept_id:q.concept_code,concept_label:'مراجعة -26 و (-7) - 19 <img src=x>',learning_stage:q.learning_stage,status:completed.has(id(q))?'completed':'pending',is_correct:completed.has(id(q))?true:null,attempts_used:completed.has(id(q))?1:null,hints_used:completed.has(id(q))?hints.get(id(q))||0:null,explanation:completed.has(id(q))?q.explanation:null}));
+ const guidance=()=>({assessment_profile:candidate.assessment_profile,learning_evidence:evidence(),learning_guidance:Object.fromEntries(['FOUNDATION','BRIDGE'].map(stage=>[stage,conceptGuidance(evidence(),stage)]))});
+ const examReview=()=>exam.map(q=>({...question(q),question_id:id(q),response:{option_position:answers.get(id(q))},correct_answer:{option_position:q.options.find(o=>o.is_correct).position},is_correct:answers.get(id(q))===q.options.find(o=>o.is_correct).position,explanation:q.explanation}));
+ try{
+  await page.route('**/qa-visual-assets/**',route=>{const name=new URL(route.request().url()).pathname.split('/').at(-1);if(failComposite&&name==='composite.png')return route.fulfill({status:503,body:'Synthetic required-media outage'});return route.fulfill({status:200,contentType:'image/png',headers:{'cache-control':'no-store'},body:fs.readFileSync(new URL('./fixtures/assessment-visual/'+name,import.meta.url))});});
+  await page.route('**/functions/v1/**',route=>route.abort('blockedbyclient'));
+  await page.route('**/functions/v1/family-api',route=>reply(route,route.request().postDataJSON()?.action==='student_profile'?profile:{learners:[]}));
+  await page.route('**/functions/v1/student-library-api',route=>reply(route,{programs:[],standalone_books:[]}));
+  await page.route('**/functions/v1/activity-api',route=>reply(route,{ok:true}));
+  await page.route('**/functions/v1/question-reference-api',route=>reply(route,{codes:{}}));
+  await page.route('**/functions/v1/attempt-history-api',route=>{const b=route.request().postDataJSON();if(b.action==='attempt_detail')return reply(route,{attempt:{id:examAttempt,delivery_mode:'exam',submitted_at:'2026-11-05T12:00:00Z',percentage:95,wrong_count:1,context:{quiz:{title:'اختبار الرسوم',slug:'qa-visual'}}},review:examReview()});if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:exam.map(q=>({question_id:id(q),assets:question(q).assets}))});}return reply(route,{items:[],has_more:false,next_cursor:null});});
+  await page.route('**/functions/v1/learning-api',route=>{
+   const b=route.request().postDataJSON();calls.push(b.action);
+   if(b.action==='start_quiz')return reply(route,{attempt_id:attempt,resumed:completed.size>0,quiz:{title:'اختبار الرسوم',slug:'qa-visual'},...guidance(),queue:learning.map((q,i)=>({question_id:id(q),source_role:'core',status:completed.has(id(q))?'completed':i===completed.size?'active':'pending',draft_option_position:draft.get(id(q))||null,hint_level_requested:hints.get(id(q))||0,question:question(q)}))});
+   if(b.action==='save_draft'){draft.set(b.question_id,b.option_position);return reply(route,{ok:true});}
+   if(b.action==='request_hint'){const level=Math.min(4,(hints.get(b.question_id)||0)+1);hints.set(b.question_id,level);const q=learning.find(q=>id(q)===b.question_id);return reply(route,{ok:true,hint_level:level,hint:{hint_level:level,content:q.hints[level-1].content,language:'tr'}});}
+   if(b.action==='answer'){completed.add(b.question_id);return reply(route,{is_correct:true,finalized:true,explanation:learning.find(q=>id(q)===b.question_id).explanation,...guidance()});}
+   if(b.action==='finish_quiz'){finishCalls++;assert.equal(completed.size,20,'UI must never fake completion');return reply(route,{percentage:100,first_try_correct:20,hints_used:1,award:{already_awarded:true},...guidance(),review:learning.map(q=>({...question(q),question_id:id(q),is_correct:true,explanation:q.explanation}))});}
+   if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   return reply(route,{optional_video:null});
+  });
+  await page.route('**/functions/v1/exam-v2-api',route=>{
+   const b=route.request().postDataJSON();calls.push(b.action);
+   if(b.action==='start_exam')return reply(route,{attempt_id:examAttempt,quiz:{title:'امتحان الرسوم',slug:'qa-visual'},assessment_profile:candidate.assessment_profile,questions:exam.map(q=>({question_id:id(q),question:question(q),saved_response:answers.has(id(q))?{option_position:answers.get(id(q))}:null}))});
+   if(b.action==='save_answer'){answers.set(b.question_id,b.option_position);return reply(route,{ok:true});}
+   if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:exam.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   if(b.action==='submit_exam')return reply(route,{percentage:95,score_points:19,max_points:20,review:examReview()});
+   return reply(route,{ok:true});
+  });
+  await page.addInitScript(()=>localStorage.setItem('learner_session','qa.visual'));
+  async function start(){await page.goto(base+'#student',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof window.FLH?.startLearningQuiz==='function');await page.evaluate(()=>window.FLH.startLearningQuiz('qa-visual'));}
+  async function shot(name){fs.mkdirSync('playwright-screenshots',{recursive:true});const path='playwright-screenshots/flh-044-'+device.name+'-'+name+'.png';await page.screenshot({path,fullPage:true});shots.push({file:path.split('/').at(-1),sha256:createHash('sha256').update(fs.readFileSync(path)).digest('hex')});}
+  async function layout(){assert.equal(await page.locator('html').getAttribute('dir'),'rtl');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2||document.body.scrollWidth>innerWidth+2),false);assert.ok(await page.locator('.question').first().evaluate(el=>el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0));}
+  async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
+  await start();await page.locator('.flh-visual-asset img').waitFor();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);await layout();await shot('learning-one-image');
+  await page.evaluate(async()=>{window.qaAssetHelper=window.FLHAssessmentAssets;delete window.FLHAssessmentAssets;await window.FLH.startLearningQuiz('qa-visual');});
+  assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'Missing helper must fail closed in Learning');
+  const blockedCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.flh-learn-answer');b.disabled=false;b.click();document.querySelector('#flhConfirmAnswer').click();});assert.equal(calls.length,blockedCalls,'Missing helper cannot persist drafts or answers');await shot('missing-helper-learning');
+  await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startLearningQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
+  await page.locator('#flhHelp').click();await page.locator('.flh-hint-card').waitFor();
+  for(let i=0;i<9;i++)await answerLearning(i);
+  await start();assert.equal(completed.size,9);await answerLearning(9);
+  await page.locator('#learnContinueBridge').waitFor();assert.equal(await page.locator('#learnContinueBridge').isEnabled(),true);assert.ok(await page.locator('.flh-stage-summary details').count()>0,'Hint use recommends optional concept review');await shot('foundation-summary');
+  assert.ok((await page.locator('.flh-stage-summary summary .flh-math-ltr[dir="ltr"]').allTextContents()).some(t=>t.includes('-26')),'Concept negatives use the shared LTR math renderer');assert.equal(await page.locator('.flh-stage-summary summary img').count(),0,'Concept labels remain escaped');
+  await page.locator('#learnContinueBridge').click();await page.waitForFunction(()=>document.querySelectorAll('.flh-visual-asset img').length===2&&[...document.querySelectorAll('.flh-visual-enlarge')].every(b=>!b.disabled));
+  assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen']);await layout();assert.equal(await page.locator('.flh-sticky-action').evaluate(el=>getComputedStyle(el).position),'static','Confirmation must not cover required diagrams');await shot('bridge-two-images');
+  await start();await page.locator('#learnContinueBridge').click();assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen'],'Reload preserves image order and the same attempt');await answerLearning(10);
+  await start();assert.equal(completed.size,11);for(let i=11;i<20;i++)await answerLearning(i);
+  await page.locator('#learnOpenExam').waitFor();assert.equal(finishCalls,1);assert.equal(await page.locator('#learnOpenExam').isEnabled(),true);assert.ok(await page.locator('.flh-stage-summary details').count()>0,'Finish retains Foundation review needs even when Bridge is correct');await shot('learning-final-review');
+  failComposite=true;await page.locator('#learnOpenExam').click();await page.locator('.flh-visual-retry').waitFor({state:'visible'});assert.equal(await page.locator('.exam-v3-answer:enabled').count(),0);assert.equal(answers.size,0,'Required-media failure must not create a false answer');await shot('required-media-error');
+  failComposite=false;await page.locator('.flh-visual-retry').click();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);assert.equal(answers.size,0,'URL refresh has zero answer side effects');
+  await page.evaluate(async()=>{delete window.FLHAssessmentAssets;await window.FLH.startExamQuiz('qa-visual');});assert.equal(await page.locator('.exam-v3-answer:enabled').count(),0,'Missing helper must fail closed in Exam');
+  const blockedExamCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.exam-v3-answer');b.disabled=false;b.click();});assert.equal(calls.length,blockedExamCalls);assert.equal(answers.size,0);await shot('missing-helper-exam');
+  await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startExamQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
+  const zoom=page.locator('.flh-visual-enlarge');await zoom.focus();await page.keyboard.press('Enter');await page.locator('.flh-visual-dialog').waitFor();await page.keyboard.press('Escape');assert.equal(await zoom.evaluate(el=>el===document.activeElement),true,'Keyboard zoom returns focus');await layout();await shot('exam-composite');
+  for(let i=0;i<20;i++){const pos=i===0?2:exam[i].options.find(o=>o.is_correct).position;await page.locator('.exam-v3-answer[data-pos="'+pos+'"]').click();if(i<19)await page.locator('#examNext').click();}
+  assert.equal(await page.locator('#flhHelp').count(),0,'Active Exam has no hints');await page.locator('#examSubmit').click();await page.locator('.exam-review-wrong .flh-visual-asset img').waitFor();await layout();await shot('exam-review');
+  await page.locator('#examHome').click();await page.waitForFunction(()=>document.querySelector('.hero h1')?.textContent?.includes('أهلًا'));await page.evaluate(id=>window.FLH.openAttemptHistoryAttempt(id),examAttempt);await page.locator('.flh-history-review-list .flh-visual-asset img').waitFor();await layout();await shot('history');
+  assert.deepEqual(errors,[]);assert.equal(calls.filter(x=>x==='submit_exam').length,1);console.log('FLH-044 exact candidate rendered Learning/Exam/history, 0/1/2 images, required failure/read-only refresh, keyboard/RTL and 9/10/11/20 resume: PASS '+device.name+' (synthetic APIs)');
+ }finally{await page.close();}
+}
+try{await run({name:'mobile',viewport:{width:390,height:844},mobile:true});await run({name:'desktop',viewport:{width:1365,height:900},mobile:false});
+ const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();if(process.env.FLH_QA_HEAD_SHA)assert.equal(head,process.env.FLH_QA_HEAD_SHA);
+ fs.writeFileSync('playwright-screenshots/flh-044-manifest.json',JSON.stringify({feature_id:'FLH-FEAT-2026-044',spec_version:'1.1',drive_revision_id:'4',head_sha:head,candidate_sha256:await academicCandidateHash(candidate),run_id:process.env.GITHUB_RUN_ID||null,source:'synthetic APIs, actual runtimes; not authenticated provider/academic pilot PASS',retention_days:7,files:shots},null,2));
+}finally{await browser.close();}

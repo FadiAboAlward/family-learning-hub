@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { PRODUCTION_HOSTS } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
 import { readQaTestingConfig, requireQaOidcUrl, verifyQaTestingBackend } from './qa-isolation.mjs';
 import { verifyAssessmentAuthoringApi } from './assessment-authoring.authenticated.mjs';
+import { verifyAssessmentVisualApi } from './assessment-visual.authenticated.mjs';
 import { assertContainerProductionDenied, assertOwnedContainer, fetchRunnerLocalAuth, localFunctionConfig, ownedContainerHostsPath, qaProcessDiagnostic, readLocalRuntime, requireRunnerLocal, requireSuccessfulCoreEvidence, safeQaFailure, safeQaProcessDiagnostic } from './qa-runner-local.mjs';
 
 const evidenceDirectory = path.resolve('qa-authenticated-evidence');
@@ -284,6 +285,7 @@ async function main() {
     }
     if (!ready) throw new Error('QA_LOCAL_APP_START_FAILED'); mark(stage);
     stage = 'unmocked_authenticated_browser'; authentication = 'FAIL';
+    await verifyAssessmentVisualApi({runtime,parentId,email,password,sql:(_runtime,source)=>sql(config,source),appUrl:config.appUrl});
     const childEnv = { ...process.env, FLH_QA_PUBLISHABLE_KEY: runtime.publishableKey, FLH_QA_PARENT_EMAIL: email, FLH_QA_PARENT_PASSWORD: password };
     readQaTestingConfig(childEnv); // Publishable/anon only; service key never reaches the browser child.
     await command(process.execPath, ['tests/authenticated-e2e.mjs'], { env: childEnv, timeout: 240000 });

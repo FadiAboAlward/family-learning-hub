@@ -1,5 +1,7 @@
 import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { ASSESSMENT_DELIVERY_ACTIONS,assessmentDeliveryCommand } from './assessment-delivery.mjs';
+import { verifyAssessmentMedia } from './assessment-media.mjs';
+import { isVisualPackage } from './assessment-visual-contract.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -49,10 +51,18 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   if(Object.hasOwn(ASSESSMENT_DELIVERY_ACTIONS,body.action))return assessmentDeliveryCommand(admin,workspaceId,parentId,body,trace);
   const action = body.action.replace('_assessment','');
   let payload;
-  if (action==='stage') payload=await assessmentStagePayload(workspaceId,parentId,body);
+  if (action==='stage') {
+    payload=await assessmentStagePayload(workspaceId,parentId,body);
+    Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
+  }
   else {
     if (!UUID.test(body.quiz_version_id||'') || !/^[a-f0-9]{64}$/.test(body.candidate_sha256||'')) deny('ASSESSMENT_TARGET_INVALID');
     payload={quiz_version_id:body.quiz_version_id,candidate_sha256:body.candidate_sha256};
+    if(action==='release') {
+      const {data:read,error}=await admin.rpc('flh_assessment_command',{p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',p_payload:payload});
+      if(error||read?.ok!==true)deny('ASSESSMENT_UNAVAILABLE');
+      if(isVisualPackage(read.publication?.candidate))Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,body.quiz_version_id,read.publication.candidate,body.candidate_sha256));
+    }
   }
   const {data,error}=await trace.measure('assessment.'+action+'.rpc',{dbOperations:1},()=>admin.rpc('flh_assessment_command',{
     p_workspace_id:workspaceId,p_parent_id:parentId,p_action:action,p_payload:payload

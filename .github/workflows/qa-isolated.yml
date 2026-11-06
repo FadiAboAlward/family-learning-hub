@@ -77,7 +77,9 @@ jobs:
         # No install hooks and no credentials are used.
         # Installation has its own unconditional step before the discovered suite.
         shell: bash
-        run: npm ci --prefix supabase/functions/assessment-mcp --ignore-scripts --no-audit --no-fund
+        run: |
+          npm ci --prefix supabase/functions/assessment-mcp --ignore-scripts --no-audit --no-fund
+          npm ci --prefix supabase/functions/_shared --ignore-scripts --no-audit --no-fund
       - name: Convention-based unit test suite
         shell: bash
         run: |
@@ -145,6 +147,8 @@ jobs:
         run: npx --yes supabase@2.117.0 db query --local --file tests/paper-unanswered-exam.contract.sql
       - name: Verify assessment transactional staging and held publication
         run: node tests/assessment-publication.contract.mjs
+      - name: Verify visual exact-candidate publication and private media contract
+        run: node tests/assessment-visual.contract.mjs
       - name: Verify direct assessment authoring transaction and concurrency
         run: node tests/assessment-authoring.contract.mjs
       - name: Verify support-workbook paper ingestion
@@ -231,6 +235,10 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173/
         run: node tests/academic-exact-candidate-browser.mjs
+      - name: Render exact visual candidate, stages, failure and history (390 and desktop)
+        env:
+          APP_URL: http://127.0.0.1:4173/
+        run: node tests/assessment-visual-browser.mjs
       - name: Run family rewards browser regression
         env:
           APP_URL: http://127.0.0.1:4173/

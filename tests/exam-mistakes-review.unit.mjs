@@ -6,6 +6,7 @@ const source=fs.readFileSync(new URL('../program-exam-v3.js',import.meta.url),'u
 const start=source.indexOf('    function uniqueSteps('),end=source.indexOf('    function bindReviewHelp(');
 assert.ok(start>0&&end>start);
 const context={optionText:(id,position)=>({q1:{1:'26',2:'-26'},q2:{1:'4',2:'5'}}[id]?.[position]||''),questionAttrs:()=> 'dir="rtl"',renderMath:value=>String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};
+vm.runInNewContext(source.slice(source.indexOf('  function assetsHtml('),source.indexOf('  let warmPromise')),context);
 vm.runInNewContext(source.slice(start,end),context);
 const html=context.reviewHtml([
   {question_id:'q2',is_correct:true,prompt:'سؤال صحيح',response:{option_position:1},correct_answer:{option_position:1}},

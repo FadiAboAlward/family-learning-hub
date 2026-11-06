@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { assessmentCandidateHash, inspectAssessmentPublication as inspect } from '../scripts/assessment-publication-preflight.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
+import { visualCandidate } from './fixtures/assessment-visual/candidate.mjs';
 
 const fixture = JSON.parse(fs.readFileSync('tests/fixtures/academic-content-quality/valid-package.json','utf8'));
 const sourceLearning = fixture.questions.find(q=>q.delivery_surface==='learning');
@@ -93,6 +94,16 @@ valid.semantic_review={
 };
 assert.equal(inspectAssessmentPublication(validCandidate,valid).ok,true);
 assert.equal(inspectAssessmentPublication(validCandidate,valid).warning_disposition_required,false);
+const visual=visualCandidate(),visualSnapshot=structuredClone(valid);
+visualSnapshot.questions=visual.questions.map((q,i)=>({...row(q,i),assets:structuredClone(q.assets),source_metadata:{visual_assessment:{learning_stage:q.learning_stage??null}}}));
+visualSnapshot.semantic_review.candidate_sha256=assessmentCandidateHash(visual);
+visualSnapshot.semantic_review.warning_dispositions=validateAcademicPackage(visual).warnings.map(w=>({...w,result:'ACCEPTED',reason:'Synthetic visual snapshot review only.'}));
+assert.equal(inspectAssessmentPublication(visual,visualSnapshot).ok,true,'Complete visual export matches exact candidate');
+for(const mutate of [s=>delete s.questions[0].assets,s=>delete s.questions[0].source_metadata.visual_assessment.learning_stage,s=>s.questions[10].assets.reverse()]){
+ const drift=structuredClone(visualSnapshot);mutate(drift);assert.ok(has(inspectAssessmentPublication(visual,drift),'CANDIDATE_STAGING_DRIFT'),'Missing/reordered visual export cannot pass');
+}
+const runbook=fs.readFileSync('docs/assessment-publication-runbook.md','utf8');
+assert.ok(runbook.includes('ordered canonical `assets`')&&runbook.includes('`source_metadata.visual_assessment.learning_stage`'),'Operator export contract includes the visual fields tested above');
 const feedbackCandidate=structuredClone(validCandidate);
 Object.assign(feedbackCandidate.questions[0],{explanation:'Sentetik açıklama.',correct_explanation:'Sentetik doğru yanıt açıklaması.',final_incorrect_explanation:'Sentetik son yanlış yanıt açıklaması.'});
 const feedbackSnapshot={...structuredClone(valid),questions:feedbackCandidate.questions.map(row)};

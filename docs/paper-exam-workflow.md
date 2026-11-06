@@ -101,6 +101,20 @@ If space remains, improve readability, math size, answer space, or visual balanc
 
 ## Layout standard
 
+For the new opt-in FLH-FEAT-2026-044 v1.1 visual profile only, an explicitly
+requested paper has **20 additional unique questions**, independently authored
+from the earlier 40 interactive items. It is colored, retains legibility in
+grayscale and follows the existing A4/model/map/approval/ingestion gates. Never
+automatically generate it or substitute a printout of the earlier 40.
+
+Bind ordered image UUIDs, labels, required state, raster dimensions/MIME, SHA-256,
+private content-hash path, provenance and exact version in its canonical image
+manifest. Authenticated downloads used for layout are transient; signed URLs
+never enter the paper hash. The new-profile runtime projection includes assets;
+legacy paper projections/hashes/artifacts remain unchanged. Source/semantic
+review and inspection of every colored rendered page are still required before
+the paper is ready. See [FLH-044 evidence](flh-044-evidence.md) for unproved gates.
+
 For a compact school-style paper:
 
 - each question is one visual block: prompt + choices/response area + separator;

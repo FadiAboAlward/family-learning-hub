@@ -115,7 +115,7 @@ assert.equal((await rpc('tools/list',{}, {origin:'https://evil.example'})).statu
 const disabled=await assessmentMcpHttp(new Request(resource),{...deps,env:{}});assert.equal(disabled.status,503);
 const discovery=await assessmentMcpHttp(new Request(config.metadataUrl),deps);assert.equal((await discovery.json()).resource,resource);
 const runtimeDiscovery=await assessmentMcpHttp(new Request('http://localhost/assessment-mcp/.well-known/oauth-protected-resource'),deps);assert.equal((await runtimeDiscovery.json()).resource,resource);
-assert.equal((await rpc('tools/list',{}, {},'http://localhost/assessment-mcp/mcp')).body.result.tools.length,7,'runtime strips gateway prefix');
+assert.equal((await rpc('tools/list',{}, {},'http://localhost/assessment-mcp/mcp')).body.result.tools.length,10,'runtime strips gateway prefix and includes narrow media upload/preview/cleanup tools');
 assert.equal((await rpc('tools/list',{}, {},'http://localhost/unrelated/assessment-mcp/mcp')).status,404,'no arbitrary suffix routing');
 assert.equal(calls.some(c=>!['flh_assessment_command','flh_assessment_authoring_command','flh_learning_video_attach'].includes(c.name)),false);
 console.log('Assessment authoring validation, session/role/resource/client authorization, official MCP discovery/schemas/full synthetic flow, safe errors and resumable reads: PASS (mocked persistence)');
