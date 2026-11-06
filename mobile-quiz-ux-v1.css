@@ -9,10 +9,12 @@
   .flh-exam-swipe-zone.flh-touch-quiz{padding-bottom:24px}
 }
 
-/* FLH-044 #207: use normal document flow for active Learning (including 0 images)
-   and submitted Exam review; keep the separate active-Exam footer policy. */
+/* FLH-044 #207: submitted Exam review must never obscure wrong-answer artwork
+   or text on any viewport; the active Exam footer remains separately managed. */
+.flh-sticky-action.flh-exam-results-action{position:static;bottom:auto;z-index:auto}
+
+/* Learning 0-image confirmation stays in normal flow on touch-size screens. */
 @media(max-width:640px){
-  .flh-touch-quiz:has(#flhConfirmAnswer)>.flh-sticky-action,
-  .panel:has(#examHome)>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
+  .flh-touch-quiz:has(#flhConfirmAnswer)>.flh-sticky-action{position:static;bottom:auto;z-index:auto}
   .flh-touch-quiz:has(#flhConfirmAnswer){padding-bottom:24px}
 }
