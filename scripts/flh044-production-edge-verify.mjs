@@ -11,6 +11,7 @@ const BEFORE = Object.freeze({
   'student-library-api': 9,
 });
 
+/** Require updated active Production bundles and unchanged custom-session gateway policy. */
 export function verifyDeployedFunctions(functions, before = BEFORE) {
   assert.ok(Array.isArray(functions), 'Expected function list from Management API');
   for (const [slug, oldVersion] of Object.entries(before)) {
@@ -18,11 +19,14 @@ export function verifyDeployedFunctions(functions, before = BEFORE) {
     assert.ok(fn, 'Missing Production Edge function ' + slug);
     assert.equal(fn.status, 'ACTIVE', slug + ' not active');
     assert.equal(fn.verify_jwt, false, slug + ' unexpectedly requires JWT gateway');
+    // Without an authenticated, approved bundle digest, unchanged versions are unverified.
+    // Intentionally fail closed, even if the vendor CLI skipped an equivalent upload.
     assert.ok(Number(fn.version) > oldVersion, slug + ' not redeployed from approved source');
   }
   return Object.keys(before);
 }
 
+/** Read only Production Management API function metadata after the manual release. */
 async function main() {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   assert.ok(token, 'Production PAT is missing');
