@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {validateProductionLedger, stageOnlyCanonical} from '../scripts/flh044-production-migration-stage.mjs';
+import {verifyDeployedFunctions} from '../scripts/flh044-production-edge-verify.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/release/flh044-production-ledger-baseline.json'), 'utf8'));
@@ -32,3 +33,16 @@ try {
   fs.rmSync(tmp, {recursive: true, force: true});
 }
 console.log('PASS: exact Production migration guard and canonical-only transient staging');
+
+const functionVersions = [
+  {slug: 'assessment-mcp', status: 'ACTIVE', verify_jwt: false, version: 8},
+  {slug: 'learning-api', status: 'ACTIVE', verify_jwt: false, version: 24},
+  {slug: 'exam-v2-api', status: 'ACTIVE', verify_jwt: false, version: 14},
+  {slug: 'attempt-history-api', status: 'ACTIVE', verify_jwt: false, version: 8},
+  {slug: 'family-api', status: 'ACTIVE', verify_jwt: false, version: 19},
+  {slug: 'student-library-api', status: 'ACTIVE', verify_jwt: false, version: 10},
+];
+assert.equal(verifyDeployedFunctions(functionVersions).length, 6);
+assert.throws(() => verifyDeployedFunctions(functionVersions.slice(1)), /Missing/);
+assert.throws(() => verifyDeployedFunctions(functionVersions.map(f => f.slug === 'assessment-mcp' ? {...f, verify_jwt: true} : f)), /JWT gateway/);
+assert.throws(() => verifyDeployedFunctions(functionVersions.map(f => f.slug === 'family-api' ? {...f, version: 18} : f)), /not redeployed/);
