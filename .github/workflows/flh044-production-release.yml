@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
           cd "${STAGE_DIR}"
           supabase link --project-ref "${PROD_REF}" --password "${SUPABASE_DB_PASSWORD}" --yes
-          supabase db push --dry-run --linked > "${RUNNER_TEMP}/flh044-dry-run.txt"
+          supabase db push --dry-run --linked > "${RUNNER_TEMP}/flh044-dry-run.txt" 2>&1
           grep -Fq '20261105134103' "${RUNNER_TEMP}/flh044-dry-run.txt"
           echo 'PASS: only the canonical FLH044 version is staged as pending.'
 
