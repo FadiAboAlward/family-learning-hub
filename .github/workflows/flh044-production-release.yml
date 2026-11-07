@@ -15,6 +15,7 @@ on:
         options:
           - preflight
           - deploy
+          - resume-edge
 
 permissions:
   contents: read
@@ -56,7 +57,7 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"
           test -n "${SUPABASE_ACCESS_TOKEN}"
           test "${PROD_REF}" = gkpoylfozvuwuwqeoduc
-          test "${RELEASE_PHASE}" = preflight -o "${RELEASE_PHASE}" = deploy
+          test "${RELEASE_PHASE}" = preflight -o "${RELEASE_PHASE}" = deploy -o "${RELEASE_PHASE}" = resume-edge
 
       - name: Setup pinned Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -67,7 +68,7 @@ jobs:
         run: node tests/flh044-production-release.unit.mjs
 
       - name: Setup pinned Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@9f97a8880aff8507123eac41a95501b846a3976f # pinned, version input controls CLI binary
         with:
           version: 2.117.0
 
@@ -84,12 +85,17 @@ jobs:
           supabase functions deploy --help >/dev/null
 
       - name: Verify and stage only the approved canonical Production migration
+        if: inputs.phase != 'resume-edge'
         id: stage
         run: node scripts/flh044-production-migration-stage.mjs stage
 
       - name: Read-only preflight complete
         if: inputs.phase == 'preflight'
-        run: echo 'PASS; exactly 132 prior applied versions, one canonical pending; no Production writes.'
+        run: echo 'PASS; 132 previously applied versions; one canonical pending; no Production writes.'
+
+      - name: Verify fully applied canonical ledger before any partial-Edge recovery
+        if: inputs.phase == 'resume-edge'
+        run: node scripts/flh044-production-migration-stage.mjs verify-applied
 
       - name: Require database password for explicitly requested deploy
         if: inputs.phase == 'deploy'
@@ -124,7 +130,7 @@ jobs:
           node scripts/flh044-production-migration-stage.mjs verify-applied
 
       - name: Deploy reviewed functions with Docker-backed binary bundle
-        if: inputs.phase == 'deploy'
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
         shell: bash
         run: |
           set -euo pipefail
@@ -134,11 +140,11 @@ jobs:
           done
 
       - name: Verify all six Production Edge services are active
-        if: inputs.phase == 'deploy'
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
         run: node scripts/flh044-production-edge-verify.mjs
 
       - name: Mark backend release ready for separate Pages approval
-        if: inputs.phase == 'deploy'
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
         run: |
           echo 'PASS: canonical Production migration and Edge functions; visual flag remains OFF.'
           echo 'Next: human-led read-only Production runtime verification, then existing exact-SHA Pages dispatch.' >> "$GITHUB_STEP_SUMMARY"
