@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "projectRef": "gkpoylfozvuwuwqeoduc",
+  "mainShaBeforeRelease": "eb5724387b77932568b883b48f2fda8ac892736e",
+  "observedAppliedCount": 132,
+  "observedLatestVersion": "20261031205107",
+  "observedAppliedSha256": "d6fc55813a1815bb9a99fb8f18ca28d42e7f9c078ddc10a829e44445ad023850",
+  "canonicalVersion": "20261105134103",
+  "canonicalSource": "supabase/migrations/20261105134103_visual_foundation_bridge_v1.sql",
+  "canonicalSha256": "16f4d0136086e805815121669d780d2f7cbe8c567d279eac2f0e035239aadc07",
+  "recordedAt": "2026-11-07"
+}

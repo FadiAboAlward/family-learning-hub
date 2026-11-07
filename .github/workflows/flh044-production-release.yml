@@ -1,0 +1,150 @@
+name: FLH-044 Controlled Production Backend Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Approved exact main commit SHA
+        required: true
+        type: string
+      phase:
+        description: Read-only preflight or explicitly authorized backend release
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - deploy
+          - resume-edge
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flh044-prod-release
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      PROD_REF: gkpoylfozvuwuwqeoduc
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.FLH044_PROD_SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.FLH044_PROD_DB_PASSWORD }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      RELEASE_PHASE: ${{ inputs.phase }}
+    steps:
+      - name: Checkout exact approved main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fail closed on branch, SHA, missing token, or baseline drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_EVENT_NAME}" = workflow_dispatch
+          test "${GITHUB_REF}" = refs/heads/main
+          [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          test "${GITHUB_SHA}" = "${EXPECTED_SHA}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          git fetch --no-tags origin main
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+          test "${PROD_REF}" = gkpoylfozvuwuwqeoduc
+          test "${RELEASE_PHASE}" = preflight -o "${RELEASE_PHASE}" = deploy -o "${RELEASE_PHASE}" = resume-edge
+
+      - name: Setup pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Test migration-history release guard
+        run: node tests/flh044-production-release.unit.mjs
+
+      - name: Setup pinned Supabase CLI
+        uses: supabase/setup-cli@9f97a8880aff8507123eac41a95501b846a3976f # pinned, version input controls CLI binary
+        with:
+          version: 2.117.0
+
+      - name: Verify CLI, Docker daemon, and exact WASM binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --version
+          docker info --format '{{.ServerVersion}}'
+          test "$(wc -c < supabase/functions/_shared/vendor/webp_dec.wasm)" = 137960
+          echo '30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344  supabase/functions/_shared/vendor/webp_dec.wasm' | sha256sum -c -
+          grep -Fq 'static_files = ["./functions/_shared/vendor/webp_dec.wasm"]' supabase/config.toml
+          supabase db push --help >/dev/null
+          supabase functions deploy --help >/dev/null
+
+      - name: Verify and stage only the approved canonical Production migration
+        if: inputs.phase != 'resume-edge'
+        id: stage
+        run: node scripts/flh044-production-migration-stage.mjs stage
+
+      - name: Read-only preflight complete
+        if: inputs.phase == 'preflight'
+        run: echo 'PASS; 132 previously applied versions; one canonical pending; no Production writes.'
+
+      - name: Verify fully applied canonical ledger before any partial-Edge recovery
+        if: inputs.phase == 'resume-edge'
+        run: node scripts/flh044-production-migration-stage.mjs verify-applied
+
+      - name: Require database password for explicitly requested deploy
+        if: inputs.phase == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_PASSWORD}" || { echo 'Missing FLH044_PROD_DB_PASSWORD GitHub secret'; exit 1; }
+
+      - name: Link only to Production and dry-run exact canonical migration
+        if: inputs.phase == 'deploy'
+        shell: bash
+        env:
+          STAGE_DIR: ${{ steps.stage.outputs.stage_dir }}
+        run: |
+          set -euo pipefail
+          cd "${STAGE_DIR}"
+          supabase link --project-ref "${PROD_REF}" --password "${SUPABASE_DB_PASSWORD}" --yes
+          supabase db push --dry-run --linked > "${RUNNER_TEMP}/flh044-dry-run.txt" 2>&1
+          grep -Fq '20261105134103' "${RUNNER_TEMP}/flh044-dry-run.txt"
+          echo 'PASS: only the canonical FLH044 version is staged as pending.'
+
+      - name: Apply the canonical migration once, preserving exact version
+        if: inputs.phase == 'deploy'
+        shell: bash
+        env:
+          STAGE_DIR: ${{ steps.stage.outputs.stage_dir }}
+        run: |
+          set -euo pipefail
+          cd "${STAGE_DIR}"
+          supabase db push --linked --yes
+          cd "${GITHUB_WORKSPACE}"
+          node scripts/flh044-production-migration-stage.mjs verify-applied
+
+      - name: Deploy reviewed functions with Docker-backed binary bundle
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in assessment-mcp learning-api exam-v2-api attempt-history-api family-api student-library-api; do
+            echo "Deploying reviewed Production Edge function ${name}"
+            supabase functions deploy "${name}" --project-ref "${PROD_REF}" --no-verify-jwt
+          done
+
+      - name: Verify all six Production Edge services are active
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
+        run: node scripts/flh044-production-edge-verify.mjs
+
+      - name: Mark backend release ready for separate Pages approval
+        if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
+        run: |
+          echo 'PASS: canonical Production migration and Edge functions; visual flag remains OFF.'
+          echo 'Next: human-led read-only Production runtime verification, then existing exact-SHA Pages dispatch.' >> "$GITHUB_STEP_SUMMARY"
