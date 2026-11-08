@@ -33,7 +33,6 @@ jobs:
     env:
       PROD_REF: gkpoylfozvuwuwqeoduc
       SUPABASE_ACCESS_TOKEN: ${{ secrets.FLH044_PROD_SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.FLH044_PROD_DB_PASSWORD }}
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       RELEASE_PHASE: ${{ inputs.phase }}
     steps:
@@ -81,10 +80,9 @@ jobs:
           test "$(wc -c < supabase/functions/_shared/vendor/webp_dec.wasm)" = 137960
           echo '30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344  supabase/functions/_shared/vendor/webp_dec.wasm' | sha256sum -c -
           grep -Fq 'static_files = ["./functions/_shared/vendor/webp_dec.wasm"]' supabase/config.toml
-          supabase db push --help >/dev/null
           supabase functions deploy --help >/dev/null
 
-      - name: Verify and stage only the approved canonical Production migration
+      - name: Read-only verify the approved Production migration ledger and canonical SQL
         if: inputs.phase != 'resume-edge'
         id: stage
         run: node scripts/flh044-production-migration-stage.mjs stage
@@ -97,37 +95,13 @@ jobs:
         if: inputs.phase == 'resume-edge'
         run: node scripts/flh044-production-migration-stage.mjs verify-applied
 
-      - name: Require database password for explicitly requested deploy
+      - name: Apply only the pinned canonical migration with Production PAT
         if: inputs.phase == 'deploy'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_DB_PASSWORD}" || { echo 'Missing FLH044_PROD_DB_PASSWORD GitHub secret'; exit 1; }
+        run: node scripts/flh044-production-management-release.mjs
 
-      - name: Link only to Production and dry-run exact canonical migration
+      - name: Verify canonical migration history post-commit before Edge deployment
         if: inputs.phase == 'deploy'
-        shell: bash
-        env:
-          STAGE_DIR: ${{ steps.stage.outputs.stage_dir }}
-        run: |
-          set -euo pipefail
-          cd "${STAGE_DIR}"
-          supabase link --project-ref "${PROD_REF}" --password "${SUPABASE_DB_PASSWORD}" --yes
-          supabase db push --dry-run --linked > "${RUNNER_TEMP}/flh044-dry-run.txt" 2>&1
-          grep -Fq '20261105134103' "${RUNNER_TEMP}/flh044-dry-run.txt"
-          echo 'PASS: only the canonical FLH044 version is staged as pending.'
-
-      - name: Apply the canonical migration once, preserving exact version
-        if: inputs.phase == 'deploy'
-        shell: bash
-        env:
-          STAGE_DIR: ${{ steps.stage.outputs.stage_dir }}
-        run: |
-          set -euo pipefail
-          cd "${STAGE_DIR}"
-          supabase db push --linked --yes
-          cd "${GITHUB_WORKSPACE}"
-          node scripts/flh044-production-migration-stage.mjs verify-applied
+        run: node scripts/flh044-production-migration-stage.mjs verify-applied
 
       - name: Deploy reviewed functions with Docker-backed binary bundle
         if: inputs.phase == 'deploy' || inputs.phase == 'resume-edge'
