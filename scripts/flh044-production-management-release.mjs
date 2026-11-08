@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {validateProductionLedger} from './flh044-production-migration-stage.mjs';
+import {validateProductionLedger, readProductionLedgerWithPAT} from './flh044-production-migration-stage.mjs';
 
 const REF = 'gkpoylfozvuwuwqeoduc';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -52,7 +52,7 @@ async function api(token, suffix, {method = 'GET', body} = {}) {
     signal: AbortSignal.timeout(method === 'POST' ? 150000 : 30000),
   });
   assert.equal(response.status, method === 'POST' ? 201 : 200, 'Management API failed, HTTP ' + response.status);
-  return method === 'GET' ? response.json() : null;
+  return null;
 }
 
 /** Use PAT only; never reset, reveal or request the legacy Production database password. */
@@ -60,12 +60,12 @@ async function main() {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   assert.ok(token, 'Missing Production PAT');
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/release/flh044-production-ledger-baseline.json'), 'utf8'));
-  validateProductionLedger(manifest, await api(token, '/database/migrations'));
+  validateProductionLedger(manifest, await readProductionLedgerWithPAT(token));
   const sql = buildCanonicalTransaction(manifest, fs.readFileSync(path.join(ROOT, manifest.canonicalSource)));
   // Do NOT retry an ambiguous POST. The explicit BEGIN/COMMIT and version stamp
   // are one operation; post-readback distinguishes success from unknown outcome.
   await api(token, '/database/query', {method: 'POST', body: {query: sql, read_only: false}});
-  validateProductionLedger(manifest, await api(token, '/database/migrations'), {after: true});
+  validateProductionLedger(manifest, await readProductionLedgerWithPAT(token), {after: true});
   console.log('PASS: exact canonical migration applied with PAT, history preserved; no database password used.');
 }
 
