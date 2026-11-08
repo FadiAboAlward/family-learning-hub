@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {buildCanonicalTransaction} from '../scripts/flh044-production-management-release.mjs';
 import {migrationDigest} from '../scripts/flh044-production-migration-stage.mjs';
 
@@ -18,16 +16,19 @@ const manifest = {...baseline, observedAppliedCount: 132, observedAppliedSha256:
 const name = 'flh044_ci';
 const full = buildCanonicalTransaction(manifest, bytes);
 const guard = full.slice(0, full.indexOf(bytes.toString('utf8'))).replaceAll('supabase_migrations.schema_migrations', name + '.schema_migrations');
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flh044-sql-'));
 function query(label, sql, shouldPass) {
-  const filename = path.join(tmp, label + '.sql');
-  fs.writeFileSync(filename, sql);
-  const result = spawnSync('npx', ['--yes', 'supabase@2.117.0', 'db', 'query', '--local', '--file', filename], {
-    encoding: 'utf8', timeout: 45000, maxBuffer: 2 * 1024 * 1024,
+  // Use the repository's existing local-only Docker psql path. Supabase CLI db query
+  // sends a prepared statement and rejects multi-command SQL even on localhost.
+  const result = spawnSync('docker', [
+    'exec', '-i', 'supabase_db_family-learning-hub',
+    'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres',
+  ], {
+    input: sql, encoding: 'utf8', timeout: 45000, maxBuffer: 2 * 1024 * 1024,
   });
-  assert.ok(!result.error, 'Could not invoke local Supabase CLI');
+  assert.ok(!result.error, 'Could not invoke isolated local Docker PostgreSQL');
   if (shouldPass) {
-    assert.equal(result.status, 0, label + ' failed against isolated PostgreSQL: ' + ((result.stderr || '') + '\n' + (result.stdout || '')).slice(0, 900));
+    assert.equal(result.status, 0, label + ' failed against isolated PostgreSQL: ' +
+      ((result.stderr || '') + '\n' + (result.stdout || '')).slice(0, 900));
   } else {
     assert.notEqual(result.status, 0, label + ' unexpectedly passed despite ledger drift');
     assert.match((result.stderr || '') + (result.stdout || ''), /FLH044_PRODUCTION_MIGRATION_DIGEST_DRIFT/);
@@ -47,5 +48,5 @@ try {
   console.log('PASS: real local PostgreSQL accepts the canonical digest guard, and rejects changed ledger rows.');
 } finally {
   try { query('cleanup', 'DROP SCHEMA IF EXISTS ' + name + ' CASCADE;', true); }
-  finally { fs.rmSync(tmp, {recursive: true, force: true}); }
+  finally { /* Isolated runner-local schema was dropped; no files created. */ }
 }
