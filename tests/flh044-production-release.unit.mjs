@@ -6,6 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {migrationDigest, validateProductionLedger, stageOnlyCanonical} from '../scripts/flh044-production-migration-stage.mjs';
 import {verifyDeployedFunctions} from '../scripts/flh044-production-edge-verify.mjs';
+import {buildCanonicalTransaction} from '../scripts/flh044-production-management-release.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/release/flh044-production-ledger-baseline.json'), 'utf8'));
@@ -16,6 +17,16 @@ assert.ok(!JSON.stringify(baseline).includes('register_'), 'Do not track Product
 
 const canonicalFile = path.join(ROOT, baseline.canonicalSource);
 assert.equal(createHash('sha256').update(fs.readFileSync(canonicalFile)).digest('hex'), baseline.canonicalSha256, 'Approved source SQL hash differs from pinned spec');
+const atomic = buildCanonicalTransaction(baseline, fs.readFileSync(canonicalFile));
+assert.match(atomic, /^BEGIN;/);
+assert.match(atomic, /COMMIT;\n$/);
+assert.match(atomic, /pg_advisory_xact_lock\(440442026\)/);
+assert.match(atomic, /FLH044_PRODUCTION_MIGRATION_DIGEST_DRIFT/);
+assert.match(atomic, /INSERT INTO supabase_migrations\.schema_migrations \(version, name, statements\)/);
+assert.match(atomic, /20261105134103/);
+assert.ok(!atomic.includes('20261106084301'), 'Testing migration timestamp must not enter Production SQL');
+assert.throws(() => buildCanonicalTransaction(baseline, Buffer.concat([fs.readFileSync(canonicalFile), Buffer.from('\n-- unreviewed change')])), /Approved migration SQL hash drift/);
+
 const synthetic = Array.from({length: 132}, (_, i) => ({
   version: String(20260801000000 + i),
   name: 'synthetic_' + String(i).padStart(3, '0'),
@@ -73,6 +84,7 @@ assert.match(workflow, /if: inputs\.phase == 'deploy' \|\| inputs\.phase == 'res
 assert.match(workflow, /node scripts\/flh044-production-migration-stage\.mjs verify-applied/);
 assert.match(workflow, /uses: supabase\/setup-cli@[0-9a-f]{40}/);
 assert.doesNotMatch(workflow, /--use-api/);
-assert.match(workflow, /FLH044_PROD_DB_PASSWORD/);
+assert.doesNotMatch(workflow, /FLH044_PROD_DB_PASSWORD|SUPABASE_DB_PASSWORD|supabase db push/);
+assert.match(workflow, /node scripts\/flh044-production-management-release\.mjs/);
 assert.match(workflow, /FLH044_PROD_SUPABASE_ACCESS_TOKEN/);
 console.log('PASS: anonymized ledger digest, canonical SQL hash, fail-closed release gates, and six Edge policies');
