@@ -27,7 +27,7 @@ function query(label, sql, shouldPass) {
   });
   assert.ok(!result.error, 'Could not invoke local Supabase CLI');
   if (shouldPass) {
-    assert.equal(result.status, 0, label + ' failed against local PostgreSQL');
+    assert.equal(result.status, 0, label + ' failed against isolated PostgreSQL: ' + ((result.stderr || '') + '\n' + (result.stdout || '')).slice(0, 900));
   } else {
     assert.notEqual(result.status, 0, label + ' unexpectedly passed despite ledger drift');
     assert.match((result.stderr || '') + (result.stdout || ''), /FLH044_PRODUCTION_MIGRATION_DIGEST_DRIFT/);
