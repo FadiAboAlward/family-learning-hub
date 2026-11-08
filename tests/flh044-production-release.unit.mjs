@@ -86,5 +86,14 @@ assert.match(workflow, /uses: supabase\/setup-cli@[0-9a-f]{40}/);
 assert.doesNotMatch(workflow, /--use-api/);
 assert.doesNotMatch(workflow, /FLH044_PROD_DB_PASSWORD|SUPABASE_DB_PASSWORD|supabase db push/);
 assert.match(workflow, /node scripts\/flh044-production-management-release\.mjs/);
+const ledgerReader = fs.readFileSync(path.join(ROOT, 'scripts/flh044-production-migration-stage.mjs'), 'utf8');
+const mgmtRelease = fs.readFileSync(path.join(ROOT, 'scripts/flh044-production-management-release.mjs'), 'utf8');
+assert.match(ledgerReader, /read_only: true/);
+assert.match(ledgerReader, /\/database\/query/);
+assert.doesNotMatch(ledgerReader, /\/database\/migrations'/);
+assert.doesNotMatch(mgmtRelease, /\/database\/migrations'/);
+assert.match(mgmtRelease, /readProductionLedgerWithPAT/);
+assert.match(mgmtRelease, /read_only: false/);
+
 assert.match(workflow, /FLH044_PROD_SUPABASE_ACCESS_TOKEN/);
 console.log('PASS: anonymized ledger digest, canonical SQL hash, fail-closed release gates, and six Edge policies');
