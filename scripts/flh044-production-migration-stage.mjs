@@ -60,6 +60,22 @@ export function stageOnlyCanonical(baseline, alreadyApplied, {root = ROOT, temp 
   return stage;
 }
 
+/** Read Production migration history by supported PAT-authenticated SQL query, never partner-only migration GET. */
+export async function readProductionLedgerWithPAT(token) {
+  assert.ok(token, 'Missing encrypted Production PAT');
+  const response = await fetch('https://api.supabase.com/v1/projects/' + PROJECT_REF + '/database/query', {
+    method: 'POST',
+    headers: {Authorization: 'Bearer ' + token, Accept: 'application/json', 'Content-Type': 'application/json'},
+    body: JSON.stringify({query: 'SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version', read_only: true}),
+    signal: AbortSignal.timeout(30000),
+  });
+  assert.equal(response.status, 201, 'Production PAT lacks read-only database query permission, HTTP ' + response.status);
+  const result = await response.json();
+  assert.ok(Array.isArray(result), 'Unexpected Production migration query response');
+  assert.ok(result.every(row => typeof row.version === 'string' && typeof row.name === 'string'), 'Unexpected Production migration row shape');
+  return result;
+}
+
 /** Authenticate to the Production Management API only and prepare a verifiable release workspace. */
 async function main() {
   const mode = process.argv[2];
@@ -67,12 +83,7 @@ async function main() {
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   assert.ok(token, 'Missing encrypted Production token');
   const baseline = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/release/flh044-production-ledger-baseline.json'), 'utf8'));
-  const response = await fetch('https://api.supabase.com/v1/projects/' + PROJECT_REF + '/database/migrations', {
-    headers: {Authorization: 'Bearer ' + token, Accept: 'application/json'},
-    signal: AbortSignal.timeout(30000),
-  });
-  assert.equal(response.status, 200, 'Production PAT lacks migration-read access');
-  const remote = await response.json();
+  const remote = await readProductionLedgerWithPAT(token);
   const validated = validateProductionLedger(baseline, remote, {after: mode === 'verify-applied'});
   if (mode === 'stage') {
     const stage = stageOnlyCanonical(baseline, validated);
