@@ -55,9 +55,23 @@ async function main() {
   const sql = buildCanonicalTransaction(manifest, fs.readFileSync(path.join(ROOT, manifest.canonicalSource)));
   // Do NOT retry an ambiguous POST. The explicit BEGIN/COMMIT and version stamp
   // are one operation; post-readback distinguishes success from unknown outcome.
-  await api(token, '/database/query', {method: 'POST', body: {query: sql, read_only: false}});
-  validateProductionLedger(manifest, await readProductionLedgerWithPAT(token), {after: true});
-  console.log('PASS: exact canonical migration applied with PAT, history preserved; no database password used.');
+  let ambiguousError;
+  try {
+    await api(token, '/database/query', {method: 'POST', body: {query: sql, read_only: false}});
+  } catch (error) {
+    // The database may have committed before a network timeout. Never resubmit the SQL.
+    ambiguousError = error;
+  }
+  try {
+    validateProductionLedger(manifest, await readProductionLedgerWithPAT(token), {after: true});
+  } catch (readbackError) {
+    throw new Error(ambiguousError
+      ? 'Migration outcome unverified after an ambiguous POST; stop before Edge deployment, do not retry.'
+      : 'Migration reported success but exact ledger readback failed; stop before Edge deployment.');
+  }
+  console.log(ambiguousError
+    ? 'PASS: ambiguous response reconciled using exact applied ledger readback; no SQL retry.'
+    : 'PASS: exact canonical migration applied with PAT, history preserved; no database password used.');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
