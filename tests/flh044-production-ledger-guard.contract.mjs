@@ -3,7 +3,7 @@ import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {buildLedgerGuard} from '../scripts/flh044-production-management-release.mjs';
+import {buildCanonicalTransaction} from '../scripts/flh044-production-management-release.mjs';
 import {migrationDigest} from '../scripts/flh044-production-migration-stage.mjs';
 
 // Runs only against the disposable GitHub Actions local Supabase database.
@@ -12,9 +12,12 @@ const synthetic = Array.from({length: 132}, (_, i) => ({
   version: String(20260801000000 + i),
   name: 'synthetic_' + String(i).padStart(3, '0'),
 }));
-const manifest = {observedAppliedCount: 132, observedAppliedSha256: migrationDigest(synthetic)};
+const baseline = JSON.parse(fs.readFileSync(new URL('../docs/release/flh044-production-ledger-baseline.json', import.meta.url), 'utf8'));
+const bytes = fs.readFileSync(new URL('../supabase/migrations/20261105134103_visual_foundation_bridge_v1.sql', import.meta.url));
+const manifest = {...baseline, observedAppliedCount: 132, observedAppliedSha256: migrationDigest(synthetic)};
 const name = 'flh044_ci';
-const guard = buildLedgerGuard(manifest).replaceAll('supabase_migrations.schema_migrations', name + '.schema_migrations');
+const full = buildCanonicalTransaction(manifest, bytes);
+const guard = full.slice(0, full.indexOf(bytes.toString('utf8'))).replaceAll('supabase_migrations.schema_migrations', name + '.schema_migrations');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flh044-sql-'));
 function query(label, sql, shouldPass) {
   const filename = path.join(tmp, label + '.sql');
