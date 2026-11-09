@@ -72,7 +72,7 @@ export function validateVisualContract(pkg,errors,warnings) {
   if(!paperOnly){
     const plan=pkg.academic_context?.visual_plan;
     if(plan!==undefined){
-      const subject=String(pkg.academic_context?.subject||'').trim().toLowerCase();
+      const subject=String(pkg.academic_context?.subject||'').trim().toLowerCase().replace(/\u0307/gu,'');
       const math=/^(?:mathematics|math|matematik|رياضيات|الرياضيات)$/u.test(subject);
       const science=/^(?:science|fen bilimleri|fen|علوم|العلوم)$/u.test(subject);
       const focus=plan&&typeof plan==='object'&&!Array.isArray(plan)?plan.focus:null;
