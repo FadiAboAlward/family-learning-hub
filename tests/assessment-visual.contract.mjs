@@ -11,7 +11,14 @@ const json=x=>"'"+JSON.stringify(x).replaceAll("'","''")+"'::jsonb";
 const ids=Object.fromEntries(['parent','quiz','program','curriculum'].map((k,i)=>[k,'04410000-0000-4000-8000-'+String(i+201).padStart(12,'0')]));
 const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and metadata->>'is_test'='true' and is_active;`);assert.match(learner,/^[a-f0-9-]{36}$/);
 await query('begin;'+fs.readFileSync(new URL('../supabase/migrations/20261105134103_visual_foundation_bridge_v1.sql',import.meta.url),'utf8')+'rollback;');
-const candidate=visualCandidate(),hash=await academicCandidateHash(candidate),report=validateAcademicPackage(candidate);assert.equal(report.ok,true);
+const candidate=visualCandidate();
+candidate.academic_context.subject='Synthetic Visual QA';
+candidate.academic_context.visual_plan={policy:'subject-aware-v1',focus:'subject-appropriate',target_questions:3,actual_questions:3};
+for(const q of candidate.questions.filter(q=>q.assets?.length)){
+ const b=candidate.blueprint.find(x=>x.question_code===q.question_code);
+ b.visual_purpose='Synthetic source-verified dimensioned geometric figure is essential to interpreting the measured shape or right-angle relation for '+q.question_code+'.';
+}
+const hash=await academicCandidateHash(candidate),report=validateAcademicPackage(candidate);assert.equal(report.ok,true,JSON.stringify(report.errors));
 const target={quiz_id:ids.quiz,quiz_version_id:v,learner_id:learner,program_id:ids.program};
 const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:geometry-truth-contract',authority_ref:'Disposable technical fixture, no academic approval',source_review_ref:'Owned geometry-source.json',learner_scope_review_ref:'Synthetic Testing only',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic fixture only; real pilot remains pending independent review.'}))};
 const payload=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review:review});
