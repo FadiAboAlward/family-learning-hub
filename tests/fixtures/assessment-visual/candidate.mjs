@@ -56,7 +56,7 @@ export function visualCandidateWithQuota(v=version){
   q.prompt=prompt;q.assets=[diagram(shape,1,v)];q.explanation=explanation;
   q.correct_explanation=explanation;q.final_incorrect_explanation=explanation;
   q.source_ref='synthetic:owned-geometry';q.decomposable=false;
-  q.options=choices.map((content,j)=>({position:j+1,label:String.fromCharCode(65+j),content,is_correct:j+1===correct,...(j+1!==correct?{distractor_rationale:'The alternative confuses the requested measured dimension or uses an incorrect geometry operation; compare against the labeled figure and required unit.'}:{})}));
+  q.options=choices.map((content,j)=>({position:j+1,label:String.fromCharCode(65+j),content,is_correct:j+1===correct,...(j+1!==correct?{distractor_rationale:[`This choice ${content} adds the visible dimensions or uses a length where the question asks for an area; the figure's labels make the correct operation different.`,`This choice ${content} confuses a base, height or side with the complete requested measurement; identify each marked segment before calculating.`,`This choice ${content} carries out an unrelated perimeter or half-area step; compare the units and the exact property named in the question.`][j%3]}:{})}));
   if(q.delivery_surface==='learning')q.hints=teaching.map((lines,j)=>({level:j+1,role:['nudge','guide','strong_guide','near_solution'][j],language:'tr',content:lines.map(x=>'• '+x).join('\n')}));
   const bp=p.blueprint.find(b=>b.question_code===q.question_code);
   bp.reasoning_signature=signature;bp.source_ref=q.source_ref;
