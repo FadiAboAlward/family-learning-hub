@@ -56,7 +56,6 @@ const staged=await assessmentStagePayload(w,ids.parent,{target,candidate,semanti
 const subject=Number(await query('select coalesce(max(id),0)+1 from public.subjects;'));
 const quiz={slug:'qa-assessment-authoring',title:'Synthetic direct authoring',subject_id:subject,curriculum_id:ids.curriculum};
 const oldQuiz={slug:'qa-assessment-authoring-legacy',title:'Synthetic archived visual request',subject_id:subject,curriculum_id:ids.curriculum};
-const oldPayload={...oldProof,request_id:oldRequest,quiz:oldQuiz};
 const payload={...staged,request_id:ids.request,quiz};
 const duplicateTarget={...target,quiz_id:'03310000-0000-4000-8000-000000000009',quiz_version_id:'03310000-0000-4000-8000-000000000010'};
 const duplicateRequest='03310000-0000-4000-8000-000000000011';
@@ -70,6 +69,7 @@ const oldProof=await assessmentStagePayload(w,ids.parent,{target:oldTarget,candi
  reviewer_ref:'synthetic:legacy',authority_ref:'synthetic:legacy',source_review_ref:'synthetic:geometry-source',learner_scope_review_ref:'synthetic:Testing',
  warning_dispositions:oldReport.validation.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Pre-policy synthetic request; no student release authorized.'}))}
 });
+const oldPayload={...oldProof,request_id:oldRequest,quiz:oldQuiz};
 const duplicatePayload={...await assessmentStagePayload(w,ids.parent,{target:duplicateTarget,candidate,semantic_review:{...semantic_review,...duplicateTarget}}),
  request_id:duplicateRequest,quiz:{...quiz,slug:'qa-assessment-authoring-duplicate'}};
 const author=(action,p={request_id:ids.request},parent=ids.parent,workspace=w)=>`public.flh_assessment_authoring_command('${workspace}','${parent}','${action}',${json(p)})`;
