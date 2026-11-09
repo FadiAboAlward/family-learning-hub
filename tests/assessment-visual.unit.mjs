@@ -140,6 +140,27 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  }};
  await assert.rejects(()=>assessmentCommand(drift,workspace,'04410000-0000-4000-8000-000000000020',body,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
  assert.equal(writes,1,'only the exact owner-bound historical candidate staged');
+ // Also verify the other legitimate retry: already-STAGED immutable publication.
+ // The exact same raster is revalidated; the DB returns duplicate idempotently.
+ let publishedRead=0,publishedStages=0;
+ const published={...storage,rpc:async(name,args)=>{
+   if(name==='flh_assessment_command'&&args.p_action==='read'){
+     publishedRead++;
+     return {data:{ok:true,publication:{...target,candidate_sha256:hash}},error:null};
+   }
+   if(name==='flh_assessment_command'&&args.p_action==='stage'){
+     publishedStages++;
+     assert.equal(args.p_payload.media_verification.files.length,3);
+     return {data:{ok:true,duplicate:true,state:'staged'},error:null};
+   }
+   throw Error('unexpected publication retry action');
+ }};
+ const publishedBody={...body};
+ delete publishedBody.request_id;
+ const again=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedBody,trace);
+ assert.equal(again.duplicate,true);
+ assert.deepEqual([publishedRead,publishedStages],[1,1],'exact staged publication retry preserves immutable historical content');
+
 }
 
 assert.deepEqual(await verifyAssessmentMedia({},workspace,version,{}),{},'Legacy authoring has zero media side effects');
