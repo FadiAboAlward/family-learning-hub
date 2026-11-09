@@ -77,6 +77,10 @@ export function validateVisualContract(pkg,errors,warnings) {
       const science=/^(?:science|fen bilimleri|fen|علوم|العلوم)$/u.test(subject);
       const focus=plan&&typeof plan==='object'&&!Array.isArray(plan)?plan.focus:null;
       const visual=questions.filter(q=>Array.isArray(q?.assets)&&q.assets.length>0);
+      for(const q of visual){
+        const note=blueprints.find(b=>b?.question_code===q.question_code)?.visual_purpose;
+        if(typeof note!=='string'||note.trim().length<24)issue('VISUAL_PURPOSE_REQUIRED','blueprint.'+q.question_code+'.visual_purpose','Each image-bearing question needs a specific, reviewable explanation of how the figure contributes to the tested reasoning, not decoration.');
+      }
       const learningVisual=visual.filter(q=>q.delivery_surface==='learning').length;
       const examVisual=visual.filter(q=>q.delivery_surface==='exam').length;
       if(!plan||typeof plan!=='object'||Array.isArray(plan)||plan.policy!=='subject-aware-v1'
