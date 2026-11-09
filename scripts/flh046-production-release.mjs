@@ -8,6 +8,8 @@ const REF='gkpoylfozvuwuwqeoduc';
 const VERSION='20261109190258', NAME='legacy_visual_authoring_eligibility';
 const BEFORE_COUNT=133, PREVIOUS_VERSION='20261105134103';
 const BEFORE_SHA='a881da0b3a2ed9c73506eea1bc646637678bbe4f4035d6fdf379e99474d911e3';
+const SQL_LEDGER_COUNT='(SELECT count(*) FROM supabase_migrations.schema_migrations)';
+const SQL_LEDGER_DIGEST="(SELECT encode(extensions.digest(convert_to(coalesce(string_agg(version || E'\\t' || name || E'\\n','' ORDER BY version),''),'UTF8'),'sha256'),'hex') FROM supabase_migrations.schema_migrations)";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const SOURCE='supabase/migrations/'+VERSION+'_'+NAME+'.sql';
 const API='https://api.supabase.com/v1/projects/'+REF;
@@ -16,15 +18,15 @@ const EXPECTED_EDGE=Object.freeze({'assessment-mcp':8,'learning-api':24,'exam-v2
 export function ledgerDigest(rows){
  return createHash('sha256').update(rows.map(x=>x.version+'\t'+x.name+'\n').join(''),'utf8').digest('hex');
 }
-export function guardLedger(rows,{after=false}={}){
+export function guardLedger(rows,{after=false,expectedCount=BEFORE_COUNT,expectedDigest=BEFORE_SHA,previousVersion=PREVIOUS_VERSION}={}){
  assert.ok(Array.isArray(rows),'Missing migration ledger');
  const list=rows.map(x=>({version:x.version,name:x.name})).sort((a,b)=>a.version.localeCompare(b.version));
  assert.ok(list.every(x=>/^\d{14}$/.test(x.version)&&/^[a-zA-Z0-9_]+$/.test(x.name)),'Unexpected migration metadata');
  assert.equal(new Set(list.map(x=>x.version)).size,list.length,'Duplicate migration version');
- assert.equal(list.length,BEFORE_COUNT+Number(after),'Production ledger count drift');
+ assert.equal(list.length,expectedCount+Number(after),'Production ledger count drift');
  if(after) assert.deepEqual(list.pop(),{version:VERSION,name:NAME},'Canonical version/name not applied');
- else assert.equal(list.at(-1)?.version,PREVIOUS_VERSION,'Wrong baseline latest version');
- assert.equal(ledgerDigest(list),BEFORE_SHA,'Production ledger baseline drift');
+ else assert.equal(list.at(-1)?.version,previousVersion,'Wrong baseline latest version');
+ assert.equal(ledgerDigest(list),expectedDigest,'Production ledger baseline drift');
  return list;
 }
 export function buildTransaction(bytes){
@@ -37,10 +39,10 @@ export function buildTransaction(bytes){
   'SELECT pg_advisory_xact_lock(460462026);',
   'DO $flh046_guard$',
   'BEGIN',
-  ' IF (SELECT count(*) FROM supabase_migrations.schema_migrations) <> 133 THEN',
+  ' IF '+SQL_LEDGER_COUNT+' <> '+BEFORE_COUNT+' THEN',
   "  RAISE EXCEPTION 'FLH046_PRODUCTION_LEDGER_COUNT_DRIFT';",
   ' END IF;',
-  " IF (SELECT encode(extensions.digest(convert_to(coalesce(string_agg(version || E'\\t' || name || E'\\n','' ORDER BY version),''),'UTF8'),'sha256'),'hex') FROM supabase_migrations.schema_migrations) <> '"+BEFORE_SHA+"' THEN",
+  " IF "+SQL_LEDGER_DIGEST+" <> '"+BEFORE_SHA+"' THEN",
   "  RAISE EXCEPTION 'FLH046_PRODUCTION_LEDGER_DIGEST_DRIFT';",
   ' END IF;',
   " IF EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='"+VERSION+"') THEN",
@@ -60,28 +62,42 @@ async function management(token,suffix,{query,read_only}={}){
   ...(isSQL?{body:JSON.stringify({query,read_only:Boolean(read_only)})}:{}),
   signal:AbortSignal.timeout(isSQL&&!read_only?150000:30000)
  });
- assert.equal(resp.status,isSQL?201:200,'Supabase Management API denied request HTTP '+resp.status);
+ if(resp.status!==(isSQL?201:200)){
+  const error=new Error('Supabase Management HTTP '+resp.status);
+  error.httpStatus=resp.status;throw error;
+ }
  return resp.json();
 }
-async function readLedger(token){
- const rows=await management(token,'/database/query',{query:'select version,name from supabase_migrations.schema_migrations order by version',read_only:true});
+async function readLedger(token,api=management){
+ const rows=await api(token,'/database/query',{query:'select version,name from supabase_migrations.schema_migrations order by version',read_only:true});
  assert.ok(Array.isArray(rows),'Unexpected migration response');return rows;
 }
-async function assertFlagOff(token){
- const rows=await management(token,'/database/query',{query:"select count(*) filter(where value->>'enabled'='true')::int as enabled from public.workspace_settings where key='visual_assessments'",read_only:true});
+async function assertFlagOff(token,api=management){
+ const rows=await api(token,'/database/query',{query:"select count(*) filter(where value->>'enabled'='true')::int as enabled from public.workspace_settings where key='visual_assessments'",read_only:true});
  assert.ok(Array.isArray(rows)&&rows.length===1,'Unexpected visual flag response');
  assert.equal(Number(rows[0].enabled),0,'Production visual feature was enabled; abort');
 }
-async function migrate(token){
- guardLedger(await readLedger(token));await assertFlagOff(token);
- const tx=buildTransaction(fs.readFileSync(path.join(ROOT,SOURCE)));
- let ambiguous;
- try{await management(token,'/database/query',{query:tx,read_only:false});}
- catch(error){ambiguous=error;}
- try{guardLedger(await readLedger(token),{after:true});}
- catch{throw new Error(ambiguous?'Migration response ambiguous; ledger not confirmed; do NOT repeat':'Migration reported success without exact ledger post-state; do NOT repeat');}
- await assertFlagOff(token);
- console.log(ambiguous?'PASS: exact ledger verified after ambiguous response':'PASS: exact canonical Production migration and version verified');
+export async function assertSqlBaseline(token,api=management){
+ const rows=await api(token,'/database/query',{query:'select '+SQL_LEDGER_COUNT+' as count, '+SQL_LEDGER_DIGEST+' as digest',read_only:true});
+ assert.ok(Array.isArray(rows)&&rows.length===1,'Unexpected SQL ledger digest response');
+ assert.equal(Number(rows[0].count),BEFORE_COUNT,'SQL ledger count drift');
+ assert.equal(rows[0].digest,BEFORE_SHA,'SQL ledger digest drift');
+}
+export async function migrate(token,{api=management,checkLedger=guardLedger,sourceBytes}={}){
+ checkLedger(await readLedger(token,api));await assertFlagOff(token,api);await assertSqlBaseline(token,api);
+ const tx=buildTransaction(sourceBytes??fs.readFileSync(path.join(ROOT,SOURCE)));
+ let writeError;
+ try{await api(token,'/database/query',{query:tx,read_only:false});}
+ catch(error){writeError=error;}
+ try{checkLedger(await readLedger(token,api),{after:true});}
+ catch(postError){
+  const definite=Number.isInteger(writeError?.httpStatus)&&writeError.httpStatus>=400&&writeError.httpStatus<500;
+  const reason=definite?'Migration definitively rejected; no retry':
+    'Migration outcome unverified; do NOT repeat an ambiguous write';
+  throw new Error(reason+(writeError?' | Write: '+writeError.message:'')+' | Post-state: '+postError.message);
+ }
+ await assertFlagOff(token,api);
+ console.log(writeError?'PASS: canonical migration verified after ambiguous response':'PASS: canonical Production migration verified');
 }
 async function verifyEdge(token){
  guardLedger(await readLedger(token),{after:true});await assertFlagOff(token);
@@ -100,7 +116,7 @@ async function main(){
  assert.ok(['preflight','deploy','resume-edge','verify-edge'].includes(phase),'Invalid phase');
  const token=process.env.SUPABASE_ACCESS_TOKEN;
  assert.ok(token,'Missing approved Production management token');
- if(phase==='preflight'){guardLedger(await readLedger(token));await assertFlagOff(token);buildTransaction(fs.readFileSync(path.join(ROOT,SOURCE)));console.log('PASS: ledger count and digest pinned; visual flag OFF');return;}
+ if(phase==='preflight'){guardLedger(await readLedger(token));await assertSqlBaseline(token);await assertFlagOff(token);buildTransaction(fs.readFileSync(path.join(ROOT,SOURCE)));console.log('PASS: JS and SQL ledger count/digest pinned; visual flag OFF');return;}
  if(phase==='deploy'){await migrate(token);return;}
  if(phase==='resume-edge'){guardLedger(await readLedger(token),{after:true});await assertFlagOff(token);console.log('PASS: canonical migration exists; continue Edge resume');return;}
  await verifyEdge(token);
