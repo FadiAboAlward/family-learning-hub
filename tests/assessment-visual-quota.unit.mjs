@@ -8,6 +8,7 @@ const has=(r,code)=>r.errors.some(x=>x.code===code);
 const withPlan=(source,focus='general')=>{
  const p=structuredClone(source),n=p.questions.filter(q=>q.assets?.length).length;
  p.academic_context.visual_plan={policy:'subject-aware-v1',focus,target_questions:focus==='geometry'?20:10,actual_questions:n};
+ for(const q of p.questions.filter(q=>q.assets?.length))p.blueprint.find(b=>b.question_code===q.question_code).visual_purpose='The verified geometry drawing supplies the visible lengths or angle relationships required to interpret this synthetic item.';
  return p;
 };
 const addImages=(p,desired)=>{
@@ -17,6 +18,7 @@ const addImages=(p,desired)=>{
   // Reused synthetic raster is deliberately NOT semantically aligned to these
   // synthetic text questions. This tests distinct-question counts only.
   q.assets=[diagram('rectangle',1)];
+  p.blueprint.find(b=>b.question_code===q.question_code).visual_purpose='Synthetic image-slot QA only: figure must be independently matched to the assessed skill before any real academic publication.';
   current++;
  }
  p.academic_context.visual_plan.actual_questions=current;
@@ -29,6 +31,8 @@ const passing=withPlan(base);addImages(passing,10);
 assert.equal(check(passing).errors.length,0,'10 distinct questions with existing assets and both modes can satisfy general math count');
 const mislabeled=structuredClone(passing);mislabeled.academic_context.visual_plan.actual_questions=11;
 assert.ok(has(check(mislabeled),'VISUAL_PLAN_INVALID'),'declared count must match the final candidate');
+const missingPurpose=structuredClone(passing);delete missingPurpose.blueprint.find(b=>b.question_code===missingPurpose.questions[0].question_code).visual_purpose;
+assert.ok(has(check(missingPurpose),'VISUAL_PURPOSE_REQUIRED'),'image in an authored question requires a concrete educational purpose for independent review');
 const onlyLearning=structuredClone(passing);for(const q of onlyLearning.questions.filter(q=>q.delivery_surface==='exam'))q.assets=[];
 onlyLearning.academic_context.visual_plan.actual_questions=onlyLearning.questions.filter(q=>q.assets?.length).length;
 assert.ok(has(check(onlyLearning),'VISUAL_MODE_COVERAGE'),'one mode alone does not satisfy math distribution');
