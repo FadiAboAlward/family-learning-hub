@@ -1,6 +1,7 @@
 // FLH-FEAT-2026-046 v1.0 — synthetic quota contract; NOT an academic/media truth pilot.
 import assert from 'node:assert/strict';
-import {visualCandidate,diagram} from './fixtures/assessment-visual/candidate.mjs';
+import {visualCandidate,visualCandidateWithQuota,diagram} from './fixtures/assessment-visual/candidate.mjs';
+import {validateAcademicPackage} from '../scripts/academic-content-quality.mjs';
 import {validateVisualContract} from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 const base=visualCandidate();
 const check=p=>{const errors=[],warnings=[];validateVisualContract(p,errors,warnings);return {errors,warnings};};
@@ -46,3 +47,17 @@ assert.ok(!has(check(language),'VISUAL_MATH_QUOTA'),'languages have no fake math
 const multimodal=withPlan(base);multimodal.questions[10].assets=[diagram('rectangle',1),diagram('triangle',2)];
 assert.ok(has(check(multimodal),'VISUAL_MATH_QUOTA'),'two files on one question count once');
 console.log('FLH-046 prospective quota: math 25%, geometry 50%, subject mixes, distinct-question and two-mode counts, declarative mismatch and frozen legacy: PASS');
+
+const full=visualCandidateWithQuota(),fullReport=validateAcademicPackage(full);
+assert.equal(full.questions.length,40);
+assert.equal(full.questions.filter(q=>q.assets.length>0).length,10,'one-quarter of 40 image-bearing question codes');
+assert.equal(full.questions.filter(q=>q.delivery_surface==='learning'&&q.assets.length>0).length,6);
+assert.equal(full.questions.filter(q=>q.delivery_surface==='exam'&&q.assets.length>0).length,4);
+assert.equal(check(full).errors.length,0,JSON.stringify(check(full).errors));
+assert.equal(fullReport.ok,true,JSON.stringify(fullReport.errors));
+const answers=new Map([[3,'24 cm²'],[5,'2 cm'],[7,'12 cm²'],[13,'4 cm'],[23,'4 cm'],[26,'6 cm'],[31,'10 cm']]);
+for(const [i,value] of answers){
+ const question=full.questions[i];assert.equal(question.options.find(o=>o.is_correct).content,value);
+ assert.ok(question.assets.length>0);
+}
+console.log('FLH-046 full synthetic 40 questions / 10 image-backed mathematically checked items: PASS (not an academic release)');
