@@ -104,7 +104,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  const trace={measure:(_label,_metadata,operation)=>operation()};
  let reads=0,receipts=0,writes=0;
  const verified={
-   ...storage,
+   storage,
    rpc:async(name,args)=>{
      if(name==='flh_assessment_command'&&args.p_action==='read'){
        reads++;return {error:{message:'ASSESSMENT_TARGET_INVALID'}};
@@ -143,7 +143,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  // Also verify the other legitimate retry: already-STAGED immutable publication.
  // The exact same raster is revalidated; the DB returns duplicate idempotently.
  let publishedRead=0,publishedStages=0;
- const published={...storage,rpc:async(name,args)=>{
+ const published={storage,rpc:async(name,args)=>{
    if(name==='flh_assessment_command'&&args.p_action==='read'){
      publishedRead++;
      return {data:{ok:true,publication:{...target,candidate_sha256:hash}},error:null};
