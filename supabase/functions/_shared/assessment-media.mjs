@@ -1,6 +1,20 @@
 import { isVisualPackage, assetContractErrors, conceptGuidance, MEDIA_BUCKET, MEDIA_LIMITS, UUID_PATTERN } from './assessment-visual-contract.mjs';
 import { verifyRaster } from './assessment-raster.mjs';
 const deny=code=>{throw new Error(code);};
+/** Small authored diagrams may travel as base64 inside the existing authenticated
+ * MCP operation. The 2 MiB request limit stays in place; large images keep their
+ * original signed-URL upload path. Never log raw bytes or credentials.
+ */
+export const INLINE_ASSESSMENT_IMAGE_MAX_BYTES=384*1024;
+function inlineImageBytes(base64) {
+  if(typeof base64!=='string'||!base64.length
+    ||base64.length>4*Math.ceil(INLINE_ASSESSMENT_IMAGE_MAX_BYTES/3)
+    ||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64))deny('ASSESSMENT_MEDIA_INVALID');
+  let raw;try{raw=atob(base64);}catch{deny('ASSESSMENT_MEDIA_INVALID');}
+  if(!raw.length||raw.length>INLINE_ASSESSMENT_IMAGE_MAX_BYTES)deny('ASSESSMENT_MEDIA_INVALID');
+  return Uint8Array.from(raw,char=>char.charCodeAt(0));
+}
+
 
 /** Remove at most 100 old, unlinked objects; the DB guard protects concurrent links. */
 export async function pruneAssessmentUploads(admin,w,parent){
@@ -15,6 +29,10 @@ export async function pruneAssessmentUploads(admin,w,parent){
 export async function prepareAssessmentUpload(admin,w,parent,body) {
   const a=body.asset,v=body.quiz_version_id;
   if(!UUID_PATTERN.test(v||'')||assetContractErrors(a,Number(a?.position)-1,w,v).length)deny('ASSESSMENT_MEDIA_INVALID');
+  // Reject ill-formed, oversized or incorrect image bytes BEFORE creating a signed
+  // allocation or writing an object. This is the same exact raster verifier as stage.
+  const inline=body.image_base64===undefined?null:inlineImageBytes(body.image_base64);
+  if(inline)await verifyRaster(inline,a);
   const {data:allowed,error}=await admin.rpc('flh_assessment_media_parent',{p_workspace_id:w,p_parent_id:parent,p_version_id:v,p_upload:true});
   if(error||allowed!==true)deny('ASSESSMENT_FORBIDDEN');
   await pruneAssessmentUploads(admin,w,parent);
@@ -26,6 +44,19 @@ export async function prepareAssessmentUpload(admin,w,parent,body) {
     if(stored.error||!stored.data||stored.data.size>MEDIA_LIMITS.bytes)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
     await verifyRaster(new Uint8Array(await stored.data.arrayBuffer()),a);
     return {ok:true,asset_id:a.asset_id,storage_path:a.storage_path,already_uploaded:true};
+  }
+  if(inline){
+    // Reuse Storage's signed-upload authorization, rather than a second bucket,
+    // public object or service-role direct insert. Issued token stays server-side.
+    if(typeof data.token!=='string'||!data.token)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+    const uploaded=await admin.storage.from(MEDIA_BUCKET).uploadToSignedUrl(
+      a.storage_path,data.token,new Blob([inline],{type:a.mime_type}),{contentType:a.mime_type,upsert:false}
+    );
+    if(uploaded.error)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+    const confirmed=await admin.storage.from(MEDIA_BUCKET).download(a.storage_path);
+    if(confirmed.error||!confirmed.data||confirmed.data.size>MEDIA_LIMITS.bytes)deny('ASSESSMENT_MEDIA_UNAVAILABLE');
+    await verifyRaster(new Uint8Array(await confirmed.data.arrayBuffer()),a);
+    return {ok:true,asset_id:a.asset_id,storage_path:a.storage_path,verified:true,uploaded_bytes:inline.length};
   }
   return {ok:true,asset_id:a.asset_id,storage_path:a.storage_path,signed_upload_url:data.signedUrl};
 }
