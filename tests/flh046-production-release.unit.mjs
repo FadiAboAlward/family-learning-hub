@@ -44,8 +44,6 @@ async function scenario(mode){
    reads++;
    return [{phase:reads===1?'before':(mode.endsWith('After')?'after':'before')}];
   }
-  if(opts.query.includes('visual_assessments'))return [{enabled:0}];
-  if(opts.query.startsWith('select (SELECT count'))return [{count:133,digest:baseline}];
   if(opts.query.startsWith('BEGIN;')){
    writes++;assert.equal(opts.read_only,false);
    if(mode==='timeoutAfter'||mode==='timeoutBefore')throw new Error('synthetic ETIMEDOUT');
@@ -54,6 +52,8 @@ async function scenario(mode){
    }
    return {};
   }
+  if(opts.query.includes('visual_assessments'))return [{enabled:0}];
+  if(opts.query.startsWith('select (SELECT count'))return [{count:133,digest:baseline}];
   throw Error('unexpected synthetic SQL');
  };
  const checkLedger=(v,{after=false}={})=>{
