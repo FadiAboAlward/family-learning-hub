@@ -3,7 +3,7 @@
 -- visual_plan. New service-role authoring requests always default to false.
 -- This is not a Production rollout or enablement of visual_assessments.
 alter table private.assessment_authoring_requests
-  add column if not exists legacy_visual_eligible boolean not null default false;
+  add column legacy_visual_eligible boolean not null default false;
 
 -- Do NOT mark newly-created requests later. This statement runs once at
 -- migration application time, not when the API receives an authoring request.
