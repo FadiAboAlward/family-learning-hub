@@ -53,16 +53,33 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   let payload;
   if (action==='stage') {
     if(isVisualPackage(body.candidate)&&body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
-      // A direct learning-api stage cannot bypass prospective visual quotas.
-      // Only a genuinely staged immutable pre-policy publication may retry.
+      // New direct learning-api stages must have a visual plan. Permit only
+      // owner-bound immutable pre-policy retries: a published/staged receipt OR
+      // an authenticated authoring draft receipt tied to this request UUID.
       const version=body.target?.quiz_version_id,hash=await academicCandidateHash(body.candidate);
+      const targetKeys=['quiz_id','quiz_version_id','learner_id','program_id'];
       if(!UUID.test(version||''))deny('ASSESSMENT_ACADEMIC_REJECTED');
       const prior=await admin.rpc('flh_assessment_command',{p_workspace_id:workspaceId,p_parent_id:parentId,
         p_action:'read',p_payload:{quiz_version_id:version,candidate_sha256:hash}});
-      if(prior.error||prior.data?.ok!==true||!object(prior.data.publication))deny('ASSESSMENT_ACADEMIC_REJECTED');
-      const stored=prior.data.publication;
-      if(stored.candidate_sha256!==hash||['quiz_id','quiz_version_id','learner_id','program_id']
-        .some(k=>stored[k]!==body.target?.[k]))deny('ASSESSMENT_RETRY_CONFLICT');
+      if(prior.data?.ok===true&&object(prior.data.publication)){
+        const stored=prior.data.publication;
+        if(stored.candidate_sha256!==hash||targetKeys.some(k=>stored[k]!==body.target?.[k]))
+          deny('ASSESSMENT_RETRY_CONFLICT');
+      }else{
+        // A known missing publication is normal for a never-staged draft.
+        // Other publication errors (e.g. drift/permissions) must not fall back.
+        if(prior.error?.message!=='ASSESSMENT_TARGET_INVALID'
+          ||!UUID.test(body.request_id||''))deny('ASSESSMENT_ACADEMIC_REJECTED');
+        const receipt=await admin.rpc('flh_assessment_authoring_command',{
+          p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',
+          p_payload:{request_id:body.request_id}
+        });
+        if(receipt.error||receipt.data?.ok!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+        if(receipt.data.candidate_sha256!==hash
+          ||targetKeys.some(k=>receipt.data.target?.[k]!==body.target?.[k]))
+          deny('ASSESSMENT_RETRY_CONFLICT');
+        if(receipt.data.state!=='draft')deny('ASSESSMENT_ACADEMIC_REJECTED');
+      }
     }
     payload=await assessmentStagePayload(workspaceId,parentId,body);
     Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
