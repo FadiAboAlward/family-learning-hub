@@ -34,3 +34,37 @@ export function visualCandidate(v=version){
   }
   return p;
 }
+
+/** FLH-046 subject-aware synthetic 10/40 media coverage fixture. This is NOT
+ * source-approved student content: unchanged foundational questions come from
+ * a separate rational-number synthetic fixture. Used only for transport/QA.
+ */
+export function visualCandidateWithQuota(v=version){
+ const p=visualCandidate(v);
+ const extra=[
+  [3,'rectangle','Dikdörtgenin içinde kapladığı alan kaç santimetrekaredir?','24 cm²',['10 cm²','20 cm²','12 cm²'],'Dikdörtgen alanı 6 × 4 = 24 cm².','area of given rectangle'],
+  [5,'rectangle','Şekildeki dikdörtgenin uzun ve kısa kenarları arasındaki fark kaç santimetredir?','2 cm',['10 cm','4 cm','6 cm'],'Kenar uzunlukları arasındaki fark 6 − 4 = 2 cm.','difference of labeled side lengths'],
+  [7,'triangle','Dik üçgenin tabanı ve yüksekliğine göre alanı kaç santimetrekaredir?','12 cm²',['24 cm²','20 cm²','10 cm²'],'Dik üçgenin alanı (6 × 4) ÷ 2 = 12 cm².','triangle area from perpendicular height'],
+  [13,'triangle','Şekilde tabana dik gösterilen yüksekliğin uzunluğu kaç santimetredir?','4 cm',['6 cm','10 cm','2 cm'],'Tabana dik yükseklik 4 cm olarak gösterilmiştir.','identify indicated altitude of triangle'],
+  [23,'rectangle','Şekildeki dikdörtgenin kısa kenarının uzunluğu kaç santimetredir?','4 cm',['6 cm','10 cm','24 cm'],'Kısa kenar 4 cm; 6 cm uzun kenardır.','identify the short side from actual drawing'],
+  [26,'triangle','Şekildeki üçgenin taban uzunluğu kaç santimetredir?','6 cm',['4 cm','2 cm','12 cm'],'Taban uzunluğu 6 cm; dik yükseklik 4 cm olarak işaretlenmiştir.','identify triangle base as distinguished from altitude'],
+  [31,'rectangle','Dikdörtgenin çevresinin yarısı kaç santimetredir?','10 cm',['20 cm','24 cm','12 cm'],'Çevre 2 × (6 + 4) = 20 cm; yarısı 10 cm.','deduce half perimeter from measured rectangle']
+ ];
+ for(const [i,shape,prompt,answer,distractors,explanation,signature]of extra){
+  const q=p.questions[i],correct=q.options.find(o=>o.is_correct).position;
+  const choices=[...distractors];choices.splice(correct-1,0,answer);
+  q.prompt=prompt;q.assets=[diagram(shape,1,v)];q.explanation=explanation;
+  q.correct_explanation=explanation;q.final_incorrect_explanation=explanation;
+  q.source_ref='synthetic:owned-geometry';q.decomposable=false;
+  q.options=choices.map((content,j)=>({position:j+1,label:String.fromCharCode(65+j),content,is_correct:j+1===correct,...(j+1!==correct?{distractor_rationale:'The alternative confuses the requested measured dimension or uses an incorrect geometry operation; compare against the labeled figure and required unit.'}:{})}));
+  if(q.delivery_surface==='learning')q.hints=teaching.map((lines,j)=>({level:j+1,role:['nudge','guide','strong_guide','near_solution'][j],language:'tr',content:lines.map(x=>'• '+x).join('\n')}));
+  const bp=p.blueprint.find(b=>b.question_code===q.question_code);
+  bp.reasoning_signature=signature;bp.source_ref=q.source_ref;
+ }
+ p.academic_context.visual_plan={policy:'subject-aware-v1',focus:'general',target_questions:10,actual_questions:10};
+ for(const q of p.questions.filter(q=>q.assets.length)){
+  const bp=p.blueprint.find(b=>b.question_code===q.question_code);
+  bp.visual_purpose='The source-verified, dimensioned geometry figure provides the measured lengths or perpendicular relations required to answer '+q.question_code+'; the illustration is not ornamental.';
+ }
+ return p;
+}
