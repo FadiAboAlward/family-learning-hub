@@ -154,6 +154,24 @@ try {
   await query(`insert into public.workspace_settings(workspace_id,key,value) values('${w}','visual_assessments','{"enabled":true}'::jsonb) on conflict(workspace_id,key) do update set value=excluded.value;`);
   const seeded=JSON.parse(await query(`set role service_role;select ${author('create',oldPayload)};`));
   assert.equal(seeded.state,'draft');
+   const legacyCheck=(request=oldRequest,parent=ids.parent,version=oldTarget.quiz_version_id,sha=oldReport.candidate_sha256)=>
+     `public.flh_assessment_legacy_draft_eligible('${w}','${parent}','${request}','${version}','${sha}')`;
+   assert.equal(await query(`select legacy_visual_eligible from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${oldRequest}';`),'f',
+     'post-migration service-created draft must never inherit grandfather privilege');
+   assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'f',
+     'a valid owner-bound receipt alone cannot grandfather new planless content');
+   assert.equal(await query(`select has_column_privilege('service_role','private.assessment_authoring_requests','legacy_visual_eligible','UPDATE');`),'f',
+     'service writer cannot mint grandfather eligibility');
+   assert.equal(await query(`select has_function_privilege('authenticated','public.flh_assessment_legacy_draft_eligible(uuid,uuid,uuid,uuid,text)','EXECUTE');`),'f',
+     'parent client cannot invoke privileged grandfather classification');
+   // This privileged QA-only update models an already-existing request that
+   // the one-time migration itself marked during deployment, never client API.
+   await query(`update private.assessment_authoring_requests set legacy_visual_eligible=true where workspace_id='${w}' and request_id='${oldRequest}';`);
+   assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'t');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.teacher)};`),'f');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.parent,ids.version)};`),'f');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.parent,oldTarget.quiz_version_id,'0'.repeat(64))};`),'f');
+
   await query(`update public.workspace_settings set value='{"enabled":false}'::jsonb where workspace_id='${w}' and key='visual_assessments';`);
   const dbAdmin={
    rpc:async(name,args)=>{
@@ -186,6 +204,8 @@ try {
   const prior=await assessmentAuthoringCommand(dbAdmin,w,ids.parent,{action:'create_assessment_draft',request_id:oldRequest,
     target:oldTarget,candidate:oldCandidate,semantic_review:oldProof.semantic_review,quiz:oldQuiz},qaTrace);
   assert.equal(prior.duplicate,true,'real database exact historical planless visual request retries unchanged');
+  assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'t',
+    'pre-policy marker survives disabling NEW visual authoring for authenticated exact retry');
   await assert.rejects(()=>assessmentAuthoringCommand(dbAdmin,w,ids.parent,{action:'create_assessment_draft',request_id:oldRequest,
     target:oldTarget,candidate:oldCandidate,semantic_review:oldProof.semantic_review,quiz:{...oldQuiz,title:'Changed archived retry'}},qaTrace),
     /ASSESSMENT_RETRY_CONFLICT/,'real DB rejects changed title even after read-before-create');
