@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createHash,createHmac} from 'node:crypto';
 import {requireIsolatedQaBackend} from '../supabase/functions/_shared/qa-backend-isolation.mjs';
-import {visualCandidate,diagram,workspace as w} from './fixtures/assessment-visual/candidate.mjs';
+import {visualCandidateWithQuota,diagram,workspace as w} from './fixtures/assessment-visual/candidate.mjs';
 import {validateAuthoringCandidate} from '../supabase/functions/_shared/assessment-authoring.mjs';
 import {visualAuthenticatedBrowser} from './assessment-visual-auth-browser.mjs';
 
@@ -15,7 +15,7 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
  const previousVideos=(await query(`select value::text from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)).trim();
  const previous=(await query(`select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments';`)).trim();
  const target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
- const candidate=visualCandidate(ids.version),uploaded=[];let token,owned=false;
+ const candidate=visualCandidateWithQuota(ids.version),uploaded=[];let token,owned=false;
  const json=value=>"'"+JSON.stringify(value).replaceAll("'","''")+"'::jsonb";
  async function api(body,bearer=token,endpoint='learning-api'){const r=await fetch(config.backendUrl+'/functions/v1/'+endpoint,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json',...(bearer?{authorization:'Bearer '+bearer}:{})},body:JSON.stringify(body)});return {status:r.status,result:await r.json()};}
  // URL signatures stay in memory. The local Edge's internal Kong origin is never a Runner destination.
@@ -32,6 +32,10 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
   owned=true;
   await query(`begin;insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-visual-api','Synthetic visual API','active','${catalog.curriculum_id}',7);insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');commit;`);
   const login=await fetch(config.backendUrl+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:JSON.stringify({email,password})});assert.equal(login.status,200);token=(await login.json()).access_token;assert.ok(token);
+  assert.equal(candidate.questions.length,40);
+  assert.equal(candidate.questions.filter(q=>q.assets.length>0).length,10,'FLH-046 math 25% visual blueprint');
+  assert.ok(candidate.questions.some(q=>q.delivery_surface==='learning'&&q.assets.length));
+  assert.ok(candidate.questions.some(q=>q.delivery_surface==='exam'&&q.assets.length));
   const create=await makeCreate(candidate);
   assert.equal((await api(create,'')).status,401);assert.equal((await api(create,'invalid-token')).status,401);
   assert.equal((await api(create)).result.error,'ASSESSMENT_VISUAL_DISABLED');
