@@ -48,6 +48,7 @@ await query(`begin; ${tokenHook}
 const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and is_active and metadata->>'is_test'='true';`);
 assert.match(learner,/^[a-f0-9-]{36}$/);
 const priorFlag=JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`));
+const oldVisualSetting=await query(`select coalesce((select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments'),'null');`);
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const report=await validateAuthoringCandidate(candidate);assert.equal(report.ok,true);
 const hash=report.candidate_sha256,target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
@@ -150,8 +151,10 @@ try {
  await query(`begin; ${setup} commit;`);
   // Seed a true pre-policy immutable draft using the existing DB RPC, then
   // exercise CURRENT JavaScript command over the REAL isolated PostgreSQL.
+  await query(`insert into public.workspace_settings(workspace_id,key,value) values('${w}','visual_assessments','{"enabled":true}'::jsonb) on conflict(workspace_id,key) do update set value=excluded.value;`);
   const seeded=JSON.parse(await query(`set role service_role;select ${author('create',oldPayload)};`));
   assert.equal(seeded.state,'draft');
+  await query(`update public.workspace_settings set value='{"enabled":false}'::jsonb where workspace_id='${w}' and key='visual_assessments';`);
   const dbAdmin={
    rpc:async(name,args)=>{
     try{
@@ -211,9 +214,11 @@ finally {
  delete from public.subjects where id=${subject} and code='qa-assessment-authoring';
  delete from public.curricula where id='${ids.curriculum}' and code='qa-assessment-authoring';
  delete from public.workspace_members where workspace_id='${w}' and user_id in('${ids.parent}','${ids.teacher}');
- delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid'); commit;`); }
+ delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid');
+  ${oldVisualSetting==='null' ? `delete from public.workspace_settings where workspace_id='${w}' and key='visual_assessments';` : `insert into public.workspace_settings(workspace_id,key,value) values('${w}','visual_assessments',${json(JSON.parse(oldVisualSetting))}) on conflict(workspace_id,key) do update set value=excluded.value;`} commit;`); }
  catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_DB_CLEANUP_FAILED'); }
 }
 assert.equal(await query(`select count(*) from public.quizzes where id='${ids.quiz}';`),'0','owned committed cleanup');
 assert.deepEqual(JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)),priorFlag);
+assert.equal(await query(`select coalesce((select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments'),'null');`),oldVisualSetting,'visual rollout setting restored');
 console.log('Assessment authoring DB grants/tenant/review/input/duplicate/partial rollback/full release/concurrency/owned cleanup: PASS (isolated synthetic provider receipt)');
