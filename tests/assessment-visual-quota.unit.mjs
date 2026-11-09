@@ -30,7 +30,7 @@ const oldNewAuthoring=await validateAuthoringCandidate(base);
 assert.equal(oldNewAuthoring.ok,false,'pre-FLH-046 3-visual fixture cannot be re-authored as a new visual package without an approved plan');
 assert.ok(oldNewAuthoring.validation.errors.some(e=>e.code==='VISUAL_PLAN_REQUIRED_NEW_AUTHORING'));
 assert.ok(!prePolicy.errors.some(e=>e.code?.startsWith('VISUAL_')&&e.code!=='VISUAL_SEMANTIC_REVIEW_REQUIRED'));
-assert.ok(prePolicy.warnings.some(w=>w.code==='VISUAL_PLAN_MISSING_NEW_AUTHORING'),'frozen pre-policy candidate remains readable; new authoring needs a reviewed plan');
+assert.ok(prePolicy.warnings.some(w=>w.code==='VISUAL_SEMANTIC_REVIEW_REQUIRED'),'frozen pre-policy candidates keep their original semantic-review warning without new FLH-046 warning drift');
 const under=check(withPlan(base));assert.ok(has(under,'VISUAL_MATH_QUOTA'),'mathematics <10/40 rejected');
 const passing=withPlan(base);addImages(passing,10);
 assert.equal(check(passing).errors.length,0,'10 distinct questions with existing assets and both modes can satisfy general math count');
