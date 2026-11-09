@@ -16,7 +16,7 @@ assert.match(tx,/FLH046_PRODUCTION_LEDGER_DIGEST_DRIFT/);
 assert.match(tx,/FLH046_PRODUCTION_LEDGER_COUNT_DRIFT/);
 assert.match(tx,/20261109190258.*legacy_visual_authoring_eligibility/);
 assert.equal((tx.match(/INSERT INTO supabase_migrations.schema_migrations/g)||[]).length,1);
-assert.equal((tx.match(/alter table private.assessment_authoring_requests/g)||[]).length,1);
+assert.equal((tx.match(/alter table private.assessment_authoring_requests/g)||[]).length,2,'once executed and once immutably recorded inside migration history');
 assert.throws(()=>buildTransaction(sql+'\n-- '+ '$flh046_source_sql$'),/delimiter/);
 const rows=Array.from({length:133},(_,i)=>({version:String(20260901000000+i),name:'synthetic_'+i}));
 assert.equal(ledgerDigest(rows),createHash('sha256').update(rows.map(x=>x.version+'\t'+x.name+'\n').join('')).digest('hex'));
