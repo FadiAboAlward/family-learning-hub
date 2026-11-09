@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createHash} from 'node:crypto';
+import {buildTransaction,guardLedger,ledgerDigest} from '../scripts/flh046-production-release.mjs';
+
+const sql=fs.readFileSync('supabase/migrations/20261109190258_legacy_visual_authoring_eligibility.sql','utf8');
+assert.ok(sql.includes('legacy_visual_eligible boolean not null default false'));
+assert.ok(sql.includes('security invoker'));
+assert.ok(sql.includes('grant execute on function'));
+assert.ok(!sql.includes('drop table'));
+const tx=buildTransaction(sql);
+assert.match(tx,/^BEGIN;\n/);
+assert.match(tx,/COMMIT;\n$/);
+assert.match(tx,/pg_advisory_xact_lock\(460462026\)/);
+assert.match(tx,/FLH046_PRODUCTION_LEDGER_DIGEST_DRIFT/);
+assert.match(tx,/FLH046_PRODUCTION_LEDGER_COUNT_DRIFT/);
+assert.match(tx,/20261109190258.*legacy_visual_authoring_eligibility/);
+assert.equal((tx.match(/INSERT INTO supabase_migrations.schema_migrations/g)||[]).length,1);
+assert.equal((tx.match(/alter table private.assessment_authoring_requests/g)||[]).length,1);
+assert.throws(()=>buildTransaction(sql+'\n-- '+ '$flh046_source_sql$'),/delimiter/);
+const rows=Array.from({length:133},(_,i)=>({version:String(20260901000000+i),name:'synthetic_'+i}));
+assert.equal(ledgerDigest(rows),createHash('sha256').update(rows.map(x=>x.version+'\t'+x.name+'\n').join('')).digest('hex'));
+assert.throws(()=>guardLedger(rows.slice(1)),/count drift/);
+assert.throws(()=>guardLedger(rows),/Wrong baseline latest version|Production ledger baseline drift/);
+assert.throws(()=>guardLedger([...rows,{version:'20261109190258',name:'unexpected'}],{after:true}),/Canonical version\/name/);
+console.log('FLH046 pinned transactional release builder, auth scope and ledger-drift test: PASS');
