@@ -32,6 +32,8 @@ assert.ok(oldNewAuthoring.validation.errors.some(e=>e.code==='VISUAL_PLAN_REQUIR
 assert.ok(!prePolicy.errors.some(e=>e.code?.startsWith('VISUAL_')&&e.code!=='VISUAL_SEMANTIC_REVIEW_REQUIRED'));
 assert.ok(prePolicy.warnings.some(w=>w.code==='VISUAL_SEMANTIC_REVIEW_REQUIRED'),'frozen pre-policy candidates keep their original semantic-review warning without new FLH-046 warning drift');
 const under=check(withPlan(base));assert.ok(has(under,'VISUAL_MATH_QUOTA'),'mathematics <10/40 rejected');
+const turkishUpper=withPlan(base);turkishUpper.academic_context.subject='MATEMATİK';
+assert.ok(has(check(turkishUpper),'VISUAL_MATH_QUOTA'),'Turkish uppercase dotted İ must not bypass mathematics quota');
 const passing=withPlan(base);addImages(passing,10);
 assert.equal(check(passing).errors.length,0,'10 distinct questions with existing assets and both modes can satisfy general math count');
 const mislabeled=structuredClone(passing);mislabeled.academic_context.visual_plan.actual_questions=11;
@@ -49,6 +51,9 @@ assert.ok(check(science).warnings.some(w=>w.code==='VISUAL_SCIENCE_MIX_REVIEW'),
 const language=withPlan(base);language.academic_context.subject='English';language.academic_context.visual_plan.target_questions=0;
 assert.ok(!has(check(language),'VISUAL_MATH_QUOTA'),'languages have no fake math quota');
 const multimodal=withPlan(base);multimodal.questions[10].assets=[diagram('rectangle',1),diagram('triangle',2)];
+addImages(multimodal,9);
+assert.equal(multimodal.questions.filter(q=>q.assets.length).length,9);
+assert.equal(multimodal.questions.flatMap(q=>q.assets).length,10,'one question with two assets does not count twice');
 assert.ok(has(check(multimodal),'VISUAL_MATH_QUOTA'),'two files on one question count once');
 console.log('FLH-046 prospective quota: math 25%, geometry 50%, subject mixes, distinct-question and two-mode counts, declarative mismatch and frozen legacy: PASS');
 
