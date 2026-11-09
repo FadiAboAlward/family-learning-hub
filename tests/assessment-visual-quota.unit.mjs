@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {visualCandidate,visualCandidateWithQuota,diagram} from './fixtures/assessment-visual/candidate.mjs';
 import {validateAcademicPackage} from '../scripts/academic-content-quality.mjs';
+import {validateAuthoringCandidate} from '../supabase/functions/_shared/assessment-authoring.mjs';
 import {validateVisualContract} from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 const base=visualCandidate();
 const check=p=>{const errors=[],warnings=[];validateVisualContract(p,errors,warnings);return {errors,warnings};};
@@ -25,6 +26,9 @@ const addImages=(p,desired)=>{
  p.academic_context.visual_plan.actual_questions=current;
 };
 const prePolicy=check(base);
+const oldNewAuthoring=await validateAuthoringCandidate(base);
+assert.equal(oldNewAuthoring.ok,false,'pre-FLH-046 3-visual fixture cannot be re-authored as a new visual package without an approved plan');
+assert.ok(oldNewAuthoring.validation.errors.some(e=>e.code==='VISUAL_PLAN_REQUIRED_NEW_AUTHORING'));
 assert.ok(!prePolicy.errors.some(e=>e.code?.startsWith('VISUAL_')&&e.code!=='VISUAL_SEMANTIC_REVIEW_REQUIRED'));
 assert.ok(prePolicy.warnings.some(w=>w.code==='VISUAL_PLAN_MISSING_NEW_AUTHORING'),'frozen pre-policy candidate remains readable; new authoring needs a reviewed plan');
 const under=check(withPlan(base));assert.ok(has(under,'VISUAL_MATH_QUOTA'),'mathematics <10/40 rejected');
@@ -49,6 +53,8 @@ assert.ok(has(check(multimodal),'VISUAL_MATH_QUOTA'),'two files on one question 
 console.log('FLH-046 prospective quota: math 25%, geometry 50%, subject mixes, distinct-question and two-mode counts, declarative mismatch and frozen legacy: PASS');
 
 const full=visualCandidateWithQuota(),fullReport=validateAcademicPackage(full);
+const newlyAuthored=await validateAuthoringCandidate(full);
+assert.equal(newlyAuthored.ok,true,JSON.stringify(newlyAuthored.validation.errors));
 assert.equal(full.questions.length,40);
 assert.equal(full.questions.filter(q=>q.assets.length>0).length,10,'one-quarter of 40 image-bearing question codes');
 assert.equal(full.questions.filter(q=>q.delivery_surface==='learning'&&q.assets.length>0).length,6);
