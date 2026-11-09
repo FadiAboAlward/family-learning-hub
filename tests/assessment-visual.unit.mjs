@@ -144,6 +144,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  assert.equal(writes,1,'unmarked new draft never reaches stage');
  const upper=structuredClone(body);
  upper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ upper.semantic_review=Object.fromEntries(Object.entries({...upper.semantic_review,...upper.target}).map(([k,v])=>[k,Object.hasOwn(upper.target,k)?v:v]));
  const upperAllowed=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',upper,trace);
  assert.equal(upperAllowed.state,'staged','uppercase UUIDs retain same legitimate identities');
  assert.equal(writes,2);
@@ -191,6 +192,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  assert.deepEqual([publishedRead,publishedStages],[1,1],'exact staged publication retry preserves immutable historical content');
  const publishedUpper=structuredClone(publishedBody);
  publishedUpper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ publishedUpper.semantic_review={...publishedUpper.semantic_review,...publishedUpper.target};
  const match=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedUpper,trace);
  assert.equal(match.duplicate,true,'published historical retry matches uppercase UUID variants');
  assert.deepEqual([publishedRead,publishedStages],[2,2]);
