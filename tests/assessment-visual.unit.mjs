@@ -4,13 +4,25 @@ import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { visualCandidate,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
-import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
+import { academicCandidateHash,assessmentCommand } from '../supabase/functions/_shared/assessment-publication.mjs';
 import { assetContractErrors,conceptGuidance,validateVisualContract } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
 import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer,prepareAssessmentUpload,INLINE_ASSESSMENT_IMAGE_MAX_BYTES } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
 assert.deepEqual(fs.readFileSync(new URL('../supabase/functions/_shared/vendor/webp_dec.wasm',import.meta.url)),fs.readFileSync(new URL('../supabase/functions/_shared/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm',import.meta.url)),'Vendored WebP decoder must match the locked upstream package exactly');
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
+let stageReads=0,stageWrites=0;
+await assert.rejects(()=>assessmentCommand({rpc:async(name,args)=>{
+ assert.equal(name,'flh_assessment_command');
+ if(args.p_action==='read'){stageReads++;return {error:{message:'ASSESSMENT_TARGET_INVALID'}};}
+ stageWrites++;return {data:{ok:true}};
+}},workspace,'04410000-0000-4000-8000-000000000020',{
+ action:'stage_assessment',target:{quiz_id:'04410000-0000-4000-8000-000000000021',quiz_version_id:version,learner_id:'04410000-0000-4000-8000-000000000022',program_id:'04410000-0000-4000-8000-000000000023'},
+ candidate:pkg
+},{measure:(_name,_options,operation)=>operation()}),/ASSESSMENT_ACADEMIC_REJECTED/);
+assert.equal(stageReads,1,'planless direct stage must check immutable existing publication first');
+assert.equal(stageWrites,0,'new planless direct stage must never persist');
+
 for(const malformed of [{...pkg,questions:{}},{...pkg,blueprint:{}},{...pkg,questions:[null]},{...pkg,questions:[{...pkg.questions[0],assets:[null,null]}]}])assert.equal(validateAcademicPackage(malformed).ok,false,'Malformed containers must return a validation report instead of throwing');
 const reordered=structuredClone(pkg);reordered.questions[10].assets[0]=Object.fromEntries(Object.entries(reordered.questions[10].assets[0]).reverse());assert.equal(validateAcademicPackage(reordered).ok,true,'Object key order must not invent conflicting file identities');
 const transient=structuredClone(pkg);transient.questions[0].assets[0].provenance.source_ref='https://example.invalid/storage/v1/object/sign/file?token=private';assert.ok(validateAcademicPackage(transient).errors.some(e=>e.code==='ASSET_TRANSIENT_URL_FORBIDDEN'));
