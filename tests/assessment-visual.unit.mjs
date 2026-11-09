@@ -110,7 +110,18 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
        reads++;return {error:{message:'ASSESSMENT_TARGET_INVALID'}};
      }
      if(name==='flh_assessment_authoring_command'&&args.p_action==='read'){
+       assert.equal(args.p_workspace_id,workspace,'receipt must use current parent workspace');
+       assert.equal(args.p_parent_id,'04410000-0000-4000-8000-000000000020');
+       assert.equal(args.p_payload.request_id,request_id);
        receipts++;return {data:{ok:true,state:'draft',target,candidate_sha256:hash},error:null};
+     }
+     if(name==='flh_assessment_legacy_draft_eligible'){
+       assert.equal(args.p_workspace_id,workspace);
+       assert.equal(args.p_parent_id,'04410000-0000-4000-8000-000000000020');
+       assert.equal(args.p_request_id,request_id);
+       assert.equal(args.p_version_id,version);
+       assert.equal(args.p_candidate_sha256,hash);
+       return {data:true,error:null};
      }
      if(name==='flh_assessment_command'&&args.p_action==='stage'){
        writes++;
@@ -124,8 +135,26 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  const result=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',body,trace);
  assert.equal(result.state,'staged');
  assert.deepEqual([reads,receipts,writes],[1,1,1],'legitimate prior owner receipt allows first stage through full media check');
+ const noLegacy={...verified,rpc:async(name,args)=>{
+   if(name==='flh_assessment_legacy_draft_eligible')return {data:false,error:null};
+   return verified.rpc(name,args);
+ }};
+ await assert.rejects(()=>assessmentCommand(noLegacy,workspace,'04410000-0000-4000-8000-000000000020',body,trace),
+   /ASSESSMENT_ACADEMIC_REJECTED/,'new service-role-created planless draft cannot pass with a valid receipt alone');
+ assert.equal(writes,1,'unmarked new draft never reaches stage');
+ const upper=structuredClone(body);
+ upper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ const upperAllowed=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',upper,trace);
+ assert.equal(upperAllowed.state,'staged','uppercase UUIDs retain same legitimate identities');
+ assert.equal(writes,2);
+
  const mismatch=structuredClone(body);mismatch.target.quiz_id='04410000-0000-4000-8000-000000000099';
  await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',mismatch,trace),/ASSESSMENT_RETRY_CONFLICT/);
+ const altered=structuredClone(body);
+ altered.candidate.questions[0].prompt+=' ALTERED';
+ altered.semantic_review.candidate_sha256=await academicCandidateHash(altered.candidate);
+ await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',altered,trace),/ASSESSMENT_RETRY_CONFLICT/);
+ assert.equal(writes,2,'a new candidate fingerprint cannot borrow an older grandfather receipt');
  const missing=structuredClone(body);delete missing.request_id;
  await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',missing,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
  const noAuth={...verified,rpc:async(name,args)=>{
@@ -139,7 +168,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
    writes++;throw Error('drift must not fall back to authoring receipt');
  }};
  await assert.rejects(()=>assessmentCommand(drift,workspace,'04410000-0000-4000-8000-000000000020',body,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
- assert.equal(writes,1,'only the exact owner-bound historical candidate staged');
+ assert.equal(writes,2,'only the exact owner-bound historical candidate staged (including uppercase IDs)');
  // Also verify the other legitimate retry: already-STAGED immutable publication.
  // The exact same raster is revalidated; the DB returns duplicate idempotently.
  let publishedRead=0,publishedStages=0;
@@ -160,6 +189,11 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  const again=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedBody,trace);
  assert.equal(again.duplicate,true);
  assert.deepEqual([publishedRead,publishedStages],[1,1],'exact staged publication retry preserves immutable historical content');
+ const publishedUpper=structuredClone(publishedBody);
+ publishedUpper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ const match=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedUpper,trace);
+ assert.equal(match.duplicate,true,'published historical retry matches uppercase UUID variants');
+ assert.deepEqual([publishedRead,publishedStages],[2,2]);
 
 }
 
