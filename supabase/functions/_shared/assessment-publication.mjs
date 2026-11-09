@@ -52,6 +52,18 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   const action = body.action.replace('_assessment','');
   let payload;
   if (action==='stage') {
+    if(isVisualPackage(body.candidate)&&body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
+      // A direct learning-api stage cannot bypass prospective visual quotas.
+      // Only a genuinely staged immutable pre-policy publication may retry.
+      const version=body.target?.quiz_version_id,hash=await academicCandidateHash(body.candidate);
+      if(!UUID.test(version||''))deny('ASSESSMENT_ACADEMIC_REJECTED');
+      const prior=await admin.rpc('flh_assessment_command',{p_workspace_id:workspaceId,p_parent_id:parentId,
+        p_action:'read',p_payload:{quiz_version_id:version,candidate_sha256:hash}});
+      if(prior.error||prior.data?.ok!==true||!object(prior.data.publication))deny('ASSESSMENT_ACADEMIC_REJECTED');
+      const stored=prior.data.publication;
+      if(stored.candidate_sha256!==hash||['quiz_id','quiz_version_id','learner_id','program_id']
+        .some(k=>stored[k]!==body.target?.[k]))deny('ASSESSMENT_RETRY_CONFLICT');
+    }
     payload=await assessmentStagePayload(workspaceId,parentId,body);
     Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
   }
