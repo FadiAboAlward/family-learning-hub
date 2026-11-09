@@ -88,9 +88,9 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  // A historical immutable draft may be staged for the FIRST time without a
  // new visual_plan only with an existing, owner-bound and hash-matched authoring
  // receipt. Ordinary semantic and exact-raster staging gates still run.
- const target={quiz_id:'04410000-0000-4000-8000-000000000021',
-   quiz_version_id:version,learner_id:'04410000-0000-4000-8000-000000000022',
-   program_id:'04410000-0000-4000-8000-000000000023'};
+ const target={quiz_id:'a4410000-0000-4000-8000-000000000021',
+   quiz_version_id:version,learner_id:'b4410000-0000-4000-8000-000000000022',
+   program_id:'c4410000-0000-4000-8000-000000000023'};
  const request_id='04410000-0000-4000-8000-000000000024';
  const semantic_review={
    result:'PASS',...target,workspace_id:workspace,candidate_sha256:hash,
@@ -144,7 +144,8 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  assert.equal(writes,1,'unmarked new draft never reaches stage');
  const upper=structuredClone(body);
  upper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
- upper.semantic_review=Object.fromEntries(Object.entries({...upper.semantic_review,...upper.target}).map(([k,v])=>[k,Object.hasOwn(upper.target,k)?v:v]));
+ upper.semantic_review={...upper.semantic_review,...upper.target};
+ assert.notDeepEqual(upper.target,target,'fixture must contain letters to exercise uppercase UUIDs');
  const upperAllowed=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',upper,trace);
  assert.equal(upperAllowed.state,'staged','uppercase UUIDs retain same legitimate identities');
  assert.equal(writes,2);
