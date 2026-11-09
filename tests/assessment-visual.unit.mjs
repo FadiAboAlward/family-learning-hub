@@ -7,7 +7,7 @@ import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs
 import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
 import { assetContractErrors,conceptGuidance,validateVisualContract } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
-import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer } from '../supabase/functions/_shared/assessment-media.mjs';
+import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer,prepareAssessmentUpload,INLINE_ASSESSMENT_IMAGE_MAX_BYTES } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
 assert.deepEqual(fs.readFileSync(new URL('../supabase/functions/_shared/vendor/webp_dec.wasm',import.meta.url)),fs.readFileSync(new URL('../supabase/functions/_shared/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm',import.meta.url)),'Vendored WebP decoder must match the locked upstream package exactly');
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
@@ -18,6 +18,43 @@ const paperErrors=[];validateVisualContract({assessment_profile:pkg.assessment_p
 assert.equal(pkg.questions.filter(q=>q.learning_stage==='FOUNDATION').length,10);assert.equal(pkg.questions.filter(q=>q.learning_stage==='BRIDGE').length,10);
 for(const mutate of [p=>p.questions[0].learning_stage='BRIDGE',p=>delete p.blueprint[0].learning_stage,p=>p.questions[20].learning_stage='FOUNDATION',p=>p.questions.pop(),p=>p.questions[0].assets[0].position=2,p=>p.questions[10].assets.reverse(),p=>p.questions[0].assets[0].purpose='solution',p=>p.questions[0].assets[0].provenance.rights_status='unknown',p=>p.questions[0].assets[0].url='https://hotlink.invalid/image']){
  const bad=structuredClone(pkg);mutate(bad);assert.equal(validateAcademicPackage(bad).ok,false,'Invalid visual candidate must fail the official gate');
+}
+// FLH-046: native MCP-compatible inline base64 reuses the private signed-upload
+// path and exact raster verification. No real service-role or student data.
+{
+ const valid=fs.readFileSync(new URL('./fixtures/assessment-visual/rectangle.png',import.meta.url));
+ const asset=diagram('rectangle'), ops=[];
+ let saved=null;
+ const localAdmin={
+  rpc:async name=>{
+   ops.push('rpc:'+name);
+   if(name==='flh_assessment_media_parent')return {data:true,error:null};
+   if(name==='flh_assessment_upload_maintenance')return {data:{paths:[]},error:null};
+   throw Error('unexpected RPC '+name);
+  },
+  storage:{from:bucket=>{
+   assert.equal(bucket,'assessment-assets');
+   return {
+    createSignedUploadUrl:async path=>{ops.push('sign:'+path);return {data:{signedUrl:'https://synthetic.invalid/signed',token:'synthetic-upload-grant'},error:null};},
+    uploadToSignedUrl:async (path,token,blob,options)=>{
+     assert.equal(path,asset.storage_path);assert.equal(token,'synthetic-upload-grant');assert.equal(options.upsert,false);
+     assert.equal(options.contentType,'image/png');
+     saved=new Uint8Array(await blob.arrayBuffer());ops.push('uploaded');return {data:{path},error:null};
+    },
+    download:async path=>{assert.equal(path,asset.storage_path);ops.push('downloaded');return {data:new Blob([saved]),error:null};},
+    remove:async()=>({error:null})
+   };
+  }}
+ };
+ const result=await prepareAssessmentUpload(localAdmin,workspace,'04410000-0000-4000-8000-000000000020',{quiz_version_id:version,asset,image_base64:valid.toString('base64')});
+ assert.equal(result.verified,true);assert.equal(result.uploaded_bytes,valid.length);
+ assert.equal(result.signed_upload_url,undefined);
+ assert.deepEqual(saved,new Uint8Array(valid));assert.ok(ops.some(x=>x==='uploaded')&&ops.some(x=>x==='downloaded'));
+ const previous=ops.length;
+ for(const invalid of ['bad=', '', Buffer.from('not-real-png').toString('base64'), 'A'.repeat(4*Math.ceil(INLINE_ASSESSMENT_IMAGE_MAX_BYTES/3)+4)]){
+  await assert.rejects(()=>prepareAssessmentUpload(localAdmin,workspace,'04410000-0000-4000-8000-000000000020',{quiz_version_id:version,asset,image_base64:invalid}),/ASSESSMENT_MEDIA_INVALID/);
+ }
+ assert.equal(ops.length,previous,'invalid bytes must never reach the authorization, signer or Storage');
 }
 const a=diagram('rectangle');
 for(const change of [{storage_path:'../x'},{storage_path:a.storage_path.replace(workspace,version)},{width:5000},{width:4096,height:4096},{checksum_sha256:'0'},{asset_id:'bad'},{mime_type:'image/svg+xml'},{alt_text:'<script>'}])assert.ok(assetContractErrors({...a,...change},0,workspace,version).length);
