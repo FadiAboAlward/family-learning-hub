@@ -96,7 +96,9 @@ export function validateVisualContract(pkg,errors,warnings) {
         if(math&&['geometry','diagram-intensive'].includes(focus)&&visual.length>28)warnings.push({code:'VISUAL_GEOMETRY_DENSITY_REVIEW',path:'academic_context.visual_plan',message:'Over 28 visual questions may be valid, but independently check necessity and readability rather than decorative density.'});
       }
     }else{
-      warnings.push({code:'VISUAL_PLAN_MISSING_NEW_AUTHORING',path:'academic_context.visual_plan',message:'The v1.25 SOP requires a subject-aware visual plan for new exercises; missing plans are accepted only for frozen pre-FLH-046 candidates, not as new authoring approval.'});
+      // Preserve pre-FLH-046 immutable witnesses and exact-retry warning sets.
+      // The MCP authoring boundary rejects NEW visual candidates lacking a plan,
+      // whereas old already-authored candidates must keep their original gate.
     }
   }
   if(questions.some(q=>q?.assets?.length))warnings.push({code:'VISUAL_SEMANTIC_REVIEW_REQUIRED',path:'questions',message:'Independently verify exact raster/source geometry, all labels, option mapping, solution-neutral alt text and rights against this candidate hash.'});
