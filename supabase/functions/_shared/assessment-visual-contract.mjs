@@ -66,6 +66,41 @@ export function validateVisualContract(pkg,errors,warnings) {
       files.set(a?.asset_id,identity);
     }
   }
+  // FLH-FEAT-2026-046 v1.0: prospective policy. Historical v1.1 visual candidates
+  // without the new visual_plan remain readable and valid; the current academic SOP
+  // requires the plan for new authored packages. Never infer academic relevance from a count.
+  if(!paperOnly){
+    const plan=pkg.academic_context?.visual_plan;
+    if(plan!==undefined){
+      const subject=String(pkg.academic_context?.subject||'').trim().toLowerCase().replace(/\u0307/gu,'');
+      const math=/^(?:mathematics|math|matematik|رياضيات|الرياضيات)$/u.test(subject);
+      const science=/^(?:science|fen bilimleri|fen|علوم|العلوم)$/u.test(subject);
+      const focus=plan&&typeof plan==='object'&&!Array.isArray(plan)?plan.focus:null;
+      const visual=questions.filter(q=>Array.isArray(q?.assets)&&q.assets.length>0);
+      for(const q of visual){
+        const note=blueprints.find(b=>b?.question_code===q.question_code)?.visual_purpose;
+        if(typeof note!=='string'||note.trim().length<24)issue('VISUAL_PURPOSE_REQUIRED','blueprint.'+q.question_code+'.visual_purpose','Each image-bearing question needs a specific, reviewable explanation of how the figure contributes to the tested reasoning, not decoration.');
+      }
+      const learningVisual=visual.filter(q=>q.delivery_surface==='learning').length;
+      const examVisual=visual.filter(q=>q.delivery_surface==='exam').length;
+      if(!plan||typeof plan!=='object'||Array.isArray(plan)||plan.policy!=='subject-aware-v1'
+        ||!['general','geometry','diagram-intensive','subject-appropriate'].includes(focus)
+        ||!Number.isInteger(plan.target_questions)||plan.target_questions<0||plan.target_questions>40
+        ||!Number.isInteger(plan.actual_questions)||plan.actual_questions!==visual.length){
+        issue('VISUAL_PLAN_INVALID','academic_context.visual_plan','Declare the exact subject-aware-v1 visual mix and actual distinct image-question count for this new candidate.');
+      }else{
+        if(math&&(visual.length<10||plan.target_questions<10))issue('VISUAL_MATH_QUOTA','questions','Mathematics needs at least 10 meaningful visual questions out of 40; do not add decorative images merely to meet a quota.');
+        if(math&&learningVisual===0||math&&examVisual===0)issue('VISUAL_MODE_COVERAGE','questions','Mathematics visuals must appear in both Learning and Exam, not one mode only.');
+        if(math&&['geometry','diagram-intensive'].includes(focus)&&visual.length<20)issue('VISUAL_GEOMETRY_QUOTA','questions','Geometry and diagram-heavy math aims for at least 20 relevant visual questions out of 40.');
+        if(science&&(visual.length<8||visual.length>16))warnings.push({code:'VISUAL_SCIENCE_MIX_REVIEW',path:'academic_context.visual_plan',message:'Science generally targets 8–16 meaningful visual questions; reconcile this exact scope and record a reason for a different ratio.'});
+        if(math&&['geometry','diagram-intensive'].includes(focus)&&visual.length>28)warnings.push({code:'VISUAL_GEOMETRY_DENSITY_REVIEW',path:'academic_context.visual_plan',message:'Over 28 visual questions may be valid, but independently check necessity and readability rather than decorative density.'});
+      }
+    }else{
+      // Preserve pre-FLH-046 immutable witnesses and exact-retry warning sets.
+      // The MCP authoring boundary rejects NEW visual candidates lacking a plan,
+      // whereas old already-authored candidates must keep their original gate.
+    }
+  }
   if(questions.some(q=>q?.assets?.length))warnings.push({code:'VISUAL_SEMANTIC_REVIEW_REQUIRED',path:'questions',message:'Independently verify exact raster/source geometry, all labels, option mapping, solution-neutral alt text and rights against this candidate hash.'});
 }
 

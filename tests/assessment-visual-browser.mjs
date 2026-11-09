@@ -25,7 +25,7 @@ const reply=(route,payload,status=200)=>route.fulfill({status,contentType:'appli
  * @param {{name: string, viewport: {width: number,height: number}, mobile: boolean}} device
  */
 async function run(device){
- const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile});
+ const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile||device.name==='tablet'});
  const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
  page.on('pageerror',e=>errors.push(e.name));
  /** Build one strictly synthetic question response with ordered optional media. */
@@ -130,7 +130,7 @@ async function run(device){
   assert.deepEqual(errors,[]);assert.equal(calls.filter(x=>x==='submit_exam').length,1);console.log('FLH-044 exact candidate rendered Learning/Exam/history, 0/1/2 images, required failure/read-only refresh, keyboard/RTL and 9/10/11/20 resume: PASS '+device.name+' (synthetic APIs)');
  }finally{await page.close();}
 }
-try{await run({name:'mobile',viewport:{width:390,height:844},mobile:true});await run({name:'desktop',viewport:{width:1365,height:900},mobile:false});
+try{await run({name:'mobile',viewport:{width:390,height:844},mobile:true});await run({name:'tablet',viewport:{width:768,height:1024},mobile:false});await run({name:'desktop',viewport:{width:1365,height:900},mobile:false});
  const head=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();if(process.env.FLH_QA_HEAD_SHA)assert.equal(head,process.env.FLH_QA_HEAD_SHA);
  fs.writeFileSync('playwright-screenshots/flh-044-manifest.json',JSON.stringify({feature_id:'FLH-FEAT-2026-044',spec_version:'1.1',drive_revision_id:'4',head_sha:head,candidate_sha256:await academicCandidateHash(candidate),run_id:process.env.GITHUB_RUN_ID||null,source:'synthetic APIs, actual runtimes; not authenticated provider/academic pilot PASS',retention_days:7,files:shots},null,2));
 }finally{await browser.close();}

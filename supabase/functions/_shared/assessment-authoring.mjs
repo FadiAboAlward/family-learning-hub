@@ -19,6 +19,12 @@ const authoringInput=body=>({...uuidFields(body,['request_id']),target:uuidField
 export async function validateAuthoringCandidate(candidate) {
   let validation;
   try { validation = validateAcademicPackage(candidate); } catch { deny('ASSESSMENT_ACADEMIC_REJECTED'); }
+  // Authoring-only new-package gate. The generic validator still accepts frozen
+  // FLH-044 visual candidates with no plan so historical content is not changed.
+  if(isVisualPackage(candidate) && candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
+    validation.errors.push({code:'VISUAL_PLAN_REQUIRED_NEW_AUTHORING',path:'academic_context.visual_plan',message:'A new authored visual package requires the approved subject-aware-v1 visual plan and exact image-question counts.'});
+    validation.ok=false;
+  }
   const publication_supported = validation.ok && candidate.questions.length === 40
     && candidate.questions.filter(q=>q.delivery_surface==='learning').length === 20
     && candidate.questions.filter(q=>q.delivery_surface==='exam').length === 20
@@ -49,6 +55,19 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
   let payload={request_id:body.request_id};
   if (body.action==='create_assessment_draft') {
     const m=body.quiz;
+    if(isVisualPackage(body.candidate) && body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
+      // Only NEW authored packages require the new plan. An exact immutable
+      // pre-policy request must retain read/repair/resume semantics, including
+      // after HELD/release or disabling new visual publication.
+      const prior=await admin.rpc('flh_assessment_authoring_command',{
+        p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',p_payload:{request_id:body.request_id}
+      });
+      if(prior.error||prior.data?.ok!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+      const hash=await academicCandidateHash(body.candidate);
+      if(prior.data.candidate_sha256!==hash||targetKeys.some(k=>prior.data.target?.[k]!==body.target?.[k]))deny('ASSESSMENT_RETRY_CONFLICT');
+      // Continue through the original fingerprint-locked DB create path,
+      // never shortcut the request with unverified caller quiz/review metadata.
+    }
     if (!object(m) || Object.keys(m).some(k=>!['slug','title','subject_id','curriculum_id'].includes(k))
         || typeof m.slug!=='string' || m.slug.length>160 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(m.slug)
         || typeof m.title!=='string' || !m.title.trim() || m.title.length>300

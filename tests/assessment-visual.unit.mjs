@@ -4,13 +4,25 @@ import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { visualCandidate,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
-import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
+import { academicCandidateHash,assessmentCommand } from '../supabase/functions/_shared/assessment-publication.mjs';
 import { assetContractErrors,conceptGuidance,validateVisualContract } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
 import { verifyRaster } from '../supabase/functions/_shared/assessment-raster.mjs';
-import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer } from '../supabase/functions/_shared/assessment-media.mjs';
+import { verifyAssessmentMedia,assessmentMediaContext,hydrateAssessmentMedia,requireAssessmentMediaForAnswer,prepareAssessmentUpload,INLINE_ASSESSMENT_IMAGE_MAX_BYTES } from '../supabase/functions/_shared/assessment-media.mjs';
 const pkg=visualCandidate(),original=structuredClone(pkg);
 assert.deepEqual(fs.readFileSync(new URL('../supabase/functions/_shared/vendor/webp_dec.wasm',import.meta.url)),fs.readFileSync(new URL('../supabase/functions/_shared/node_modules/@jsquash/webp/codec/dec/webp_dec.wasm',import.meta.url)),'Vendored WebP decoder must match the locked upstream package exactly');
 const report=validateAcademicPackage(pkg);assert.equal(report.ok,true,JSON.stringify(report.errors));assert.deepEqual(pkg,original);
+let stageReads=0,stageWrites=0;
+await assert.rejects(()=>assessmentCommand({rpc:async(name,args)=>{
+ assert.equal(name,'flh_assessment_command');
+ if(args.p_action==='read'){stageReads++;return {error:{message:'ASSESSMENT_TARGET_INVALID'}};}
+ stageWrites++;return {data:{ok:true}};
+}},workspace,'04410000-0000-4000-8000-000000000020',{
+ action:'stage_assessment',target:{quiz_id:'04410000-0000-4000-8000-000000000021',quiz_version_id:version,learner_id:'04410000-0000-4000-8000-000000000022',program_id:'04410000-0000-4000-8000-000000000023'},
+ candidate:pkg
+},{measure:(_name,_options,operation)=>operation()}),/ASSESSMENT_ACADEMIC_REJECTED/);
+assert.equal(stageReads,1,'planless direct stage must check immutable existing publication first');
+assert.equal(stageWrites,0,'new planless direct stage must never persist');
+
 for(const malformed of [{...pkg,questions:{}},{...pkg,blueprint:{}},{...pkg,questions:[null]},{...pkg,questions:[{...pkg.questions[0],assets:[null,null]}]}])assert.equal(validateAcademicPackage(malformed).ok,false,'Malformed containers must return a validation report instead of throwing');
 const reordered=structuredClone(pkg);reordered.questions[10].assets[0]=Object.fromEntries(Object.entries(reordered.questions[10].assets[0]).reverse());assert.equal(validateAcademicPackage(reordered).ok,true,'Object key order must not invent conflicting file identities');
 const transient=structuredClone(pkg);transient.questions[0].assets[0].provenance.source_ref='https://example.invalid/storage/v1/object/sign/file?token=private';assert.ok(validateAcademicPackage(transient).errors.some(e=>e.code==='ASSET_TRANSIENT_URL_FORBIDDEN'));
@@ -18,6 +30,43 @@ const paperErrors=[];validateVisualContract({assessment_profile:pkg.assessment_p
 assert.equal(pkg.questions.filter(q=>q.learning_stage==='FOUNDATION').length,10);assert.equal(pkg.questions.filter(q=>q.learning_stage==='BRIDGE').length,10);
 for(const mutate of [p=>p.questions[0].learning_stage='BRIDGE',p=>delete p.blueprint[0].learning_stage,p=>p.questions[20].learning_stage='FOUNDATION',p=>p.questions.pop(),p=>p.questions[0].assets[0].position=2,p=>p.questions[10].assets.reverse(),p=>p.questions[0].assets[0].purpose='solution',p=>p.questions[0].assets[0].provenance.rights_status='unknown',p=>p.questions[0].assets[0].url='https://hotlink.invalid/image']){
  const bad=structuredClone(pkg);mutate(bad);assert.equal(validateAcademicPackage(bad).ok,false,'Invalid visual candidate must fail the official gate');
+}
+// FLH-046: native MCP-compatible inline base64 reuses the private signed-upload
+// path and exact raster verification. No real service-role or student data.
+{
+ const valid=fs.readFileSync(new URL('./fixtures/assessment-visual/rectangle.png',import.meta.url));
+ const asset=diagram('rectangle'), ops=[];
+ let saved=null;
+ const localAdmin={
+  rpc:async name=>{
+   ops.push('rpc:'+name);
+   if(name==='flh_assessment_media_parent')return {data:true,error:null};
+   if(name==='flh_assessment_upload_maintenance')return {data:{paths:[]},error:null};
+   throw Error('unexpected RPC '+name);
+  },
+  storage:{from:bucket=>{
+   assert.equal(bucket,'assessment-assets');
+   return {
+    createSignedUploadUrl:async path=>{ops.push('sign:'+path);return {data:{signedUrl:'https://synthetic.invalid/signed',token:'synthetic-upload-grant'},error:null};},
+    uploadToSignedUrl:async (path,token,blob,options)=>{
+     assert.equal(path,asset.storage_path);assert.equal(token,'synthetic-upload-grant');assert.equal(options.upsert,false);
+     assert.equal(options.contentType,'image/png');
+     saved=new Uint8Array(await blob.arrayBuffer());ops.push('uploaded');return {data:{path},error:null};
+    },
+    download:async path=>{assert.equal(path,asset.storage_path);ops.push('downloaded');return {data:new Blob([saved]),error:null};},
+    remove:async()=>({error:null})
+   };
+  }}
+ };
+ const result=await prepareAssessmentUpload(localAdmin,workspace,'04410000-0000-4000-8000-000000000020',{quiz_version_id:version,asset,image_base64:valid.toString('base64')});
+ assert.equal(result.verified,true);assert.equal(result.uploaded_bytes,valid.length);
+ assert.equal(result.signed_upload_url,undefined);
+ assert.deepEqual(saved,new Uint8Array(valid));assert.ok(ops.some(x=>x==='uploaded')&&ops.some(x=>x==='downloaded'));
+ const previous=ops.length;
+ for(const invalid of ['bad=', '', Buffer.from('not-real-png').toString('base64'), 'A'.repeat(4*Math.ceil(INLINE_ASSESSMENT_IMAGE_MAX_BYTES/3)+4)]){
+  await assert.rejects(()=>prepareAssessmentUpload(localAdmin,workspace,'04410000-0000-4000-8000-000000000020',{quiz_version_id:version,asset,image_base64:invalid}),/ASSESSMENT_MEDIA_INVALID/);
+ }
+ assert.equal(ops.length,previous,'invalid bytes must never reach the authorization, signer or Storage');
 }
 const a=diagram('rectangle');
 for(const change of [{storage_path:'../x'},{storage_path:a.storage_path.replace(workspace,version)},{width:5000},{width:4096,height:4096},{checksum_sha256:'0'},{asset_id:'bad'},{mime_type:'image/svg+xml'},{alt_text:'<script>'}])assert.ok(assetContractErrors({...a,...change},0,workspace,version).length);
@@ -34,6 +83,123 @@ await assert.rejects(()=>verifyRaster(corrupt,{...a,checksum_sha256:crypto.creat
 const hash=await academicCandidateHash(pkg),downloads=[];
 const storage={from:bucket=>{assert.equal(bucket,'assessment-assets');return {download:async path=>{downloads.push(path);const name=['rectangle','triangle','composite'].find(n=>diagram(n).storage_path===path);return {data:new Blob([fs.readFileSync(new URL('./fixtures/assessment-visual/'+name+'.png',import.meta.url))])};}};}};
 const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);assert.equal(proof.media_verification.files.length,3);assert.equal(downloads.length,3,'Same immutable file may be reused with question-specific order');
+
+{
+ // A historical immutable draft may be staged for the FIRST time without a
+ // new visual_plan only with an existing, owner-bound and hash-matched authoring
+ // receipt. Ordinary semantic and exact-raster staging gates still run.
+ const target={quiz_id:'a4410000-0000-4000-8000-000000000021',
+   quiz_version_id:version,learner_id:'b4410000-0000-4000-8000-000000000022',
+   program_id:'c4410000-0000-4000-8000-000000000023'};
+ const request_id='04410000-0000-4000-8000-000000000024';
+ const semantic_review={
+   result:'PASS',...target,workspace_id:workspace,candidate_sha256:hash,
+   reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:reviewer',
+   source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',
+   authority_ref:'synthetic:existing-draft',
+   warning_dispositions:report.warnings.map(w=>({...w,result:'ACCEPTED',
+     reason:'Synthetic historical reviewed draft; this is not real learner approval.'}))
+ };
+ const body={action:'stage_assessment',request_id,target,candidate:pkg,semantic_review};
+ const trace={measure:(_label,_metadata,operation)=>operation()};
+ let reads=0,receipts=0,writes=0;
+ const verified={
+   storage,
+   rpc:async(name,args)=>{
+     if(name==='flh_assessment_command'&&args.p_action==='read'){
+       reads++;return {error:{message:'ASSESSMENT_TARGET_INVALID'}};
+     }
+     if(name==='flh_assessment_authoring_command'&&args.p_action==='read'){
+       assert.equal(args.p_workspace_id,workspace,'receipt must use current parent workspace');
+       assert.equal(args.p_parent_id,'04410000-0000-4000-8000-000000000020');
+       assert.equal(args.p_payload.request_id,request_id);
+       receipts++;return {data:{ok:true,state:'draft',target,candidate_sha256:hash},error:null};
+     }
+     if(name==='flh_assessment_legacy_draft_eligible'){
+       assert.equal(args.p_workspace_id,workspace);
+       assert.equal(args.p_parent_id,'04410000-0000-4000-8000-000000000020');
+       assert.equal(args.p_request_id,request_id);
+       assert.equal(args.p_version_id,version);
+       assert.equal(args.p_candidate_sha256,hash);
+       return {data:true,error:null};
+     }
+     if(name==='flh_assessment_command'&&args.p_action==='stage'){
+       writes++;
+       assert.equal(args.p_payload.candidate_sha256,hash);
+       assert.equal(args.p_payload.media_verification.files.length,3);
+       return {data:{ok:true,state:'staged'},error:null};
+     }
+     throw Error('UNEXPECTED_ASSESSMENT_RPC');
+   }
+ };
+ const result=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',body,trace);
+ assert.equal(result.state,'staged');
+ assert.deepEqual([reads,receipts,writes],[1,1,1],'legitimate prior owner receipt allows first stage through full media check');
+ const noLegacy={...verified,rpc:async(name,args)=>{
+   if(name==='flh_assessment_legacy_draft_eligible')return {data:false,error:null};
+   return verified.rpc(name,args);
+ }};
+ await assert.rejects(()=>assessmentCommand(noLegacy,workspace,'04410000-0000-4000-8000-000000000020',body,trace),
+   /ASSESSMENT_ACADEMIC_REJECTED/,'new service-role-created planless draft cannot pass with a valid receipt alone');
+ assert.equal(writes,1,'unmarked new draft never reaches stage');
+ const upper=structuredClone(body);
+ upper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ upper.semantic_review={...upper.semantic_review,...upper.target};
+ assert.notDeepEqual(upper.target,target,'fixture must contain letters to exercise uppercase UUIDs');
+ const upperAllowed=await assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',upper,trace);
+ assert.equal(upperAllowed.state,'staged','uppercase UUIDs retain same legitimate identities');
+ assert.equal(writes,2);
+
+ const mismatch=structuredClone(body);mismatch.target.quiz_id='04410000-0000-4000-8000-000000000099';
+ await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',mismatch,trace),/ASSESSMENT_RETRY_CONFLICT/);
+ const altered=structuredClone(body);
+ altered.candidate.questions[0].prompt+=' ALTERED';
+ altered.semantic_review.candidate_sha256=await academicCandidateHash(altered.candidate);
+ await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',altered,trace),/ASSESSMENT_RETRY_CONFLICT/);
+ assert.equal(writes,2,'a new candidate fingerprint cannot borrow an older grandfather receipt');
+ const missing=structuredClone(body);delete missing.request_id;
+ await assert.rejects(()=>assessmentCommand(verified,workspace,'04410000-0000-4000-8000-000000000020',missing,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
+ const noAuth={...verified,rpc:async(name,args)=>{
+   if(args.p_action==='read'&&name==='flh_assessment_command')return {error:{message:'ASSESSMENT_TARGET_INVALID'}};
+   if(name==='flh_assessment_authoring_command')return {error:{message:'ASSESSMENT_TARGET_INVALID'}};
+   writes++;throw Error('unauthorized writer must not execute');
+ }};
+ await assert.rejects(()=>assessmentCommand(noAuth,workspace,'04410000-0000-4000-8000-000000000020',body,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
+ const drift={...verified,rpc:async(name,args)=>{
+   if(name==='flh_assessment_command'&&args.p_action==='read')return {error:{message:'ASSESSMENT_CONTENT_DRIFT'}};
+   writes++;throw Error('drift must not fall back to authoring receipt');
+ }};
+ await assert.rejects(()=>assessmentCommand(drift,workspace,'04410000-0000-4000-8000-000000000020',body,trace),/ASSESSMENT_ACADEMIC_REJECTED/);
+ assert.equal(writes,2,'only the exact owner-bound historical candidate staged (including uppercase IDs)');
+ // Also verify the other legitimate retry: already-STAGED immutable publication.
+ // The exact same raster is revalidated; the DB returns duplicate idempotently.
+ let publishedRead=0,publishedStages=0;
+ const published={storage,rpc:async(name,args)=>{
+   if(name==='flh_assessment_command'&&args.p_action==='read'){
+     publishedRead++;
+     return {data:{ok:true,publication:{...target,candidate_sha256:hash}},error:null};
+   }
+   if(name==='flh_assessment_command'&&args.p_action==='stage'){
+     publishedStages++;
+     assert.equal(args.p_payload.media_verification.files.length,3);
+     return {data:{ok:true,duplicate:true,state:'staged'},error:null};
+   }
+   throw Error('unexpected publication retry action');
+ }};
+ const publishedBody={...body};
+ delete publishedBody.request_id;
+ const again=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedBody,trace);
+ assert.equal(again.duplicate,true);
+ assert.deepEqual([publishedRead,publishedStages],[1,1],'exact staged publication retry preserves immutable historical content');
+ const publishedUpper=structuredClone(publishedBody);
+ publishedUpper.target=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
+ publishedUpper.semantic_review={...publishedUpper.semantic_review,...publishedUpper.target};
+ const match=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedUpper,trace);
+ assert.equal(match.duplicate,true,'published historical retry matches uppercase UUID variants');
+ assert.deepEqual([publishedRead,publishedStages],[2,2]);
+
+}
+
 assert.deepEqual(await verifyAssessmentMedia({},workspace,version,{}),{},'Legacy authoring has zero media side effects');
 let gradeCalls=0;
 const missingRuntime={rpc:async name=>{assert.equal(name,'flh_assessment_media_context');return {data:{questions:[{assets:[{...diagram('rectangle'),required:true}]}]}};},storage:{from:()=>({download:async()=>({error:{message:'storage outage'}})})}};

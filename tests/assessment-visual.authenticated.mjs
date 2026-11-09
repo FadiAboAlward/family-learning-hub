@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createHash,createHmac} from 'node:crypto';
 import {requireIsolatedQaBackend} from '../supabase/functions/_shared/qa-backend-isolation.mjs';
-import {visualCandidate,diagram,workspace as w} from './fixtures/assessment-visual/candidate.mjs';
+import {visualCandidateWithQuota,diagram,workspace as w} from './fixtures/assessment-visual/candidate.mjs';
 import {validateAuthoringCandidate} from '../supabase/functions/_shared/assessment-authoring.mjs';
 import {visualAuthenticatedBrowser} from './assessment-visual-auth-browser.mjs';
 
@@ -15,7 +15,7 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
  const previousVideos=(await query(`select value::text from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)).trim();
  const previous=(await query(`select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments';`)).trim();
  const target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
- const candidate=visualCandidate(ids.version),uploaded=[];let token,owned=false;
+ const candidate=visualCandidateWithQuota(ids.version),uploaded=[];let token,owned=false;
  const json=value=>"'"+JSON.stringify(value).replaceAll("'","''")+"'::jsonb";
  async function api(body,bearer=token,endpoint='learning-api'){const r=await fetch(config.backendUrl+'/functions/v1/'+endpoint,{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json',...(bearer?{authorization:'Bearer '+bearer}:{})},body:JSON.stringify(body)});return {status:r.status,result:await r.json()};}
  // URL signatures stay in memory. The local Edge's internal Kong origin is never a Runner destination.
@@ -32,6 +32,10 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
   owned=true;
   await query(`begin;insert into public.learning_programs(id,workspace_id,slug,title,status,curriculum_id,grade_level) values('${ids.program}','${w}','qa-visual-api','Synthetic visual API','active','${catalog.curriculum_id}',7);insert into public.learner_program_enrollments(workspace_id,learner_id,program_id,status) values('${w}','${learner}','${ids.program}','active');commit;`);
   const login=await fetch(config.backendUrl+'/auth/v1/token?grant_type=password',{method:'POST',redirect:'error',headers:{apikey:runtime.publishableKey,'content-type':'application/json'},body:JSON.stringify({email,password})});assert.equal(login.status,200);token=(await login.json()).access_token;assert.ok(token);
+  assert.equal(candidate.questions.length,40);
+  assert.equal(candidate.questions.filter(q=>q.assets.length>0).length,10,'FLH-046 math 25% visual blueprint');
+  assert.ok(candidate.questions.some(q=>q.delivery_surface==='learning'&&q.assets.length));
+  assert.ok(candidate.questions.some(q=>q.delivery_surface==='exam'&&q.assets.length));
   const create=await makeCreate(candidate);
   assert.equal((await api(create,'')).status,401);assert.equal((await api(create,'invalid-token')).status,401);
   assert.equal((await api(create)).result.error,'ASSESSMENT_VISUAL_DISABLED');
@@ -45,8 +49,24 @@ export async function verifyAssessmentVisualApi({runtime,parentId,email,password
   for(const name of ['rectangle','triangle','composite']){const a=diagram(name,1,ids.version),bytes=await fs.readFile(new URL('./fixtures/assessment-visual/'+name+'.png',import.meta.url));const url=await upload(a,bytes);firstUpload ||= url;assert.equal((await api({action:'prepare_assessment_upload',quiz_version_id:ids.version,asset:a})).result.already_uploaded,true,'same bytes retry is verified, not overwritten');}
   for(const [ext,mime]of [['jpg','image/jpeg'],['webp','image/webp']]){
    const bytes=await fs.readFile(new URL('./fixtures/assessment-visual/rectangle.'+ext,import.meta.url)),sha=createHash('sha256').update(bytes).digest('hex');
-   const a={...diagram('rectangle',1,ids.version),mime_type:mime,checksum_sha256:sha,storage_path:w+'/'+ids.version+'/'+sha+'.'+ext};await upload(a,bytes);
+   const a={...diagram('rectangle',1,ids.version),mime_type:mime,checksum_sha256:sha,storage_path:w+'/'+ids.version+'/'+sha+'.'+ext};
+   if(ext==='jpg'){
+    // This is the exact small inline-image data transport used by ChatGPT's
+    // existing MCP tool; the blob is uploaded to real isolated private Storage.
+    const inline=await api({action:'prepare_assessment_upload',quiz_version_id:ids.version,asset:a,image_base64:bytes.toString('base64')});
+    assert.equal(inline.status,200,JSON.stringify({status:inline.status,error:inline.result?.error}));
+    assert.equal(inline.result.verified,true,'inline data stored and re-downloaded');
+    assert.equal(inline.result.uploaded_bytes,bytes.length);
+    assert.equal(inline.result.signed_upload_url,undefined,'ChatGPT never sees temporary upload credential in inline mode');
+    uploaded.push(a.storage_path);
+   }else await upload(a,bytes);
    assert.equal((await api({action:'prepare_assessment_upload',quiz_version_id:ids.version,asset:a})).result.already_uploaded,true,'real Edge fully decodes '+mime);
+  }
+  const inlineAsset=diagram('rectangle',1,ids.version);
+  // Invalid base64, empty bytes and mismatched hashes all fail before object write.
+  for(const badData of ['not-base64!!','',Buffer.from('not an image').toString('base64')]){
+    const denied=await api({action:'prepare_assessment_upload',quiz_version_id:ids.version,asset:inlineAsset,image_base64:badData});
+    assert.equal(denied.result.error,'ASSESSMENT_MEDIA_INVALID');
   }
   const png=await fs.readFile(new URL('./fixtures/assessment-visual/rectangle.png',import.meta.url));
   for(const bad of [{mime_type:'image/jpeg',storage_path:w+'/'+ids.version+'/'+diagram('rectangle').checksum_sha256+'.jpg'},{checksum_sha256:'0'.repeat(64),storage_path:w+'/'+ids.version+'/'+'0'.repeat(64)+'.png'}]){

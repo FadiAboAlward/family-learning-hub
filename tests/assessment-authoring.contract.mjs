@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { assessmentStagePayload } from '../supabase/functions/_shared/assessment-publication.mjs';
-import { validateAuthoringCandidate } from '../supabase/functions/_shared/assessment-authoring.mjs';
+import { validateAuthoringCandidate,assessmentAuthoringCommand } from '../supabase/functions/_shared/assessment-authoring.mjs';
+import { visualCandidate } from './fixtures/assessment-visual/candidate.mjs';
 
 // Existing disposable Core QA DB only. No hosted URL/key, learner attempt or provider call.
 const w='55f9224c-8ba7-4cbc-9f88-713e6a6b41df';
@@ -47,6 +48,7 @@ await query(`begin; ${tokenHook}
 const learner=await query(`select id from public.learners where workspace_id='${w}' and slug='test' and is_active and metadata->>'is_test'='true';`);
 assert.match(learner,/^[a-f0-9-]{36}$/);
 const priorFlag=JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`));
+const oldVisualSetting=await query(`select coalesce((select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments'),'null');`);
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const report=await validateAuthoringCandidate(candidate);assert.equal(report.ok,true);
 const hash=report.candidate_sha256,target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
@@ -54,9 +56,21 @@ const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:h
 const staged=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review});
 const subject=Number(await query('select coalesce(max(id),0)+1 from public.subjects;'));
 const quiz={slug:'qa-assessment-authoring',title:'Synthetic direct authoring',subject_id:subject,curriculum_id:ids.curriculum};
+const oldQuiz={slug:'qa-assessment-authoring-legacy',title:'Synthetic archived visual request',subject_id:subject,curriculum_id:ids.curriculum};
 const payload={...staged,request_id:ids.request,quiz};
 const duplicateTarget={...target,quiz_id:'03310000-0000-4000-8000-000000000009',quiz_version_id:'03310000-0000-4000-8000-000000000010'};
 const duplicateRequest='03310000-0000-4000-8000-000000000011';
+const oldRequest='03310000-0000-4000-8000-000000000014';
+const oldTarget={quiz_id:'03310000-0000-4000-8000-000000000015',quiz_version_id:'03310000-0000-4000-8000-000000000016',learner_id:learner,program_id:ids.program};
+const oldCandidate=visualCandidate(oldTarget.quiz_version_id);
+const oldReport=await validateAuthoringCandidate(oldCandidate);
+assert.equal(oldReport.ok,false,'new visual candidate without visual_plan is prohibited');
+const oldProof=await assessmentStagePayload(w,ids.parent,{target:oldTarget,candidate:oldCandidate,
+ semantic_review:{...oldTarget,workspace_id:w,result:'PASS',candidate_sha256:oldReport.candidate_sha256,reviewed_at:new Date().toISOString(),
+ reviewer_ref:'synthetic:legacy',authority_ref:'synthetic:legacy',source_review_ref:'synthetic:geometry-source',learner_scope_review_ref:'synthetic:Testing',
+ warning_dispositions:oldReport.validation.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Pre-policy synthetic request; no student release authorized.'}))}
+});
+const oldPayload={...oldProof,request_id:oldRequest,quiz:oldQuiz};
 const duplicatePayload={...await assessmentStagePayload(w,ids.parent,{target:duplicateTarget,candidate,semantic_review:{...semantic_review,...duplicateTarget}}),
  request_id:duplicateRequest,quiz:{...quiz,slug:'qa-assessment-authoring-duplicate'}};
 const author=(action,p={request_id:ids.request},parent=ids.parent,workspace=w)=>`public.flh_assessment_authoring_command('${workspace}','${parent}','${action}',${json(p)})`;
@@ -129,10 +143,73 @@ try {
   or exists(select 1 from public.subjects where id=${subject} or code='qa-assessment-authoring')
   or exists(select 1 from public.quizzes where id='${duplicateTarget.quiz_id}' or slug='qa-assessment-authoring-duplicate')
   or exists(select 1 from public.quiz_versions where id='${duplicateTarget.quiz_version_id}')
+   or exists(select 1 from public.quizzes where id='${oldTarget.quiz_id}' or slug='qa-assessment-authoring-legacy')
+   or exists(select 1 from public.quiz_versions where id='${oldTarget.quiz_version_id}')
   or exists(select 1 from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${duplicateRequest}')
   then raise exception 'AUTHORING_NAMESPACE_NOT_EMPTY';end if;end$$;`);
  owned=true;
  await query(`begin; ${setup} commit;`);
+  // Seed a true pre-policy immutable draft using the existing DB RPC, then
+  // exercise CURRENT JavaScript command over the REAL isolated PostgreSQL.
+  await query(`insert into public.workspace_settings(workspace_id,key,value) values('${w}','visual_assessments','{"enabled":true}'::jsonb) on conflict(workspace_id,key) do update set value=excluded.value;`);
+  const seeded=JSON.parse(await query(`set role service_role;select ${author('create',oldPayload)};`));
+  assert.equal(seeded.state,'draft');
+   const legacyCheck=(request=oldRequest,parent=ids.parent,version=oldTarget.quiz_version_id,sha=oldReport.candidate_sha256)=>
+     `public.flh_assessment_legacy_draft_eligible('${w}','${parent}','${request}','${version}','${sha}')`;
+   assert.equal(await query(`select legacy_visual_eligible from private.assessment_authoring_requests where workspace_id='${w}' and request_id='${oldRequest}';`),'f',
+     'post-migration service-created draft must never inherit grandfather privilege');
+   assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'f',
+     'a valid owner-bound receipt alone cannot grandfather new planless content');
+   assert.equal(await query(`select has_column_privilege('service_role','private.assessment_authoring_requests','legacy_visual_eligible','UPDATE');`),'f',
+     'service writer cannot mint grandfather eligibility');
+   assert.equal(await query(`select has_function_privilege('authenticated','public.flh_assessment_legacy_draft_eligible(uuid,uuid,uuid,uuid,text)','EXECUTE');`),'f',
+     'parent client cannot invoke privileged grandfather classification');
+   // This privileged QA-only update models an already-existing request that
+   // the one-time migration itself marked during deployment, never client API.
+   await query(`update private.assessment_authoring_requests set legacy_visual_eligible=true where workspace_id='${w}' and request_id='${oldRequest}';`);
+   assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'t');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.teacher)};`),'f');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.parent,ids.version)};`),'f');
+   assert.equal(await query(`set role service_role;select ${legacyCheck(oldRequest,ids.parent,oldTarget.quiz_version_id,'0'.repeat(64))};`),'f');
+
+  await query(`update public.workspace_settings set value='{"enabled":false}'::jsonb where workspace_id='${w}' and key='visual_assessments';`);
+  const dbAdmin={
+   rpc:async(name,args)=>{
+    try{
+     if(name==='flh_assessment_authoring_command'){
+      const data=JSON.parse(await query(`set role service_role;select public.flh_assessment_authoring_command('${w}','${ids.parent}','${args.p_action}',${json(args.p_payload)});`));
+      return {data,error:null};
+     }
+     if(name==='flh_assessment_media_parent'){
+      const raw=await query(`set role service_role;select public.flh_assessment_media_parent('${w}','${ids.parent}','${args.p_version_id}',true);`);
+      return {data:raw==='t',error:null};
+     }
+     throw Error('UNEXPECTED_RPC');
+    }catch(error){
+     const safe=String(error).match(/ASSESSMENT_[A-Z_]+/);
+     return {error:{message:safe?.[0]||'ASSESSMENT_UNAVAILABLE'},data:null};
+    }
+   },
+   from:table=>{
+    assert.equal(table,'learning_concepts');
+    const chain={select:()=>chain,eq:()=>chain,
+     in:async(_field,codes)=>{
+      const raw=await query(`set role service_role;select code from public.learning_concepts where workspace_id='${w}' and curriculum_id='${ids.curriculum}' and subject_id=${subject} and grade_level=7 and code in(select jsonb_array_elements_text(${json(codes)}));`);
+      return {data:raw?raw.split('\n').map(code=>({code})):[],error:null};
+     }};
+    return chain;
+   }
+  };
+  const qaTrace={measure:(_name,_opts,fn)=>fn()};
+  const prior=await assessmentAuthoringCommand(dbAdmin,w,ids.parent,{action:'create_assessment_draft',request_id:oldRequest,
+    target:oldTarget,candidate:oldCandidate,semantic_review:oldProof.semantic_review,quiz:oldQuiz},qaTrace);
+  assert.equal(prior.duplicate,true,'real database exact historical planless visual request retries unchanged');
+  assert.equal(await query(`set role service_role;select ${legacyCheck()};`),'t',
+    'pre-policy marker survives disabling NEW visual authoring for authenticated exact retry');
+  await assert.rejects(()=>assessmentAuthoringCommand(dbAdmin,w,ids.parent,{action:'create_assessment_draft',request_id:oldRequest,
+    target:oldTarget,candidate:oldCandidate,semantic_review:oldProof.semantic_review,quiz:{...oldQuiz,title:'Changed archived retry'}},qaTrace),
+    /ASSESSMENT_RETRY_CONFLICT/,'real DB rejects changed title even after read-before-create');
+
  const results=await Promise.all(Array.from({length:3},()=>query(`set role service_role;select ${author('create',payload)};`)));
  assert.equal(results.filter(x=>JSON.parse(x).duplicate===true).length,2);
  assert.equal(await query(`select count(*) from public.quiz_versions where quiz_id='${ids.quiz}';`),'1');
@@ -148,18 +225,20 @@ try {
 finally {
  try { if(owned) await query(`begin;
  do $$ begin if exists(select 1 from auth.users where id='${ids.parent}' and email<>'qa-authoring-owner@example.invalid') then raise exception 'AUTHORING_CLEANUP_OWNER_MISMATCH';end if;end$$;
- delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id in('${ids.request}','${duplicateRequest}') and created_by='${ids.parent}';
+ delete from private.assessment_authoring_requests where workspace_id='${w}' and request_id in('${ids.request}','${duplicateRequest}','${oldRequest}') and created_by='${ids.parent}';
  delete from public.assessment_publications where workspace_id='${w}' and quiz_version_id='${ids.version}' and created_by='${ids.parent}';
- delete from public.quizzes where workspace_id='${w}' and ((id='${ids.quiz}' and slug='qa-assessment-authoring') or (id='${duplicateTarget.quiz_id}' and slug='qa-assessment-authoring-duplicate'));
+ delete from public.quizzes where workspace_id='${w}' and ((id='${ids.quiz}' and slug='qa-assessment-authoring') or (id='${duplicateTarget.quiz_id}' and slug='qa-assessment-authoring-duplicate') or (id='${oldTarget.quiz_id}' and slug='qa-assessment-authoring-legacy'));
  delete from public.learner_program_enrollments where workspace_id='${w}' and learner_id='${learner}' and program_id='${ids.program}';
  delete from public.learning_programs where workspace_id='${w}' and id='${ids.program}';
  delete from public.learning_concepts where workspace_id='${w}' and subject_id=${subject};
  delete from public.subjects where id=${subject} and code='qa-assessment-authoring';
  delete from public.curricula where id='${ids.curriculum}' and code='qa-assessment-authoring';
  delete from public.workspace_members where workspace_id='${w}' and user_id in('${ids.parent}','${ids.teacher}');
- delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid'); commit;`); }
+ delete from auth.users where id in('${ids.parent}','${ids.teacher}') and email in('qa-authoring-owner@example.invalid','qa-authoring-teacher@example.invalid');
+  ${oldVisualSetting==='null' ? `delete from public.workspace_settings where workspace_id='${w}' and key='visual_assessments';` : `insert into public.workspace_settings(workspace_id,key,value) values('${w}','visual_assessments',${json(JSON.parse(oldVisualSetting))}) on conflict(workspace_id,key) do update set value=excluded.value;`} commit;`); }
  catch(cleanupError) { if(!failure) throw cleanupError; console.error('ASSESSMENT_AUTHORING_DB_CLEANUP_FAILED'); }
 }
 assert.equal(await query(`select count(*) from public.quizzes where id='${ids.quiz}';`),'0','owned committed cleanup');
 assert.deepEqual(JSON.parse(await query(`select value from public.workspace_settings where workspace_id='${w}' and key='optional_learning_videos';`)),priorFlag);
+assert.equal(await query(`select coalesce((select value::text from public.workspace_settings where workspace_id='${w}' and key='visual_assessments'),'null');`),oldVisualSetting,'visual rollout setting restored');
 console.log('Assessment authoring DB grants/tenant/review/input/duplicate/partial rollback/full release/concurrency/owned cleanup: PASS (isolated synthetic provider receipt)');

@@ -8,8 +8,8 @@ export async function visualAuthenticatedBrowser(runtime,appUrl,bearer,candidate
  const config=readQaTestingConfig({FLH_QA_ISOLATION_MODE:runtime.mode,FLH_QA_BACKEND_URL:runtime.backendUrl,FLH_QA_PROJECT_REF:runtime.projectRef,FLH_QA_PUBLISHABLE_KEY:runtime.publishableKey,APP_URL:appUrl});
  const {chromium}=await import('playwright'),browser=await chromium.launch(qaBrowserLaunchOptions()),files=[];let phase='launch';
  try{
-  for(const [device,viewport]of [['mobile',{width:390,height:844}],['desktop',{width:1365,height:900}]]){
-   const context=await browser.newContext({viewport,isMobile:device==='mobile',hasTouch:device==='mobile',serviceWorkers:'block'});
+  for(const [device,viewport]of [['mobile',{width:390,height:844}],['tablet',{width:768,height:1024}],['desktop',{width:1365,height:900}]]){
+   const context=await browser.newContext({viewport,isMobile:device==='mobile',hasTouch:device!=='desktop',serviceWorkers:'block'});
    try{
     const guard=await installQaBrowserIsolation(context,config);
     // Local Edge uses Kong's container origin. Only translate that transport

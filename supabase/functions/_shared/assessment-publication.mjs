@@ -52,6 +52,44 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   const action = body.action.replace('_assessment','');
   let payload;
   if (action==='stage') {
+    if(isVisualPackage(body.candidate)&&body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
+      // New direct learning-api stages must have a visual plan. Permit only
+      // owner-bound immutable pre-policy retries: a published/staged receipt OR
+      // an authenticated authoring draft receipt tied to this request UUID.
+      const version=body.target?.quiz_version_id,hash=await academicCandidateHash(body.candidate);
+      const targetKeys=['quiz_id','quiz_version_id','learner_id','program_id'];
+      const matchesTarget=(stored)=>targetKeys.every(k=>UUID.test(stored?.[k]||'')&&UUID.test(body.target?.[k]||'')
+        &&stored[k].toLowerCase()===body.target[k].toLowerCase());
+      if(!UUID.test(version||''))deny('ASSESSMENT_ACADEMIC_REJECTED');
+      const prior=await admin.rpc('flh_assessment_command',{p_workspace_id:workspaceId,p_parent_id:parentId,
+        p_action:'read',p_payload:{quiz_version_id:version,candidate_sha256:hash}});
+      if(prior.data?.ok===true&&object(prior.data.publication)){
+        const stored=prior.data.publication;
+        if(stored.candidate_sha256!==hash||!matchesTarget(stored))
+          deny('ASSESSMENT_RETRY_CONFLICT');
+      }else{
+        // A known missing publication is normal for a never-staged draft.
+        // Other publication errors (e.g. drift/permissions) must not fall back.
+        if(prior.error?.message!=='ASSESSMENT_TARGET_INVALID'
+          ||!UUID.test(body.request_id||''))deny('ASSESSMENT_ACADEMIC_REJECTED');
+        const receipt=await admin.rpc('flh_assessment_authoring_command',{
+          p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',
+          p_payload:{request_id:body.request_id}
+        });
+        if(receipt.error||receipt.data?.ok!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+        if(receipt.data.candidate_sha256!==hash||!matchesTarget(receipt.data.target))
+          deny('ASSESSMENT_RETRY_CONFLICT');
+        if(receipt.data.state!=='draft')deny('ASSESSMENT_ACADEMIC_REJECTED');
+        // The receipt itself is not proof that the draft predates this policy:
+        // service-role create can still produce a new planless draft. Only the
+        // one-time DB migration can mark genuine pre-policy requests eligible.
+        const eligible=await admin.rpc('flh_assessment_legacy_draft_eligible',{
+          p_workspace_id:workspaceId,p_parent_id:parentId,
+          p_request_id:body.request_id,p_version_id:version,p_candidate_sha256:hash
+        });
+        if(eligible.error||eligible.data!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+      }
+    }
     payload=await assessmentStagePayload(workspaceId,parentId,body);
     Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
   }
