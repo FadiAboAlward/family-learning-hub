@@ -1,0 +1,99 @@
+name: FLH-046 Controlled Production Backend Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Approved exact main commit SHA
+        required: true
+        type: string
+      phase:
+        description: Read-only preflight, canonical DB/Edge deploy, or Edge resume
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - deploy
+          - resume-edge
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flh046-prod-release
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      PROD_REF: gkpoylfozvuwuwqeoduc
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.FLH044_PROD_SUPABASE_ACCESS_TOKEN }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      RELEASE_PHASE: ${{ inputs.phase }}
+    steps:
+      - name: Checkout exactly pinned main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Refuse unexpected SHA, project or missing token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_EVENT_NAME}" = workflow_dispatch
+          test "${GITHUB_REF}" = refs/heads/main
+          [[ "${EXPECTED_SHA}" =~ ^[a-f0-9]{40}$ ]]
+          test "${EXPECTED_SHA}" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          git fetch --no-tags origin main
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+          test "${PROD_REF}" = gkpoylfozvuwuwqeoduc
+
+      - name: Setup pinned Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Verify canonical release transaction and guards
+        run: node tests/flh046-production-release.unit.mjs
+
+      - name: Read-only preflight or one atomic exact migration
+        run: node scripts/flh046-production-release.mjs "${RELEASE_PHASE}"
+
+      - name: Setup pinned Supabase CLI for Docker binary bundling
+        if: inputs.phase != 'preflight'
+        uses: supabase/setup-cli@9f97a8880aff8507123eac41a95501b846a3976f
+        with:
+          version: 2.117.0
+
+      - name: Verify WebP decoder input integrity
+        if: inputs.phase != 'preflight'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info --format '{{.ServerVersion}}'
+          test "$(wc -c < supabase/functions/_shared/vendor/webp_dec.wasm)" = 137960
+          echo '30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344  supabase/functions/_shared/vendor/webp_dec.wasm' | sha256sum -c -
+          grep -Fq 'static_files = ["./functions/_shared/vendor/webp_dec.wasm"]' supabase/config.toml
+
+      - name: Deploy four reviewed Edge functions only
+        if: inputs.phase != 'preflight'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in assessment-mcp learning-api exam-v2-api attempt-history-api; do
+            echo "Deploying reviewed ${name}"
+            supabase functions deploy "${name}" --project-ref "${PROD_REF}" --no-verify-jwt
+          done
+
+      - name: Verify Production Edge versions, gateway posture and visual flag OFF
+        if: inputs.phase != 'preflight'
+        run: node scripts/flh046-production-release.mjs verify-edge
