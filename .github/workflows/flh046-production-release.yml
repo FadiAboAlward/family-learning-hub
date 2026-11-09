@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   backend:
+    name: FLH-046 production backend release
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
