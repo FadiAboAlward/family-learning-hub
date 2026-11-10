@@ -54,6 +54,7 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   const action = body.action.replace('_assessment','');
   let payload;
   if (action==='stage') {
+    let historicalReviewed=false;
     if(isVisualPackage(body.candidate)&&body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
       // New direct learning-api stages must have a visual plan. Permit only
       // owner-bound immutable pre-policy retries: a published/staged receipt OR
@@ -69,6 +70,7 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
         const stored=prior.data.publication;
         if(stored.candidate_sha256!==hash||!matchesTarget(stored))
           deny('ASSESSMENT_RETRY_CONFLICT');
+        historicalReviewed=true;
       }else{
         // A known missing publication is normal for a never-staged draft.
         // Other publication errors (e.g. drift/permissions) must not fall back.
@@ -90,9 +92,10 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
           p_request_id:body.request_id,p_version_id:version,p_candidate_sha256:hash
         });
         if(eligible.error||eligible.data!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+        historicalReviewed=true;
       }
     }
-    if(!validateSemanticItemEvidence(body.candidate,body.semantic_review,{force:true}).ok){
+    if(!historicalReviewed&&!validateSemanticItemEvidence(body.candidate,body.semantic_review,{force:true}).ok){
       // Never use caller-authored reviewed_at to grandfather a NEW stage.
       // Only an already-staged immutable publication or a DB-proven
       // pre-policy visual draft can retain the historical no-item format.
