@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -27,7 +28,7 @@ candidate.questions=Array.from({length:20},(_,i)=>[candidate.questions[i],candid
 const hash=await academicCandidateHash(candidate);
 const report=validateAcademicPackage(candidate);assert.equal(report.ok,true);
 const target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
-const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Synthetic isolated parent',source_review_ref:'Synthetic source fixture',learner_scope_review_ref:'Testing scope fixture',warning_dispositions:report.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic gate test; no real approval.'}))};
+const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Synthetic isolated parent',source_review_ref:'Synthetic source fixture',learner_scope_review_ref:'Testing scope fixture',warning_dispositions:report.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic gate test; no real approval.'}))};
 const payload=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review:review});
 const malformedPayloads=[
  p=>delete p.candidate.questions[0].question_code,
