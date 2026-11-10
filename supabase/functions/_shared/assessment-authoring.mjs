@@ -1,5 +1,6 @@
 import { assessmentStagePayload, assessmentCommand, academicCandidateHash } from './assessment-publication.mjs';
 import { validateAcademicPackage } from './academic-content-quality.mjs';
+import { validateSemanticItemEvidence } from './assessment-semantic-evidence.mjs';
 import { attachOptionalVideo } from './optional-learning-videos.mjs';
 import { prepareAssessmentUpload, pruneAssessmentUploads, previewAssessmentMedia, verifyAssessmentMedia } from './assessment-media.mjs';
 import { isVisualPackage } from './assessment-visual-contract.mjs';
@@ -73,6 +74,29 @@ export async function assessmentAuthoringCommand(admin,workspaceId,parentId,body
         || typeof m.title!=='string' || !m.title.trim() || m.title.length>300
         || !Number.isSafeInteger(m.subject_id) || m.subject_id<1 || !uuid(m.curriculum_id)) deny('ASSESSMENT_AUTHORING_INPUT_INVALID');
     const staged=await assessmentStagePayload(workspaceId,parentId,body);
+    // New authoring requests MUST carry per-item evidence regardless of the
+    // caller-supplied reviewed_at. Only a verified EXISTING frozen receipt can
+    // preserve pre-policy review semantics. A new backdated draft cannot bypass.
+    if(!validateSemanticItemEvidence(body.candidate,body.semantic_review,{force:true}).ok) {
+      const prior=await admin.rpc('flh_assessment_authoring_command',{
+        p_workspace_id:workspaceId,p_parent_id:parentId,p_action:'read',
+        p_payload:{request_id:body.request_id}
+      });
+      const matches=prior.data?.ok===true&&prior.data.candidate_sha256===staged.candidate_sha256
+        &&targetKeys.every(k=>prior.data.target?.[k]===body.target[k]);
+      if(!matches)deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      if(prior.data.state==='draft') {
+        // Only the DB-owned historical migration marker may allow an old
+        // unstaged visual request. New service-created drafts lack this marker.
+        if(!isVisualPackage(body.candidate))deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+        const legacy=await admin.rpc('flh_assessment_legacy_draft_eligible',{
+          p_workspace_id:workspaceId,p_parent_id:parentId,
+          p_request_id:body.request_id,p_version_id:body.target.quiz_version_id,
+          p_candidate_sha256:staged.candidate_sha256
+        });
+        if(legacy.error||legacy.data!==true)deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      }
+    }
     if(isVisualPackage(body.candidate)) {
       const {data:allowed,error}=await admin.rpc('flh_assessment_media_parent',{p_workspace_id:workspaceId,p_parent_id:parentId,p_version_id:body.target.quiz_version_id,p_upload:true});
       if(error)deny('ASSESSMENT_UNAVAILABLE');
