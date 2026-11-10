@@ -94,7 +94,7 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  const request_id='04410000-0000-4000-8000-000000000024';
  const semantic_review={
    result:'PASS',...target,workspace_id:workspace,candidate_sha256:hash,
-   reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:reviewer',
+   reviewed_at:'2026-11-10T19:00:00Z',reviewer_ref:'synthetic:reviewer',
    source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',
    authority_ref:'synthetic:existing-draft',
    warning_dispositions:report.warnings.map(w=>({...w,result:'ACCEPTED',
