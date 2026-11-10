@@ -40,6 +40,15 @@ await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.worksp
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.source_review_ref='');
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>delete b.semantic_review.reviewer_ref);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions.forEach(d=>{d.disposition=d.result;delete d.result;}));
+const backdated=structuredClone(body);
+backdated.semantic_review.reviewed_at='2026-11-10T19:00:00Z';
+delete backdated.semantic_review.item_evidence;
+const priorReads=[];
+await assert.rejects(()=>assessmentCommand({
+  rpc:async(name,args)=>{priorReads.push(args.p_action);return {data:null,error:{message:'ASSESSMENT_TARGET_INVALID'}};}
+},w,parent,backdated,{measure:(_n,_m,f)=>f()}),/ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/,
+'New directly staged candidates cannot backdate semantic PASS');
+assert.deepEqual(priorReads,['read'],'Backdated direct stage only checks the trusted prior receipt, never writes');
 let sent;
 const fake={rpc:async(name,args)=>{sent={name,args};return {data:{ok:true,state:'staged'},error:null};}};
 await assessmentCommand(fake,w,parent,body,{measure:(_n,_m,f)=>f()});
