@@ -30,6 +30,8 @@ await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions.pop());
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].options.pop());
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].question_code='QA-invalid');
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].hints=[]);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>delete b.semantic_review.item_evidence);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.item_evidence[0].hint_additions=[]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[null]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.candidate_sha256='0'.repeat(64));
