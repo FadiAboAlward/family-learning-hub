@@ -70,6 +70,13 @@ const before=calls.length;
 for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, {...args,semantic_review:{...semantic_review,item_evidence:[]}},
  {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
 assert.equal(calls.length,before,'invalid candidates/reviews/metadata cannot write');
+const backdated=structuredClone(args);
+backdated.semantic_review.reviewed_at='2026-11-10T19:00:00Z';
+delete backdated.semantic_review.item_evidence;
+const callsBeforeBackdate=calls.length;
+await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...backdated,action:'create_assessment_draft'},trace),
+  /ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/,'Backdating cannot create a NEW draft without per-item evidence');
+assert.equal(calls.slice(callsBeforeBackdate).filter(x=>x.payload.p_action==='create').length,0,'Rejected backdated candidate never writes');
 await assessmentAuthoringCommand(admin,w,parent,{...args,action:'create_assessment_draft'},trace);
 const createdCall=calls.at(-1);assert.equal(createdCall.payload.p_parent_id,parent);assert.equal(createdCall.payload.p_payload.semantic_review.reviewed_by,parent);
 const upperTarget=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));
