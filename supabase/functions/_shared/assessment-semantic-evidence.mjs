@@ -13,8 +13,8 @@ export const semanticEvidenceRequired=review=>{
   return Number.isFinite(reviewed)&&reviewed>=Date.parse(SEMANTIC_EVIDENCE_CUTOVER);
 };
 
-export function validateSemanticItemEvidence(candidate,review) {
-  if(!semanticEvidenceRequired(review))return {ok:true,legacy:true,reason:'PRE_POLICY_REVIEW'};
+export function validateSemanticItemEvidence(candidate,review,{force=false}={}) {
+  if(!force&&!semanticEvidenceRequired(review))return {ok:true,legacy:true,reason:'PRE_POLICY_REVIEW'};
   const questions=array(candidate?.questions),items=array(review?.item_evidence);
   if(!questions.length||items.length!==questions.length)return {ok:false,code:'SEMANTIC_ITEM_EVIDENCE_COUNT'};
   const byCode=new Map();
