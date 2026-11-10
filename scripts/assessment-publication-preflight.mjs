@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { isVisualPackage } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
+import { validateSemanticItemEvidence } from '../supabase/functions/_shared/assessment-semantic-evidence.mjs';
 
 const fail = (errors, code, message) => errors.push({ code, message });
 const sha = value => crypto.createHash('sha256').update(JSON.stringify(value) ?? 'null').digest('hex');
@@ -133,6 +134,8 @@ export function inspectAssessmentPublication(candidate, snapshot, expectedTarget
       || !text(review?.learner_scope_review_ref) || !Number.isFinite(Date.parse(review?.reviewed_at))) {
     fail(errors,'SEMANTIC_REVIEW_MISSING','The exact candidate must have a separately recorded human/academic semantic PASS review.');
   }
+  const itemEvidence=validateSemanticItemEvidence(candidate,review);
+  if(!itemEvidence.ok)fail(errors,itemEvidence.code,'Independent per-question semantic evidence missing or incomplete for the prospective review contract'+(itemEvidence.question_code?': '+itemEvidence.question_code:''));
   const dispositions = array(review?.warning_dispositions);
   const unresolvedWarnings = academic.warnings.filter(warning => !dispositions.some(disposition =>
     object(disposition) && disposition.code===warning.code && disposition.path===warning.path
