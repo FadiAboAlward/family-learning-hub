@@ -36,6 +36,8 @@
         if(enlarge.disabled)return;
         const d=document.createElement('dialog');d.className='flh-visual-dialog';d.setAttribute('aria-label',a.label||'الرسم');
         d.innerHTML=`<button class="btn btn-soft" type="button">رجوع للسؤال</button><p>${safe(a.label||'الرسم')}</p><img src="${safe(img.src)}" alt="${safe(a.alt_text)}">`;
+        // The inline image may already be wider than a small source raster.
+        d.querySelector('img').style.minWidth=`${Math.ceil(img.getBoundingClientRect().width*1.25)}px`;
         const close=()=>{d.remove();if(enlarge.isConnected)enlarge.focus();};d.addEventListener('cancel',e=>{e.preventDefault();close();});d.querySelector('button').onclick=close;root.append(d);d.showModal();d.querySelector('button').focus();
       });
     }
