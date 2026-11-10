@@ -101,7 +101,12 @@
         onStart:close,onExit:close,onDispose:close,
       });
       if(shown){dialog.querySelector('#flhVideoStart')?.focus();return true;}
-    }catch{ /* Availability and authorization failures never change the underlying screen. */ }
+    }catch(error){
+      // A learner-specific missing attachment is a normal 404, not an Exam state.
+      // Keep all other API/authorization failures generic without leaking context.
+      if(error?.message==='VIDEO_NOT_AVAILABLE')
+        unavailableReason='لا يوجد فيديو درس مرفق بهذا التمرين لحسابك الحالي.';
+    }
     if(!current()){close();return false;}
     dialog.innerHTML=`<h2>فيديو الدرس</h2><p role="status">${safe(unavailableReason)} يمكنك الرجوع إلى السؤال دون فقدان تقدّمك.</p><button class="btn btn-primary" data-video-close>رجوع إلى نفس المكان</button>`;
     const back=dialog.querySelector('[data-video-close]');back.addEventListener('click',close);back.focus();
