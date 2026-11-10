@@ -27,6 +27,7 @@ const reply=(route,payload,status=200)=>route.fulfill({status,contentType:'appli
 async function run(device){
  const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile||device.name==='tablet'});
  const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
+ let releaseFirstRefresh;const firstRefreshGate=new Promise(resolve=>{releaseFirstRefresh=resolve;});let holdFirstRefresh=true;
  page.on('pageerror',e=>errors.push(e.name));
  /** Build one strictly synthetic question response with ordered optional media. */
  const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href,
@@ -45,14 +46,14 @@ async function run(device){
   await page.route('**/functions/v1/activity-api',route=>reply(route,{ok:true}));
   await page.route('**/functions/v1/question-reference-api',route=>reply(route,{codes:{}}));
   await page.route('**/functions/v1/attempt-history-api',route=>{const b=route.request().postDataJSON();if(b.action==='attempt_detail')return reply(route,{attempt:{id:examAttempt,delivery_mode:'exam',submitted_at:'2026-11-05T12:00:00Z',percentage:95,wrong_count:1,context:{quiz:{title:'اختبار الرسوم',slug:'qa-visual'}}},review:examReview()});if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:exam.map(q=>({question_id:id(q),assets:question(q).assets}))});}return reply(route,{items:[],has_more:false,next_cursor:null});});
-  await page.route('**/functions/v1/learning-api',route=>{
+  await page.route('**/functions/v1/learning-api',async route=>{
    const b=route.request().postDataJSON();calls.push(b.action);
    if(b.action==='start_quiz')return reply(route,{attempt_id:attempt,resumed:completed.size>0,quiz:{title:'اختبار الرسوم',slug:'qa-visual'},...guidance(),queue:learning.map((q,i)=>({question_id:id(q),source_role:'core',status:completed.has(id(q))?'completed':i===completed.size?'active':'pending',draft_option_position:draft.get(id(q))||null,hint_level_requested:hints.get(id(q))||0,question:question(q)}))});
    if(b.action==='save_draft'){draft.set(b.question_id,b.option_position);return reply(route,{ok:true});}
    if(b.action==='request_hint'){const level=Math.min(4,(hints.get(b.question_id)||0)+1);hints.set(b.question_id,level);const q=learning.find(q=>id(q)===b.question_id);return reply(route,{ok:true,hint_level:level,hint:{hint_level:level,content:q.hints[level-1].content,language:'tr'}});}
    if(b.action==='answer'){completed.add(b.question_id);return reply(route,{is_correct:true,finalized:true,explanation:learning.find(q=>id(q)===b.question_id).explanation,...guidance()});}
    if(b.action==='finish_quiz'){finishCalls++;assert.equal(completed.size,20,'UI must never fake completion');return reply(route,{percentage:100,first_try_correct:20,hints_used:1,award:{already_awarded:true},...guidance(),review:learning.map(q=>({...question(q),question_id:id(q),is_correct:true,explanation:q.explanation}))});}
-   if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   if(b.action==='refresh_question_assets'){if(holdFirstRefresh){holdFirstRefresh=false;await firstRefreshGate;}urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
    if(b.action==='preview_videos')return reply(route,{error:'VIDEO_NOT_AVAILABLE'},404);
    return reply(route,{optional_video:null});
   });
@@ -106,6 +107,10 @@ async function run(device){
    */
   async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);if(i===1){assert.equal(q.assets.length,0,'Zero-image question fixture');assert.equal(await page.locator('.flh-learn-answer').count(),4,'Four answers render without media');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning initial');await shot('learning-no-image-mobile-clear');}}const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();if(i===1&&device.mobile)await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning selected');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
   await start();await page.locator('.flh-visual-asset img').waitFor();
+  await page.waitForFunction(()=>document.querySelector('.flh-visual-status')?.textContent?.includes('جارٍ إعادة تحميل'));
+  await page.evaluate(()=>document.querySelector('.flh-visual-asset img')?.dispatchEvent(new Event('load')));
+  assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'A stale image load during renewal never enables answer controls');
+  releaseFirstRefresh();
   await page.waitForFunction(()=>document.querySelector('.flh-visual-asset img')?.src.includes('r=1')&&document.querySelector('.flh-visual-enlarge')?.disabled===false);
   assert.ok(calls.includes('refresh_question_assets'),'An expired signed URL is refreshed automatically before answering');
   assert.equal(draft.size,0,'Refreshing required media does not save a draft');
