@@ -10,7 +10,8 @@ const target=z.object({quiz_id:uuid,quiz_version_id:uuid,learner_id:uuid,program
 const candidate=z.object({academic_context:z.record(z.unknown()),blueprint:z.array(z.record(z.unknown())).max(40),questions:z.array(z.record(z.unknown())).length(40)}).passthrough();
 const review=z.object({result:z.literal('PASS'),candidate_sha256:hash,workspace_id:uuid,quiz_id:uuid,quiz_version_id:uuid,learner_id:uuid,program_id:uuid,
   reviewer_ref:z.string().min(1),source_review_ref:z.string().min(1),learner_scope_review_ref:z.string().min(1),authority_ref:z.string().min(1),
-  reviewed_at:z.string().datetime({offset:true}),warning_dispositions:z.array(z.object({code:z.string(),path:z.string(),result:z.literal('ACCEPTED'),reason:z.string().min(1)}).passthrough())}).strict();
+  reviewed_at:z.string().datetime({offset:true}),warning_dispositions:z.array(z.object({code:z.string(),path:z.string(),result:z.literal('ACCEPTED'),reason:z.string().min(1)}).passthrough()),
+  item_evidence:z.array(z.record(z.unknown())).max(40).optional()}).strict();
 const request={request_id:uuid},pointer={...request,candidate_sha256:hash};
 export const ASSESSMENT_MCP_TOOLS=Object.freeze([
   {name:'prepare_assessment_upload',description:'Allocate an immutable private prompt-image upload for a preallocated version UUID. For small verified diagrams (at most 384 KiB), pass image_base64 (raw base64, no data URI) to upload the bytes directly through the SAME private signed-upload path in one call; omit it to receive the original signed URL for larger images. No overwrite; stage re-downloads and fully decodes the bytes. Never put image bytes or tokens into reports.',schema:z.object({quiz_version_id:uuid,asset:z.record(z.unknown()),image_base64:z.string().max(524288).optional()}).strict()},
