@@ -67,7 +67,8 @@ await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null,{message:
 await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null),w,candidate,args.quiz),/ASSESSMENT_UNAVAILABLE/);
 assert.equal(calls.length,0,'concept preflight never writes');
 const before=calls.length;
-for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
+for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, {...args,semantic_review:{...semantic_review,item_evidence:[]}},
+ {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
 assert.equal(calls.length,before,'invalid candidates/reviews/metadata cannot write');
 await assessmentAuthoringCommand(admin,w,parent,{...args,action:'create_assessment_draft'},trace);
 const createdCall=calls.at(-1);assert.equal(createdCall.payload.p_parent_id,parent);assert.equal(createdCall.payload.p_payload.semantic_review.reviewed_by,parent);
