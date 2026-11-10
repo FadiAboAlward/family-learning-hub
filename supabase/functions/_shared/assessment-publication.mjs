@@ -95,6 +95,7 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
         historicalReviewed=true;
       }
     }
+    payload=await assessmentStagePayload(workspaceId,parentId,body);
     if(!historicalReviewed&&!validateSemanticItemEvidence(body.candidate,body.semantic_review,{force:true}).ok){
       // Never use caller-authored reviewed_at to grandfather a NEW stage.
       // Only an already-staged immutable publication or a DB-proven
@@ -119,7 +120,6 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
         if(historic.error||historic.data!==true)deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
       }
     }
-    payload=await assessmentStagePayload(workspaceId,parentId,body);
     Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
   }
   else {
