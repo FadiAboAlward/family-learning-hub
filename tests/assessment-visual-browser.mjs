@@ -124,6 +124,7 @@ async function run(device){
   const blockedExamCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.exam-v3-answer');b.disabled=false;b.click();});assert.equal(calls.length,blockedExamCalls);assert.equal(answers.size,0);await shot('missing-helper-exam');
   await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startExamQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
   const zoom=page.locator('.flh-visual-enlarge');await zoom.focus();await page.keyboard.press('Enter');const zoomDialog=page.locator('.flh-visual-dialog');await zoomDialog.waitFor();
+  await zoomDialog.locator('img').evaluate(img=>img.decode());
   const zoomBounds=await zoomDialog.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,viewport:innerWidth,loaded:el.querySelector('img')?.naturalWidth>0};});
   assert.equal(zoomBounds.loaded,true,'Zoom must show the decoded diagram');
   assert.ok(zoomBounds.left>=-1&&zoomBounds.right<=zoomBounds.viewport+1,device.name+' zoom dialog must fit entirely within viewport');
