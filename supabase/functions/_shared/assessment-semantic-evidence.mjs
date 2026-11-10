@@ -9,8 +9,11 @@ const array=value=>Array.isArray(value)?value:[];
 // Existing frozen, pre-policy authoring reviews remain historical/idempotent.
 // This is a prospective workflow cutover, NOT an authentication/authorization rule.
 export const semanticEvidenceRequired=review=>{
-  const reviewed=Date.parse(review?.reviewed_at||'');
-  return Number.isFinite(reviewed)&&reviewed>=Date.parse(SEMANTIC_EVIDENCE_CUTOVER);
+  const raw=text(review?.reviewed_at);
+  // Invalid or offset-free timestamps cannot authorize a historical exception.
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(raw))return true;
+  const reviewed=Date.parse(raw);
+  return !Number.isFinite(reviewed)||reviewed>=Date.parse(SEMANTIC_EVIDENCE_CUTOVER);
 };
 
 export function validateSemanticItemEvidence(candidate,review,{force=false}={}) {
