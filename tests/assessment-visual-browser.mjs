@@ -125,10 +125,34 @@ async function run(device){
   await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startExamQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
   const zoom=page.locator('.flh-visual-enlarge');await zoom.focus();await page.keyboard.press('Enter');const zoomDialog=page.locator('.flh-visual-dialog');await zoomDialog.waitFor();
   await zoomDialog.locator('img').evaluate(img=>img.decode());
-  const zoomBounds=await zoomDialog.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,viewport:innerWidth,loaded:el.querySelector('img')?.naturalWidth>0};});
-  assert.equal(zoomBounds.loaded,true,'Zoom must show the decoded diagram');
-  assert.ok(zoomBounds.left>=-1&&zoomBounds.right<=zoomBounds.viewport+1,device.name+' zoom dialog must fit entirely within viewport');
+  const bounds=()=>zoomDialog.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight,loaded:el.querySelector('img')?.naturalWidth>0};});
+  const assertBounds=(r,label)=>{
+    assert.equal(r.loaded,true,label+' diagram decoded');
+    assert.ok(r.left>=-1&&r.right<=r.width+1&&r.top>=-1&&r.bottom<=r.height+1,label+' dialog must fit within viewport in both axes');
+  };
+  assertBounds(await bounds(),device.name+' normal zoom');
   await shot('exam-composite-zoom-open');
+  // Use an in-browser oversized synthetic diagram to prove both scroll axes, not just image decode.
+  await zoomDialog.locator('img').evaluate(async img=>{
+    const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=1400;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1600,1400);
+    ctx.strokeStyle='#253f6d';ctx.lineWidth=12;ctx.strokeRect(12,12,1576,1376);
+    for(const [x,y] of [[35,35],[1520,35],[35,1320],[1520,1320]]){ctx.fillStyle='#d34646';ctx.fillRect(x,y,45,45);}
+    img.src=canvas.toDataURL('image/png');await img.decode();
+  });
+  assertBounds(await bounds(),device.name+' oversized zoom');
+  const pan=await zoomDialog.evaluate(el=>{
+    const maxX=el.scrollWidth-el.clientWidth,maxY=el.scrollHeight-el.clientHeight;
+    el.scrollLeft=0;el.scrollTop=0;
+    const startX=el.scrollLeft,startY=el.scrollTop;
+    el.scrollLeft=-maxX;el.scrollTop=maxY;
+    const endX=el.scrollLeft,endY=el.scrollTop;
+    return {maxX,maxY,startX,startY,endX,endY};
+  });
+  assert.ok(pan.maxX>0&&pan.maxY>0,device.name+' oversized zoom must overflow both axes');
+  assert.ok(Math.abs(pan.endX-pan.startX)>=pan.maxX-2,device.name+' both horizontal diagram edges reachable');
+  assert.ok(pan.endY-pan.startY>=pan.maxY-2,device.name+' both vertical diagram edges reachable');
+  await shot('exam-composite-zoom-oversized-pan');
   await page.keyboard.press('Escape');assert.equal(await zoom.evaluate(el=>el===document.activeElement),true,'Keyboard zoom returns focus');await layout();await shot('exam-composite');
   for(let i=0;i<20;i++){const pos=i===0?2:exam[i].options.find(o=>o.is_correct).position;await page.locator('.exam-v3-answer[data-pos="'+pos+'"]').click();if(i<19)await page.locator('#examNext').click();}
   assert.equal(await page.locator('#flhHelp').count(),0,'Active Exam has no hints');await page.locator('#examSubmit').click();await page.locator('.exam-review-wrong .flh-visual-asset img').waitFor();await layout();await shot('exam-review');assert.equal(await page.locator('.flh-exam-results-action').count(),1,'Submitted Exam footer must have review-only class');await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.exam-review-wrong .flh-visual-asset img','#examHome',device.name+' submitted Exam review artwork');if(!device.mobile)await shot('exam-review-desktop-clear');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.exam-review-wrong .question','#examHome','Mobile submitted Exam question');await assertActionClear('.exam-review-wrong .flh-review-response','#examHome','Mobile submitted Exam selected answer');await page.locator('#examHome').focus();assert.equal(await page.locator('#examHome').evaluate(el=>el===document.activeElement),true,'Review return is keyboard focusable');await shot('exam-review-mobile-clear');}
