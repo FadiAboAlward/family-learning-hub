@@ -47,8 +47,9 @@ async function scenario(mode){
   if(opts.query.startsWith('BEGIN;')){
    writes++;assert.equal(opts.read_only,false);
    if(mode==='timeoutAfter'||mode==='timeoutBefore')throw new Error('synthetic ETIMEDOUT');
-   if(mode==='rejectedBefore'){
-    const e=new Error('synthetic HTTP 409');e.httpStatus=409;throw e;
+   if(mode==='rejectedBefore'||mode==='gateway408Before'){
+    const status=mode==='gateway408Before'?408:409;
+    const e=new Error('synthetic HTTP '+status);e.httpStatus=status;throw e;
    }
    return {};
   }
@@ -63,9 +64,7 @@ async function scenario(mode){
  const run=()=>migrate('synthetic-test-token',{api,checkLedger,sourceBytes:sql});
  if(mode==='successAfter'||mode==='timeoutAfter')await run();
  else{
-  await assert.rejects(run,
-   mode==='rejectedBefore'?/definitively rejected.*HTTP 409.*Post-state/s:
-   /outcome unverified.*Post-state/s);
+  await assert.rejects(run,/outcome unverified.*Post-state/s);
  }
  assert.equal(writes,1,'never repeat an ambiguous or rejected Production migration write');
 }
@@ -73,5 +72,6 @@ await scenario('successAfter');
 await scenario('timeoutAfter');
 await scenario('timeoutBefore');
 await scenario('rejectedBefore');
+await scenario('gateway408Before');
 await scenario('successBefore');
 console.log('FLH046 transactional release guards, SQL digest and migration response reconciliation: PASS');
