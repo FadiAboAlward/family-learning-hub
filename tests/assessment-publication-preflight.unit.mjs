@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import { assessmentStagePayload } from '../supabase/functions/_shared/assessment-publication.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -94,6 +95,12 @@ valid.semantic_review={
 };
 assert.equal(inspectAssessmentPublication(validCandidate,valid).ok,true);
 assert.equal(inspectAssessmentPublication(validCandidate,valid).warning_disposition_required,false);
+const prospective=structuredClone(valid);
+prospective.semantic_review.reviewed_at='2026-11-11T00:00:00Z';
+prospective.semantic_review.item_evidence=syntheticSemanticEvidence(validCandidate);
+assert.equal(inspectAssessmentPublication(validCandidate,prospective).ok,true,'Prospective exact item evidence permits a complete technical preflight');
+delete prospective.semantic_review.item_evidence;
+assert.equal(has(inspectAssessmentPublication(validCandidate,prospective),'SEMANTIC_ITEM_EVIDENCE_COUNT'),true,'Generic PASS without item evidence must fail prospective preflight');
 const visual=visualCandidate(),visualSnapshot=structuredClone(valid);
 visualSnapshot.questions=visual.questions.map((q,i)=>({...row(q,i),assets:structuredClone(q.assets),source_metadata:{visual_assessment:{learning_stage:q.learning_stage??null}}}));
 visualSnapshot.semantic_review.candidate_sha256=assessmentCandidateHash(visual);
