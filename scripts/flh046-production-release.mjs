@@ -91,9 +91,9 @@ export async function migrate(token,{api=management,checkLedger=guardLedger,sour
  catch(error){writeError=error;}
  try{checkLedger(await readLedger(token,api),{after:true});}
  catch(postError){
-  const definite=Number.isInteger(writeError?.httpStatus)&&writeError.httpStatus>=400&&writeError.httpStatus<500;
-  const reason=definite?'Migration definitively rejected; no retry':
-    'Migration outcome unverified; do NOT repeat an ambiguous write';
+  // A gateway 4xx (notably HTTP 408) is not proof that the database
+  // transaction did not commit. No write retry without authoritative ledger.
+  const reason='Migration outcome unverified; do NOT repeat an ambiguous write';
   throw new Error(reason+(writeError?' | Write: '+writeError.message:'')+' | Post-state: '+postError.message);
  }
  await assertFlagOff(token,api);
