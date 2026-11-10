@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { academicCandidateHash } from '../supabase/functions/_shared/assessment-publication.mjs';
@@ -19,7 +20,7 @@ export async function verifyHeldAssessmentApi(config,parentToken,learnerToken) {
  const learnerId=claims.learner_id;
  assert.match(learnerId,/^[a-f0-9-]{36}$/);
  const target={quiz_id:assessmentQaIds.quiz,quiz_version_id:assessmentQaIds.version,program_id:assessmentQaIds.program,learner_id:learnerId};
- const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Synthetic authenticated parent',source_review_ref:'Testing synthetic source',learner_scope_review_ref:'Testing exact scope',warning_dispositions:validateAcademicPackage(candidate).warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic isolated QA; no real academic sign-off.'}))};
+ const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Synthetic authenticated parent',source_review_ref:'Testing synthetic source',learner_scope_review_ref:'Testing exact scope',warning_dispositions:validateAcademicPackage(candidate).warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic isolated QA; no real academic sign-off.'}))};
  const invoke=async(endpoint,token,body)=>{
   const response=await fetchQaBackend(config,endpoint,{method:'POST',headers:{'content-type':'application/json',apikey:config.publishableKey,...(token?{authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});
   lastResponse={status:response.status,body:await response.json()};
