@@ -123,8 +123,22 @@ async function run(device){
   await page.evaluate(async()=>{delete window.FLHAssessmentAssets;await window.FLH.startExamQuiz('qa-visual');});assert.equal(await page.locator('.exam-v3-answer:enabled').count(),0,'Missing helper must fail closed in Exam');
   const blockedExamCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.exam-v3-answer');b.disabled=false;b.click();});assert.equal(calls.length,blockedExamCalls);assert.equal(answers.size,0);await shot('missing-helper-exam');
   await page.evaluate(async()=>{window.FLHAssessmentAssets=window.qaAssetHelper;await window.FLH.startExamQuiz('qa-visual');});await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);
-  const zoom=page.locator('.flh-visual-enlarge');await zoom.focus();await page.keyboard.press('Enter');const zoomDialog=page.locator('.flh-visual-dialog');await zoomDialog.waitFor();
-  await zoomDialog.locator('img').evaluate(img=>img.decode());
+  const zoom=page.locator('.flh-visual-enlarge');
+  const inlineWidth=await zoom.locator('img').evaluate(async img=>{
+    const canvas=document.createElement('canvas');canvas.width=96;canvas.height=64;
+    canvas.getContext('2d').fillRect(0,0,96,64);
+    img.src=canvas.toDataURL('image/png');await img.decode();
+    return img.getBoundingClientRect().width;
+  });
+  assert.ok(inlineWidth>96,device.name+' small source must already be upscaled inline');
+  await zoom.focus();await page.keyboard.press('Enter');const zoomDialog=page.locator('.flh-visual-dialog');await zoomDialog.waitFor();
+  const enlarged=await zoomDialog.locator('img').evaluate(async img=>{
+    await img.decode();
+    const {width,height}=img.getBoundingClientRect();
+    return {width,height};
+  });
+  assert.ok(enlarged.width>=inlineWidth*1.25,device.name+' zoom must enlarge a small source beyond its inline size');
+  assert.ok(Math.abs(enlarged.width/enlarged.height-1.5)<0.01,device.name+' zoom must preserve the small source aspect ratio');
   const bounds=()=>zoomDialog.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight,loaded:el.querySelector('img')?.naturalWidth>0};});
   const assertBounds=(r,label)=>{
     assert.equal(r.loaded,true,label+' diagram decoded');
