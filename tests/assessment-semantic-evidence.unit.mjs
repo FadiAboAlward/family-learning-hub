@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { semanticEvidenceRequired,validateSemanticItemEvidence } from '../supabase/functions/_shared/assessment-semantic-evidence.mjs';
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
+
+const candidate=JSON.parse(fs.readFileSync(new URL('./fixtures/assessment-publication/valid-package.json',import.meta.url),'utf8'));
+const current={reviewed_at:'2026-11-11T00:00:00Z',item_evidence:syntheticSemanticEvidence(candidate)};
+assert.equal(semanticEvidenceRequired(current),true);
+assert.deepEqual(validateSemanticItemEvidence(candidate,current),{ok:true,reviewed_count:40});
+assert.deepEqual(validateSemanticItemEvidence(candidate,{reviewed_at:'2026-11-10T19:00:00Z'}),{ok:true,legacy:true,reason:'PRE_POLICY_REVIEW'});
+const error=review=>validateSemanticItemEvidence(candidate,review).code;
+assert.equal(error({...current,item_evidence:[]}), 'SEMANTIC_ITEM_EVIDENCE_COUNT');
+const missing=structuredClone(current);missing.item_evidence[0].clarity='';
+assert.equal(error(missing), 'SEMANTIC_ITEM_EVIDENCE_INCOMPLETE');
+const duplicate=structuredClone(current);duplicate.item_evidence[1].question_code=duplicate.item_evidence[0].question_code;
+assert.equal(error(duplicate), 'SEMANTIC_ITEM_EVIDENCE_DUPLICATE');
+const learning=structuredClone(current);learning.item_evidence[0].hint_additions[3]=learning.item_evidence[0].hint_additions[2];
+assert.equal(error(learning), 'SEMANTIC_HINT_PROGRESS_EVIDENCE');
+const noHints=structuredClone(current);noHints.item_evidence[20].hint_additions=['Unwanted hint evidence in exam'];
+assert.equal(error(noHints), 'SEMANTIC_EXAM_HINT_EVIDENCE');
+const repeated=structuredClone(current);
+for(const key of ['outcome','answer_reason','distractors','clarity','explanation_value'])repeated.item_evidence[1][key]=repeated.item_evidence[0][key];
+assert.equal(error(repeated), 'SEMANTIC_ITEM_EVIDENCE_REPEATED');
+const bad=structuredClone(current);bad.item_evidence[0].status='BLOCKED';
+assert.equal(error(bad), 'SEMANTIC_ITEM_EVIDENCE_INCOMPLETE');
+console.log('FLH-047 prospective per-question semantic evidence gate: PASS (synthetic structure only).');
