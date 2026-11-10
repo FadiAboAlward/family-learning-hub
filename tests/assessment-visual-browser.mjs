@@ -53,6 +53,7 @@ async function run(device){
    if(b.action==='answer'){completed.add(b.question_id);return reply(route,{is_correct:true,finalized:true,explanation:learning.find(q=>id(q)===b.question_id).explanation,...guidance()});}
    if(b.action==='finish_quiz'){finishCalls++;assert.equal(completed.size,20,'UI must never fake completion');return reply(route,{percentage:100,first_try_correct:20,hints_used:1,award:{already_awarded:true},...guidance(),review:learning.map(q=>({...question(q),question_id:id(q),is_correct:true,explanation:q.explanation}))});}
    if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   if(b.action==='preview_videos')return reply(route,{error:'VIDEO_NOT_AVAILABLE'},404);
    return reply(route,{optional_video:null});
   });
   await page.route('**/functions/v1/exam-v2-api',route=>{
