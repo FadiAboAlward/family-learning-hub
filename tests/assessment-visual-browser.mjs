@@ -29,7 +29,8 @@ async function run(device){
  const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
  page.on('pageerror',e=>errors.push(e.name));
  /** Build one strictly synthetic question response with ordered optional media. */
- const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href}))});
+ const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href,
+    expires_at:((q===learning[0]&&urlRevision===0)||(q===learning[10]&&urlRevision<=1))?'2020-01-01T00:00:00.000Z':'2099-01-01T00:00:00.000Z'}))});
  /** Map completed synthetic Learning questions into server-shaped concept evidence. */
  const evidence=()=>learning.map(q=>({question_id:id(q),question_code:q.question_code,concept_id:q.concept_code,concept_label:'مراجعة -26 و (-7) - 19 <img src=x>',learning_stage:q.learning_stage,status:completed.has(id(q))?'completed':'pending',is_correct:completed.has(id(q))?true:null,attempts_used:completed.has(id(q))?1:null,hints_used:completed.has(id(q))?hints.get(id(q))||0:null,explanation:completed.has(id(q))?q.explanation:null}));
  /** Derive expected per-stage Learning guidance without changing the API contract. */
@@ -103,7 +104,17 @@ async function run(device){
    * @param {number} i Ordered zero-based Learning question index.
    */
   async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);if(i===1){assert.equal(q.assets.length,0,'Zero-image question fixture');assert.equal(await page.locator('.flh-learn-answer').count(),4,'Four answers render without media');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning initial');await shot('learning-no-image-mobile-clear');}}const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();if(i===1&&device.mobile)await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning selected');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
-  await start();await page.locator('.flh-visual-asset img').waitFor();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);await layout();await shot('learning-one-image');
+  await start();await page.locator('.flh-visual-asset img').waitFor();
+  await page.waitForFunction(()=>document.querySelector('.flh-visual-asset img')?.src.includes('r=1')&&document.querySelector('.flh-visual-enlarge')?.disabled===false);
+  assert.ok(calls.includes('refresh_question_assets'),'An expired signed URL is refreshed automatically before answering');
+  assert.equal(draft.size,0,'Refreshing required media does not save a draft');
+  await page.locator('#flhLessonVideo').click();
+  const noVideo=page.locator('.flh-video-dialog');
+  await noVideo.getByText('لا يوجد فيديو درس مرفق بهذا التمرين لحسابك الحالي.',{exact:false}).waitFor();
+  assert.equal((await noVideo.innerText()).includes('أثناء الامتحان'),false,'Learning fallback must never mislabel session as Exam');
+  await noVideo.getByRole('button',{name:'رجوع إلى نفس المكان'}).click();
+  assert.equal(await page.locator('.flh-learner-status b').first().innerText(),'السؤال 1');
+  await layout();await shot('learning-one-image');
   await page.evaluate(async()=>{window.qaAssetHelper=window.FLHAssessmentAssets;delete window.FLHAssessmentAssets;await window.FLH.startLearningQuiz('qa-visual');});
   assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'Missing helper must fail closed in Learning');
   const blockedCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.flh-learn-answer');b.disabled=false;b.click();document.querySelector('#flhConfirmAnswer').click();});assert.equal(calls.length,blockedCalls,'Missing helper cannot persist drafts or answers');await shot('missing-helper-learning');
@@ -114,6 +125,8 @@ async function run(device){
   await page.locator('#learnContinueBridge').waitFor();assert.equal(await page.locator('#learnContinueBridge').isEnabled(),true);assert.ok(await page.locator('.flh-stage-summary details').count()>0,'Hint use recommends optional concept review');await shot('foundation-summary');
   assert.ok((await page.locator('.flh-stage-summary summary .flh-math-ltr[dir="ltr"]').allTextContents()).some(t=>t.includes('-26')),'Concept negatives use the shared LTR math renderer');assert.equal(await page.locator('.flh-stage-summary summary img').count(),0,'Concept labels remain escaped');
   await page.locator('#learnContinueBridge').click();await page.waitForFunction(()=>document.querySelectorAll('.flh-visual-asset img').length===2&&[...document.querySelectorAll('.flh-visual-enlarge')].every(b=>!b.disabled));
+  await page.waitForFunction(()=>[...document.querySelectorAll('.flh-visual-asset img')].every(img=>Number(new URL(img.src).searchParams.get('r'))>=2));
+  assert.ok(calls.filter(x=>x==='refresh_question_assets').length>=2,'Late Bridge images must re-sign expired URLs without answer writes');
   assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen']);await layout();assert.equal(await page.locator('.flh-sticky-action').evaluate(el=>getComputedStyle(el).position),'static','Confirmation must not cover required diagrams');await shot('bridge-two-images');
   await start();await page.locator('#learnContinueBridge').click();assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen'],'Reload preserves image order and the same attempt');await answerLearning(10);
   await start();assert.equal(completed.size,11);for(let i=11;i<20;i++)await answerLearning(i);
