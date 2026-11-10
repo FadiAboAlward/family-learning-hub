@@ -2,6 +2,7 @@ import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { ASSESSMENT_DELIVERY_ACTIONS,assessmentDeliveryCommand } from './assessment-delivery.mjs';
 import { verifyAssessmentMedia } from './assessment-media.mjs';
 import { isVisualPackage } from './assessment-visual-contract.mjs';
+import { validateSemanticItemEvidence } from './assessment-semantic-evidence.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -41,7 +42,8 @@ export async function assessmentStagePayload(workspaceId,parentId,body) {
       || ['reviewer_ref','source_review_ref','learner_scope_review_ref','authority_ref'].some(k=>!text(review[k]))
       || !Number.isFinite(Date.parse(review.reviewed_at)) || Date.parse(review.reviewed_at)>Date.now()+60000
       || !Array.isArray(review.warning_dispositions)
-      || report.warnings.some(w=>!review.warning_dispositions.some(d=>object(d) && d.code===w.code && d.path===w.path && d.result==='ACCEPTED' && text(d.reason)))) deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      || report.warnings.some(w=>!review.warning_dispositions.some(d=>object(d) && d.code===w.code && d.path===w.path && d.result==='ACCEPTED' && text(d.reason)))
+      || !validateSemanticItemEvidence(candidate,review).ok) deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
   return {target,candidate,candidate_sha256:hash,validation:report,semantic_review:{...review,reviewed_by:parentId}};
 }
 
