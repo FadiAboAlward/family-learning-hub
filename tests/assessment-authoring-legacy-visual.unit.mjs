@@ -43,7 +43,7 @@ const admin={
 };
 const semantic_review={
  result:'PASS',...target,workspace_id:workspace,candidate_sha256:hash,
- reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:reviewer',
+ reviewed_at:'2026-11-10T19:00:00Z',reviewer_ref:'synthetic:reviewer',
  source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:learner',authority_ref:'synthetic:authority',
  warning_dispositions:report.warnings.map(w=>({...w,result:'ACCEPTED',reason:'Pre-policy synthetic fixture already reviewed before rollout; no new candidate is authorized.'}))
 };
