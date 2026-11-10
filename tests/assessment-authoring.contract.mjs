@@ -67,7 +67,7 @@ const oldCandidate=visualCandidate(oldTarget.quiz_version_id);
 const oldReport=await validateAuthoringCandidate(oldCandidate);
 assert.equal(oldReport.ok,false,'new visual candidate without visual_plan is prohibited');
 const oldProof=await assessmentStagePayload(w,ids.parent,{target:oldTarget,candidate:oldCandidate,
- semantic_review:{...oldTarget,workspace_id:w,result:'PASS',candidate_sha256:oldReport.candidate_sha256,reviewed_at:new Date().toISOString(),
+ semantic_review:{...oldTarget,workspace_id:w,result:'PASS',candidate_sha256:oldReport.candidate_sha256,reviewed_at:'2026-11-10T19:00:00Z',
  reviewer_ref:'synthetic:legacy',authority_ref:'synthetic:legacy',source_review_ref:'synthetic:geometry-source',learner_scope_review_ref:'synthetic:Testing',
  warning_dispositions:oldReport.validation.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Pre-policy synthetic request; no student release authorized.'}))}
 });
