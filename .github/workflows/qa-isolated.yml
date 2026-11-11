@@ -60,6 +60,8 @@ jobs:
         run: node tests/static-qa.mjs
       - name: FLH-044 Production release safety unit tests
         run: node tests/flh044-production-release.unit.mjs
+      - name: FLH-047 Edge-only release guard contract
+        run: node tests/flh047-edge-production-release.unit.mjs
       - name: FLH-037 PostHog telemetry privacy and event tests
         run: node tests/posthog-telemetry.unit.mjs
       - name: Academic content quality guard
