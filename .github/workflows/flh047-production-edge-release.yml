@@ -1,0 +1,90 @@
+name: FLH-047 Controlled Production Edge-Only Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Approved complete main commit SHA (not a branch or shortened SHA)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flh047-production-edge-only
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Exact-SHA Edge-only Production release
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      PROJECT_REF: gkpoylfozvuwuwqeoduc
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.FLH044_PROD_SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout pinned main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Refuse ref, SHA, project or credential drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_EVENT_NAME}" = workflow_dispatch
+          test "${GITHUB_REF}" = refs/heads/main
+          [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          test "${EXPECTED_SHA}" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          git fetch --no-tags origin main
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"
+          test "${PROJECT_REF}" = gkpoylfozvuwuwqeoduc
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Verify FLH-047 independent release guard unit tests
+        run: node tests/flh047-edge-production-release.unit.mjs
+
+      - name: Read-only Production preflight, require 134 migrations and visual feature ON
+        run: node scripts/flh047-edge-production-release.mjs preflight
+
+      - name: Set up pinned Supabase CLI
+        uses: supabase/setup-cli@9f97a8880aff8507123eac41a95501b846a3976f
+        with:
+          version: 2.117.0
+
+      - name: Verify existing pinned WebP decoder and Docker bundler
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info --format '{{.ServerVersion}}'
+          test "$(wc -c < supabase/functions/_shared/vendor/webp_dec.wasm)" = 137960
+          echo '30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344  supabase/functions/_shared/vendor/webp_dec.wasm' | sha256sum -c -
+          grep -Fq 'static_files = ["./functions/_shared/vendor/webp_dec.wasm"]' supabase/config.toml
+
+      - name: Deploy assessment-mcp only
+        run: supabase functions deploy assessment-mcp --project-ref "${PROJECT_REF}" --no-verify-jwt
+
+      - name: Deploy learning-api only
+        run: supabase functions deploy learning-api --project-ref "${PROJECT_REF}" --no-verify-jwt
+
+      - name: Read-only postflight confirms both Edge versions and unchanged visual policy
+        run: node scripts/flh047-edge-production-release.mjs verify
+
+      - name: Record restricted release scope
+        shell: bash
+        run: |
+          echo "FLH-047 exact-SHA Edge-only release PASS." >> "${GITHUB_STEP_SUMMARY}"
+          echo "Only assessment-mcp and learning-api were deployed; no migrations, feature toggles, or learner data writes." >> "${GITHUB_STEP_SUMMARY}"
+          echo "Next: real Testing/video/media QA, academic successor remains unpublished." >> "${GITHUB_STEP_SUMMARY}"
