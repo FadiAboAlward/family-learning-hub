@@ -11,7 +11,7 @@ const target=Object.fromEntries(['quiz_id','quiz_version_id','learner_id','progr
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const checked=await validateAuthoringCandidate(candidate);assert.equal(checked.ok,true);assert.equal(checked.semantic_review,'REQUIRED');
 const hash=checked.candidate_sha256,request_id='a3300000-0000-4000-8000-000000000007';
-const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:review',authority_ref:'synthetic:owner',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:test',warning_dispositions:checked.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical QA only.'}))};
+const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:'2026-11-11T00:00:00Z',item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:review',authority_ref:'synthetic:owner',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:test',warning_dispositions:checked.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical QA only.'}))};
 const args={request_id,target,candidate,semantic_review,quiz:{slug:'qa-authoring',title:'Synthetic authoring test',subject_id:1,curriculum_id:w}};
 const trace={measure:(_n,_m,fn)=>fn()};
 const resource='https://testing.example/functions/v1/assessment-mcp/mcp',issuer='https://testing.example/auth/v1';
