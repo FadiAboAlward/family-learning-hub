@@ -64,6 +64,12 @@ for(const phrase of [
   'test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"',
   'test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_SHA}"',
   'id: preflight',
+  'id: deploy_assessment',
+  'id: deploy_learning',
+  "if: ${{ always() && steps.preflight.outcome == 'success' &&",
+  "steps.deploy_assessment.outcome == 'failure'",
+  "steps.deploy_learning.outcome == 'failure'",
+  "if: ${{ success() && steps.deploy_assessment.outcome == 'success' && steps.deploy_learning.outcome == 'success' }}",
   'FLH047_BEFORE_ASSESSMENT_MCP: ${{ steps.preflight.outputs.assessment_mcp }}',
   'FLH047_BEFORE_LEARNING_API: ${{ steps.preflight.outputs.learning_api }}'
 ])assert.ok(workflow.includes(phrase),'Missing exact-SHA or step output gate: '+phrase);
