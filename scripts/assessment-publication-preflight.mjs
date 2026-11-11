@@ -135,7 +135,9 @@ export function inspectAssessmentPublication(candidate, snapshot, expectedTarget
     fail(errors,'SEMANTIC_REVIEW_MISSING','The exact candidate must have a separately recorded human/academic semantic PASS review.');
   }
   const itemEvidence=validateSemanticItemEvidence(candidate,review);
-  // Never echo a caller-controlled malformed question_code (which may contain sensitive text).\n  const safeItemCode=typeof itemEvidence.question_code==='string' && /^Q-[0-9]{6,}$/.test(itemEvidence.question_code) ? itemEvidence.question_code : null;\n  if(!itemEvidence.ok)fail(errors,itemEvidence.code,'Independent per-question semantic evidence missing or incomplete for the prospective review contract'+(safeItemCode?': '+safeItemCode:''));
+  // Never echo a caller-controlled malformed question_code (which may contain sensitive text).
+  const safeItemCode=typeof itemEvidence.question_code==='string' && /^Q-[0-9]{6,}$/.test(itemEvidence.question_code) ? itemEvidence.question_code : null;
+  if(!itemEvidence.ok)fail(errors,itemEvidence.code,'Independent per-question semantic evidence missing or incomplete for the prospective review contract'+(safeItemCode?': '+safeItemCode:''));
   const dispositions = array(review?.warning_dispositions);
   const unresolvedWarnings = academic.warnings.filter(warning => !dispositions.some(disposition =>
     object(disposition) && disposition.code===warning.code && disposition.path===warning.path
