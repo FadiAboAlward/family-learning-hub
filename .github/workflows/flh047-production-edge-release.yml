@@ -78,18 +78,22 @@ jobs:
           grep -Fq 'static_files = ["./functions/_shared/vendor/webp_dec.wasm"]' supabase/config.toml
 
       - name: Deploy assessment-mcp only
+        id: deploy_assessment
         run: supabase functions deploy assessment-mcp --project-ref "${PROJECT_REF}" --no-verify-jwt
 
       - name: Deploy learning-api only
+        id: deploy_learning
         run: supabase functions deploy learning-api --project-ref "${PROJECT_REF}" --no-verify-jwt
 
-      - name: Read-only postflight confirms both Edge versions advanced and visual policy unchanged
+      - name: Read-only postflight audits attempted deployments, including partial failures
+        if: ${{ always() && steps.preflight.outcome == 'success' && (steps.deploy_assessment.outcome == 'success' || steps.deploy_assessment.outcome == 'failure' || steps.deploy_learning.outcome == 'success' || steps.deploy_learning.outcome == 'failure') }}
         env:
           FLH047_BEFORE_ASSESSMENT_MCP: ${{ steps.preflight.outputs.assessment_mcp }}
           FLH047_BEFORE_LEARNING_API: ${{ steps.preflight.outputs.learning_api }}
         run: node scripts/flh047-edge-production-release.mjs verify
 
       - name: Record restricted release scope
+        if: ${{ success() && steps.deploy_assessment.outcome == 'success' && steps.deploy_learning.outcome == 'success' }}
         shell: bash
         run: |
           echo "FLH-047 exact-SHA Edge-only release PASS." >> "${GITHUB_STEP_SUMMARY}"
