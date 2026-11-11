@@ -1,4 +1,4 @@
-# FLH-047 semantic review cutover — 11 November 2026
+# FLH-047 semantic review cutover — 2026-11-10 23:06 UTC (11 November 2026 Istanbul)
 
 This note supplements the historical FLH-027 publication record. Current Academic SOP is v1.26 at https://docs.google.com/document/d/1yXdjAX7B8WXcZ4MshpK24feaMFFOCT3h32Az9l7yBZM/edit . A new review after the FLH-047 cutover requires `semantic_review.item_evidence` with one falsifiable record for every candidate `question_code` (40 total). Each must inspect answer correctness, plausible wrong answers, learner readability and explanation learning value. Learning entries show exactly four NEW instructional contributions; image-bearing entries record actual source/raster readability; Exam entries have no hints. Structural gate only verifies evidence completeness and binding, not whether the instructional claim is true. The academic reviewer is responsible for its veracity. Historical immutable reviews and normal retries preserve their earlier reviewed_at, content hashes and result history. No runtime AI review is introduced.
 
