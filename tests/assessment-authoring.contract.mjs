@@ -185,6 +185,10 @@ try {
       const raw=await query(`set role service_role;select public.flh_assessment_media_parent('${w}','${ids.parent}','${args.p_version_id}',true);`);
       return {data:raw==='t',error:null};
      }
+     if(name==='flh_assessment_legacy_draft_eligible'){
+      const raw=await query(`set role service_role;select public.flh_assessment_legacy_draft_eligible('${args.p_workspace_id}','${args.p_parent_id}','${args.p_request_id}','${args.p_version_id}','${args.p_candidate_sha256}');`);
+      return {data:raw==='t',error:null};
+     }
      throw Error('UNEXPECTED_RPC');
     }catch(error){
      const safe=String(error).match(/ASSESSMENT_[A-Z_]+/);
