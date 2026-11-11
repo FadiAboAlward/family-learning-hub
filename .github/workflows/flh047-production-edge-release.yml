@@ -1,4 +1,7 @@
 name: FLH-047 Controlled Production Edge-Only Release
+# FEATURE_ID: FLH-FEAT-2026-047 | SPEC_VERSION: 1.1
+# SPEC_URL: https://docs.google.com/document/d/16ITHj1gdMacahfQ-SCfNbAQGIBfIUle6pSXCCfK97NI/edit
+# DRIVE_REVISION_ID: 2 | Verified Drive revision modified 2026-11-11T10:17:31.921Z
 
 on:
   workflow_dispatch:
@@ -57,6 +60,7 @@ jobs:
         run: node tests/flh047-edge-production-release.unit.mjs
 
       - name: Read-only Production preflight, require 134 migrations and visual feature ON
+        id: preflight
         run: node scripts/flh047-edge-production-release.mjs preflight
 
       - name: Set up pinned Supabase CLI
@@ -79,7 +83,10 @@ jobs:
       - name: Deploy learning-api only
         run: supabase functions deploy learning-api --project-ref "${PROJECT_REF}" --no-verify-jwt
 
-      - name: Read-only postflight confirms both Edge versions and unchanged visual policy
+      - name: Read-only postflight confirms both Edge versions advanced and visual policy unchanged
+        env:
+          FLH047_BEFORE_ASSESSMENT_MCP: ${{ steps.preflight.outputs.assessment_mcp }}
+          FLH047_BEFORE_LEARNING_API: ${{ steps.preflight.outputs.learning_api }}
         run: node scripts/flh047-edge-production-release.mjs verify
 
       - name: Record restricted release scope
