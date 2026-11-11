@@ -86,9 +86,12 @@
     observer.observe(app,{childList:true});
     window.addEventListener('storage',sessionChanged);
     const current=()=>!closed&&dialog.isConnected&&token()===sessionToken;
+    let unavailableReason='تعذر عرض فيديو الدرس الآن. يمكنك متابعة التعلّم والمحاولة لاحقًا.';
     try{
       const preview=await call('preview_videos',{quiz_slug:slug,...(attemptId?{attempt_id:attemptId}:{})});
       if(!current()){close();return false;}
+      if(!preview?.optional_video||(Array.isArray(preview.optional_video.videos)&&!preview.optional_video.videos.length))
+        unavailableReason='لا يوجد فيديو درس مرفق بهذا التمرين لحسابك الحالي.';
       const shown=globalThis.FLHOptionalVideo?.show({
         video:preview.optional_video,call,attemptId:null,reportEnabled:false,
         ...resumeOptions(slug,attemptId),
@@ -98,9 +101,14 @@
         onStart:close,onExit:close,onDispose:close,
       });
       if(shown){dialog.querySelector('#flhVideoStart')?.focus();return true;}
-    }catch{ /* Availability and authorization failures never change the underlying screen. */ }
+    }catch(error){
+      // A learner-specific missing attachment is a normal 404, not an Exam state.
+      // Keep all other API/authorization failures generic without leaking context.
+      if(error?.message==='VIDEO_NOT_AVAILABLE')
+        unavailableReason='لا يوجد فيديو درس مرفق بهذا التمرين لحسابك الحالي.';
+    }
     if(!current()){close();return false;}
-    dialog.innerHTML='<h2>فيديو الدرس</h2><p role="status">الفيديو غير متاح الآن. أثناء الامتحان يبقى مغلقًا حتى التسليم. يمكنك الرجوع دون فقدان تقدّمك.</p><button class="btn btn-primary" data-video-close>رجوع إلى نفس المكان</button>';
+    dialog.innerHTML=`<h2>فيديو الدرس</h2><p role="status">${safe(unavailableReason)} يمكنك الرجوع إلى السؤال دون فقدان تقدّمك.</p><button class="btn btn-primary" data-video-close>رجوع إلى نفس المكان</button>`;
     const back=dialog.querySelector('[data-video-close]');back.addEventListener('click',close);back.focus();
     return true;
   }

@@ -20,18 +20,41 @@
       const img=figure.querySelector('img'),enlarge=figure.querySelector('.flh-visual-enlarge'),status=figure.querySelector('.flh-visual-status'),retry=figure.querySelector('.flh-visual-retry');
       const originalSession=session;
       function set(ok){current();if(originalSession!==session||!figure.isConnected)return;states.set(key(q,a),ok);enlarge.disabled=!ok;status.textContent=ok?'':a.required?'تعذر تحميل الرسم الضروري. أعد المحاولة أو ارجع؛ لم تُسجّل إجابة.':'الرسم الاختياري غير متاح. يمكنك المتابعة.';retry.hidden=ok;onChange();}
-      img.addEventListener('load',()=>set(img.naturalWidth>0));img.addEventListener('error',()=>set(false));
-      if(!a.url)set(false);else if(img.complete)set(img.naturalWidth>0);
-      retry.addEventListener('click',async()=>{
+      // Media URLs are private and short-lived; a late question may outlive its signed URL.
+      // A single automatic renewal is safe/read-only. The manual retry remains available.
+      let renewing=false,automaticRenewalUsed=false,renewalBlocked=false;
+      const expiresSoon=()=>Number.isFinite(Date.parse(a.expires_at))&&Date.parse(a.expires_at)<=Date.now()+30000;
+      // Never trust an old image load after renewal started or failed, even if
+      // the original fetch completes while the signed-link request is pending.
+      const currentImageReady=()=>!renewing&&!renewalBlocked&&!expiresSoon()
+        &&img.complete&&img.naturalWidth>0&&img.currentSrc===a.url;
+      async function renew(){
+        if(renewing)return;
+        renewing=true;renewalBlocked=true;states.set(key(q,a),false);enlarge.disabled=true;onChange();
         retry.disabled=true;status.textContent='جارٍ إعادة تحميل الرسم…';
         try{
           const data=await refresh(q.id||q.question_id);
           current();if(session!==originalSession||!figure.isConnected)return;
           const updated=data?.questions?.find(x=>x.question_id===(q.id||q.question_id))?.assets?.find(x=>x.asset_id===a.asset_id&&x.checksum_sha256===a.checksum_sha256);
-          if(!updated?.url)throw Error('UNAVAILABLE');
-          Object.assign(a,updated);states.set(key(q,a),false);img.src=a.url;
-        }catch{set(false);}finally{retry.disabled=false;}
-      });
+          if(!updated?.url||!Number.isFinite(Date.parse(updated.expires_at))||Date.parse(updated.expires_at)<=Date.now()+30000)throw Error('UNAVAILABLE');
+          Object.assign(a,updated);states.set(key(q,a),false);
+          img.src=a.url;
+          renewalBlocked=false;
+        }catch{set(false);}finally{
+          renewing=false;retry.disabled=false;
+          if(currentImageReady())set(true);
+        }
+      }
+      function failed(){
+        if(renewing||renewalBlocked)return;
+        if(!automaticRenewalUsed){automaticRenewalUsed=true;void renew();}
+        else set(false);
+      }
+      img.addEventListener('load',()=>{if(currentImageReady())set(true);});
+      img.addEventListener('error',failed);
+      if(!a.url||expiresSoon()){automaticRenewalUsed=true;void renew();}
+      else if(img.complete){if(currentImageReady())set(true);else failed();}
+      retry.addEventListener('click',()=>{void renew();});
       enlarge.addEventListener('click',()=>{
         if(enlarge.disabled)return;
         const d=document.createElement('dialog');d.className='flh-visual-dialog';d.setAttribute('aria-label',a.label||'الرسم');

@@ -27,9 +27,11 @@ const reply=(route,payload,status=200)=>route.fulfill({status,contentType:'appli
 async function run(device){
  const page=await browser.newPage({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.mobile||device.name==='tablet'});
  const completed=new Set(),draft=new Map(),hints=new Map(),answers=new Map(),calls=[],errors=[];let failComposite=false,urlRevision=0,finishCalls=0;
+ let releaseFirstRefresh;const firstRefreshGate=new Promise(resolve=>{releaseFirstRefresh=resolve;});let holdFirstRefresh=true;
  page.on('pageerror',e=>errors.push(e.name));
  /** Build one strictly synthetic question response with ordered optional media. */
- const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href}))});
+ const question=q=>({id:id(q),question_code:q.question_code,question_type:q.question_type,prompt:q.prompt,prompt_language:q.prompt_language,assessment_profile:candidate.assessment_profile,learning_stage:q.learning_stage,options:q.options.map(o=>({position:o.position,label:o.label,content:o.content})),assets:q.assets.map(a=>({...a,url:new URL('/qa-visual-assets/'+names.get(a.asset_id)+'.png?r='+urlRevision,base).href,
+    expires_at:((q===learning[0]&&urlRevision===0)||(q===learning[10]&&urlRevision<=1))?'2020-01-01T00:00:00.000Z':'2099-01-01T00:00:00.000Z'}))});
  /** Map completed synthetic Learning questions into server-shaped concept evidence. */
  const evidence=()=>learning.map(q=>({question_id:id(q),question_code:q.question_code,concept_id:q.concept_code,concept_label:'مراجعة -26 و (-7) - 19 <img src=x>',learning_stage:q.learning_stage,status:completed.has(id(q))?'completed':'pending',is_correct:completed.has(id(q))?true:null,attempts_used:completed.has(id(q))?1:null,hints_used:completed.has(id(q))?hints.get(id(q))||0:null,explanation:completed.has(id(q))?q.explanation:null}));
  /** Derive expected per-stage Learning guidance without changing the API contract. */
@@ -44,14 +46,15 @@ async function run(device){
   await page.route('**/functions/v1/activity-api',route=>reply(route,{ok:true}));
   await page.route('**/functions/v1/question-reference-api',route=>reply(route,{codes:{}}));
   await page.route('**/functions/v1/attempt-history-api',route=>{const b=route.request().postDataJSON();if(b.action==='attempt_detail')return reply(route,{attempt:{id:examAttempt,delivery_mode:'exam',submitted_at:'2026-11-05T12:00:00Z',percentage:95,wrong_count:1,context:{quiz:{title:'اختبار الرسوم',slug:'qa-visual'}}},review:examReview()});if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:exam.map(q=>({question_id:id(q),assets:question(q).assets}))});}return reply(route,{items:[],has_more:false,next_cursor:null});});
-  await page.route('**/functions/v1/learning-api',route=>{
+  await page.route('**/functions/v1/learning-api',async route=>{
    const b=route.request().postDataJSON();calls.push(b.action);
    if(b.action==='start_quiz')return reply(route,{attempt_id:attempt,resumed:completed.size>0,quiz:{title:'اختبار الرسوم',slug:'qa-visual'},...guidance(),queue:learning.map((q,i)=>({question_id:id(q),source_role:'core',status:completed.has(id(q))?'completed':i===completed.size?'active':'pending',draft_option_position:draft.get(id(q))||null,hint_level_requested:hints.get(id(q))||0,question:question(q)}))});
    if(b.action==='save_draft'){draft.set(b.question_id,b.option_position);return reply(route,{ok:true});}
    if(b.action==='request_hint'){const level=Math.min(4,(hints.get(b.question_id)||0)+1);hints.set(b.question_id,level);const q=learning.find(q=>id(q)===b.question_id);return reply(route,{ok:true,hint_level:level,hint:{hint_level:level,content:q.hints[level-1].content,language:'tr'}});}
    if(b.action==='answer'){completed.add(b.question_id);return reply(route,{is_correct:true,finalized:true,explanation:learning.find(q=>id(q)===b.question_id).explanation,...guidance()});}
    if(b.action==='finish_quiz'){finishCalls++;assert.equal(completed.size,20,'UI must never fake completion');return reply(route,{percentage:100,first_try_correct:20,hints_used:1,award:{already_awarded:true},...guidance(),review:learning.map(q=>({...question(q),question_id:id(q),is_correct:true,explanation:q.explanation}))});}
-   if(b.action==='refresh_question_assets'){urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   if(b.action==='refresh_question_assets'){if(holdFirstRefresh){holdFirstRefresh=false;await firstRefreshGate;}urlRevision++;return reply(route,{questions:learning.map(q=>({question_id:id(q),assets:question(q).assets}))});}
+   if(b.action==='preview_videos')return reply(route,{error:'VIDEO_NOT_AVAILABLE'},404);
    return reply(route,{optional_video:null});
   });
   await page.route('**/functions/v1/exam-v2-api',route=>{
@@ -103,7 +106,21 @@ async function run(device){
    * @param {number} i Ordered zero-based Learning question index.
    */
   async function answerLearning(i){const q=learning[i];await page.waitForFunction(code=>document.querySelector('.question')?.textContent?.length>0&&document.querySelector('.flh-learner-status b')?.textContent==='السؤال '+code,i+1);if(i===1){assert.equal(q.assets.length,0,'Zero-image question fixture');assert.equal(await page.locator('.flh-learn-answer').count(),4,'Four answers render without media');if(device.mobile){await page.evaluate(()=>scrollTo(0,0));await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning initial');await shot('learning-no-image-mobile-clear');}}const button=page.locator('.flh-learn-answer[data-pos="'+q.options.find(o=>o.is_correct).position+'"]');await button.click();if(i===1&&device.mobile)await assertActionClear('.flh-learn-answer:last-of-type','#flhConfirmAnswer','Mobile zero-image Learning selected');await page.locator('#flhConfirmAnswer').click();await page.locator('#flhLearnNext').waitFor();if(i===0){assert.equal(await page.locator('.flh-visual-asset img').count(),1,'Learning feedback retains the drawing');await shot('learning-feedback');}await page.locator('#flhLearnNext').click();}
-  await start();await page.locator('.flh-visual-asset img').waitFor();await page.waitForFunction(()=>document.querySelector('.flh-visual-enlarge')?.disabled===false);await layout();await shot('learning-one-image');
+  await start();await page.locator('.flh-visual-asset img').waitFor();
+  await page.waitForFunction(()=>document.querySelector('.flh-visual-status')?.textContent?.includes('جارٍ إعادة تحميل'));
+  await page.evaluate(()=>document.querySelector('.flh-visual-asset img')?.dispatchEvent(new Event('load')));
+  assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'A stale image load during renewal never enables answer controls');
+  releaseFirstRefresh();
+  await page.waitForFunction(()=>document.querySelector('.flh-visual-asset img')?.src.includes('r=1')&&document.querySelector('.flh-visual-enlarge')?.disabled===false);
+  assert.ok(calls.includes('refresh_question_assets'),'An expired signed URL is refreshed automatically before answering');
+  assert.equal(draft.size,0,'Refreshing required media does not save a draft');
+  await page.locator('#flhLessonVideo').click();
+  const noVideo=page.locator('.flh-video-dialog');
+  await noVideo.getByText('لا يوجد فيديو درس مرفق بهذا التمرين لحسابك الحالي.',{exact:false}).waitFor();
+  assert.equal((await noVideo.innerText()).includes('أثناء الامتحان'),false,'Learning fallback must never mislabel session as Exam');
+  await noVideo.getByRole('button',{name:'رجوع إلى نفس المكان'}).click();
+  assert.equal(await page.locator('.flh-learner-status b').first().innerText(),'السؤال 1');
+  await layout();await shot('learning-one-image');
   await page.evaluate(async()=>{window.qaAssetHelper=window.FLHAssessmentAssets;delete window.FLHAssessmentAssets;await window.FLH.startLearningQuiz('qa-visual');});
   assert.equal(await page.locator('.flh-learn-answer:enabled').count(),0,'Missing helper must fail closed in Learning');
   const blockedCalls=calls.length;await page.evaluate(()=>{const b=document.querySelector('.flh-learn-answer');b.disabled=false;b.click();document.querySelector('#flhConfirmAnswer').click();});assert.equal(calls.length,blockedCalls,'Missing helper cannot persist drafts or answers');await shot('missing-helper-learning');
@@ -114,6 +131,8 @@ async function run(device){
   await page.locator('#learnContinueBridge').waitFor();assert.equal(await page.locator('#learnContinueBridge').isEnabled(),true);assert.ok(await page.locator('.flh-stage-summary details').count()>0,'Hint use recommends optional concept review');await shot('foundation-summary');
   assert.ok((await page.locator('.flh-stage-summary summary .flh-math-ltr[dir="ltr"]').allTextContents()).some(t=>t.includes('-26')),'Concept negatives use the shared LTR math renderer');assert.equal(await page.locator('.flh-stage-summary summary img').count(),0,'Concept labels remain escaped');
   await page.locator('#learnContinueBridge').click();await page.waitForFunction(()=>document.querySelectorAll('.flh-visual-asset img').length===2&&[...document.querySelectorAll('.flh-visual-enlarge')].every(b=>!b.disabled));
+  await page.waitForFunction(()=>[...document.querySelectorAll('.flh-visual-asset img')].every(img=>Number(new URL(img.src).searchParams.get('r'))>=2));
+  assert.ok(calls.filter(x=>x==='refresh_question_assets').length>=2,'Late Bridge images must re-sign expired URLs without answer writes');
   assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen']);await layout();assert.equal(await page.locator('.flh-sticky-action').evaluate(el=>getComputedStyle(el).position),'static','Confirmation must not cover required diagrams');await shot('bridge-two-images');
   await start();await page.locator('#learnContinueBridge').click();assert.deepEqual(await page.locator('.flh-visual-asset figcaption').allTextContents(),['Dikdörtgen','Üçgen'],'Reload preserves image order and the same attempt');await answerLearning(10);
   await start();assert.equal(completed.size,11);for(let i=11;i<20;i++)await answerLearning(i);
