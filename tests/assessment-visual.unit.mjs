@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
-import { visualCandidate,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
+import { visualCandidate,visualCandidateWithQuota,diagram,workspace,version } from './fixtures/assessment-visual/candidate.mjs';
 import { validateAcademicPackage } from '../scripts/academic-content-quality.mjs';
 import { academicCandidateHash,assessmentCommand } from '../supabase/functions/_shared/assessment-publication.mjs';
 import { assetContractErrors,conceptGuidance,validateVisualContract } from '../supabase/functions/_shared/assessment-visual-contract.mjs';
@@ -197,6 +197,53 @@ const proof=await verifyAssessmentMedia({storage},workspace,version,pkg,hash);as
  const match=await assessmentCommand(published,workspace,'04410000-0000-4000-8000-000000000020',publishedUpper,trace);
  assert.equal(match.duplicate,true,'published historical retry matches uppercase UUID variants');
  assert.deepEqual([publishedRead,publishedStages],[2,2]);
+
+ // The historical publication retry above intentionally carries no item_evidence:
+ // an exact server-owned staged receipt preserves pre-cutover immutability.
+ assert.equal(Object.hasOwn(publishedBody.semantic_review,'item_evidence'),false,
+   'immutable publication retry retains its original review shape');
+
+ // A subject-aware-v1 visual draft does NOT bypass the new semantic evidence
+ // rule merely because it has the new visual plan. Only the DB-owned marker
+ // can prove that an otherwise complete, genuinely old draft is eligible.
+ const quota=visualCandidateWithQuota();
+ const quotaReport=validateAcademicPackage(quota);
+ assert.equal(quotaReport.ok,true,JSON.stringify(quotaReport.errors));
+ assert.equal(quota.academic_context.visual_plan.policy,'subject-aware-v1');
+ const quotaHash=await academicCandidateHash(quota);
+ const quotaReview={...semantic_review,candidate_sha256:quotaHash,
+   warning_dispositions:quotaReport.warnings.map(w=>({...w,result:'ACCEPTED',
+     reason:'Synthetic historical review retry only, no real student QA.'}))};
+ const quotaBody={...body,candidate:quota,semantic_review:quotaReview};
+ assert.equal(Object.hasOwn(quotaReview,'item_evidence'),false);
+ let quotaReads=0,quotaChecks=0,quotaWrites=0;
+ const quotaAdmin=(eligible,eligibilityError=null)=>({storage,rpc:async(name,args)=>{
+   if(name==='flh_assessment_command'&&args.p_action==='read'){
+     quotaReads++;return {data:null,error:{message:'ASSESSMENT_TARGET_INVALID'}};
+   }
+   if(name==='flh_assessment_legacy_draft_eligible'){
+     quotaChecks++;assert.equal(args.p_candidate_sha256,quotaHash);
+     return {data:eligible,error:eligibilityError};
+   }
+   if(name==='flh_assessment_command'&&args.p_action==='stage'){
+     quotaWrites++;assert.equal(args.p_payload.candidate_sha256,quotaHash);
+     assert.equal(args.p_payload.media_verification.files.length,3);
+     return {data:{ok:true,state:'staged'},error:null};
+   }
+   throw Error('UNEXPECTED_QUOTA_REVIEW_RPC');
+ }});
+ const quotaPassed=await assessmentCommand(quotaAdmin(true),workspace,
+   '04410000-0000-4000-8000-000000000020',quotaBody,trace);
+ assert.equal(quotaPassed.state,'staged');
+ assert.equal(quotaWrites,1,'only DB-eligible historic subject-aware draft stages');
+ for(const [eligible,error] of [[false,null],[null,{message:'isolated eligibility failure'}]]){
+   await assert.rejects(()=>assessmentCommand(quotaAdmin(eligible,error),workspace,
+     '04410000-0000-4000-8000-000000000020',quotaBody,trace),
+     /ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/);
+   assert.equal(quotaWrites,1,'ineligible or unreadable legacy evidence never stages');
+ }
+ assert.deepEqual([quotaReads,quotaChecks,quotaWrites],[3,3,1],
+   'each subject-aware missing-evidence attempt checks owner-bound legacy eligibility once');
 
 }
 
