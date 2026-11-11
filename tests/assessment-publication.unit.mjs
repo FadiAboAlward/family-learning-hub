@@ -13,7 +13,7 @@ assert.equal(hash,assessmentCandidateHash(candidate),'Edge and operator must has
 assert.equal(hash,await academicCandidateHash(Object.fromEntries(Object.entries(candidate).reverse())));
 const report=validateAcademicPackage(candidate);
 assert.equal(report.ok,true);
-const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Testing parent explicit review',source_review_ref:'Testing synthetic source review',learner_scope_review_ref:'Testing scope review',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic gate fixture only; no real academic approval.'}))};
+const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:'2026-11-11T00:00:00Z',item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Testing parent explicit review',source_review_ref:'Testing synthetic source review',learner_scope_review_ref:'Testing scope review',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic gate fixture only; no real academic approval.'}))};
 const body={action:'stage_assessment',target,candidate,semantic_review:review};
 assert.equal((await assessmentStagePayload(w,parent,body)).semantic_review.reviewed_by,parent);
 const forged={...body,semantic_review:{...review,reviewed_by:'untrusted-body-parent'}};
