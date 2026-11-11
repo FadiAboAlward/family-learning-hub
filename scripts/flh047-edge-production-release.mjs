@@ -79,6 +79,11 @@ async function main(){
     assert.ok(typeof raw==='string'&&/^[0-9]+$/.test(raw),'Missing preflight Edge version: '+slug);
     return [slug,Number(raw)];
   })):null;
+  // Audit the actual active versions even when a deploy CLI step failed.
+  // Avoid reporting a successful release until both services advance.
+  const observed=assertReleaseState(state,false);
+  if(phase==='verify')console.log('FLH-047 read-only postflight observed active versions: '+
+    Object.entries(observed).map(([k,v])=>k+':'+v).join(', '));
   const versions=assertReleaseState(state,phase==='verify',before);
   if(phase==='preflight'){
     assert.ok(process.env.GITHUB_OUTPUT,'Missing bound GitHub preflight output file');
