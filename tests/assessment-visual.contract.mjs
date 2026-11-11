@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {spawn} from 'node:child_process';
@@ -20,7 +21,7 @@ for(const q of candidate.questions.filter(q=>q.assets?.length)){
 }
 const hash=await academicCandidateHash(candidate),report=validateAcademicPackage(candidate);assert.equal(report.ok,true,JSON.stringify(report.errors));
 const target={quiz_id:ids.quiz,quiz_version_id:v,learner_id:learner,program_id:ids.program};
-const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:geometry-truth-contract',authority_ref:'Disposable technical fixture, no academic approval',source_review_ref:'Owned geometry-source.json',learner_scope_review_ref:'Synthetic Testing only',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic fixture only; real pilot remains pending independent review.'}))};
+const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:geometry-truth-contract',authority_ref:'Disposable technical fixture, no academic approval',source_review_ref:'Owned geometry-source.json',learner_scope_review_ref:'Synthetic Testing only',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic fixture only; real pilot remains pending independent review.'}))};
 const payload=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review:review});
 const proof=await verifyAssessmentMedia({storage:{from:()=>({download:async path=>{const name=['rectangle','triangle','composite'].find(n=>diagram(n).storage_path===path);return {data:new Blob([fs.readFileSync(new URL('./fixtures/assessment-visual/'+name+'.png',import.meta.url))])};}})}},w,v,candidate,hash);
 Object.assign(payload,proof);

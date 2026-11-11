@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { assessmentAuthoringCommand, assessmentAuthoringTool, validateAuthoringCandidate, verifyAssessmentConceptRegistry } from '../supabase/functions/_shared/assessment-authoring.mjs';
@@ -10,7 +11,7 @@ const target=Object.fromEntries(['quiz_id','quiz_version_id','learner_id','progr
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const checked=await validateAuthoringCandidate(candidate);assert.equal(checked.ok,true);assert.equal(checked.semantic_review,'REQUIRED');
 const hash=checked.candidate_sha256,request_id='a3300000-0000-4000-8000-000000000007';
-const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:review',authority_ref:'synthetic:owner',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:test',warning_dispositions:checked.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical QA only.'}))};
+const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:'2026-11-11T00:00:00Z',item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:review',authority_ref:'synthetic:owner',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:test',warning_dispositions:checked.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical QA only.'}))};
 const args={request_id,target,candidate,semantic_review,quiz:{slug:'qa-authoring',title:'Synthetic authoring test',subject_id:1,curriculum_id:w}};
 const trace={measure:(_n,_m,fn)=>fn()};
 const resource='https://testing.example/functions/v1/assessment-mcp/mcp',issuer='https://testing.example/auth/v1';
@@ -66,8 +67,17 @@ await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null,{message:
 await assert.rejects(()=>verifyAssessmentConceptRegistry(registry(null),w,candidate,args.quiz),/ASSESSMENT_UNAVAILABLE/);
 assert.equal(calls.length,0,'concept preflight never writes');
 const before=calls.length;
-for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
+await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...args,semantic_review:{...semantic_review,item_evidence:[]},action:'create_assessment_draft'},trace),/ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/,'Missing per-item academic evidence must fail with the real semantic gate code');
+for(const bad of [ {...args,quiz:{...args.quiz,service_role:'no'}}, {...args,request_id:'invalid'}, {...args,candidate:{...candidate,questions:[]}}, 
+ {...args,semantic_review:{...semantic_review,result:'FAIL'}}, {...args,semantic_review:{...semantic_review,candidate_sha256:'0'.repeat(64)}}]) await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...bad,action:'create_assessment_draft'},trace));
 assert.equal(calls.length,before,'invalid candidates/reviews/metadata cannot write');
+const backdated=structuredClone(args);
+backdated.semantic_review.reviewed_at='2026-11-10T19:00:00Z';
+delete backdated.semantic_review.item_evidence;
+const callsBeforeBackdate=calls.length;
+await assert.rejects(()=>assessmentAuthoringCommand(admin,w,parent,{...backdated,action:'create_assessment_draft'},trace),
+  /ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/,'Backdating cannot create a NEW draft without per-item evidence');
+assert.equal(calls.slice(callsBeforeBackdate).filter(x=>x.payload.p_action==='create').length,0,'Rejected backdated candidate never writes');
 await assessmentAuthoringCommand(admin,w,parent,{...args,action:'create_assessment_draft'},trace);
 const createdCall=calls.at(-1);assert.equal(createdCall.payload.p_parent_id,parent);assert.equal(createdCall.payload.p_payload.semantic_review.reviewed_by,parent);
 const upperTarget=Object.fromEntries(Object.entries(target).map(([k,v])=>[k,v.toUpperCase()]));

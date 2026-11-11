@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -52,7 +53,7 @@ const oldVisualSetting=await query(`select coalesce((select value::text from pub
 const candidate=JSON.parse(fs.readFileSync('tests/fixtures/assessment-publication/valid-package.json','utf8'));
 const report=await validateAuthoringCandidate(candidate);assert.equal(report.ok,true);
 const hash=report.candidate_sha256,target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
-const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:owner',warning_dispositions:report.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical fixture only.'}))};
+const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:hash,reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:owner',warning_dispositions:report.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic technical fixture only.'}))};
 const staged=await assessmentStagePayload(w,ids.parent,{target,candidate,semantic_review});
 const subject=Number(await query('select coalesce(max(id),0)+1 from public.subjects;'));
 const quiz={slug:'qa-assessment-authoring',title:'Synthetic direct authoring',subject_id:subject,curriculum_id:ids.curriculum};
@@ -66,7 +67,7 @@ const oldCandidate=visualCandidate(oldTarget.quiz_version_id);
 const oldReport=await validateAuthoringCandidate(oldCandidate);
 assert.equal(oldReport.ok,false,'new visual candidate without visual_plan is prohibited');
 const oldProof=await assessmentStagePayload(w,ids.parent,{target:oldTarget,candidate:oldCandidate,
- semantic_review:{...oldTarget,workspace_id:w,result:'PASS',candidate_sha256:oldReport.candidate_sha256,reviewed_at:new Date().toISOString(),
+ semantic_review:{...oldTarget,workspace_id:w,result:'PASS',candidate_sha256:oldReport.candidate_sha256,reviewed_at:'2026-11-10T19:00:00Z',
  reviewer_ref:'synthetic:legacy',authority_ref:'synthetic:legacy',source_review_ref:'synthetic:geometry-source',learner_scope_review_ref:'synthetic:Testing',
  warning_dispositions:oldReport.validation.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Pre-policy synthetic request; no student release authorized.'}))}
 });
@@ -182,6 +183,10 @@ try {
      }
      if(name==='flh_assessment_media_parent'){
       const raw=await query(`set role service_role;select public.flh_assessment_media_parent('${w}','${ids.parent}','${args.p_version_id}',true);`);
+      return {data:raw==='t',error:null};
+     }
+     if(name==='flh_assessment_legacy_draft_eligible'){
+      const raw=await query(`set role service_role;select public.flh_assessment_legacy_draft_eligible('${args.p_workspace_id}','${args.p_parent_id}','${args.p_request_id}','${args.p_version_id}','${args.p_candidate_sha256}');`);
       return {data:raw==='t',error:null};
      }
      throw Error('UNEXPECTED_RPC');

@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import { assessmentStagePayload } from '../supabase/functions/_shared/assessment-publication.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -94,6 +95,26 @@ valid.semantic_review={
 };
 assert.equal(inspectAssessmentPublication(validCandidate,valid).ok,true);
 assert.equal(inspectAssessmentPublication(validCandidate,valid).warning_disposition_required,false);
+const prospective=structuredClone(valid);
+prospective.semantic_review.reviewed_at='2026-11-11T00:00:00Z';
+prospective.semantic_review.item_evidence=syntheticSemanticEvidence(validCandidate);
+assert.equal(inspectAssessmentPublication(validCandidate,prospective).ok,true,'Prospective exact item evidence permits a complete technical preflight');
+delete prospective.semantic_review.item_evidence;
+assert.equal(has(inspectAssessmentPublication(validCandidate,prospective),'SEMANTIC_ITEM_EVIDENCE_COUNT'),true,'Generic PASS without item evidence must fail prospective preflight');
+
+const hostileCode='Q-PRIVATE_STRING_NOT_FOR_LOGS';
+const hostileCandidate=structuredClone(validCandidate);
+hostileCandidate.questions[0].question_code=hostileCode;
+const hostileSnapshot=structuredClone(prospective);
+hostileSnapshot.questions=hostileCandidate.questions.map(row);
+hostileSnapshot.semantic_review.candidate_sha256=assessmentCandidateHash(hostileCandidate);
+hostileSnapshot.semantic_review.item_evidence=syntheticSemanticEvidence(validCandidate);
+const sanitized=inspectAssessmentPublication(hostileCandidate,hostileSnapshot).errors
+ .filter(error=>error.code.startsWith('SEMANTIC_ITEM_'));
+assert.ok(sanitized.length>0,'unknown item evidence must have a failure code');
+assert.ok(!sanitized.some(error=>error.message.includes(hostileCode)),
+ 'preflight does not echo malformed caller-controlled question codes in semantic diagnostics');
+
 const visual=visualCandidate(),visualSnapshot=structuredClone(valid);
 visualSnapshot.questions=visual.questions.map((q,i)=>({...row(q,i),assets:structuredClone(q.assets),source_metadata:{visual_assessment:{learning_stage:q.learning_stage??null}}}));
 visualSnapshot.semantic_review.candidate_sha256=assessmentCandidateHash(visual);

@@ -2,6 +2,7 @@ import { validateAcademicPackage } from './academic-content-quality.mjs';
 import { ASSESSMENT_DELIVERY_ACTIONS,assessmentDeliveryCommand } from './assessment-delivery.mjs';
 import { verifyAssessmentMedia } from './assessment-media.mjs';
 import { isVisualPackage } from './assessment-visual-contract.mjs';
+import { validateSemanticItemEvidence } from './assessment-semantic-evidence.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -41,7 +42,8 @@ export async function assessmentStagePayload(workspaceId,parentId,body) {
       || ['reviewer_ref','source_review_ref','learner_scope_review_ref','authority_ref'].some(k=>!text(review[k]))
       || !Number.isFinite(Date.parse(review.reviewed_at)) || Date.parse(review.reviewed_at)>Date.now()+60000
       || !Array.isArray(review.warning_dispositions)
-      || report.warnings.some(w=>!review.warning_dispositions.some(d=>object(d) && d.code===w.code && d.path===w.path && d.result==='ACCEPTED' && text(d.reason)))) deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      || report.warnings.some(w=>!review.warning_dispositions.some(d=>object(d) && d.code===w.code && d.path===w.path && d.result==='ACCEPTED' && text(d.reason)))
+      || !validateSemanticItemEvidence(candidate,review).ok) deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
   return {target,candidate,candidate_sha256:hash,validation:report,semantic_review:{...review,reviewed_by:parentId}};
 }
 
@@ -52,6 +54,7 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
   const action = body.action.replace('_assessment','');
   let payload;
   if (action==='stage') {
+    let historicalReviewed=false;
     if(isVisualPackage(body.candidate)&&body.candidate?.academic_context?.visual_plan?.policy!=='subject-aware-v1'){
       // New direct learning-api stages must have a visual plan. Permit only
       // owner-bound immutable pre-policy retries: a published/staged receipt OR
@@ -67,6 +70,7 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
         const stored=prior.data.publication;
         if(stored.candidate_sha256!==hash||!matchesTarget(stored))
           deny('ASSESSMENT_RETRY_CONFLICT');
+        historicalReviewed=true;
       }else{
         // A known missing publication is normal for a never-staged draft.
         // Other publication errors (e.g. drift/permissions) must not fall back.
@@ -88,9 +92,34 @@ export async function assessmentCommand(admin,workspaceId,parentId,body,trace) {
           p_request_id:body.request_id,p_version_id:version,p_candidate_sha256:hash
         });
         if(eligible.error||eligible.data!==true)deny('ASSESSMENT_ACADEMIC_REJECTED');
+        historicalReviewed=true;
       }
     }
     payload=await assessmentStagePayload(workspaceId,parentId,body);
+    if(!historicalReviewed&&!validateSemanticItemEvidence(body.candidate,body.semantic_review,{force:true}).ok){
+      // Never use caller-authored reviewed_at to grandfather a NEW stage.
+      // Only an already-staged immutable publication or a DB-proven
+      // pre-policy visual draft can retain the historical no-item format.
+      const version=body.target?.quiz_version_id;
+      if(!UUID.test(version||''))deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      const hash=await academicCandidateHash(body.candidate);
+      const prior=await admin.rpc('flh_assessment_command',{
+        p_workspace_id:workspaceId,p_parent_id:parentId,
+        p_action:'read',p_payload:{quiz_version_id:version,candidate_sha256:hash}
+      });
+      const same=prior.data?.ok===true&&object(prior.data.publication)
+        &&prior.data.publication.candidate_sha256===hash
+        &&['quiz_id','quiz_version_id','learner_id','program_id'].every(k=>prior.data.publication[k]===body.target[k]);
+      if(!same){
+        if(prior.error?.message!=='ASSESSMENT_TARGET_INVALID'||!isVisualPackage(body.candidate)
+          ||!UUID.test(body.request_id||''))deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+        const historic=await admin.rpc('flh_assessment_legacy_draft_eligible',{
+          p_workspace_id:workspaceId,p_parent_id:parentId,p_request_id:body.request_id,
+          p_version_id:version,p_candidate_sha256:hash
+        });
+        if(historic.error||historic.data!==true)deny('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED');
+      }
+    }
     Object.assign(payload,await verifyAssessmentMedia(admin,workspaceId,payload.target.quiz_version_id,payload.candidate,payload.candidate_sha256));
   }
   else {

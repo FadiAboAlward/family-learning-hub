@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { requireIsolatedQaBackend } from '../supabase/functions/_shared/qa-backend-isolation.mjs';
@@ -26,7 +27,7 @@ export async function verifyAssessmentAuthoringApi({runtime,parentId,email,passw
  const candidate=JSON.parse(await fs.readFile('tests/fixtures/assessment-publication/valid-package.json','utf8'));
  const validation=await validateAuthoringCandidate(candidate);assert.equal(validation.ok,true);
  const target={quiz_id:ids.quiz,quiz_version_id:ids.version,learner_id:learner,program_id:ids.program};
- const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:validation.candidate_sha256,reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:API-review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:parent',warning_dispositions:validation.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic isolated transport QA only.'}))};
+ const semantic_review={...target,workspace_id:w,result:'PASS',candidate_sha256:validation.candidate_sha256,reviewed_at:new Date().toISOString(),item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:API-review',source_review_ref:'synthetic:source',learner_scope_review_ref:'synthetic:Testing',authority_ref:'synthetic:parent',warning_dispositions:validation.validation.warnings.map(d=>({...d,result:'ACCEPTED',reason:'Synthetic isolated transport QA only.'}))};
  await assessmentStagePayload(w,parentId,{target,candidate,semantic_review}); // Exact fixture gate before setup/publication.
  // Concept codes are workspace-wide unique. Reuse the pre-existing synthetic
  // catalog just as production authoring does; never duplicate or delete it.

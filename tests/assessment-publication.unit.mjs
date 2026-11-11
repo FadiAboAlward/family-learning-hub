@@ -1,3 +1,4 @@
+import { syntheticSemanticEvidence } from './fixtures/assessment-publication/synthetic-semantic-evidence.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { assessmentCandidateHash } from '../scripts/assessment-publication-preflight.mjs';
@@ -12,7 +13,7 @@ assert.equal(hash,assessmentCandidateHash(candidate),'Edge and operator must has
 assert.equal(hash,await academicCandidateHash(Object.fromEntries(Object.entries(candidate).reverse())));
 const report=validateAcademicPackage(candidate);
 assert.equal(report.ok,true);
-const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:new Date().toISOString(),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Testing parent explicit review',source_review_ref:'Testing synthetic source review',learner_scope_review_ref:'Testing scope review',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic gate fixture only; no real academic approval.'}))};
+const review={...target,workspace_id:w,candidate_sha256:hash,result:'PASS',reviewed_at:'2026-11-11T00:00:00Z',item_evidence:syntheticSemanticEvidence(candidate),reviewer_ref:'synthetic:academic-reviewer',authority_ref:'Testing parent explicit review',source_review_ref:'Testing synthetic source review',learner_scope_review_ref:'Testing scope review',warning_dispositions:report.warnings.map(x=>({...x,result:'ACCEPTED',reason:'Synthetic gate fixture only; no real academic approval.'}))};
 const body={action:'stage_assessment',target,candidate,semantic_review:review};
 assert.equal((await assessmentStagePayload(w,parent,body)).semantic_review.reviewed_by,parent);
 const forged={...body,semantic_review:{...review,reviewed_by:'untrusted-body-parent'}};
@@ -29,6 +30,8 @@ await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions.pop());
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].options.pop());
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].question_code='QA-invalid');
 await rejected('ASSESSMENT_ACADEMIC_REJECTED',b=>b.candidate.questions[0].hints=[]);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>delete b.semantic_review.item_evidence);
+await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.item_evidence[0].hint_additions=[]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions=[null]);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.candidate_sha256='0'.repeat(64));
@@ -37,6 +40,15 @@ await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.worksp
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.source_review_ref='');
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>delete b.semantic_review.reviewer_ref);
 await rejected('ASSESSMENT_SEMANTIC_REVIEW_REQUIRED',b=>b.semantic_review.warning_dispositions.forEach(d=>{d.disposition=d.result;delete d.result;}));
+const backdated=structuredClone(body);
+backdated.semantic_review.reviewed_at='2026-11-10T19:00:00Z';
+delete backdated.semantic_review.item_evidence;
+const priorReads=[];
+await assert.rejects(()=>assessmentCommand({
+  rpc:async(name,args)=>{priorReads.push(args.p_action);return {data:null,error:{message:'ASSESSMENT_TARGET_INVALID'}};}
+},w,parent,backdated,{measure:(_n,_m,f)=>f()}),/ASSESSMENT_SEMANTIC_REVIEW_REQUIRED/,
+'New directly staged candidates cannot backdate semantic PASS');
+assert.deepEqual(priorReads,['read'],'Backdated direct stage only checks the trusted prior receipt, never writes');
 let sent;
 const fake={rpc:async(name,args)=>{sent={name,args};return {data:{ok:true,state:'staged'},error:null};}};
 await assessmentCommand(fake,w,parent,body,{measure:(_n,_m,f)=>f()});
